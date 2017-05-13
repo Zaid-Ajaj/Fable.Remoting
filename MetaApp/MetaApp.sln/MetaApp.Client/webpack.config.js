@@ -10,16 +10,33 @@ var babelOptions = {
   plugins: ["transform-runtime"]
 }
 
+
+
+
 module.exports = {
   devtool: "source-map",
-  entry: resolve('./Fable.Remoting.Client.fsproj'),
+  entry: resolve('./MetaApp.Client.fsproj'),
   output: {
     filename: 'bundle.js',
     path: resolve('./public'),
   },
   devServer: {
     contentBase: resolve('./public'),
-    port: 8080
+    proxy: {
+      // for developement, redirect all calls to 
+      // the suave host
+      '/': {
+        target: 'http://localhost:8083',
+        changeOrigin: true,
+        // bypass the proxy when asking fot the home page
+        bypass: function(req, res, proxyOptions) {
+          if (req.headers.accept.indexOf('html') !== -1) {
+            console.log('Skipping proxy for browser request.');
+            return '/index.html';
+        }
+      }
+    }
+    }
  },
   module: {
     rules: [
@@ -39,5 +56,14 @@ module.exports = {
         },
       }
     ]
-  }
+  },
+   resolve: {
+      // do not resolve symbolic links
+      symlinks: false,
+      modules: [
+      // Fix the relative path if node_modules is not in the same dir as webpack.config.js
+      "node_modules", resolve("./node_modules/"),
+      
+      ]
+  },
 };

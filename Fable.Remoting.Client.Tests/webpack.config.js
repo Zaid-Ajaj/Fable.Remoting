@@ -12,7 +12,7 @@ var babelOptions = {
 
 module.exports = {
   devtool: "source-map",
-  entry: resolve('./Fable.Remoting.Client.fsproj'),
+  entry: resolve('./Fable.Remoting.Client.Tests.fsproj'),
   output: {
     filename: 'bundle.js',
     path: resolve('./public'),
@@ -27,7 +27,9 @@ module.exports = {
         test: /\.fs(x|proj)?$/,
         use: {
           loader: "fable-loader",
-          options: { babel: babelOptions }
+          options: { 
+            babel: babelOptions
+          }
         }
       },
       {
