@@ -10,20 +10,20 @@ open Fable.PowerPack.Fetch.Fetch_types
 module Proxy = 
 
     [<Emit("$2[$0] = $1")>]
-    let setProp (propName: string) (propValue: obj) (any: obj) : unit = jsNative
+    let private setProp (propName: string) (propValue: obj) (any: obj) : unit = jsNative
 
-    let makeTypeArgument (typeArg: System.Type) = 
+    let private makeTypeArgument (typeArg: System.Type) = 
         let empty = new obj()
         setProp "T" typeArg empty
         empty
 
     [<Import("ofJson",  "fable-core/Serialize")>]
-    let dynamicOfJson(json: string, typeArg: obj) : obj = jsNative
+    let private dynamicOfJson(json: string, typeArg: obj) : obj = jsNative
 
     [<Emit("$0")>]
-    let typed<'a> (x: obj) : 'a = jsNative
+    let private typed<'a> (x: obj) : 'a = jsNative
 
-    let proxyFetch typeName methodName returnType (endpoint: string option) (routeBuilder: string -> string -> string) =
+    let private proxyFetch typeName methodName returnType (endpoint: string option) (routeBuilder: string -> string -> string) =
         fun data -> 
             let route = routeBuilder typeName methodName
             let url = 
@@ -45,14 +45,14 @@ module Proxy =
             }
             |> Async.AwaitPromise   
 
-    let funcNotSupportedMsg funcName = 
+    let private funcNotSupportedMsg funcName = 
         [ sprintf "Fable.Remoting.Client: Function %s cannot be used for client proxy" funcName
           "Fable.Remoting.Client: Only functions with 1 paramter are supported" ]
         |> String.concat "\n"
 
 
     [<PassGenerics>]
-    let fields<'t> = 
+    let private fields<'t> = 
         FSharpType.GetRecordFields typeof<'t>
         |> Seq.filter (fun propInfo -> FSharpType.IsFunction (propInfo.PropertyType))
         |> Seq.map (fun propInfo -> 

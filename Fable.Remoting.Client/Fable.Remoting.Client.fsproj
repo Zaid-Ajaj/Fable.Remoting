@@ -1,6 +1,6 @@
 ﻿<Project Sdk="FSharp.NET.Sdk;Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard1.6</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="src/Proxy.fs" />
@@ -9,14 +9,13 @@
     <PackageReference Include="FSharp.NET.Sdk" Version="1.0.*" PrivateAssets="All" />
     <PackageReference Include="FSharp.Core" Version="4.1.*" />
     <PackageReference Include="Fable.Core" Version="1.0.0-narumi-*" />
+    <PackageReference Include="Fable.PowerPack" Version="1.0.0-narumi-*" />
     <DotNetCliToolReference Include="dotnet-fable" Version="1.0.0-narumi-*" />
   </ItemGroup>
-  <!-- PRIVATE REFERENCES (USED FOR ELMISH DEVELOPMENT) -->
-  <ItemGroup Condition="!$(MSBuildThisFileDirectory.Contains('node_modules'))" >
-    <ProjectReference Include="node_modules/fable-powerpack/Fable.PowerPack.fsproj" />
+  <!-- Add source files to "fable" folder in Nuget package -->
+  <ItemGroup>
+    <Content Include="*.fsproj; *.fs" PackagePath="fable\" />
+    <!--<Content Include="src\" PackagePath="fable\src\" />-->
   </ItemGroup>
-  <!-- PUBLIC REFERENCES (WHEN USED AS A LIBRARY) -->
-  <ItemGroup Condition="$(MSBuildThisFileDirectory.Contains('node_modules'))">  
-    <ProjectReference Include="../fable-powerpack/Fable.PowerPack.fsproj" />
-  </ItemGroup>
+  <Import Project=".paket\Paket.Restore.targets" />
 </Project>
