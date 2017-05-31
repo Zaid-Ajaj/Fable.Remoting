@@ -12,14 +12,6 @@ module Proxy =
     [<Emit("$2[$0] = $1")>]
     let private setProp (propName: string) (propValue: obj) (any: obj) : unit = jsNative
 
-    let private makeTypeArgument (typeArg: System.Type) = 
-        let empty = new obj()
-        setProp "T" typeArg empty
-        empty
-
-    [<Import("ofJson",  "fable-core/Serialize")>]
-    let private dynamicOfJson(json: string, typeArg: obj) : obj = jsNative
-
     [<Emit("$0")>]
     let private typed<'a> (x: obj) : 'a = jsNative
 
@@ -40,8 +32,7 @@ module Proxy =
                 ] 
                 let! response = Fetch.fetch url requestProps 
                 let! jsonResponse = response.text()
-                let typeArg = makeTypeArgument returnType
-                return dynamicOfJson(jsonResponse, typeArg)
+                return ofJsonAsType jsonResponse returnType
             }
             |> Async.AwaitPromise   
 
@@ -49,7 +40,6 @@ module Proxy =
         [ sprintf "Fable.Remoting.Client: Function %s cannot be used for client proxy" funcName
           "Fable.Remoting.Client: Only functions with 1 paramter are supported" ]
         |> String.concat "\n"
-
 
     [<PassGenerics>]
     let private fields<'t> = 
@@ -66,52 +56,34 @@ module Proxy =
         )
         |> List.ofSeq
 
-
-    [<PassGenerics>]
-    let create<'t> : 't = 
+    /// Creates a proxy using a custom endpoint and a route builder
+    let [<PassGenerics>] createWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string): 't = 
         // create an empty object literal
         let proxy = obj()
         let typeName = typeof<'t>.Name
-        fields<'t>
-        |> List.iter (fun field ->
+        let fields = fields<'t>
+        for field in fields do
             let funcTypes = snd field
             // Async<T>
             let asyncOfreturnType = funcTypes.[1] 
             // T
             let returnType = asyncOfreturnType.GenericTypeArguments.[0]
             let fieldName = fst field
-            setProp fieldName (proxyFetch typeName fieldName returnType None (sprintf "/%s/%s")) proxy
-        )
+            setProp fieldName (proxyFetch typeName fieldName returnType endpoint routeBuilder) proxy
         unbox proxy
 
+
+
+    /// Creates a proxy that routes method calls to /typeName/methodName
+    let [<PassGenerics>] create<'t>  : 't = 
+        createWithEndpointAndBuilder<'t> (Some "/") (sprintf "/%s/%s")
+
+    /// Creates a proxy using a custom endpoint and the default route builder.
     [<PassGenerics>]
     let createWithEndpoint<'t> (endpoint: string) : 't = 
-        // create an empty object literal
-        let proxy = obj()
-        let typeName = typeof<'t>.Name
-        let fields = fields<'t>
-        for field in fields do
-            let funcTypes = snd field
-            // Async<T>
-            let asyncOfreturnType = funcTypes.[1] 
-            // T
-            let returnType = asyncOfreturnType.GenericTypeArguments.[0]
-            let fieldName = fst field
-            setProp fieldName (proxyFetch typeName fieldName returnType (Some endpoint) (sprintf "/%s/%s")) proxy
-        unbox proxy
+        createWithEndpointAndBuilder<'t> (Some endpoint) (sprintf "/%s/%s")
 
+    /// Creates a proxy using the default endpoint = "/" and a custom route builder
     [<PassGenerics>]
-    let createWithEndpointAndBuilder<'t> (endpoint: string) (routeBuilder : string -> string -> string): 't = 
-        // create an empty object literal
-        let proxy = obj()
-        let typeName = typeof<'t>.Name
-        let fields = fields<'t>
-        for field in fields do
-            let funcTypes = snd field
-            // Async<T>
-            let asyncOfreturnType = funcTypes.[1] 
-            // T
-            let returnType = asyncOfreturnType.GenericTypeArguments.[0]
-            let fieldName = fst field
-            setProp fieldName (proxyFetch typeName fieldName returnType (Some endpoint) routeBuilder) proxy
-        unbox proxy
+    let createWithBuilder<'t> (routeBuilder: string -> string -> string) : 't = 
+        createWithEndpointAndBuilder<'t> None routeBuilder

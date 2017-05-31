@@ -3,6 +3,7 @@
 open NUnit.Framework
 open Newtonsoft.Json
 open System
+open Fable.Remoting.Suave
 
 
 [<TestFixture>]
