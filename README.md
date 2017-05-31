@@ -18,8 +18,9 @@ paket add nuget Fable.Remoting.Suave
 ```
 
 ## Shared code
-Define some types you want to share between client and server:
+Define the types you want to share between client and server:
 ```fs
+// SharedTypes.fs
 module SharedTypes
 
 type Student = {
@@ -29,6 +30,7 @@ type Student = {
     Subjects : string array
 }
 
+// Shared specs between Server and Client
 type IServer = {
     getStudentByName : string -> Async<Student option>
     getAllStudents : unit -> Async<seq<Student>>
@@ -71,12 +73,12 @@ let main argv =
     0 
 ```
 
-
 ## Fable Client
-Install `Fable.Remoting.Client from nuget using Paket:
+Install `Fable.Remoting.Client` from nuget using Paket:
 ```
 paket add nuget Fable.Remoting.Client
 ```
+Make sure Fable.Core >= 1.0.7
 Reference the shared types to youe client project and 
 ```
 <Compile Include="path/to/SharedTypes.fs" />
