@@ -43,7 +43,12 @@ type IServer = {
     getStudentSubjects : Student -> Async<string[]>
 }
 ```
-Provide an implementation for `IServer`:
+`IServer` is the specification of what your server does. `Fable.Remoting` expects such type to only have functions of shape:
+```
+A' -> Async<B'>
+```
+
+Then provide an implementation for `IServer` on the server: 
 ```fs
 open SharedTypes
 
@@ -84,14 +89,14 @@ let webApp =
  choose [ 
   POST >=> 
    path "/IServer/getStudentByName" 
-   >=> /* deserialize body (from json) */ 
-   >=> /* invoke server.getStudentByName */ 
-   >=> /* give client the results serialized (to json) */
+   >=> (* deserialize request body (from json) *) 
+   >=> (* invoke server.getStudentByName with the deserialized input *) 
+   >=> (* give client the output back serialized (to json) *)
 
  // other routes
  ]
 ```
-You can enable logging from Fable.Remoting.Suave (recommend) to see how the magic is doing it's magic behind the scenes :)
+You can enable logging from Fable.Remoting.Suave (recommended) to see how the magic is doing it's magic behind the scenes :)
 ```fs
 FableSuaveAdapter.logger <- Some (printfn "%s")
 ```
@@ -142,9 +147,8 @@ devServer: {
 ```
 That's it!
 
-======================
-### Customizations
-Generating different routes on the server using route builder, for example routes prefixed with `/api/`:
+## Customizations
+You can generate different paths for your POST routes on the server very easily using  a route builder, for example to generate routes with paths prefixed with `/api/`:
 ```fs
 let routeBuilder typeName methodName = 
  sprintf "/api/%s/%s" typeName methodName
