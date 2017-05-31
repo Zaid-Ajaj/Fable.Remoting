@@ -43,10 +43,11 @@ type IServer = {
     getStudentSubjects : Student -> Async<string[]>
 }
 ```
-`IServer` is the specification of what your server does. `Fable.Remoting` expects such type to only have functions of shape:
+The type `IServer` is very important, this is the specification of what your server shared with the client. `Fable.Remoting` expects such type to only have functions of shape:
 ```
 A' -> Async<B'>
 ```
+Also try to put such types in seperate files to reference these files later from the Client
 
 Then provide an implementation for `IServer` on the server: 
 ```fs
@@ -68,7 +69,7 @@ let server : IServer = {
 }
 
 ```
-Create a WebPart from the value `server` using `FableSuaveAdapter.webPartFor` and start your Suave server:
+Create a [WebPart](https://suave.io/composing.html) from the value `server` using `FableSuaveAdapter.webPartFor` and start your Suave server:
 ```fs
 open Suave
 open Fable.Remoting.Suave
