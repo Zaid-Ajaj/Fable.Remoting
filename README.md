@@ -120,8 +120,10 @@ let server = Proxy.create<IServer>
 
 
 async {
+  // allStudents : Student[]
   let! allStudents = server.getAllStudents()
   for student in allStudents do
+    // student : Student
     printfn "Student %s is %d years old" student.Name student.Age
 }
 |> Async.StartImmediate
