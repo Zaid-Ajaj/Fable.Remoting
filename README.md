@@ -43,11 +43,11 @@ type IServer = {
     getStudentSubjects : Student -> Async<string[]>
 }
 ```
-The type `IServer` is very important, this is the specification of what your server shared with the client. `Fable.Remoting` expects such type to only have functions of shape:
+The type `IServer` is very important, this is the specification of what your server shares with the client. `Fable.Remoting` expects such type to only have functions of shape:
 ```
 A' -> Async<B'>
 ```
-Also try to put such types in seperate files to reference these files later from the Client
+Try to put such types in seperate files to reference these files later from the Client
 
 Then provide an implementation for `IServer` on the server: 
 ```fs
@@ -76,7 +76,7 @@ open Fable.Remoting.Suave
 
 [<EntryPoint>]
 let main argv = 
-    // create the webpart with route builder
+    // create the WebPart
     let webApp = FableSuaveAdapter.webPartFor server  
     // start the web server
     startWebServer defaultConfig webApp
@@ -88,8 +88,8 @@ You can think of the `webApp` value as if it was the following in psuedo-code:
 ```fs
 let webApp = 
  choose [ 
-  POST >=> 
-   path "/IServer/getStudentByName" 
+  POST 
+   >=> path "/IServer/getStudentByName" 
    >=> (* deserialize request body (from json) *) 
    >=> (* invoke server.getStudentByName with the deserialized input *) 
    >=> (* give client the output back serialized (to json) *)
@@ -107,7 +107,7 @@ Install `Fable.Remoting.Client` from nuget using Paket:
 paket add nuget Fable.Remoting.Client
 ```
 Make sure Fable.Core >= 1.0.7
-Reference the shared types to youe client project and 
+Reference the shared types to your client project and 
 ```
 <Compile Include="path/to/SharedTypes.fs" />
 ```
@@ -150,6 +150,13 @@ devServer: {
 ```
 That's it!
 
+## Adding a new route
+ - Add another record field function to `IServer`
+ - Implement that function
+ - Restart server
+ 
+Done! You can now use that function from the client too. 
+
 ## Customizations
 You can generate different paths for your POST routes on the server very easily using  a route builder, for example to generate routes with paths prefixed with `/api/`:
 ```fs
@@ -158,7 +165,7 @@ let routeBuilder typeName methodName =
  
 let webApp = FableSuaveAdapter.webPartWithBuilderFor server routeBuilder
 ```
-Ofcourse, the proxy generated on the client has to match the routes:
+Ofcourse, the proxy generated on the client has to match the routes created on the server:
 ```fs 
 let routeBuilder typeName methodName = 
  sprintf "/api/%s/%s" typeName methodName
