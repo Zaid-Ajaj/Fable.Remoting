@@ -5,7 +5,7 @@ Automated and type-safe client-server communacation for Fable Apps.
 Supported server frameworks:
  - [x] Suave
     - [x] .NET Framework 4.5  
-    - [ ] .NET Core (WIP)
+    - [x] .NET Core
  - [ ] Nancy
     - [ ] .NET Framework 4.5 (WIP)
     - [ ] .NET Core
@@ -16,11 +16,13 @@ Supported server frameworks:
 ## Suave
 On a Suave server, install the library from Nuget:
 ```
-Install-Package Fable.Remoting.Suave
+Install-Package Fable.Remoting.Suave // for net45
+dotnet add package Fable.Remoting.Suave.Core // for netcoreapp2.0
 ```
 or using Paket
 ```
-paket add nuget Fable.Remoting.Suave 
+paket add nuget Fable.Remoting.Suave // for net45
+paket add nuget Fable.Remoting.Suave.Core // for netcoreapp2.0
 ```
 
 ## Shared code
