@@ -1,6 +1,6 @@
 # Fable.Remoting [In-depth Introduction](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
 
-Automated and type-safe client-server communacation for Fable Apps. 
+Automated and type-safe client-server communication for Fable Apps. 
 
 Supported server frameworks:
  - [x] Suave
@@ -109,7 +109,8 @@ Install `Fable.Remoting.Client` from nuget using Paket:
 paket add nuget Fable.Remoting.Client
 ```
 Make sure Fable.Core >= 1.0.7
-Reference the shared types to your client project and 
+
+Reference the shared types to your client project 
 ```
 <Compile Include="path/to/SharedTypes.fs" />
 ```
