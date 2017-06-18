@@ -1,4 +1,4 @@
-﻿module FableConverter
+﻿namespace Fable.Remoting.Json
 
 open System
 open FSharp.Reflection

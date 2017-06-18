@@ -3,12 +3,12 @@
 open NUnit.Framework
 open Newtonsoft.Json
 open System
-open Fable.Remoting.Suave
+open Fable.Remoting.Json
 
+open Types
 
 [<TestFixture>]
 module JsonConverterTests = 
-    open FableConverter
     
     let converter = new FableJsonConverter()
     let deserialize<'a> (json : string) = 

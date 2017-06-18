@@ -7,9 +7,7 @@ open Suave.Successful
 
 open FSharp.Reflection
 open Newtonsoft.Json
-
-open FableConverter
-
+open Fable.Remoting.Json
 
 module FableSuaveAdapter = 
     open System.Text

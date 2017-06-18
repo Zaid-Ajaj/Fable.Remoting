@@ -52,7 +52,6 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Types.fs" />
-    <Compile Include="FableConverterTests.fs" />
     <Compile Include="SuaveAdapterTests.fs" />
     <Compile Include="ServerDynamicInvokeTests.fs" />
     <Content Include="paket.references" />

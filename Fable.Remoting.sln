@@ -14,6 +14,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Suave", "Fab
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Suave.Tests", "Fable.Remoting.Suave.Tests\Fable.Remoting.Suave.Tests.fsproj", "{9B91183E-6B11-4A8C-8FF6-94257F0D3BA4}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Json", "Fable.Remoting.Json\Fable.Remoting.Json.fsproj", "{0D6CCBED-DFAA-43D1-9D3E-230336DF255F}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Json.Tests", "Fable.Remoting.Json.Tests\Fable.Remoting.Json.Tests.fsproj", "{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +36,14 @@ Global
 		{9B91183E-6B11-4A8C-8FF6-94257F0D3BA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B91183E-6B11-4A8C-8FF6-94257F0D3BA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B91183E-6B11-4A8C-8FF6-94257F0D3BA4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D6CCBED-DFAA-43D1-9D3E-230336DF255F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D6CCBED-DFAA-43D1-9D3E-230336DF255F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D6CCBED-DFAA-43D1-9D3E-230336DF255F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D6CCBED-DFAA-43D1-9D3E-230336DF255F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
