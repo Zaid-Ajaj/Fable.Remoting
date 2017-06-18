@@ -165,3 +165,11 @@ module SuaveAdapterTests =
         testApp
         |> req HttpMethod.POST "/IProtocol/recordListToInt" (Some someInput)
         |> fun result -> Assert.AreEqual("25", result)  
+
+    [<Test>]
+    let ``Invoking a list of float works``() = 
+        let someInput = postContent "[1.20, 1.40, 1.60]"
+        let testApp = runWith Suave.Web.defaultConfig app
+        testApp
+        |> req HttpMethod.POST "/IProtocol/floatList" (Some someInput)
+        |> fun result -> Assert.AreEqual("4.2", result)  
