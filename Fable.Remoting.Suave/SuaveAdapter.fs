@@ -66,7 +66,7 @@ module FableSuaveAdapter =
         let inputType = Server.getInputType methodName serverImplementation
         let hasArg = inputType.FullName <> "Microsoft.FSharp.Core.Unit"
         fun (req: HttpRequest) ->
-            Option.iter (fun logf -> logf ((sprintf "Fable.Remoting: Invoking method %s" methodName))) logger
+            Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) logger
             let requestBodyData = 
                 // if input is unit
                 // then don't bother getting any input from request

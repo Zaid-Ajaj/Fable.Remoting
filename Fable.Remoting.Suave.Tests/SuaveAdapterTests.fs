@@ -157,3 +157,11 @@ module SuaveAdapterTests =
         testApp
         |> req HttpMethod.POST "/IProtocol/unitToInts" (Some someInput)
         |> fun result -> Assert.AreEqual("55", result)  
+
+    [<Test>]
+    let ``Invoking list of records works``() =
+        let someInput = postContent "[{\"Prop1\":\"\",\"Prop2\":15,\"Prop3\":null}, {\"Prop1\":\"\",\"Prop2\":10,\"Prop3\":null}]"
+        let testApp = runWith Suave.Web.defaultConfig app
+        testApp
+        |> req HttpMethod.POST "/IProtocol/recordListToInt" (Some someInput)
+        |> fun result -> Assert.AreEqual("25", result)  

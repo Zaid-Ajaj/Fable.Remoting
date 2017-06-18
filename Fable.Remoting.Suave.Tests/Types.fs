@@ -27,6 +27,7 @@ type IProtocol = {
     recordEcho : Record -> Async<Record>
     listIntegers : int list -> Async<int>
     unitToInts : unit -> Async<int>
+    recordListToInt : Record[] -> Async<int>
 }
 
 
@@ -51,4 +52,5 @@ module TestImplementation =
         recordEcho = fun r -> async { return { r with Prop2 = r.Prop2 + 10 } }
         listIntegers = fun xs -> async { return Seq.sum xs }
         unitToInts = fun () -> async { return Seq.sum [1..10] }
+        recordListToInt = fun records -> records |> Seq.map (fun r -> r.Prop2) |> Seq.sum |> fun res -> async { return res }
     }
