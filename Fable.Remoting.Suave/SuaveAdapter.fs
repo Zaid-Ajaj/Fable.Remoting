@@ -8,6 +8,7 @@ open Suave.Successful
 open FSharp.Reflection
 open Newtonsoft.Json
 open Fable.Remoting.Json
+open Fable.Remoting.Server
 
 module FableSuaveAdapter = 
     open System.Text
@@ -61,7 +62,7 @@ module FableSuaveAdapter =
       >=> Writers.setMimeType "application/json; charset=utf-8"
 
     let handleRequest methodName serverImplementation = 
-        let inputType = Server.getInputType methodName serverImplementation
+        let inputType = ServerSide.getInputType methodName serverImplementation
         let hasArg = inputType.FullName <> "Microsoft.FSharp.Core.Unit"
         fun (req: HttpRequest) ->
             Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) logger
@@ -71,7 +72,7 @@ module FableSuaveAdapter =
                 match hasArg with 
                 | true  -> getResourceFromReq req inputType
                 | false -> null
-            let result = Server.dynamicallyInvoke methodName serverImplementation requestBodyData hasArg
+            let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData hasArg
             async {
                 let! dynamicResult = result
                 return json dynamicResult

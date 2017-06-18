@@ -18,6 +18,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Json", "Fabl
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Json.Tests", "Fable.Remoting.Json.Tests\Fable.Remoting.Json.Tests.fsproj", "{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Server", "Fable.Remoting.Server\Fable.Remoting.Server.fsproj", "{597CD751-DFEF-4290-8501-0FDAE596A9DF}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Server.Tests", "Fable.Remoting.Server.Tests\Fable.Remoting.Server.Tests.fsproj", "{D3C9223B-CCA4-44E0-A552-51283B82FF7B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +48,14 @@ Global
 		{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84FDE00A-5B1C-45F5-B499-ADB3003B54E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{597CD751-DFEF-4290-8501-0FDAE596A9DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{597CD751-DFEF-4290-8501-0FDAE596A9DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{597CD751-DFEF-4290-8501-0FDAE596A9DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{597CD751-DFEF-4290-8501-0FDAE596A9DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3C9223B-CCA4-44E0-A552-51283B82FF7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3C9223B-CCA4-44E0-A552-51283B82FF7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3C9223B-CCA4-44E0-A552-51283B82FF7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3C9223B-CCA4-44E0-A552-51283B82FF7B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

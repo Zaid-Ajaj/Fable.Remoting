@@ -1,4 +1,4 @@
-﻿namespace Fable.Remoting.Suave
+﻿namespace Fable.Remoting.Server
 
 open FSharp.Reflection
 
@@ -18,7 +18,7 @@ type AsyncBoxer<'T>() =
             | _ -> failwith "Invalid boxed value"
             
 
-module Server = 
+module ServerSide = 
 
     open System
     open Fable.Remoting.Reflection

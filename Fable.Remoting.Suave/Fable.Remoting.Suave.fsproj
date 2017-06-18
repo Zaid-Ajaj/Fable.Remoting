@@ -51,11 +51,15 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Server.fs" />
     <Compile Include="SuaveAdapter.fs" />
     <Content Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj">
+      <Name>Fable.Remoting.Server</Name>
+      <Project>{597cd751-dfef-4290-8501-0fdae596a9df}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
