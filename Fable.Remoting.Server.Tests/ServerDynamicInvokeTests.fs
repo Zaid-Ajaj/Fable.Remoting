@@ -45,5 +45,3 @@ module FSharpRecordTests =
             do Assert.AreEqual(0, unbox<int> dynamicResult)
         } 
         |> Async.RunSynchronously
-
-
