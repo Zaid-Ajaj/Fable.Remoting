@@ -2,8 +2,7 @@
 
 open Fable.Remoting.Suave
 open System.Net.Http
-open Suave.Testing
-open Suave.Testing.Utilities
+open SuaveTester
 open Suave.Web
 open Suave.Http
 open Suave.Successful
