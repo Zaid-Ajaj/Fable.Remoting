@@ -27,37 +27,28 @@ let ServerTestsDll = testDll "Server"
 let SuaveTestDll = testDll "Suave"
 
 
-Target "BuildJsonTests" <| fun _ ->
+Target "RestoreBuildRunJsonTests" <| fun _ ->
     run "." "dotnet"  ("restore " + proj "Json.Tests")
     run "." "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
-
-Target "RunJsonTests" <| fun _ ->
     run "." "dotnet" JsonTestsDll
 
-Target "BuildServerTests" <| fun _ ->
+Target "RestoreBuildRunServerTests" <| fun _ ->
     run "." "dotnet"  ("restore " + proj "Server.Tests")
     run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
-    
-Target "RunServerTests" <| fun _ ->
     run "." "dotnet" ServerTestsDll
 
+Target "BuildRunServerTests" <| fun _ ->
+    run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
+    run "." "dotnet" ServerTestsDll
 
-Target "BuildSuaveTests" <| fun _ ->
+Target "RestoreBuildRunSuaveTests" <| fun _ ->
     run "." "dotnet"  ("restore " + proj "Suave.Tests")
     run "." "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
-    
-
-Target "RunSuaveTests" <| fun _ ->
     run "." "dotnet" SuaveTestDll
 
 
 Target "AllTests" <| DoNothing
-
 Target "Default" <| DoNothing
 
-//"RunJsonTests"
-//    ==> "RunServerTests"
-//    ==> "RunSuaveTests"
-//    ==> "AllTests"
 
 RunTargetOrDefault "Default"

@@ -34,4 +34,16 @@ let serverTests =
             let! result = ServerSide.dynamicallyInvoke "echoOption" implementation (box input) true
             equal 0 (unbox<int> result)
         }
+
+        testCaseAsync "Invoking when input is simple union: A" <| async {
+            let input = A
+            let! output = ServerSide.dynamicallyInvoke "simpleUnionInputOutput" implementation (box input) true
+            equal B (unbox<AB> output)
+        }
+
+        testCaseAsync "Invoking when input is simple union: B" <| async {
+            let input = B
+            let! output = ServerSide.dynamicallyInvoke "simpleUnionInputOutput" implementation (box input) true
+            equal A (unbox<AB> output)
+        }
     ]
