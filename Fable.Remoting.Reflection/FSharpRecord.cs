@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Reflection;
+using Microsoft.CSharp;
 
 namespace Fable.Remoting.Reflection
 {
@@ -14,6 +16,7 @@ namespace Fable.Remoting.Reflection
         {
             return implementation
                      .GetType()
+                     .GetTypeInfo()
                      .GetProperty(methodName)
                      .GetValue(implementation, null)
                      .Pipe((dynamic fsFunc) => hasArg ? fsFunc.Invoke((dynamic)arg) : fsFunc.Invoke(null));

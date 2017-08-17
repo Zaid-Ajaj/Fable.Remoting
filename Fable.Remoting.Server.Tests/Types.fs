@@ -1,4 +1,4 @@
-﻿namespace Fable.Remoting.Server.Tests
+﻿module Types
 
 open System
 

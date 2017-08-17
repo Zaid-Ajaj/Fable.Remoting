@@ -1,0 +1,162 @@
+﻿module FableSuaveAdapterTests
+
+open Fable.Remoting.Suave
+open System.Net.Http
+open SuaveTester
+open Suave.Web
+open Suave.Http
+open Suave.Successful
+open System
+open Expecto
+open Types
+
+// Test helpers
+
+let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
+let pass () = Expect.equal true true ""   
+let fail () = Expect.equal false true ""
+
+FableSuaveAdapter.logger <- Some (printfn "%s")
+let app = FableSuaveAdapter.webPartFor implementation
+let postContent (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
+
+let defaultConfig = Suave.Web.defaultConfig
+
+let fableSuaveAdapterTests = 
+    testList "FableSuaveAdapter tests" [
+        testCase "Sending string as input works" <| fun () ->
+            let input = "\"my-test-string\"";
+            let content = postContent input
+            runWith defaultConfig app
+            |> req HttpMethod.POST "/IProtocol/getLength" (Some content)
+            |> fun result -> equal result "14"
+
+        testCase "Sending int as input works" <| fun () ->
+            let input = postContent "5" 
+            runWith defaultConfig app
+            |> req HttpMethod.POST "/IProtocol/echoInteger" (Some input)
+            |> fun result -> equal "10" result
+
+    
+        testCase "Sending some option as input works" <| fun () ->
+            let someInput = postContent "5" // toJson (Some 5) => "5"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/echoOption" (Some someInput)
+            |> fun result -> equal "10" result
+
+        testCase "Sending none option as input works" <| fun () ->
+            // the string "null" represents None
+            // it's what fable sends from browser
+            let noneInput = postContent "null" // toJson None => "null"
+            let testApp = runWith defaultConfig app
+            
+            testApp
+            |> req HttpMethod.POST "/IProtocol/echoOption" (Some noneInput)
+            |> fun result -> equal "0" result
+
+        
+        testCase "Sending DateTime as input works" <| fun () -> 
+            let someInput = postContent "\"2017-05-12T14:20:00.000Z\""
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/echoMonth" (Some someInput)
+            |> equal "5"
+
+        
+        testCase "Sending and recieving strings works" <| fun () -> 
+            let someInput = postContent "\"my-string\""
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/echoString" (Some someInput)
+            |> equal "\"my-string\""     
+            
+        testCase "Recieving int option to None output works" <| fun () -> 
+            let someInput = postContent "\"\""
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/optionOutput" (Some someInput)
+            |> equal "null" 
+            
+        testCase "Recieving int option to Some output works" <| fun () -> 
+            let someInput = postContent "\"non-empty\""
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/optionOutput" (Some someInput)
+            |> equal "5"
+            
+        testCase "Sending generic union case Nothing as input works" <| fun () -> 
+            let someInput = postContent "\"Nothing\""
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/genericUnionInput" (Some someInput)
+            |> equal "0"      
+            
+        testCase "Sending generic union case Just as input works" <| fun () -> 
+            let someInput = postContent "{\"Just\":5}"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/genericUnionInput" (Some someInput)
+            |> equal "5" 
+            
+        
+        testCase "Recieving generic union case Just 5 as output works" <| fun () -> 
+            let someInput = postContent "true"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/genericUnionOutput" (Some someInput)
+            |> equal "{\"Just\":5}"
+
+        
+        testCase "Recieving generic union case Nothing as output works" <| fun () -> 
+            let someInput = postContent "false"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/genericUnionOutput" (Some someInput)
+            |> equal "\"Nothing\""
+
+        testCase "Recieving and sending simple union works" <| fun () -> 
+            let someInput = postContent "\"A\""
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/simpleUnionInputOutput" (Some someInput)
+            |> equal "\"B\""
+            
+        testCase "Recieving and sending records works" <| fun () -> 
+            // In Fable, toJson { Prop1 = ""; Prop2 = 5; Prop3 = None }
+            // becomes
+            let recordInput = postContent "{\"Prop1\":\"\",\"Prop2\":5,\"Prop3\":null}"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/recordEcho" (Some recordInput)
+            |> equal "{\"Prop1\":\"\",\"Prop2\":15,\"Prop3\":null}" 
+
+        testCase "Sending list of ints works" <| fun () -> 
+            let someInput = postContent "[1,2,3,4,5,6,7,8,9,10]"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/listIntegers" (Some someInput)
+            |> equal "55" 
+
+        testCase "Inoking function of unit works" <| fun () -> 
+            // server will ignore the input
+            let someInput = postContent ""
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/unitToInts" (Some someInput)
+            |> equal "55" 
+
+        testCase "Invoking list of records works" <| fun () ->
+            let someInput = postContent "[{\"Prop1\":\"\",\"Prop2\":15,\"Prop3\":null}, {\"Prop1\":\"\",\"Prop2\":10,\"Prop3\":null}]"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/recordListToInt" (Some someInput)
+            |> equal "25" 
+
+        testCase "Invoking a list of float works" <| fun () -> 
+            let someInput = postContent "[1.20, 1.40, 1.60]"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req HttpMethod.POST "/IProtocol/floatList" (Some someInput)
+            |> equal "4.2"
+    ]
