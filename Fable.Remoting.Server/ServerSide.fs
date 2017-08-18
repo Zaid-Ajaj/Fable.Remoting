@@ -30,7 +30,6 @@ module ServerSide =
                 .PropertyType
                 .GetGenericArguments().[0]
                         
-
     let dynamicallyInvoke (methodName: string) implementation methodArg hasArg =
          let propInfo = implementation.GetType().GetProperty(methodName)
          // A -> Async<B>, extract A and B

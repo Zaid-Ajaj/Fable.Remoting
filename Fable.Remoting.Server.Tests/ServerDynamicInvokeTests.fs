@@ -2,11 +2,45 @@
 
 open Expecto
 open Fable.Remoting.Server
+open Fable.Remoting.Reflection
 open Types
 
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
+
+type TestRec = { 
+    simpleMethod : string -> int
+    listsMethod : int list -> int
+    genericUnion: Maybe<int> -> int
+}
+
+let fsharpRecordTests = 
+    let invoke (methodName: string) (record: obj) (input: obj) (hasArg: bool) =
+        FSharpRecord.Invoke(methodName, record, input, hasArg) 
+
+    let testRec = { 
+        genericUnion = function Just x -> x | _ -> 0 
+        simpleMethod = fun input -> input.Length
+        listsMethod = fun xs -> Seq.sum xs
+    }
+
+    testList "FSharpRecord tests" [
+        testCase "Invoking listsMethod" <| fun () ->
+            let input = [1 .. 10]
+            let output = invoke "listsMethod" testRec (box input) true
+            equal 55 (unbox<int> output)
+
+        testCase "Invoking simpleMethod" <| fun () ->
+            let input = "hello"
+            let output = invoke "simpleMethod" testRec (box input) true
+            equal 5 (unbox<int> output)
+
+        testCase "Invkoing genericUnion on record dynamically works" <| fun () ->
+            let input = Just 5
+            let output = invoke "genericUnion" testRec (box input) true
+            equal 5 (unbox<int> output)
+    ]
 
 let serverTests = 
 
@@ -46,4 +80,16 @@ let serverTests =
             let! output = ServerSide.dynamicallyInvoke "simpleUnionInputOutput" implementation (box input) true
             equal A (unbox<AB> output)
         }
+
+        testCaseAsync "Generic union input: Maybe<int>" <| async {
+            let input = Just 5
+            let! output = ServerSide.dynamicallyInvoke "genericUnionOutput" implementation (box input) true
+            equal 5 (unbox<int> output)
+        }
+    ]
+
+let allTests = 
+    testList "All Tests " [
+        fsharpRecordTests
+        serverTests
     ]

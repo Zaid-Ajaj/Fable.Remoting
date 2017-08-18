@@ -12,6 +12,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\Fable.Remoting.Reflection\Fable.Remoting.Reflection.csproj" />
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />

@@ -16,7 +16,6 @@ namespace Fable.Remoting.Reflection
         {
             return implementation
                      .GetType()
-                     .GetTypeInfo()
                      .GetProperty(methodName)
                      .GetValue(implementation, null)
                      .Pipe((dynamic fsFunc) => hasArg ? fsFunc.Invoke((dynamic)arg) : fsFunc.Invoke(null));

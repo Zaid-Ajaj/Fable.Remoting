@@ -1,9 +1,12 @@
 module Program 
 
 open Expecto
+open Expecto.Logging
 open ServerDynamicInvokeTests 
 
-let config = Expecto.Tests.defaultConfig
+let testConfig =  { Expecto.Tests.defaultConfig with 
+                        parallelWorkers = 1
+                        verbosity = LogLevel.Debug }
 
 [<EntryPoint>]
-let main args = runTests config serverTests      
+let main args = runTests testConfig fsharpRecordTests      
