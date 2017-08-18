@@ -9,4 +9,4 @@ let testConfig =  { Expecto.Tests.defaultConfig with
                         verbosity = LogLevel.Debug }
 
 [<EntryPoint>]
-let main args = runTests testConfig fsharpRecordTests      
+let main args = runTests testConfig allTests      
