@@ -1,17 +1,13 @@
 # Fable.Remoting [In-depth Introduction](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
 
+# Currently Work In Progress (Porting to netcore2.0)
+
 Automated and type-safe client-server communication for Fable Apps. 
 
 Supported server frameworks:
- - [x] Suave
-    - [x] .NET Framework 4.5  
-    - [x] .NET Core
- - [ ] Nancy
-    - [ ] .NET Framework 4.5 (WIP)
-    - [ ] .NET Core
+ - [ ] Suave (netcore2.0) (WIP)
+ - [ ] Nancy 
  - [ ] Freya
-    - [ ] .NET Framework 4.5
-    - [ ] .NET Core
  
 ## Suave
 On a Suave server, install the library from Nuget:
