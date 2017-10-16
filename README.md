@@ -8,15 +8,10 @@ Supported server frameworks:
  - [ ] Freya
  
 ## Suave
-On a Suave server, install the library from Nuget:
+On a Suave server, install the library from Nuget using Paket:
+
 ```
-Install-Package Fable.Remoting.Suave // for net45
-dotnet add package Fable.Remoting.Suave.Core // for netcoreapp2.0
-```
-or using Paket
-```
-paket add nuget Fable.Remoting.Suave // for net45
-paket add nuget Fable.Remoting.Suave.Core // for netcoreapp2.0
+paket add Fable.Remoting.Suave --project /path/to/Project.fsproj
 ```
 
 ## Shared code
@@ -100,10 +95,8 @@ FableSuaveAdapter.logger <- Some (printfn "%s")
 ## Fable Client
 Install `Fable.Remoting.Client` from nuget using Paket:
 ```
-paket add nuget Fable.Remoting.Client
+paket add Fable.Remoting.Client --project /path/to/Project.fsproj
 ```
-Make sure Fable.Core >= 1.0.7
-
 Reference the shared types to your client project 
 ```
 <Compile Include="path/to/SharedTypes.fs" />
