@@ -1,8 +1,15 @@
 source https://www.nuget.org/api/v2/
 
+storage:none
+
 nuget Expecto
 nuget FAKE
 nuget FSharp.Core
+nuget Fable.Core
+nuget Fable.PowerPack
 nuget Newtonsoft.Json
 nuget NUnit
-nuget Suave
+nuget Suave 
+nuget Microsoft.CSharp
+
+clitool dotnet-fable

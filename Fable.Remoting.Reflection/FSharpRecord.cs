@@ -5,6 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
 using Microsoft.CSharp;
+using Microsoft.FSharp.Collections;
+using Microsoft.FSharp.Control;
+using Microsoft.FSharp.Core;
 
 namespace Fable.Remoting.Reflection
 {
@@ -14,11 +17,22 @@ namespace Fable.Remoting.Reflection
 
         public static dynamic Invoke(string methodName, object implementation, object arg, bool hasArg)
         {
-            return implementation
-                     .GetType()
-                     .GetProperty(methodName)
-                     .GetValue(implementation, null)
-                     .Pipe((dynamic fsFunc) => hasArg ? fsFunc.Invoke((dynamic)arg) : fsFunc.Invoke(null));
+            object funcObj =
+                 implementation
+                    .GetType()
+                    .GetProperty(methodName)
+                    .GetValue(implementation, null);
+
+            var funcMethods =
+                funcObj.GetType()
+                       .GetMethods();
+
+            var func = funcMethods.First(x => x.Name == "Invoke");        
+
+            return hasArg ? func.Invoke(funcObj, new object[] { (dynamic)arg })
+                          : func.Invoke(funcObj, new object[] { null });
+
+                     //.Pipe((FSharpFunc<dynamic, dynamic> fsFunc) => hasArg ? fsFunc.Invoke((dynamic)arg) : fsFunc.Invoke(null));
         }
     }
 }

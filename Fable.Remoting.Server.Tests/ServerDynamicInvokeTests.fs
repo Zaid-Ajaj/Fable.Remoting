@@ -66,7 +66,7 @@ let fsharpRecordTests =
             equal 55 (unbox<int> output)
         
         testCase "Invoking arrayMethod with empty array" <| fun () -> 
-            let input = [| |]
+            let input : int []= [| |]
             let output = invoke "arrayMethod" testRec (box input) true
             equal 0 (unbox<int> output)
         
@@ -147,7 +147,7 @@ let serverTests =
         // failing because of this blocker: https://github.com/dotnet/corefx/issues/23387
         testCaseAsync "Generic union input: Maybe<int>" <| async {
             let input = Just 5
-            let! output = ServerSide.dynamicallyInvoke "genericUnionOutput" implementation (box input) true
+            let! output = ServerSide.dynamicallyInvoke "genericUnionInput" implementation (box input) true
             equal 5 (unbox<int> output)
         }
     ]

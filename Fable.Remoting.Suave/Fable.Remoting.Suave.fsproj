@@ -8,7 +8,6 @@
     <Compile Include="FableSuaveAdapter.fs" />
   </ItemGroup>
 
-
   <ItemGroup>
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />

@@ -42,7 +42,8 @@ module TestImplementation =
         echoMonth = fun date -> async { return date.Month }
         echoString = fun str -> async { return str }
         optionOutput = fun str -> async { return if str <> "" then Some 5 else None }
-        genericUnionInput = function
+        genericUnionInput = fun x ->
+            match x with
             | Nothing -> async { return 0 }
             | Just x -> async { return x }
         genericUnionOutput = fun b -> async { return if b then Just 5 else Nothing }

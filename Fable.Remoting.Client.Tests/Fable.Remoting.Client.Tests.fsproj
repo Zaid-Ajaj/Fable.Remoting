@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src/QUnit.fs" />
+    <Compile Include="src/App.fs" />
+  </ItemGroup>
+
+  <Import Project="..\.paket\Paket.Restore.targets" />
+  <ItemGroup>
+    <ProjectReference Include="../Fable.Remoting.Client/Fable.Remoting.Client.fsproj" />
+  </ItemGroup>
+</Project>
