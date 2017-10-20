@@ -1,16 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="FableSuaveAdapter.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="FableGiraffeAdapterTests.fs" />
+    <Compile Include="App.fs" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
+    <ProjectReference Include="..\Fable.Remoting.Giraffe\Fable.Remoting.Giraffe.fsproj" />
   </ItemGroup>
   
   <Import Project="..\.paket\Paket.Restore.targets" />

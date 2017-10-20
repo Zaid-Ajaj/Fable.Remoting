@@ -29,7 +29,7 @@ module ServerSide =
                 .GetProperty(methodName)
                 .PropertyType
                 .GetGenericArguments().[0]
-                        
+
     let dynamicallyInvoke (methodName: string) implementation methodArg hasArg =
          let propInfo = implementation.GetType().GetProperty(methodName)
          // A -> Async<B>, extract A and B
@@ -48,7 +48,7 @@ module ServerSide =
                      :?> IAsyncBoxer
 
          let fsAsync = FSharpRecord.Invoke (methodName, implementation, methodArg, hasArg)
-               
+        
          async { 
             let! asyncResult = boxer.BoxAsyncResult fsAsync
             return asyncResult

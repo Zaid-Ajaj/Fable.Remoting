@@ -4,6 +4,7 @@ Automated and type-safe client-server communication for Fable Apps.
 
 Supported server frameworks:
  - [x] Suave
+ - [x] Giraffe (WIP)
  - [ ] Nancy 
  - [ ] Freya
  
