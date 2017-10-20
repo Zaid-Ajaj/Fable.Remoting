@@ -1,5 +1,15 @@
 ﻿module FableGiraffeAdapterTests
 
+open System
+open System.Net
+open System.Net.Http
+open System.IO
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
+open Microsoft.AspNetCore.TestHost
+open Microsoft.Extensions.DependencyInjection
+open Giraffe.Middleware
+open Giraffe.HttpHandlers
 open Fable.Remoting.Giraffe
 open System.Net.Http
 open System
@@ -13,10 +23,11 @@ let pass () = Expect.equal true true ""
 let fail () = Expect.equal false true ""
 
 //FableGirrafeAdapter.logger <- Some (printfn "%s")
-//let app = FableGirrafeAdapter.webPartFor implementation
-let postContent (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
-
-
+let app : HttpHandler = FableGirrafeAdapter.webPartFor implementation
+let postContent (input: string) =  new StringContent(input, Text.Encoding.UTF8)
+let createHost() =
+    WebHostBuilder()
+        .UseContentRoot(Directory.GetCurrentDirectory())
 let fableGiraffeAdapterTests = 
     testList "FableGiraffeAdapter tests" [
         testCase "Sending string as input works" <| fun () ->

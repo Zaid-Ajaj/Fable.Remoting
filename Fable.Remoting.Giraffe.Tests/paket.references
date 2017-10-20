@@ -1,3 +1,6 @@
 FSharp.Core
 Newtonsoft.Json
 Expecto
+Giraffe
+Microsoft.AspNetCore.TestHost
+Microsoft.AspNetCore.Hosting
