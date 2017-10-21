@@ -18,13 +18,15 @@ type IProtocol = {
     echoInteger : int -> Async<int>
     echoMonth : DateTime -> Async<DateTime>
     echoString : string -> Async<string>
-    echoOption : int option -> Async<int option>
-    echoGenericUnion : Maybe<int> -> Async<Maybe<int>>
+    echoIntOption : int option -> Async<int option>
+    echoStringOption : string option -> Async<string option>
+    echoGenericUnionInt : Maybe<int> -> Async<Maybe<int>>
+    echoGenericUnionString: Maybe<string> -> Async<Maybe<string>>
     echoBool : bool -> Async<bool>
     echoSimpleUnion : AB -> Async<AB>
-    recordEcho : Record -> Async<Record>
+    echoRecord : Record -> Async<Record>
     echoIntList : int list -> Async<int list>
-    unitToInts : unit -> Async<int>
+    unitToInts : unit -> Async<int list>
     echoRecordList : Record list -> Async<Record list>
     floatList : float list -> Async<float list>
 }
@@ -37,14 +39,16 @@ let pureAsync (x: 'a) : Async<'a> =
 let implementation = { 
     echoInteger = pureAsync
     echoMonth = pureAsync
-    echoString = fun x -> async { return x }
-    echoOption = pureAsync
-    echoGenericUnion = pureAsync
+    echoString = pureAsync
+    echoIntOption = pureAsync
+    echoGenericUnionInt = pureAsync
+    echoGenericUnionString = pureAsync
     echoBool = pureAsync
+    echoStringOption = pureAsync
     echoSimpleUnion = pureAsync
-    recordEcho = pureAsync
+    echoRecord = pureAsync
     echoIntList = pureAsync
-    unitToInts = fun () -> pureAsync 1
+    unitToInts = fun () -> pureAsync [1; 2; 3; 4; 5]
     echoRecordList = pureAsync
     floatList = pureAsync
 }

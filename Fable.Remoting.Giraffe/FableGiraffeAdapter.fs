@@ -31,14 +31,16 @@ module FableGiraffeAdapter =
         
 
     /// Deserialize a json string using FableConverter
-    let deserialize (json: string) (inputType: System.Type) =
+    let deserializeByType (json: string) (inputType: System.Type) =
         logDeserialization logger json inputType
         let parameterTypes = [| typeof<string>; typeof<System.Type>; typeof<JsonConverter array> |]
         let deserialize = typeof<JsonConvert>.GetMethod("DeserializeObject", parameterTypes) 
         let result = deserialize.Invoke(null, [| json; inputType; [| fableConverter |] |])
         result
 
-        
+    let deserialize<'t> (json: string) : 't = 
+        JsonConvert.DeserializeObject<'t>(json, fableConverter)
+
     // serialize an object to json using FableConverter
     // json : string -> WebPart
     let json value =
@@ -54,11 +56,9 @@ module FableGiraffeAdapter =
     let getResourceFromReq (ctx : HttpContext) (inputType: System.Type) =
         let requestBodyStream = ctx.Request.Body
         use streamReader = new StreamReader(requestBodyStream)
-        task {
-            let! requestBodyContent = streamReader.ReadToEndAsync()
-            return deserialize requestBodyContent inputType
-        }
-        
+        let requestBodyContent = streamReader.ReadToEnd()
+        deserializeByType requestBodyContent inputType
+    
     let handleRequest methodName serverImplementation = 
         let inputType = ServerSide.getInputType methodName serverImplementation
         let hasArg = inputType.FullName <> "Microsoft.FSharp.Core.Unit"
@@ -69,11 +69,15 @@ module FableGiraffeAdapter =
                 | true  -> getResourceFromReq ctx inputType
                 | false -> null
             let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData hasArg
+            let asyncResult = 
+              async { let! dynamicResult = result  
+                      let serializedResult = json dynamicResult
+                      return serializedResult } 
             task {
-                let! dynamicResult = result 
-                let serializedResult = json dynamicResult
-                return! text serializedResult next ctx
+                let! unwrappedFromAsync = asyncResult
+                return! text unwrappedFromAsync next ctx
             }
+
     let webPartWithBuilderFor<'t> (implementation: 't) (routeBuilder: string -> string -> string) : HttpHandler = 
             let builder = StringBuilder()
             let typeName = implementation.GetType().Name

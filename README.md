@@ -3,10 +3,10 @@
 Automated and type-safe client-server communication for Fable Apps. 
 
 Supported server frameworks:
- - [x] Suave
- - [x] Giraffe (WIP)
- - [ ] Nancy 
- - [ ] Freya
+
+ - [x] Suave 
+ - [ ] Giraffe (WIP)
+ - [ ] Nancy
  
 ## Suave
 On a Suave server, install the library from Nuget using Paket:

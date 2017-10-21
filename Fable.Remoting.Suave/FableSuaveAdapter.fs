@@ -95,6 +95,5 @@ module FableSuaveAdapter =
         |> fun routes ->
             logger |> Option.iter (fun logf -> logf (builder.ToString()))
             choose routes
-        
     let webPartFor implementation : WebPart = 
         webPartWithBuilderFor implementation (sprintf "/%s/%s")

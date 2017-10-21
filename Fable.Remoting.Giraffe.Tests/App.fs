@@ -10,4 +10,4 @@ let testConfig =  { Expecto.Tests.defaultConfig with
                         verbosity = LogLevel.Debug }
 
 [<EntryPoint>]
-let main args = runTests testConfig fableGiraffeAdapterTests
+let main _ = runTests testConfig fableGiraffeAdapterTests
