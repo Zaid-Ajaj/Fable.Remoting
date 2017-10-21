@@ -20,13 +20,14 @@ FableSuaveAdapter.logger <- Some (printfn "%s")
 let app = FableSuaveAdapter.webPartFor implementation
 let postContent (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
 
-let defaultConfig = 
+let getConfig port = 
     { Suave.Web.defaultConfig 
-        with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 8282 ] }
-
+        with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" port ] }
+let random = System.Random()
 let fableSuaveAdapterTests = 
     testList "FableSuaveAdapter tests" [
         testCase "Sending string as input works" <| fun () ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let input = "\"my-test-string\"";
             let content = postContent input
             runWith defaultConfig app
@@ -34,6 +35,7 @@ let fableSuaveAdapterTests =
             |> fun result -> equal result "14"
 
         testCase "Sending int as input works" <| fun () ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let input = postContent "5" 
             runWith defaultConfig app
             |> req HttpMethod.POST "/IProtocol/echoInteger" (Some input)
@@ -41,6 +43,7 @@ let fableSuaveAdapterTests =
 
     
         testCase "Sending some option as input works" <| fun () ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "5" // toJson (Some 5) => "5"
             let testApp = runWith defaultConfig app
             testApp
@@ -50,6 +53,7 @@ let fableSuaveAdapterTests =
         testCase "Sending none option as input works" <| fun () ->
             // the string "null" represents None
             // it's what fable sends from browser
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let noneInput = postContent "null" // toJson None => "null"
             let testApp = runWith defaultConfig app
             
@@ -59,6 +63,7 @@ let fableSuaveAdapterTests =
 
         
         testCase "Sending DateTime as input works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "\"2017-05-12T14:20:00.000Z\""
             let testApp = runWith defaultConfig app
             testApp
@@ -67,6 +72,7 @@ let fableSuaveAdapterTests =
 
         
         testCase "Sending and recieving strings works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "\"my-string\""
             let testApp = runWith defaultConfig app
             testApp
@@ -74,6 +80,7 @@ let fableSuaveAdapterTests =
             |> equal "\"my-string\""     
             
         testCase "Recieving int option to None output works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "\"\""
             let testApp = runWith defaultConfig app
             testApp
@@ -81,13 +88,15 @@ let fableSuaveAdapterTests =
             |> equal "null" 
             
         testCase "Recieving int option to Some output works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "\"non-empty\""
             let testApp = runWith defaultConfig app
             testApp
             |> req HttpMethod.POST "/IProtocol/optionOutput" (Some someInput)
             |> equal "5"
             
-        testCase "Sending generic union case Nothing as input works" <| fun () -> 
+        testCase "Sending generic union case Nothing as input works" <| fun () ->
+            let defaultConfig = getConfig (random.Next(1000, 9999)) 
             let someInput = postContent "\"Nothing\""
             let testApp = runWith defaultConfig app
             testApp
@@ -95,6 +104,7 @@ let fableSuaveAdapterTests =
             |> equal "0"      
             
         testCase "Sending generic union case Just as input works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "{\"Just\":5}"
             let testApp = runWith defaultConfig app
             testApp
@@ -103,6 +113,7 @@ let fableSuaveAdapterTests =
             
         
         testCase "Recieving generic union case Just 5 as output works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "true"
             let testApp = runWith defaultConfig app
             testApp
@@ -110,7 +121,8 @@ let fableSuaveAdapterTests =
             |> equal "{\"Just\":5}"
 
         
-        testCase "Recieving generic union case Nothing as output works" <| fun () -> 
+        testCase "Recieving generic union case Nothing as output works" <| fun () ->
+            let defaultConfig = getConfig (random.Next(1000, 9999)) 
             let someInput = postContent "false"
             let testApp = runWith defaultConfig app
             testApp
@@ -118,6 +130,7 @@ let fableSuaveAdapterTests =
             |> equal "\"Nothing\""
 
         testCase "Recieving and sending simple union works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "\"A\""
             let testApp = runWith defaultConfig app
             testApp
@@ -125,6 +138,7 @@ let fableSuaveAdapterTests =
             |> equal "\"B\""
             
         testCase "Recieving and sending records works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             // In Fable, toJson { Prop1 = ""; Prop2 = 5; Prop3 = None }
             // becomes
             let recordInput = postContent "{\"Prop1\":\"\",\"Prop2\":5,\"Prop3\":null}"
@@ -134,6 +148,7 @@ let fableSuaveAdapterTests =
             |> equal "{\"Prop1\":\"\",\"Prop2\":15,\"Prop3\":null}" 
 
         testCase "Sending list of ints works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "[1,2,3,4,5,6,7,8,9,10]"
             let testApp = runWith defaultConfig app
             testApp
@@ -141,6 +156,7 @@ let fableSuaveAdapterTests =
             |> equal "55" 
 
         testCase "Inoking function of unit works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             // server will ignore the input
             let someInput = postContent ""
             let testApp = runWith defaultConfig app
@@ -149,6 +165,7 @@ let fableSuaveAdapterTests =
             |> equal "55" 
 
         testCase "Invoking list of records works" <| fun () ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "[{\"Prop1\":\"\",\"Prop2\":15,\"Prop3\":null}, {\"Prop1\":\"\",\"Prop2\":10,\"Prop3\":null}]"
             let testApp = runWith defaultConfig app
             testApp
@@ -156,6 +173,7 @@ let fableSuaveAdapterTests =
             |> equal "25" 
 
         testCase "Invoking a list of float works" <| fun () -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "[1.20, 1.40, 1.60]"
             let testApp = runWith defaultConfig app
             testApp
