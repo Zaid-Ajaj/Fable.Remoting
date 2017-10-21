@@ -78,7 +78,7 @@ module FableGiraffeAdapter =
                 return! text unwrappedFromAsync next ctx
             }
 
-    let webPartWithBuilderFor<'t> (implementation: 't) (routeBuilder: string -> string -> string) : HttpHandler = 
+    let httpHandlerWithBuilderFor<'t> (implementation: 't) (routeBuilder: string -> string -> string) : HttpHandler = 
             let builder = StringBuilder()
             let typeName = implementation.GetType().Name
             write builder (sprintf "Building Routes for %s" typeName)
@@ -96,5 +96,5 @@ module FableGiraffeAdapter =
                 logger |> Option.iter (fun logf -> logf (builder.ToString()))
                 choose routes
 
-    let webPartFor<'t> (implementation : 't) : HttpHandler = 
-        webPartWithBuilderFor implementation (sprintf "/%s/%s")
+    let httpHandlerFor<'t> (implementation : 't) : HttpHandler = 
+        httpHandlerWithBuilderFor implementation (sprintf "/%s/%s")
