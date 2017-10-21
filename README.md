@@ -4,11 +4,13 @@
 
 Automated and type-safe client-server communication for Fable Apps. 
 
-Supported server frameworks:
+Available Packages:
 
- - [x] Suave 
- - [ ] Giraffe (WIP)
- - [ ] Nancy
+| Library  | Verion |
+| ------------- | ------------- |
+| Fable.Remoting.Client  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client) |
+| Fable.Remoting.Suave  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)  |
+| Fable.Remoting.Giraffe  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)  |
  
 ## Suave
 On a Suave server, install the library from Nuget using Paket:
