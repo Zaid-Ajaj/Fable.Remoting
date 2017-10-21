@@ -20,7 +20,9 @@ FableSuaveAdapter.logger <- Some (printfn "%s")
 let app = FableSuaveAdapter.webPartFor implementation
 let postContent (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
 
-let defaultConfig = Suave.Web.defaultConfig
+let defaultConfig = 
+    { Suave.Web.defaultConfig 
+        with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 8282 ] }
 
 let fableSuaveAdapterTests = 
     testList "FableSuaveAdapter tests" [
