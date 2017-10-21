@@ -8,11 +8,10 @@ open Microsoft.AspNetCore.Http
 open Giraffe.HttpHandlers
 open Giraffe.Tasks
 
-module FableGirrafeAdapter =
+module FableGiraffeAdapter =
 
     open System.Text
     open System.IO
-
     let mutable logger : (string -> unit) option = None
     let private fableConverter = FableJsonConverter()
     let private writeLn text (sb: StringBuilder)  = sb.AppendLine(text) |> ignore; sb
@@ -85,7 +84,8 @@ module FableGirrafeAdapter =
                 let methodName = propInfo.Name
                 let fullPath = routeBuilder typeName methodName
                 write builder (sprintf "Record field %s maps to route %s" methodName fullPath)
-                POST >=> route fullPath >=> handleRequest methodName implementation
+                POST >=> route fullPath 
+                     >=> warbler (fun _ -> handleRequest methodName implementation)
             )
             |> List.ofSeq
             |> fun routes ->

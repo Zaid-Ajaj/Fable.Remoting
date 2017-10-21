@@ -15,42 +15,36 @@ type Maybe<'t> =
 type AB = A | B
 
 type IProtocol = { 
-    getLength : string -> Async<int>  
-    echoInteger : int -> Async<int>  
-    echoOption : int option -> Async<int>
-    echoMonth : DateTime -> Async<int>
+    echoInteger : int -> Async<int>
+    echoMonth : DateTime -> Async<DateTime>
     echoString : string -> Async<string>
-    optionOutput : string -> Async<int option>
-    genericUnionInput : Maybe<int> -> Async<int>
-    genericUnionOutput : bool -> Async<Maybe<int>>
-    simpleUnionInputOutput : AB -> Async<AB>
+    echoOption : int option -> Async<int option>
+    echoGenericUnion : Maybe<int> -> Async<Maybe<int>>
+    echoBool : bool -> Async<bool>
+    echoSimpleUnion : AB -> Async<AB>
     recordEcho : Record -> Async<Record>
-    listIntegers : int list -> Async<int>
+    echoIntList : int list -> Async<int list>
     unitToInts : unit -> Async<int>
-    recordListToInt : Record[] -> Async<int>
-    floatList : float [] -> Async<float>
+    echoRecordList : Record list -> Async<Record list>
+    floatList : float list -> Async<float list>
 }
 
-let implementation = {
-    getLength = fun input -> async { return input.Length }
-    echoInteger = fun n -> async { return n + n }
-    echoOption = function 
-        | Some n -> async { return n + n }
-        | None -> async { return 0 }
-    echoMonth = fun date -> async { return date.Month }
-    echoString = fun str -> async { return str }
-    optionOutput = fun str -> async { return if str <> "" then Some 5 else None }
-    genericUnionInput = function
-        | Nothing -> async { return 0 }
-        | Just x -> async { return x }
-    genericUnionOutput = fun b -> async { return if b then Just 5 else Nothing }
-    simpleUnionInputOutput = fun union ->
-        async {
-            return if union = A then B else A
-        }
-    recordEcho = fun r -> async { return { r with Prop2 = r.Prop2 + 10 } }
-    listIntegers = fun xs -> async { return Seq.sum xs }
-    unitToInts = fun () -> async { return Seq.sum [1..10] }
-    recordListToInt = fun records -> records |> Seq.map (fun r -> r.Prop2) |> Seq.sum |> fun res -> async { return res }
-    floatList = fun xs -> Seq.sum xs |> fun result -> async {return Math.Round(result, 2) }
- }
+
+
+let pureAsync (x: 'a) : Async<'a> =
+    async { return x }
+
+let implementation = { 
+    echoInteger = pureAsync
+    echoMonth = pureAsync
+    echoString = fun x -> async { return x }
+    echoOption = pureAsync
+    echoGenericUnion = pureAsync
+    echoBool = pureAsync
+    echoSimpleUnion = pureAsync
+    recordEcho = pureAsync
+    echoIntList = pureAsync
+    unitToInts = fun () -> pureAsync 1
+    echoRecordList = pureAsync
+    floatList = pureAsync
+}
