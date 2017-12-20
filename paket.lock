@@ -75,7 +75,7 @@ NUGET
       System.Threading.Thread (>= 4.0) - restriction: && (< net45) (>= netstandard1.6)
       System.Threading.ThreadPool (>= 4.0.10) - restriction: && (< net45) (>= netstandard1.6)
       System.Threading.Timer (>= 4.0.1) - restriction: && (< net45) (>= netstandard1.6)
-    Giraffe (0.1.0-beta-511)
+    Giraffe (0.1.0-beta-600)
       FSharp.Core (>= 4.2.3) - restriction: || (>= net461) (>= netstandard2.0)
       Giraffe.Tasks (>= 0.1.0-beta-010) - restriction: || (>= net461) (>= netstandard2.0)
       Microsoft.AspNetCore.Authentication (>= 2.0.1) - restriction: || (>= net461) (>= netstandard2.0)

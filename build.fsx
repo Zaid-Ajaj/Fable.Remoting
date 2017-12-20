@@ -31,6 +31,9 @@ let dotnet = "dotnet"
 let getPath x = cwd </> (sprintf "Fable.Remoting.%s" x)
 
 let Client = getPath "Client"
+let Json = getPath "Json"
+let Server = getPath "Server"
+let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 
@@ -46,8 +49,15 @@ let publish projectPath = fun () ->
     run projectPath dotnet pushCmd
 
 Target "PublishClient" (publish Client)
+
+Target "PublishJson" (publish Json)
+Target "PublishServer" (publish Server)
+Target "PublishReflection" (publish Reflection)
+
 Target "PublishSuave" (publish Suave)
 Target "PublishGiraffe" (publish Giraffe)
+
+
 
 Target "RestoreBuildRunJsonTests" <| fun _ ->
     run "." "dotnet"  ("restore " + proj "Json.Tests")
