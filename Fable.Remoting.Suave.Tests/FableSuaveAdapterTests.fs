@@ -1,6 +1,10 @@
 ﻿module FableSuaveAdapterTests
 
 open Fable.Remoting.Suave
+open Fable.Remoting.Json
+
+open Newtonsoft.Json
+
 open System.Net.Http
 open SuaveTester
 open Suave.Web
@@ -9,6 +13,8 @@ open Suave.Successful
 open System
 open Expecto
 open Types
+open Expecto.CSharp.Runner
+open Mono.Cecil
 
 // Test helpers
 
@@ -19,6 +25,11 @@ let fail () = Expect.equal false true ""
 FableSuaveAdapter.logger <- Some (printfn "%s")
 let app = FableSuaveAdapter.webPartFor implementation
 let postContent (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
+
+let converter : JsonConverter = FableJsonConverter() :> JsonConverter
+let toJson (x: obj) = JsonConvert.SerializeObject(x, [| converter |])
+
+let ofJson<'t> (input: string) = JsonConvert.DeserializeObject<'t>(input, [| converter |])
 
 let getConfig port = 
     { Suave.Web.defaultConfig 
@@ -70,6 +81,27 @@ let fableSuaveAdapterTests =
             |> req HttpMethod.POST "/IProtocol/echoMonth" (Some someInput)
             |> equal "5"
 
+        testCase "Sending Result<int, string> roundtrip works with Ok" <| fun _ ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
+            let input = postContent (toJson (Ok 15))
+            runWith defaultConfig app
+            |> req HttpMethod.POST "/IProtocol/echoResult" (Some input)
+            |> ofJson<Result<int, string>>
+            |> function 
+                | Ok 15 -> pass()
+                | otherwise -> fail()
+
+
+        testCase "Sending Result<int, string> roundtrip works with Error" <| fun _ ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
+            let input = postContent (toJson (Error "hello"))
+            runWith defaultConfig app
+            |> req HttpMethod.POST "/IProtocol/echoResult" (Some input)
+            |> ofJson<Result<int, string>>
+            |> function 
+                | Error "hello" -> pass()
+                | otherwise -> fail()
+            
         
         testCase "Sending and recieving strings works" <| fun () -> 
             let defaultConfig = getConfig (random.Next(1000, 9999))

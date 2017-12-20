@@ -16,6 +16,7 @@ open System.Net.Http
 open System
 open Expecto
 open Types
+open Mono.Cecil
 
 // Test helpers
 FableGiraffeAdapter.logger <- Some (printfn "%s")
@@ -155,6 +156,20 @@ let fableGiraffeAdapterTests =
             |> function 
                 | [[1;2;3;4;5]; [1;2;3;4;5]] -> pass()
                 | otherwise -> failUnexpect otherwise
+
+        testCase "Result<int, string> roundtrip works with Ok" <| fun _ ->
+            makeRequest (postReq "/IProtocol/echoResult" (toJson (Ok 15)))
+            |> ofJson<Result<int, string>>
+            |> function 
+                | Ok 15 -> pass()
+                | otherwise -> fail()
+
+        testCase "Result<int, string> roundtrip works with Error" <| fun _ ->
+            makeRequest (postReq "/IProtocol/echoResult" (toJson (Error "hello")))
+            |> ofJson<Result<int, string>>
+            |> function 
+                | Error "hello" -> pass()
+                | otherwise -> fail()
 
         testCase "Record round trip" <| fun () ->
             [{ Prop1 = "hello"; Prop2 = 10; Prop3 = Some 5 }

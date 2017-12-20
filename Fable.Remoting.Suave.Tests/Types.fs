@@ -29,6 +29,7 @@ type IProtocol = {
     unitToInts : unit -> Async<int>
     recordListToInt : Record[] -> Async<int>
     floatList : float [] -> Async<float>
+    echoResult : Result<int, string> -> Async<Result<int, string>>
 }
 
 let implementation = {
@@ -53,4 +54,5 @@ let implementation = {
     unitToInts = fun () -> async { return Seq.sum [1..10] }
     recordListToInt = fun records -> records |> Seq.map (fun r -> r.Prop2) |> Seq.sum |> fun res -> async { return res }
     floatList = fun xs -> Seq.sum xs |> fun result -> async {return Math.Round(result, 2) }
+    echoResult = fun x -> async { return x }
  }

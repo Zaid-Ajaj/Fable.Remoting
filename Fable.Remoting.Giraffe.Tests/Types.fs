@@ -29,6 +29,7 @@ type IProtocol = {
     unitToInts : unit -> Async<int list>
     echoRecordList : Record list -> Async<Record list>
     floatList : float list -> Async<float list>
+    echoResult : Result<int, string> -> Async<Result<int, string>>
 }
 
 
@@ -51,4 +52,5 @@ let implementation = {
     unitToInts = fun () -> pureAsync [1; 2; 3; 4; 5]
     echoRecordList = pureAsync
     floatList = pureAsync
+    echoResult = pureAsync
 }
