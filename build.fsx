@@ -38,6 +38,8 @@ let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 
 let publish projectPath = fun () ->
+    [ projectPath </> "bin"
+      projectPath </> "obj" ] |> CleanDirs
     "pack -c Release"
     |> run projectPath dotnet 
     let nugetKey =
