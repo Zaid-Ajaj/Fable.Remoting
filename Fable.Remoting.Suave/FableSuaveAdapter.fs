@@ -44,13 +44,13 @@ module FableSuaveAdapter =
 
     // Get data from request body and deserialize.
     // getResourceFromReq : HttpRequest -> obj
-    let getResourceFromReq (req : HttpRequest) (inputType: System.Type) =
+    let private getResourceFromReq (req : HttpRequest) (inputType: System.Type) =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
         deserialize json inputType
         
     // serialize an object to json using FableConverter
     // json : string -> WebPart
-    let json value =
+    let private json value =
       let result = JsonConvert.SerializeObject(value, fableConverter)
       
       StringBuilder()
@@ -61,7 +61,7 @@ module FableSuaveAdapter =
       OK result
       >=> Writers.setMimeType "application/json; charset=utf-8"
 
-    let handleRequest methodName serverImplementation = 
+    let private handleRequest methodName serverImplementation = 
         let inputType = ServerSide.getInputType methodName serverImplementation
         let hasArg = inputType.FullName <> "Microsoft.FSharp.Core.Unit"
         fun (req: HttpRequest) ->
@@ -79,6 +79,7 @@ module FableSuaveAdapter =
             }  
             |> Async.RunSynchronously
     
+    /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.
     let webPartWithBuilderFor implementation (routeBuilder: string -> string -> string) : WebPart = 
         let builder = StringBuilder()
         let typeName = implementation.GetType().Name
@@ -95,5 +96,7 @@ module FableSuaveAdapter =
         |> fun routes ->
             logger |> Option.iter (fun logf -> logf (builder.ToString()))
             choose routes
+    
+    /// Creates a WebPart from the given implementation of a protocol. Uses the default route builder: `sprintf "/%s/%s"`.
     let webPartFor implementation : WebPart = 
         webPartWithBuilderFor implementation (sprintf "/%s/%s")
