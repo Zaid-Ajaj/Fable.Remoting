@@ -1,7 +1,6 @@
 source https://www.nuget.org/api/v2/
 
-storage:none
-
+storage: none
 nuget Expecto
 nuget FAKE
 nuget FSharp.Core
@@ -15,3 +14,8 @@ nuget Suave
 nuget Microsoft.CSharp
 
 clitool dotnet-fable
+
+group Build
+    framework >= net45
+    source https://www.nuget.org/api/v2
+    nuget FAKE
