@@ -76,7 +76,7 @@ let fableGiraffeAdapterTests =
                 | [-2; -1; 0; 1; 2] -> pass()
                 | otherwise -> failUnexpect otherwise  
 
-        testCase "Option<int> round trip" <| fun () ->
+        testCase "Option<int> round first trip" <| fun () ->
             [Some 2; None; Some -2]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntOption" (toJson input)))
             |> List.map (fun output -> ofJson<int option> output)
@@ -84,7 +84,7 @@ let fableGiraffeAdapterTests =
                 | [Some 2; None; Some -2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
-        testCase "Option<string> round trip" <| fun () ->
+        testCase "Option<string> round first trip" <| fun () ->
             [Some "hello"; None; Some "there"]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
             |> List.map (fun output -> ofJson<string option> output)
@@ -92,7 +92,7 @@ let fableGiraffeAdapterTests =
                 | [Some "hello"; None; Some "there"] -> pass()
                 | otherwise -> failUnexpect otherwise
 
-        testCase "Option<string> round trip" <| fun () ->
+        testCase "Option<string> round second trip" <| fun () ->
             [Some "hello"; None; Some "there"]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
             |> List.map (fun output -> ofJson<string option> output)
@@ -132,7 +132,7 @@ let fableGiraffeAdapterTests =
                 | [A; B] -> pass()
                 | otherwise -> failUnexpect otherwise
 
-        testCase "List<int> round trip" <| fun () ->
+        testCase "List<int> round first trip" <| fun () ->
             [[]; [1 .. 5]]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntList" (toJson input)))
             |> List.map (fun output -> ofJson<int list> output)
@@ -140,7 +140,7 @@ let fableGiraffeAdapterTests =
                 | [[]; [1;2;3;4;5]] -> pass()
                 | otherwise -> failUnexpect otherwise
 
-        testCase "List<int> round trip" <| fun () ->
+        testCase "List<int> round second trip" <| fun () ->
             [[1.5; 1.5; 3.0]]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/floatList" (toJson input)))
             |> List.map (fun output -> ofJson<float list> output)
