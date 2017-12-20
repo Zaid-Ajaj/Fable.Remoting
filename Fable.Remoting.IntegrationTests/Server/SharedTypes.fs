@@ -45,6 +45,7 @@ type IServer = {
     echoListOfListsOfStrings : string list list -> Async<string list list>
     echoListOfGenericRecords :  GenericRecord<int> list -> Async<GenericRecord<int> list>
 
+    echoResult : Result<int, string> -> Async<Result<int, string>>
 }
 
 

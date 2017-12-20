@@ -29,4 +29,6 @@ let implementation : IServer  = {
     echoBoolList = Async.result
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
+
+    echoResult = Async.result
 }

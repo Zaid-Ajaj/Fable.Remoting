@@ -53,6 +53,8 @@ QUnit.test "IServer.echoBool" <| fun test ->
     } |> Async.StartImmediate
 
 open System
+open Fable.AST.Fable.Util
+open System.Runtime
 
 let datesEqual (test: QUnit.Asserter) (x: DateTime) (y: DateTime) = 
     test.equal x.Year y.Year
@@ -220,4 +222,21 @@ QUnit.test "IServer.echoListOfListsOfStrings" <| fun test ->
         do test.equal true (output =  [["1"; "2"]; ["3"; "4";"5"]])
         do finish()
     }
+    |> Async.StartImmediate
+
+QUnit.test "IServer.echoResult for Result<int, string>" <| fun test ->
+    let finish = test.async()
+    async {
+        let! outputOk = server.echoResult (Ok 15)
+        match outputOk with
+        | Ok 15 -> test.pass()
+        | otherwise -> test.fail()
+
+        let! outputError = server.echoResult (Error "hello")
+        match outputError with
+        | Error "hello" -> test.pass()
+        | otherwise -> test.fail()
+
+        do finish()
+    } 
     |> Async.StartImmediate
