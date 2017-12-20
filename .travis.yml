@@ -4,4 +4,7 @@ dotnet: 2.0.0
 dist: trusty
 script:
  - echo "Running tests"
- - bash build.sh AllTests
+ - dotnet run -p Fable.Remoting.Json.Tests/Fable.Remoting.Json.Tests.fsproj
+ - dotnet run -p Fable.Remoting.Server.Tests/Fable.Remoting.Server.Tests.fsproj
+ - dotnet run -p Fable.Remoting.Suave.Tests/Fable.Remoting.Suave.Tests.fsproj
+ - dotnet run -p Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj
