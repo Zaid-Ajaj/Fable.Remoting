@@ -11,6 +11,9 @@ Available Packages:
 | Fable.Remoting.Client  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client) |
 | Fable.Remoting.Suave  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)  |
 | Fable.Remoting.Giraffe  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)  |
+| Fable.Remoting.Server  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Server.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Server)  |
+| Fable.Remoting.Reflection  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Reflection.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Reflection)  |
+| Fable.Remoting.Json  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Json.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Json)  |
  
 ## Suave
 On a Suave server, install the library from Nuget using Paket:
