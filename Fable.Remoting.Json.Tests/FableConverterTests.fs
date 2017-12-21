@@ -56,7 +56,7 @@ let converterTest =
         testCase "Single case union without types is serialized correctly" <| fun () ->
           let thing = { Color = Red }
           let serialized = serialize thing
-          // assert that the resulting json has shape { Id: 5 }
+          // assert that the resulting json has shape { Color: 'Red' }
           let json = JObject.Parse(serialized)
           let prop = json.Property("Color").Value
           match prop.Value<string>()  with
