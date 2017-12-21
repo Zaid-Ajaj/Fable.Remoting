@@ -28,3 +28,10 @@ type IProtocol = {
     recordListToInt : Record[] -> Async<int>
     floatList : float [] -> Async<float>
 }
+
+type CustomerId = CustomerId of int
+
+type Customer = { Id : CustomerId }
+
+type Color = Red | Blue
+type Things =  { Color: Color }

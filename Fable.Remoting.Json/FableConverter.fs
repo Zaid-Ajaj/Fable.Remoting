@@ -1,9 +1,25 @@
 ﻿namespace Fable.Remoting.Json
 
+#if DOTNETCORE
+[<AutoOpen>]
+module ReflectionAdapters =
+    open System.Reflection
+
+    type System.Type with
+        member this.IsValueType = this.GetTypeInfo().IsValueType
+        member this.IsGenericType = this.GetTypeInfo().IsGenericType
+        member this.GetMethod(name) = this.GetTypeInfo().GetMethod(name)
+        member this.GetGenericArguments() = this.GetTypeInfo().GetGenericArguments()
+        member this.MakeGenericType(args) = this.GetTypeInfo().MakeGenericType(args)
+        member this.GetCustomAttributes(inherits : bool) : obj[] =
+            downcast box(CustomAttributeExtensions.GetCustomAttributes(this.GetTypeInfo(), inherits) |> Seq.toArray)
+#endif
+
 open System
 open FSharp.Reflection
 open Newtonsoft.Json
 open Newtonsoft.Json.Converters
+open System.Reflection
 open System.Collections.Generic
 open System.Collections.Concurrent
 
@@ -16,6 +32,9 @@ type Kind =
     | StringEnum = 5
     | DateTime = 6
     | MapOrDictWithNonStringKey = 7
+    | Long = 8
+    | BigInt = 9
+    | SingleCaseUnion = 10
 
 /// Helper for serializing map/dict with non-primitive, non-string keys such as unions and records.
 /// Performs additional serialization/deserialization of the key object and uses the resulting JSON
@@ -51,7 +70,14 @@ type MapSerializer<'k,'v when 'k : comparison>() =
                     tempWriter.ToString()
                 writer.WritePropertyName(key)
                 serializer.Serialize(writer, v) )
-        writer.WriteEndObject() 
+        writer.WriteEndObject()
+
+module private Cache =
+    let jsonConverterTypes = ConcurrentDictionary<Type,Kind>()
+    let serializationBinderTypes = ConcurrentDictionary<string,Type>()
+
+open Cache
+open System.Runtime.InteropServices
 
 /// Converts F# options, tuples and unions to a format understandable
 /// by Fable. Code adapted from Lev Gorodinski's original.
@@ -82,22 +108,29 @@ type FableJsonConverter() =
             | "Fable.Core.PojoAttribute" -> Some Kind.PojoDU
             | "Fable.Core.StringEnumAttribute" -> Some Kind.StringEnum
             | _ -> None)
-        |> function
-            | Some kind -> kind
-            | None -> Kind.Union
+        |> function 
+            | Some specialKind -> specialKind
+            | None -> 
+                let cases = FSharpType.GetUnionCases t 
+                if Array.length cases = 1 
+                then Kind.SingleCaseUnion
+                else Kind.Union
 
     let getUci t name =
         FSharpType.GetUnionCases(t)
         |> Array.find (fun uci -> uci.Name = name)
 
-    let typeCache = ConcurrentDictionary<Type, Kind>()
     override x.CanConvert(t) =
         let kind =
-            typeCache.GetOrAdd(t, fun t ->
+            jsonConverterTypes.GetOrAdd(t, fun t ->
                 if t.FullName = "System.DateTime"
                 then Kind.DateTime
                 elif t.Name = "FSharpOption`1"
                 then Kind.Option
+                elif t.FullName = "System.Int64" || t.FullName = "System.UInt64"
+                then Kind.Long
+                elif t.FullName = "System.Numerics.BigInteger"
+                then Kind.BigInt
                 elif FSharpType.IsTuple t
                 then Kind.Tuple
                 elif (FSharpType.IsUnion t && t.Name <> "FSharpList`1")
@@ -111,13 +144,19 @@ type FableJsonConverter() =
         kind <> Kind.Other
 
     override x.WriteJson(writer, value, serializer) =
-        if value = null
+        if isNull value
         then serializer.Serialize(writer, value)
         else
             let t = value.GetType()
-            match typeCache.TryGetValue(t) with
+            match jsonConverterTypes.TryGetValue(t) with
             | false, _ ->
                 serializer.Serialize(writer, value)
+            | true, Kind.Long ->
+                if t.FullName = "System.UInt64"
+                then serializer.Serialize(writer, string value)
+                else serializer.Serialize(writer, sprintf "%+i" (value :?> int64))
+            | true, Kind.BigInt ->
+                serializer.Serialize(writer, string value)
             | true, Kind.DateTime ->
                 let dt = value :?> DateTime
                 // Override .ToUniversalTime() behavior and assume DateTime.Kind = Unspecified as UTC values on serialization to avoid breaking roundtrips.
@@ -148,6 +187,14 @@ type FableJsonConverter() =
                 | [|:? CompiledNameAttribute as att|] -> att.CompiledName
                 | _ -> uci.Name.Substring(0,1).ToLowerInvariant() + uci.Name.Substring(1)
                 |> writer.WriteValue
+            | true, Kind.SingleCaseUnion ->
+                let uci, fields = FSharpValue.GetUnionFields(value, t)
+                if fields.Length = 0
+                then serializer.Serialize(writer, uci.Name)
+                else 
+                  if fields.Length = 1
+                  then serializer.Serialize(writer, fields.[0])
+                  else serializer.Serialize(writer, fields)
             | true, Kind.Union ->
                 let uci, fields = FSharpValue.GetUnionFields(value, t)
                 if fields.Length = 0
@@ -168,7 +215,17 @@ type FableJsonConverter() =
                 serializer.Serialize(writer, value)
 
     override x.ReadJson(reader, t, existingValue, serializer) =
-        match typeCache.TryGetValue(t) with
+        match jsonConverterTypes.TryGetValue(t) with
+        | false, _ ->
+            serializer.Deserialize(reader, t)
+        | true, Kind.Long when reader.TokenType = JsonToken.String ->
+            let json = serializer.Deserialize(reader, typeof<string>) :?> string
+            if t.FullName = "System.UInt64"
+            then upcast UInt64.Parse(json)
+            else upcast Int64.Parse(json)
+        | true, Kind.BigInt when reader.TokenType = JsonToken.String ->
+            let json = serializer.Deserialize(reader, typeof<string>) :?> string
+            upcast bigint.Parse(json)
         | true, Kind.DateTime ->
             match reader.Value with
             | :? DateTime -> reader.Value // Avoid culture-sensitive string roundtrip for already parsed dates (see #613).
@@ -179,23 +236,19 @@ type FableJsonConverter() =
             let innerType = t.GetGenericArguments().[0]
             let innerType =
                 if innerType.IsValueType
-                then (typedefof<Nullable<_>>).MakeGenericType(innerType)
+                then (typedefof<Nullable<_>>).MakeGenericType([|innerType|])
                 else innerType
-            try 
-                let value = serializer.Deserialize(reader, innerType)
-                let cases = FSharpType.GetUnionCases(t)
-                if value = null
-                then 
-                    let result = box None
-                    result
-                else FSharpValue.MakeUnion(cases.[1], [|value|])
-            with
-                | _ -> box None
+            let value = serializer.Deserialize(reader, innerType)
+            let cases = FSharpType.GetUnionCases(t)
+            if isNull value
+            then FSharpValue.MakeUnion(cases.[0], [||])
+            else FSharpValue.MakeUnion(cases.[1], [|value|])
         | true, Kind.Tuple ->
             match reader.TokenType with
             | JsonToken.StartArray ->
                 let values = readElements(reader, FSharpType.GetTupleElements(t), serializer)
                 FSharpValue.MakeTuple(values |> List.toArray, t)
+            | JsonToken.Null -> null // {"tuple": null}
             | _ -> failwith "invalid token"
         | true, Kind.PojoDU ->
             let dic = serializer.Deserialize(reader, typeof<Dictionary<string,obj>>) :?> Dictionary<string,obj>
@@ -217,6 +270,19 @@ type FableJsonConverter() =
                 | Some uci -> FSharpValue.MakeUnion(uci, [||])
                 | None -> failwithf "Cannot find case corresponding to '%s' for `StringEnum` type %s"
                                 name t.FullName
+        | true, Kind.SingleCaseUnion ->
+            let case = FSharpType.GetUnionCases(t).[0]
+            let itemTypes = case.GetFields() |> Array.map (fun pi -> pi.PropertyType)
+            if itemTypes.Length > 1
+            then
+              let values = readElements(reader, itemTypes, serializer)
+              FSharpValue.MakeUnion(case, List.toArray values)
+            elif itemTypes.Length = 1
+            then
+              let value = serializer.Deserialize(reader, itemTypes.[0])
+              FSharpValue.MakeUnion(case, [|value|])
+            else 
+              FSharpValue.MakeUnion(case, [| |])
         | true, Kind.Union ->
             match reader.TokenType with
             | JsonToken.String ->
@@ -236,7 +302,7 @@ type FableJsonConverter() =
                 else
                     let value = serializer.Deserialize(reader, itemTypes.[0])
                     advance reader
-                    FSharpValue.MakeUnion(uci, [| value |])
+                    FSharpValue.MakeUnion(uci, [|value|])
             | JsonToken.Null -> null // for { "union": null }
             | _ -> failwith "invalid token"
         | true, Kind.MapOrDictWithNonStringKey ->
@@ -244,5 +310,6 @@ type FableJsonConverter() =
             let mapSerializer = typedefof<MapSerializer<_,_>>.MakeGenericType mapTypes
             let mapDeserializeMethod = mapSerializer.GetMethod("Deserialize")
             mapDeserializeMethod.Invoke(null, [| t; reader; serializer |])
-        | _, _ ->
+        | true, _ ->
             serializer.Deserialize(reader, t)
+

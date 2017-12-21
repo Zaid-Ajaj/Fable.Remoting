@@ -1,6 +1,7 @@
 ﻿module JsonConverterTests 
 
 open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 open System
 open Fable.Remoting.Json
 open Expecto
@@ -35,6 +36,39 @@ let converterTest =
             | Some "value" -> pass()
             | otherwise -> fail()
     
+        testCase "Single case union is unwrapped when serialized" <| fun () -> 
+          let customer = { Id = CustomerId(5) }
+          let serialized = serialize customer
+          // assert that the resulting json has shape { Id: 5 }
+          let json = JObject.Parse(serialized)
+          let prop = json.Property("Id").Value
+          match prop.Value<int>()  with
+          | 5 -> pass()
+          | otherwise -> fail()
+
+        testCase "Single case union is deserialized correctly" <| fun () ->
+          // assert that deserialization works
+          let serialized = serialize { Id = CustomerId(5) }
+          match deserialize<Customer> serialized with
+          | { Id = CustomerId(5) } -> pass()
+          | otherwise -> fail()
+
+        testCase "Single case union without types is serialized correctly" <| fun () ->
+          let thing = { Color = Red }
+          let serialized = serialize thing
+          // assert that the resulting json has shape { Id: 5 }
+          let json = JObject.Parse(serialized)
+          let prop = json.Property("Color").Value
+          match prop.Value<string>()  with
+          | "Red" -> pass() 
+          | otherwise -> fail()     
+
+        testCase "Single case union without types is deserialized correctly" <| fun () ->
+          let serialized = serialize { Color = Red }
+          match deserialize<Things> serialized with
+          | { Color = Red } -> pass()
+          | otherwise -> fail()   
+
         testCase "Option<int> conversion works" <| fun () -> 
             let opt = Some 5
             let serialized = serialize opt
