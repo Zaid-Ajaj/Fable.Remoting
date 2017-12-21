@@ -54,8 +54,7 @@ let converterTest =
           | otherwise -> fail()
 
         testCase "Single case union without types is serialized correctly" <| fun () ->
-          let thing = { Color = Red }
-          let serialized = serialize thing
+          let serialized = serialize { Color = ColorType Red }
           // assert that the resulting json has shape { Color: 'Red' }
           let json = JObject.Parse(serialized)
           let prop = json.Property("Color").Value
@@ -64,9 +63,9 @@ let converterTest =
           | otherwise -> fail()     
 
         testCase "Single case union without types is deserialized correctly" <| fun () ->
-          let serialized = serialize { Color = Red }
-          match deserialize<Things> serialized with
-          | { Color = Red } -> pass()
+          let serialized = serialize { Color = ColorType Red }
+          match deserialize<ColorRecord> serialized with
+          | { Color = ColorType Red } -> pass()
           | otherwise -> fail()   
 
         testCase "Option<int> conversion works" <| fun () -> 

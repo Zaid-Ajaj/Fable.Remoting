@@ -34,4 +34,5 @@ type CustomerId = CustomerId of int
 type Customer = { Id : CustomerId }
 
 type Color = Red | Blue
-type Things =  { Color: Color }
+type ColorDU = ColorType of Color
+type ColorRecord = { Color: ColorDU }
