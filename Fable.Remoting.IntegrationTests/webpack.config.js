@@ -22,20 +22,20 @@ console.log("Bundling for " + (isProduction ? "production" : "development") + ".
 
 module.exports = {
   devtool: "source-map",
-  entry: resolve('./Client/IntegrationTests.Client.fsproj'),
+  entry: resolve('./Client/Client.fsproj'),
   output: {
     filename: 'bundle.js',
-    path: resolve('./Server/client'),
+    path: resolve('./client-dist'),
   },
   resolve: {
     modules: [resolve("./node_modules/")]
   },
   devServer: {
-    contentBase: resolve('./Server/client'),
-    port: 8081,
+    contentBase: resolve('./client-dist'),
+    port: 8081, // where to the run dev-server
     proxy: {
       '/api/*': { // tell webpack-dev-server to re-route all requests from client to the server
-        target: "http://localhost:8080",// assuming the suave server is hosted op port 8083
+        target: "http://localhost:8080",// assuming the suave server is hosted op port 8080
         changeOrigin: true
     }
   },

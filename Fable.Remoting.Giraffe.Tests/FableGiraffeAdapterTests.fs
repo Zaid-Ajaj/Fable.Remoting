@@ -12,8 +12,6 @@ open Giraffe.Middleware
 open Giraffe.HttpHandlers
 open Giraffe.Tasks
 open Fable.Remoting.Giraffe
-open System.Net.Http
-open System
 open Expecto
 open Types
 open Mono.Cecil

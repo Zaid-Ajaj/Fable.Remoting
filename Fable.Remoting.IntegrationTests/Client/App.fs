@@ -53,8 +53,6 @@ QUnit.test "IServer.echoBool" <| fun test ->
     } |> Async.StartImmediate
 
 open System
-open Fable.AST.Fable.Util
-open System.Runtime
 
 let datesEqual (test: QUnit.Asserter) (x: DateTime) (y: DateTime) = 
     test.equal x.Year y.Year

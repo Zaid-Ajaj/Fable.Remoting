@@ -7,6 +7,7 @@ nuget FSharp.Core
 nuget Fable.Core
 nuget Fable.PowerPack
 nuget Giraffe
+nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.TestHost
 nuget Newtonsoft.Json
 nuget NUnit

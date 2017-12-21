@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\Server\SharedTypes.fs" />
+    <Compile Include="..\Shared\SharedTypes.fs" />
     <Compile Include="QUnit.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
