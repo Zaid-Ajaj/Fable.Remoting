@@ -110,11 +110,11 @@ type FableJsonConverter() =
             | _ -> None)
         |> function 
             | Some specialKind -> specialKind
-            | None -> 
-                let cases = FSharpType.GetUnionCases t 
-                if Array.length cases = 1 
-                then Kind.SingleCaseUnion
-                else Kind.Union
+            | None -> Kind.Union
+                //let cases = FSharpType.GetUnionCases t 
+                //if Array.length cases = 1 
+                //then Kind.SingleCaseUnion
+                //else Kind.Union
 
     let getUci t name =
         FSharpType.GetUnionCases(t)
