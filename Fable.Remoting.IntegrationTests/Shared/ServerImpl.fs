@@ -31,4 +31,5 @@ let implementation : IServer  = {
     echoListOfGenericRecords = Async.result
 
     echoResult = Async.result
+    echoBigInteger = Async.result
 }

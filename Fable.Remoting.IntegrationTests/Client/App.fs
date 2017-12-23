@@ -188,3 +188,27 @@ QUnit.testCaseAsync "IServer.echoResult for Result<int, string>" <| fun test ->
         | Error "hello" -> test.pass()
         | otherwise -> test.fail()
     } 
+
+QUnit.testCaseAsync "IServer.echoBigInteger" <| 
+    fun test ->
+        async {
+            let n = 1I
+            let! output = server.echoBigInteger n
+            test.equal true (output = n)
+
+            let n = 2I
+            let! output = server.echoBigInteger n
+            test.equal true (output = n)
+
+            let n = -1I
+            let! output = server.echoBigInteger n
+            test.equal true (output = n)
+
+            let n = -2I
+            let! output = server.echoBigInteger n
+            test.equal true (output = n)
+
+            let n = 100I
+            let! output = server.echoBigInteger n
+            test.equal true (output = n)
+        }
