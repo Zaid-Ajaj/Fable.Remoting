@@ -2,9 +2,46 @@
 
 [![Build Status](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting.svg?branch=master)](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting)
 
-Automated and type-safe client-server communication for Fable Apps. 
+## About
+Automated and type-safe client-server communication (RPC) for Fable Apps. This is a library that abstracts http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. The library supports Suave and Giraffe on the server and Fable on the client. 
 
-Available Packages:
+
+## Quick Start
+Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
+
+```sh
+# install the template
+dotnet new -i SAFE.Template
+
+# scaffold a new Fable/Suave project with Fable.Remoting
+dotnet new SAFE --Remoting
+
+# Or use Giraffe as your server
+dotnet new SAFE --Server giraffe --Remoting
+```
+
+## Testing
+
+This library is very well tested and includes unit tests for each server type and their internal components. Moreover, the repo includes an integration-tests projects where the client uses the awesome QUnit testing framework to make server calls on many different types to check that serialization and deserialization work as expected. 
+
+```fs
+QUnit.testCaseAsync "IServer.echoResult for Result<int, string>" <| fun test ->
+    async {
+        let! outputOk = server.echoResult (Ok 15)
+        match outputOk with
+        | Ok 15 -> test.pass()
+        | otherwise -> test.fail()
+
+        let! outputError = server.echoResult (Error "hello")
+        match outputError with
+        | Error "hello" -> test.pass()
+        | otherwise -> test.fail()
+    } 
+```
+
+Feedback and suggestions are very much welcome.
+
+## Available Packages:
 
 | Library  | Verion |
 | ------------- | ------------- |
@@ -15,7 +52,7 @@ Available Packages:
 | Fable.Remoting.Reflection  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Reflection.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Reflection)  |
 | Fable.Remoting.Json  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Json.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Json)  |
  
-## Suave
+## Scaffold from scratch - Suave
 On a Suave server, install the library from Nuget using Paket:
 
 ```
@@ -31,20 +68,17 @@ module SharedTypes
 type Student = {
     Name : string
     Age : int
-    Birthday : System.DateTime
-    Subjects : string array
 }
 
 // Shared specs between Server and Client
 type IServer = {
-    getStudentByName : string -> Async<Student option>
-    getAllStudents : unit -> Async<seq<Student>>
-    getStudentSubjects : Student -> Async<string[]>
+    studentByName : string -> Async<Student option>
+    allStudents : unit -> Async<seq<Student>>
 }
 ```
 The type `IServer` is very important, this is the specification of what your server shares with the client. `Fable.Remoting` expects such type to only have functions of shape:
 ```
-A' -> Async<B'>
+A -> Async<B>
 ```
 Try to put such types in seperate files to reference these files later from the Client
 
@@ -53,18 +87,25 @@ Then provide an implementation for `IServer` on the server:
 open SharedTypes
 
 let getStudents() = [
-        { Name = "Mike";  Age = 23; Birthday = DateTime(1990, 11, 4); Subjects = [| "Math"; "CS" |] }
-        { Name = "John";  Age = 22; Birthday = DateTime(1991, 10, 2); Subjects = [| "Math"; "English" |] }
-        { Name = "Diana"; Age = 22; Birthday = DateTime(1991, 10, 2); Subjects = [| "Math"; "Phycology" |] }
+        { Name = "Mike";  Age = 23; }
+        { Name = "John";  Age = 22; }
+        { Name = "Diana"; Age = 22; }
     ]
 
+let pure x = async { return x }
+
+// An implementation of the `IServer` protocol
 let server : IServer = {
-    getStudentByName = 
-        fun name -> async {
-            return getStudents() |> List.tryFind (fun student -> student.Name = name)
-        }
-    getStudentSubjects = fun student -> async { return student.Subjects }
-    getAllStudents = fun () -> async { return getStudents() |> Seq.ofList }
+
+    studentByName = fun name -> 
+        getStudents()
+        |> List.tryFind (fun student -> student.Name = name)
+        |> pure
+
+    allStudents = fun () -> 
+        getStudents() 
+        |> Seq.ofList
+        |> pure
 }
 
 ```
@@ -88,7 +129,7 @@ You can think of the `webApp` value as if it was the following in psuedo-code:
 let webApp = 
  choose [ 
   POST 
-   >=> path "/IServer/getStudentByName" 
+   >=> path "/IServer/studentByName" 
    >=> (* deserialize request body (from json) *) 
    >=> (* invoke server.getStudentByName with the deserialized input *) 
    >=> (* give client the output back serialized (to json) *)
@@ -96,7 +137,7 @@ let webApp =
  // other routes
  ]
 ```
-You can enable logging from Fable.Remoting.Suave (recommended) to see how the magic is doing it's magic behind the scenes :)
+You can enable logging from Fable.Remoting.Suave (recommended) to see how the library is doing it's magic behind the scenes :)
 ```fs
 FableSuaveAdapter.logger <- Some (printfn "%s")
 ```
@@ -119,9 +160,9 @@ let server = Proxy.create<IServer>
 
 
 async {
-  // allStudents : Student[]
-  let! allStudents = server.getAllStudents()
-  for student in allStudents do
+  // students : Student[]
+  let! students = server.allStudents()
+  for student in students do
     // student : Student
     printfn "Student %s is %d years old" student.Name student.Age
 }

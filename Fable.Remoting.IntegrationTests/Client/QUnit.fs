@@ -104,7 +104,7 @@ let registerModuleWithHooks (name: string) (hooks: ModuleHooks) : unit = jsNativ
 [<Emit("QUnit.todo($0, $1)")>]
 let todo (name: string) (asserter: Asserter -> unit) : unit = jsNative
 [<Emit("QUnit.test($0, $1)")>]
-let test (name: string) (asserter: Asserter -> unit) : unit = jsNative
+let testCase (name: string) (asserter: Asserter -> unit) : unit = jsNative
 [<Emit("QUnit.test($0, $1)")>]
 let testAsync (name: string) (asserter: Asserter -> unit) : Async<unit> = jsNative
 /// Some test suites may need to express an expectation that is not defined by any of QUnit’s built-in assertions. This need may be met by encapsulating the expectation in a JavaScript function which returns a Boolean value representing the result; this value can then be passed into QUnit’s ok assertion.
@@ -117,3 +117,12 @@ let log (callback: LogResult -> unit) : unit = jsNative
 /// Specify a global timeout in milliseconds after which all tests will fail with an appropriate message. Useful when async tests aren’t finishing, to prevent the testrunner getting stuck. Set to something high, e.g. 30000 (30 seconds) to avoid slow tests to time out by accident.
 [<Emit("QUnit.config.testTimeout = $0")>]
 let setTimeout (t: int) : unit = jsNative
+
+let testCaseAsync (testName: string) (asserterFunc: Asserter -> Async<unit>) : unit =
+    (fun (test: Asserter) -> 
+        let finish = test.async()
+        async {
+            do! asserterFunc test
+            do finish()
+        } |> Async.StartImmediate
+    ) |> testCase testName
