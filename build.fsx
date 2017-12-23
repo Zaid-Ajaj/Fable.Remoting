@@ -111,4 +111,19 @@ Target "RunGiraffeTests" <| fun _ ->
 
 Target "Default" <| DoNothing
 
+Target "BuildRunAllTests" <| fun _ ->
+    // Json
+    run "." "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
+    run "." "dotnet" JsonTestsDll
+    // Server
+    run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
+    run "." "dotnet" ServerTestsDll
+    // Suave
+    run "." "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
+    run "." "dotnet" SuaveTestDll
+    // Giraffe        
+    run "." "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
+    run "." "dotnet" GiraffeTestDll 
+    
+       
 RunTargetOrDefault "Default"

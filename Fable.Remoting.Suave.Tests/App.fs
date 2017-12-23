@@ -6,7 +6,6 @@ open Expecto.Logging
 open FableSuaveAdapterTests 
 
 let testConfig =  { Expecto.Tests.defaultConfig with 
-                        parallelWorkers = 1
                         verbosity = LogLevel.Debug }
 
 [<EntryPoint>]
