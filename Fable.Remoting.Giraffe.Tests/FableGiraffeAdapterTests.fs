@@ -83,6 +83,14 @@ let fableGiraffeAdapterTests =
                 | [Some 2; None; Some -2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
+        testCase "bigint roundtrip" <| fun () ->
+            [1I .. 5I]
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoBigInteger" (toJson input)))
+            |> List.map ofJson<bigint> 
+            |> function 
+                | xs when xs = [1I .. 5I] -> pass()
+                | otherwise -> failUnexpect otherwise
+
         testCase "Option<string> round first trip" <| fun () ->
             [Some "hello"; None; Some "there"]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
@@ -94,7 +102,7 @@ let fableGiraffeAdapterTests =
         testCase "Option<string> round second trip" <| fun () ->
             [Some "hello"; None; Some "there"]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
-            |> List.map (fun output -> ofJson<string option> output)
+            |> List.map ofJson<string option> 
             |> function 
                 | [Some "hello"; None; Some "there"] -> pass()
                 | otherwise -> failUnexpect otherwise

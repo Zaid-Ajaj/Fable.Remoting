@@ -96,19 +96,28 @@ let fableSuaveAdapterTests =
             let defaultConfig = getConfig (random.Next(1000, 9999))
             let input = postContent (toJson (Error "hello"))
             runWith defaultConfig app
-            |> req HttpMethod.POST "/IProtocol/echoResult" (Some input)
+            |> req POST "/IProtocol/echoResult" (Some input)
             |> ofJson<Result<int, string>>
             |> function 
                 | Error "hello" -> pass()
                 | otherwise -> fail()
             
-        
+        testCase "Sending BigInteger roundtrip works" <| fun _ ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
+            let input = postContent (toJson [1I .. 5I])
+            runWith defaultConfig app
+            |> req POST "/IProtocol/echoBigInteger" (Some input)
+            |> ofJson<bigint>
+            |> function 
+                | sum when sum = 15I -> pass()
+                | otherwise -> fail()
+
         testCase "Sending and recieving strings works" <| fun () -> 
             let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "\"my-string\""
             let testApp = runWith defaultConfig app
             testApp
-            |> req HttpMethod.POST "/IProtocol/echoString" (Some someInput)
+            |> req POST "/IProtocol/echoString" (Some someInput)
             |> equal "\"my-string\""     
             
         testCase "Recieving int option to None output works" <| fun () -> 
@@ -116,7 +125,7 @@ let fableSuaveAdapterTests =
             let someInput = postContent "\"\""
             let testApp = runWith defaultConfig app
             testApp
-            |> req HttpMethod.POST "/IProtocol/optionOutput" (Some someInput)
+            |> req POST "/IProtocol/optionOutput" (Some someInput)
             |> equal "null" 
             
         testCase "Recieving int option to Some output works" <| fun () -> 
@@ -124,7 +133,7 @@ let fableSuaveAdapterTests =
             let someInput = postContent "\"non-empty\""
             let testApp = runWith defaultConfig app
             testApp
-            |> req HttpMethod.POST "/IProtocol/optionOutput" (Some someInput)
+            |> req POST "/IProtocol/optionOutput" (Some someInput)
             |> equal "5"
             
         testCase "Sending generic union case Nothing as input works" <| fun () ->
@@ -132,7 +141,7 @@ let fableSuaveAdapterTests =
             let someInput = postContent "\"Nothing\""
             let testApp = runWith defaultConfig app
             testApp
-            |> req HttpMethod.POST "/IProtocol/genericUnionInput" (Some someInput)
+            |> req POST "/IProtocol/genericUnionInput" (Some someInput)
             |> equal "0"      
             
         testCase "Sending generic union case Just as input works" <| fun () -> 
