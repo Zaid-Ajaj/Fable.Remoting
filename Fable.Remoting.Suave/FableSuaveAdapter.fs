@@ -14,23 +14,25 @@ module FableSuaveAdapter =
     open System.Text
 
     let mutable logger : (string -> unit) option = None
-
-    let private fableConverter = new FableJsonConverter()
-
+    let private fableConverter = FableJsonConverter()
     let private writeLn text (sb: StringBuilder)  = sb.AppendLine(text) |> ignore; sb
     let private write  (sb: StringBuilder) text   = sb.AppendLine(text) |> ignore
+    let private toString (sb: StringBuilder) = sb.ToString()
 
-    let private logDeserialization (text: string) (inputType: System.Type) = 
-        logger 
-        |> Option.iter (fun log ->  
-            StringBuilder()
-            |> writeLn "Fable.Remoting:"
-            |> writeLn "About to deserialize JSON:"
-            |> writeLn text
-            |> writeLn (sprintf "Into .NET Type: %s" inputType.FullName)
-            |> writeLn ""
-            |> fun sb -> log (sb.ToString())
+    let private toLogger (sb: StringBuilder) = 
+        logger |> Option.iter(fun logf -> 
+            sb
+            |> toString
+            |> logf
         )
+    let private logDeserialization (text: string) (inputType: System.Type) = 
+        StringBuilder()
+        |> writeLn "Fable.Remoting:"
+        |> writeLn "About to deserialize JSON:"
+        |> writeLn text
+        |> writeLn (sprintf "Into .NET Type: %s" (inputType.FullName.Replace("+", ".")))
+        |> writeLn ""
+        |> toLogger
         
 
     /// Deserialize a json string using FableConverter
@@ -56,7 +58,7 @@ module FableSuaveAdapter =
       StringBuilder()
       |> writeLn "Fable.Remoting: Returning serialized result back to client"
       |> writeLn result
-      |> fun builder -> Option.iter (fun logf -> logf (builder.ToString())) logger
+      |> toLogger
         
       OK result
       >=> Writers.setMimeType "application/json; charset=utf-8"
@@ -94,7 +96,7 @@ module FableSuaveAdapter =
         )
         |> List.ofSeq
         |> fun routes ->
-            logger |> Option.iter (fun logf -> logf (builder.ToString()))
+            builder |> toLogger
             choose routes
     
     /// Creates a WebPart from the given implementation of a protocol. Uses the default route builder: `sprintf "/%s/%s"`.

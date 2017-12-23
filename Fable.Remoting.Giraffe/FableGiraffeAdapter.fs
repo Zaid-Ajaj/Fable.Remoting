@@ -16,18 +16,29 @@ module FableGiraffeAdapter =
     let private fableConverter = FableJsonConverter()
     let private writeLn text (sb: StringBuilder)  = sb.AppendLine(text) |> ignore; sb
     let private write  (sb: StringBuilder) text   = sb.AppendLine(text) |> ignore
+    let private toString (sb: StringBuilder) = sb.ToString()
+
+    let private toLogger (sb: StringBuilder) = 
+        logger |> Option.iter(fun logf -> 
+            sb
+            |> toString
+            |> logf
+        )
 
     let private logDeserialization (text: string) (inputType: System.Type) = 
-        logger 
-        |> Option.iter (fun log ->  
-            StringBuilder()
-            |> writeLn "Fable.Remoting:"
-            |> writeLn "About to deserialize JSON:"
-            |> writeLn text
-            |> writeLn (sprintf "Into .NET Type: %s" inputType.FullName)
-            |> writeLn ""
-            |> fun sb -> log (sb.ToString())
-        )
+        StringBuilder()
+        |> writeLn "Fable.Remoting:"
+        |> writeLn "About to deserialize JSON:"
+        |> writeLn text
+        |> writeLn (sprintf "Into .NET Type: %s" (inputType.FullName.Replace("+", ".")))
+        |> writeLn ""
+        |> toLogger
+
+    let private logSerializedResult (json: string) = 
+        StringBuilder()
+        |> writeLn "Fable.Remoting: Returning serialized result back to client"
+        |> writeLn json
+        |> toLogger
         
 
     /// Deserialize a json string using FableConverter
@@ -45,10 +56,7 @@ module FableGiraffeAdapter =
     // json : string -> WebPart
     let json value =
       let result = JsonConvert.SerializeObject(value, fableConverter)
-      StringBuilder()
-      |> writeLn "Fable.Remoting: Returning serialized result back to client"
-      |> writeLn result
-      |> fun builder -> Option.iter (fun logf -> logf (builder.ToString())) logger
+      logSerializedResult result
       result
 
     // Get data from request body and deserialize.
@@ -93,7 +101,7 @@ module FableGiraffeAdapter =
             )
             |> List.ofSeq
             |> fun routes ->
-                logger |> Option.iter (fun logf -> logf (builder.ToString()))
+                builder |> toLogger
                 choose routes
 
     let httpHandlerFor<'t> (implementation : 't) : HttpHandler = 
