@@ -17,7 +17,7 @@ module FableGiraffeAdapter =
     let private writeLn text (sb: StringBuilder)  = sb.AppendLine(text) |> ignore; sb
     let private write  (sb: StringBuilder) text   = sb.AppendLine(text) |> ignore
 
-    let private logDeserialization (logf: (string -> unit) option) (text: string) (inputType: System.Type) = 
+    let private logDeserialization (text: string) (inputType: System.Type) = 
         logger 
         |> Option.iter (fun log ->  
             StringBuilder()
@@ -32,7 +32,7 @@ module FableGiraffeAdapter =
 
     /// Deserialize a json string using FableConverter
     let deserializeByType (json: string) (inputType: System.Type) =
-        logDeserialization logger json inputType
+        logDeserialization json inputType
         let parameterTypes = [| typeof<string>; typeof<System.Type>; typeof<JsonConverter array> |]
         let deserialize = typeof<JsonConvert>.GetMethod("DeserializeObject", parameterTypes) 
         let result = deserialize.Invoke(null, [| json; inputType; [| fableConverter |] |])
