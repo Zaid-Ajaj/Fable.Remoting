@@ -20,24 +20,6 @@ dotnet new SAFE --Remoting
 dotnet new SAFE --Server giraffe --Remoting
 ```
 
-## Testing
-
-This library is very well tested and includes unit tests for each server type and their internal components. Moreover, the repo includes an integration-tests projects where the client uses the awesome QUnit testing framework to make server calls on many different types to check that serialization and deserialization work as expected. 
-
-```fs
-QUnit.testCaseAsync "IServer.echoResult for Result<int, string>" <| fun test ->
-    async {
-        let! outputOk = server.echoResult (Ok 15)
-        match outputOk with
-        | Ok 15 -> test.pass()
-        | otherwise -> test.fail()
-
-        let! outputError = server.echoResult (Error "hello")
-        match outputError with
-        | Error "hello" -> test.pass()
-        | otherwise -> test.fail()
-    } 
-```
 
 Feedback and suggestions are very much welcome.
 
@@ -48,18 +30,13 @@ Feedback and suggestions are very much welcome.
 | Fable.Remoting.Client  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client) |
 | Fable.Remoting.Suave  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)  |
 | Fable.Remoting.Giraffe  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)  |
-| Fable.Remoting.Server  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Server.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Server)  |
-| Fable.Remoting.Reflection  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Reflection.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Reflection)  |
-| Fable.Remoting.Json  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Json.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Json)  |
+
  
 ## Scaffold from scratch - Suave
-On a Suave server, install the library from Nuget using Paket:
-
+Create a new F# console app:
 ```
-paket add Fable.Remoting.Suave --project /path/to/Project.fsproj
-```
-
-## Shared code
+dotnet new console -lang F#
+``` 
 Define the types you want to share between client and server:
 ```fs
 // SharedTypes.fs
@@ -109,6 +86,11 @@ let server : IServer = {
 }
 
 ```
+Install the library from Nuget using Paket:
+
+```
+paket add Fable.Remoting.Suave --project /path/to/Project.fsproj
+```
 Create a [WebPart](https://suave.io/composing.html) from the value `server` using `FableSuaveAdapter.webPartFor` and start your Suave server:
 ```fs
 open Suave
@@ -124,6 +106,7 @@ let main argv =
     Console.ReadKey() |> ignore
     0 
 ```
+Yes. it is that simple. 
 You can think of the `webApp` value as if it was the following in psuedo-code:
 ```fs
 let webApp = 
@@ -223,6 +206,23 @@ devServer: {
     }
 }
 ```
+## Testing
 
+This library is very well tested and includes unit tests for each server type and their internal components. Moreover, the repo includes an integration-tests projects where the client uses the awesome QUnit testing framework to make server calls on many different types to check that serialization and deserialization work as expected. 
+
+```fs
+QUnit.testCaseAsync "IServer.echoResult for Result<int, string>" <| fun test ->
+    async {
+        let! outputOk = server.echoResult (Ok 15)
+        match outputOk with
+        | Ok 15 -> test.pass()
+        | otherwise -> test.fail()
+
+        let! outputError = server.echoResult (Error "hello")
+        match outputError with
+        | Error "hello" -> test.pass()
+        | otherwise -> test.fail()
+    } 
+```
 See the following article if you are interested in how this library is implemented (a bit outdated but gives you an overview of the mechanism)
 [Statically Typed Client-Server Communication with F#: Proof of Concept](https://medium.com/@zaid.naom/statically-typed-client-server-communication-with-f-proof-of-concept-7e52cff4a625#.2ltqlajm4)
