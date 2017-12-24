@@ -31,6 +31,7 @@ type IProtocol = {
     floatList : float list -> Async<float list>
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint -> Async<bigint>
+    echoMap : Map<string, int> -> Async<Map<string, int>>
 }
 
 
@@ -55,4 +56,5 @@ let implementation = {
     floatList = pureAsync
     echoResult = pureAsync
     echoBigInteger = pureAsync
+    echoMap = pureAsync
 }

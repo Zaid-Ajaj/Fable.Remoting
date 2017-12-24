@@ -53,6 +53,9 @@ let makeRequest (request : HttpRequestMessage) =
         return content
     } |> runTask
 
+let request (path: string) (body: string) = 
+    makeRequest (postReq path body)
+
 let ofJson<'t> (input: string) = 
     FableGiraffeAdapter.deserialize<'t> input
 let toJson (x: obj) = 
@@ -180,10 +183,20 @@ let fableGiraffeAdapterTests =
         testCase "Record round trip" <| fun () ->
             [{ Prop1 = "hello"; Prop2 = 10; Prop3 = Some 5 }
              { Prop1 = "";      Prop2 = 1;  Prop3 = None }]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoRecord" (toJson input)))
-            |> List.map (fun output -> ofJson<Record> output)
+            |> List.map (toJson >> request "/IProtocol/echoRecord" >> ofJson<Record>)
             |> function 
                 | [{ Prop1 = "hello"; Prop2 = 10; Prop3 = Some 5 }
                    { Prop1 = "";      Prop2 = 1;  Prop3 = None   } ] -> pass()
                 | otherwise -> failUnexpect otherwise  
+
+        testCase "Map<string, int> roundtrip" <| fun () ->
+            ["one",1; "two",2]
+            |> Map.ofList
+            |> toJson
+            |> request "/IProtocol/echoMap"
+            |> ofJson<Map<string, int>>
+            |> Map.toList
+            |> function
+                | ["one",1; "two",2] -> pass()
+                | otherwise -> fail()
     ]

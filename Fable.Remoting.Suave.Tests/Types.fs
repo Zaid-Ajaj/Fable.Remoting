@@ -31,6 +31,7 @@ type IProtocol = {
     floatList : float [] -> Async<float>
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint list -> Async<bigint>
+    echoMap : Map<string, int> -> Async<Map<string, int>>
 }
 
 let implementation = {
@@ -57,4 +58,5 @@ let implementation = {
     floatList = fun xs -> Seq.sum xs |> fun result -> async {return Math.Round(result, 2) }
     echoResult = fun x -> async { return x }
     echoBigInteger = fun xs -> async { return Seq.sum xs }
+    echoMap = fun x -> async { return x }
  }

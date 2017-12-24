@@ -208,8 +208,22 @@ devServer: {
 ```
 ## Testing
 
-This library is very well tested and includes unit tests for each server type and their internal components. Moreover, the repo includes an integration-tests projects where the client uses the awesome QUnit testing framework to make server calls on many different types to check that serialization and deserialization work as expected. 
+This library is very well tested and includes unit tests for each server type and their internal components using Expecto. Moreover, the repo includes an integration-tests projects where the client uses the awesome QUnit testing framework to make server calls on many different types to check that serialization and deserialization work as expected. 
 
+Server side unit-tests look like this
+```fs
+testCase "Map<string, int> roundtrip" <| fun () ->
+    ["one",1; "two",2]
+    |> Map.ofList
+    |> toJson
+    |> request "/IProtocol/echoMap"
+    |> ofJson<Map<string, int>>
+    |> Map.toList
+    |> function
+        | ["one",1; "two",2] -> pass()
+        | otherwise -> fail()
+```
+Client-side integration tests
 ```fs
 QUnit.testCaseAsync "IServer.echoResult for Result<int, string>" <| fun test ->
     async {

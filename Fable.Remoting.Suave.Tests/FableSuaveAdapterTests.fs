@@ -112,6 +112,18 @@ let fableSuaveAdapterTests =
                 | sum when sum = 15I -> pass()
                 | otherwise -> fail()
 
+        testCase "Sending Map<string, int> roundtrips works" <| fun _ ->
+            let defaultConfig = getConfig (random.Next(1000, 9999))
+            let inputMap = ["one",1; "two",2] |> Map.ofList
+            let input = postContent (toJson inputMap)
+            runWith defaultConfig app
+            |> req POST "/IProtocol/echoMap" (Some input)
+            |> ofJson<Map<string, int>>
+            |> Map.toList
+            |> function 
+                | ["one",1; "two",2] -> pass()
+                | otherwise -> fail() 
+
         testCase "Sending and recieving strings works" <| fun () -> 
             let defaultConfig = getConfig (random.Next(1000, 9999))
             let someInput = postContent "\"my-string\""
