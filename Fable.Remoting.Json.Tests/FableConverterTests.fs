@@ -111,6 +111,22 @@ let converterTest =
             | Just "value" -> pass()
             | otherwise -> fail()
 
+        testCase "Map<string, int> conversion works" <| fun () ->
+            let input = ["one",1; "two",2] |> Map.ofSeq
+            let serialized = serialize input
+            let output = deserialize<Map<string, int>> serialized
+            match Map.toList output with
+            | ["one",1; "two",2] -> pass()
+            | otherwise -> fail()
+
+        testCase "Map<string, Option<string>> conversion works" <| fun () ->
+            let input = ["one", Some 1; "two", Some 2] |> Map.ofSeq
+            let serialized = serialize input
+            let deserialized = deserialize<Map<string, Option<int>>> serialized
+            match Map.toList deserialized with
+            | ["one", Some 1; "two", Some 2] -> pass()
+            | otherwise -> fail()
+
         testCase "Generic union types deserialization from raw json works" <| fun () -> 
             // toJson (Just 5) = "{\"Just\":5}"
             // toJson Nothing = "\"Nothing\""
