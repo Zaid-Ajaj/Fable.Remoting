@@ -8,6 +8,17 @@ open Microsoft.AspNetCore.Http
 open Giraffe.HttpHandlers
 open Giraffe.Tasks
 
+type RouteInfo = {
+    path: string
+    methodName: string
+}
+
+type ErrorResult = 
+    | Ignore 
+    | Propagate of obj
+
+type ErrorHandler = System.Exception -> RouteInfo -> ErrorResult
+
 module FableGiraffeAdapter =
 
     open System.Text
@@ -17,7 +28,10 @@ module FableGiraffeAdapter =
     let private writeLn text (sb: StringBuilder)  = sb.AppendLine(text) |> ignore; sb
     let private write  (sb: StringBuilder) text   = sb.AppendLine(text) |> ignore
     let private toString (sb: StringBuilder) = sb.ToString()
-
+    let mutable private onErrorHandler : ErrorHandler option = None 
+    /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client
+    let onError (handler: ErrorHandler) = 
+        onErrorHandler <- Some handler
     let private toLogger (sb: StringBuilder) = 
         logger |> Option.iter(fun logf -> 
             sb
@@ -67,7 +81,7 @@ module FableGiraffeAdapter =
         let requestBodyContent = streamReader.ReadToEnd()
         deserializeByType requestBodyContent inputType
     
-    let handleRequest methodName serverImplementation = 
+    let handleRequest methodName serverImplementation routePath = 
         let inputType = ServerSide.getInputType methodName serverImplementation
         let hasArg = inputType.FullName <> "Microsoft.FSharp.Core.Unit"
         fun (next : HttpFunc) (ctx : HttpContext) ->
@@ -76,14 +90,26 @@ module FableGiraffeAdapter =
                 match hasArg with 
                 | true  -> getResourceFromReq ctx inputType
                 | false -> null
+                
             let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData hasArg
-            let asyncResult = 
-              async { let! dynamicResult = result  
-                      let serializedResult = json dynamicResult
-                      return serializedResult } 
+
             task {
-                let! unwrappedFromAsync = asyncResult
-                return! text unwrappedFromAsync next ctx
+                try 
+                  let! unwrappedFromAsync = result
+                  let serializedResult = json unwrappedFromAsync
+                  ctx.Response.StatusCode <- 200
+                  return! text serializedResult next ctx
+                with
+                  | ex ->
+                     ctx.Response.StatusCode <- 500
+                     Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) logger
+                     match onErrorHandler with
+                     | Some handler -> 
+                        let routeInfo = { path = routePath; methodName = methodName }
+                        match handler ex routeInfo with
+                        | Ignore -> return! text "" next ctx
+                        | Propagate value -> return! text (json value) next ctx
+                     | None -> return! text "Server error" next ctx
             }
 
     let httpHandlerWithBuilderFor<'t> (implementation: 't) (routeBuilder: string -> string -> string) : HttpHandler = 
@@ -97,7 +123,7 @@ module FableGiraffeAdapter =
                 let fullPath = routeBuilder typeName methodName
                 write builder (sprintf "Record field %s maps to route %s" methodName fullPath)
                 POST >=> route fullPath 
-                     >=> warbler (fun _ -> handleRequest methodName implementation)
+                     >=> warbler (fun _ -> handleRequest methodName implementation fullPath)
             )
             |> List.ofSeq
             |> fun routes ->

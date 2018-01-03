@@ -37,9 +37,12 @@ let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 
-let publish projectPath = fun () ->
+let clean projectPath = 
     [ projectPath </> "bin"
       projectPath </> "obj" ] |> CleanDirs
+
+let publish projectPath = fun () ->
+    clean projectPath
     "pack -c Release"
     |> run projectPath dotnet 
     let nugetKey =
@@ -50,6 +53,7 @@ let publish projectPath = fun () ->
     let pushCmd = sprintf "nuget push %s -s nuget.org -k %s" nupkg nugetKey
     run projectPath dotnet pushCmd
 
+
 Target "PublishClient" (publish Client)
 
 Target "PublishJson" (publish Json)
@@ -59,7 +63,13 @@ Target "PublishReflection" (publish Reflection)
 Target "PublishSuave" (publish Suave)
 Target "PublishGiraffe" (publish Giraffe)
 
+Target "CleanGiraffe" <| fun _ ->
+    clean (getPath "Giraffe")
+    clean (getPath "Giraffe.Tests")
 
+Target "CleanSuave" <| fun _ ->
+    clean (getPath "Suave")
+    clean (getPath "Suave.Tests")
 
 Target "RestoreBuildRunJsonTests" <| fun _ ->
     run "." "dotnet"  ("restore " + proj "Json.Tests")
@@ -110,6 +120,12 @@ Target "RunGiraffeTests" <| fun _ ->
     run "." "dotnet" GiraffeTestDll
 
 Target "Default" <| DoNothing
+
+"CleanGiraffe" 
+    ==> "BuildRunGiraffeTests"
+
+"CleanSuave" 
+  ==> "BuildRunSuaveTests"
 
 Target "BuildRunAllTests" <| fun _ ->
     // Json

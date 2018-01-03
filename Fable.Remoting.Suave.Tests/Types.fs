@@ -32,6 +32,8 @@ type IProtocol = {
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint list -> Async<bigint>
     echoMap : Map<string, int> -> Async<Map<string, int>>
+
+    throwError : string -> Async<int>
 }
 
 let implementation = {
@@ -59,4 +61,5 @@ let implementation = {
     echoResult = fun x -> async { return x }
     echoBigInteger = fun xs -> async { return Seq.sum xs }
     echoMap = fun x -> async { return x }
+    throwError = fun x -> async { failwith "I am thrown from adapter function"; return 1 }
  }

@@ -7,14 +7,10 @@ open Newtonsoft.Json
 
 open System.Net.Http
 open SuaveTester
-open Suave.Web
 open Suave.Http
-open Suave.Successful
 open System
 open Expecto
 open Types
-open Expecto.CSharp.Runner
-open Mono.Cecil
 
 // Test helpers
 
@@ -23,6 +19,11 @@ let pass () = Expect.equal true true ""
 let fail () = Expect.equal false true ""
 
 FableSuaveAdapter.logger <- Some (printfn "%s")
+
+FableSuaveAdapter.onError <| fun ex routeInfo ->
+    printfn "%A" ex
+    Propagate (ex.Message)
+
 let app = FableSuaveAdapter.webPartFor implementation
 let postContent (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
 
@@ -90,7 +91,13 @@ let fableSuaveAdapterTests =
             |> function 
                 | Ok 15 -> pass()
                 | otherwise -> fail()
-
+        
+        testCase "Thrown error is catched and returned" <| fun _ -> 
+            let defaultConfig = getConfig (random.Next(1000, 9999))
+            let input = postContent ""
+            runWith defaultConfig app
+            |> req POST "/IProtocol/throwError" (Some input)
+            |> equal "\"I am thrown from adapter function\""
 
         testCase "Sending Result<int, string> roundtrip works with Error" <| fun _ ->
             let defaultConfig = getConfig (random.Next(1000, 9999))
