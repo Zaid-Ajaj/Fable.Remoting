@@ -8,7 +8,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>0.1.3-pre</Version>
+    <Version>0.2.3-pre</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
   </PropertyGroup>
 

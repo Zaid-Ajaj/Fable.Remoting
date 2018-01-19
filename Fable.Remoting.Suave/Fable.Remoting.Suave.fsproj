@@ -8,7 +8,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.2.3</Version>
+    <Version>1.3.3</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
   </PropertyGroup>
 

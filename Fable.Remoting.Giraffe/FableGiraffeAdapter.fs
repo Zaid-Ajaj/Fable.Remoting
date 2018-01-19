@@ -19,6 +19,11 @@ type ErrorResult =
 
 type ErrorHandler = System.Exception -> RouteInfo -> ErrorResult
 
+type CustomErrorResult<'a> =
+    { error: 'a; 
+      ignored: bool;
+      handled: bool; }
+
 module FableGiraffeAdapter =
 
     open System.Text
@@ -107,9 +112,15 @@ module FableGiraffeAdapter =
                      | Some handler -> 
                         let routeInfo = { path = routePath; methodName = methodName }
                         match handler ex routeInfo with
-                        | Ignore -> return! text "" next ctx
-                        | Propagate value -> return! text (json value) next ctx
-                     | None -> return! text "Server error" next ctx
+                        | Ignore -> 
+                            let result = { error = "Server error: ignored"; ignored = true; handled = true }
+                            return! text (json result) next ctx
+                        | Propagate value -> 
+                            let result = { error = value; ignored = false; handled = true }
+                            return! text (json result) next ctx
+                     | None -> 
+                        let result = { error = "Server error: not handled"; ignored = false; handled = true }
+                        return! text (json result) next ctx
             }
 
     let httpHandlerWithBuilderFor<'t> (implementation: 't) (routeBuilder: string -> string -> string) : HttpHandler = 

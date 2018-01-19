@@ -47,6 +47,11 @@ type IServer = {
 
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint -> Async<bigint>
+
+    // maps 
+    echoMap : Map<string, int> -> Async<Map<string, int>>
+    // errors
+    throwError : unit -> Async<string>
 }
 
 

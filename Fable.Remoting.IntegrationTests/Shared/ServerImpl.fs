@@ -32,4 +32,6 @@ let implementation : IServer  = {
 
     echoResult = Async.result
     echoBigInteger = Async.result
+    throwError = fun () -> async { return! failwith "Generating custom server error" }
+    echoMap = Async.result
 }

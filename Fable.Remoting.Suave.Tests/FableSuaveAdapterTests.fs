@@ -21,7 +21,7 @@ let fail () = Expect.equal false true ""
 FableSuaveAdapter.logger <- Some (printfn "%s")
 
 FableSuaveAdapter.onError <| fun ex routeInfo ->
-    printfn "%A" ex
+    printfn "Propagating exception message back to client: %s" ex.Message
     Propagate (ex.Message)
 
 let app = FableSuaveAdapter.webPartFor implementation
@@ -97,7 +97,10 @@ let fableSuaveAdapterTests =
             let input = postContent ""
             runWith defaultConfig app
             |> req POST "/IProtocol/throwError" (Some input)
-            |> equal "\"I am thrown from adapter function\""
+            |> ofJson<CustomErrorResult<string>>
+            |> equal { error = "I am thrown from adapter function";
+                       handled = true;
+                       ignored = false }
 
         testCase "Sending Result<int, string> roundtrip works with Error" <| fun _ ->
             let defaultConfig = getConfig (random.Next(1000, 9999))

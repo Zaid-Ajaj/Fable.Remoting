@@ -22,9 +22,16 @@ type ErrorResult =
 
 type ErrorHandler = System.Exception -> RouteInfo -> ErrorResult
 
+type CustomErrorResult<'a> =
+    { error: 'a; 
+      ignored: bool;
+      handled: bool; }
+
+
 module FableSuaveAdapter = 
     open System.Text
 
+    type private JsonServerResult = Success | Error 
     let mutable logger : (string -> unit) option = None
     let private fableConverter = FableJsonConverter()
     let private writeLn text (sb: StringBuilder)  = sb.AppendLine(text) |> ignore; sb
@@ -70,7 +77,7 @@ module FableSuaveAdapter =
         
     // serialize an object to json using FableConverter
     // json : string -> WebPart
-    let private json value isError =
+    let private json value (resultType: JsonServerResult) =
       let result = JsonConvert.SerializeObject(value, fableConverter)
       
       StringBuilder()
@@ -78,13 +85,10 @@ module FableSuaveAdapter =
       |> writeLn result
       |> toLogger
         
-      if not isError 
-      then OK result >=> Writers.setMimeType "application/json; charset=utf-8"
-      else OK result >=> Writers.setMimeType "application/json; charset=utf-8"
-                     >=> Writers.setStatus HttpCode.HTTP_500
-        
-      
-      
+      match resultType with
+      | Success ->  OK result >=> Writers.setMimeType "application/json; charset=utf-8"
+      | Error -> OK result >=> Writers.setMimeType "application/json; charset=utf-8"
+                           >=> Writers.setStatus HttpCode.HTTP_500
 
     let private handleRequest methodName serverImplementation routePath = 
         let inputType = ServerSide.getInputType methodName serverImplementation
@@ -101,7 +105,7 @@ module FableSuaveAdapter =
             async {
                 try
                   let! dynamicResult = result
-                  return json dynamicResult false
+                  return json dynamicResult Success
                 with 
                   | ex -> 
                      Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) logger
@@ -110,10 +114,19 @@ module FableSuaveAdapter =
                      | Some handler ->
                         let result = handler ex route
                         match result with
-                        | Ignore ->  return json "" false
-                        | Propagate value ->  return json value true
-                     | None -> return json "Server error" true
-            }  
+                        // Server error ignored by error handler
+                        | Ignore ->
+                            let result = { error = "Server error: ignored"; ignored = true; handled = true }  
+                            return json result Error
+                        // Server error mapped into some other `value` by error handler
+                        | Propagate value ->  
+                            let result = { error = value; ignored = false; handled = true }
+                            return json result Error
+                     // There no server handler
+                     | None -> 
+                        let result = { error = "Server error: not handled"; ignored = true; handled = false }
+                        return json result Error
+                }  
             |> Async.RunSynchronously
     
     /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.

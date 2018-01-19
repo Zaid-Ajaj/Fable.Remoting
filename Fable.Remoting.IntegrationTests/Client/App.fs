@@ -3,6 +3,11 @@ module App
 open Fable.Remoting.Client
 open SharedTypes
 
+
+Proxy.onError <| fun errorInfo ->
+    printfn "Handling server error in the client"
+    printfn "Recieved %A" errorInfo.error
+
 let server = Proxy.createWithBuilder<IServer> routeBuilder
 
 QUnit.registerModule "Fable.Remoting"
@@ -189,6 +194,15 @@ QUnit.testCaseAsync "IServer.echoResult for Result<int, string>" <| fun test ->
         | otherwise -> test.fail()
     } 
 
+QUnit.testCaseAsync "IServer.echoMap" <| fun test ->
+    async {
+        let input = ["hello", 1] |> Map.ofList
+        let! output = server.echoMap input
+        match input = output with
+        | true -> test.pass()
+        | false -> test.fail()
+    }
+
 QUnit.testCaseAsync "IServer.echoBigInteger" <| 
     fun test ->
         async {
@@ -212,3 +226,14 @@ QUnit.testCaseAsync "IServer.echoBigInteger" <|
             let! output = server.echoBigInteger n
             test.equal true (output = n)
         }
+
+QUnit.testCaseAsync "IServer.throwError" <| fun test ->
+    async {
+        try
+          test.expect 0
+          let! output = server.throwError()
+          printfn "%s" output
+        with
+         | ex -> 
+            printfn "Qunit.testCase error handler %s" ex.Message
+    }

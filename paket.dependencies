@@ -13,7 +13,6 @@ nuget Newtonsoft.Json
 nuget NUnit
 nuget Suave 
 nuget Microsoft.CSharp
-
 clitool dotnet-fable
 
 group Build

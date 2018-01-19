@@ -5,9 +5,20 @@ open Fable.PowerPack
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack.Fetch
-open Fable.PowerPack.Fetch.Fetch_types
 
 module Proxy = 
+    type ErrorInfo = { 
+        path: string; 
+        methodName: string;
+        error: string;
+        response: Response
+    }
+
+    let mutable private errorHandler : Option<ErrorInfo -> unit> = None
+
+    /// When an error is thrown on the server and it is intercepted by the global `onError` handler, the server can either ignore the error or propagate an object that contains information of the server. In the case that a message is propagated then this error handler intercepts that error serialized as json along with the route and response information 
+    let onError (handler: ErrorInfo -> unit) = 
+        errorHandler <- Some handler
 
     [<Emit("$2[$0] = $1")>]
     let private setProp (propName: string) (propValue: obj) (any: obj) : unit = jsNative
@@ -15,6 +26,12 @@ module Proxy =
     [<Emit("$0")>]
     let private typed<'a> (x: obj) : 'a = jsNative
 
+    [<Emit("$0[$1]")>]
+    let private getAs<'a> (x: obj) (key: string) : 'a = jsNative
+    [<Emit("JSON.parse($0)")>]
+    let private jsonParse (content: string) : obj = jsNative
+    [<Emit("JSON.stringify($0)")>]
+    let private stringify (x: obj) : string = jsNative
     let private proxyFetch typeName methodName returnType (endpoint: string option) (routeBuilder: string -> string -> string) =
         fun data -> 
             let route = routeBuilder typeName methodName
@@ -30,9 +47,38 @@ module Proxy =
                     Body (unbox (toJson data))
                     Method HttpMethod.POST
                 ] 
-                let! response = Fetch.fetch url requestProps 
+                let makeReqProps props = 
+                    keyValueList CaseRules.LowerFirst props :?> RequestInit
+
+                let! response = GlobalFetch.fetch(RequestInfo.Url url, makeReqProps requestProps)
+                //let! response = Fetch.fetch url requestProps
                 let! jsonResponse = response.text()
-                return ofJsonAsType jsonResponse returnType
+                match response.Status with
+                | 200 -> 
+                    // success result
+                    return ofJsonAsType jsonResponse returnType
+                | 500 -> 
+                    // Error from server
+                    let customError = jsonParse jsonResponse
+                    match getAs<bool> customError "ignored" with
+                    | true -> return! failwith (getAs<string> customError "error")
+                    | false -> 
+                        match getAs<bool> customError "handled" with
+                        | false -> return! failwith (getAs<string> customError "error")
+                        | true -> 
+                            // handled and not ignored -> error message propagated
+                            let error = stringify (getAs<obj> customError "error")
+                            let errorInfo = 
+                              { path = url; 
+                                methodName = methodName; 
+                                error = error;
+                                response = response }
+                            match errorHandler with
+                            | Some handler -> 
+                                handler errorInfo
+                                return! failwith "Server error"
+                            | None -> return! failwith "Server error"
+                | _ -> return! failwith "Unknown response status"
             }
             |> Async.AwaitPromise   
 

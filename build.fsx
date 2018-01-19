@@ -141,5 +141,4 @@ Target "BuildRunAllTests" <| fun _ ->
     run "." "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
     run "." "dotnet" GiraffeTestDll 
     
-       
-RunTargetOrDefault "Default"
+RunTargetOrDefault "BuildRunAllTests"

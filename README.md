@@ -171,6 +171,34 @@ devServer: {
 }
 ```
 That's it!
+## Error handling
+What happens when an error is thrown by one of the RPC methods? 
+
+Well, good question! Fable.Remoting will catch unhandled exceptions on the server and the sends them off to the `onError` handler. This handler can choose to `Ignore` or `Propagate msg` back to the client:
+
+```fs
+/// === Propagating custom errors or ignoring them on the server ======
+type CustomError = { errorMsg: string }
+
+FableSuaveAdapter.onError <| fun ex routeInfo ->
+    // do some logging
+    printfn "Error at: %A" routeInfo
+    logException ex
+    match ex with
+    | :? System.IOException as x -> 
+        // propagate custom error, this is intercepted by the client
+        let customError = { errorMsg = "Something terrible happend" }
+        Propagate customError
+    | :? System.Exception as x ->
+        // ignore error
+        Ignore
+``` 
+On the client side, an exception is thrown locally on the call site. However, when a message is propagated from the server, is it also intercepted by the `onError` handler on the client side using this global `onError` handler:
+```fs
+Proxy.onError <| fun errorInfo ->
+    let customError = ofJson<CustomError> errorInfo.error
+    printfn "Oh noo: %s" custromError.errorMsg
+```
 
 ## Adding a new route
  - Add another record field function to `IServer`
