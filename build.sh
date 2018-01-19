@@ -5,6 +5,7 @@ else
   # Mono fix for https://github.com/fsharp/FAKE/issues/805
   export MONO_MANAGED_WATCHER=false
   MONO="mono"
+  export FrameworkPathOverride=$(dirname $(which mono))/../lib/mono/4.5/
 fi
 
 if [ -e "paket.lock" ]; then
