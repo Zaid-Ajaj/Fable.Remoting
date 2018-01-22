@@ -5,7 +5,7 @@ open Expecto.Logging
 open ServerDynamicInvokeTests 
 
 let testConfig =  { Expecto.Tests.defaultConfig with 
-                        parallelWorkers = 1
+                        parallelWorkers = 4
                         verbosity = LogLevel.Debug }
 
 [<EntryPoint>]
