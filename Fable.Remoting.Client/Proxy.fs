@@ -4,6 +4,7 @@ open FSharp.Reflection
 open Fable.PowerPack
 open Fable.Core
 open Fable.Core.JsInterop
+open Fable.Import.Browser
 open Fable.PowerPack.Fetch
 
 module Proxy = 
@@ -43,13 +44,19 @@ module Proxy =
                  else sprintf "%s/%s" path route
               | None -> route
             promise {
+                // Send RPC POST request to the server
                 let requestProps = [
                     Body (unbox (toJson data))
                     Method HttpMethod.POST
+                    Credentials RequestCredentials.Sameorigin
+                    requestHeaders 
+                     [ ContentType "application/json; charset=utf8"; 
+                       Cookie document.cookie ] 
                 ] 
+
                 let makeReqProps props = 
                     keyValueList CaseRules.LowerFirst props :?> RequestInit
-
+                // use GlobalFetch.fetch to control error handling
                 let! response = GlobalFetch.fetch(RequestInfo.Url url, makeReqProps requestProps)
                 //let! response = Fetch.fetch url requestProps
                 let! jsonResponse = response.text()
@@ -60,19 +67,24 @@ module Proxy =
                 | 500 -> 
                     // Error from server
                     let customError = jsonParse jsonResponse
+                    // manually read properties of the the object literal representing the error 
                     match getAs<bool> customError "ignored" with
                     | true -> return! failwith (getAs<string> customError "error")
                     | false -> 
                         match getAs<bool> customError "handled" with
-                        | false -> return! failwith (getAs<string> customError "error")
+                        | false -> 
+                            // throw a generic server error because it was not handled on the server 
+                            return! failwith (getAs<string> customError "error")
                         | true -> 
                             // handled and not ignored -> error message propagated
                             let error = stringify (getAs<obj> customError "error")
+                            // collect error information along the response data
                             let errorInfo = 
                               { path = url; 
                                 methodName = methodName; 
                                 error = error;
                                 response = response }
+                            // send the error to the client side error handler
                             match errorHandler with
                             | Some handler -> 
                                 handler errorInfo
