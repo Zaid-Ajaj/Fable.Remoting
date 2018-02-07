@@ -117,8 +117,8 @@ module Proxy =
         )
         |> List.ofSeq
 
-    /// Creates a secure proxy using a custom endpoint and a route builder
-    let [<PassGenerics>] createSecureWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string) (auth: string option) : 't = 
+    
+    let [<PassGenerics>] private createSecureWithEndpointAndBuilderImpl<'t> (endpoint: string option) (routeBuilder : string -> string -> string) (auth: string option) : 't = 
         // create an empty object literal
         let proxy = obj()
         let typeName = typeof<'t>.Name
@@ -132,35 +132,39 @@ module Proxy =
             let fieldName = fst field
             setProp fieldName (proxyFetch typeName fieldName returnType endpoint routeBuilder auth) proxy
         )
-        unbox proxy
+        unbox proxy    
     /// Creates a proxy using a custom endpoint and a route builder
     let [<PassGenerics>] createWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string): 't = 
-        createSecureWithEndpointAndBuilder<'t> endpoint routeBuilder None
+        createSecureWithEndpointAndBuilderImpl<'t> endpoint routeBuilder None
 
     /// Creates a proxy that routes method calls to /typeName/methodName
     let [<PassGenerics>] create<'t>  : 't = 
-        createSecureWithEndpointAndBuilder<'t> (Some "/") (sprintf "/%s/%s") None
+        createSecureWithEndpointAndBuilderImpl<'t> (Some "/") (sprintf "/%s/%s") None
 
     /// Creates a proxy using a custom endpoint and the default route builder.
     [<PassGenerics>]
     let createWithEndpoint<'t> (endpoint: string) : 't = 
-        createSecureWithEndpointAndBuilder<'t> (Some endpoint) (sprintf "/%s/%s") None
+        createSecureWithEndpointAndBuilderImpl<'t> (Some endpoint) (sprintf "/%s/%s") None
 
     /// Creates a proxy using the default endpoint = "/" and a custom route builder
     [<PassGenerics>]
     let createWithBuilder<'t> (routeBuilder: string -> string -> string) : 't = 
-        createSecureWithEndpointAndBuilder<'t> None routeBuilder None
+        createSecureWithEndpointAndBuilderImpl<'t> None routeBuilder None
+    
+    /// Creates a secure proxy using a custom endpoint and a route builder
+    let [<PassGenerics>] createSecureWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string) (auth: string): 't = 
+        createSecureWithEndpointAndBuilderImpl<'t> endpoint routeBuilder (Some auth)
 
     /// Creates a secure proxy that routes method calls to /typeName/methodName
-    let [<PassGenerics>] createSecure<'t>  : string option -> 't = 
-        createSecureWithEndpointAndBuilder<'t> (Some "/") (sprintf "/%s/%s")
+    let [<PassGenerics>] createSecure<'t>  (auth: string): 't = 
+        createSecureWithEndpointAndBuilderImpl<'t> (Some "/") (sprintf "/%s/%s") (Some auth)
 
     /// Creates a secure proxy using a custom endpoint and the default route builder.
     [<PassGenerics>]
-    let createSecureWithEndpoint<'t> (endpoint: string) : string option -> 't = 
-        createSecureWithEndpointAndBuilder<'t> (Some endpoint) (sprintf "/%s/%s")
+    let createSecureWithEndpoint<'t> (endpoint: string) (auth: string) : 't = 
+        createSecureWithEndpointAndBuilderImpl<'t> (Some endpoint) (sprintf "/%s/%s") (Some auth)
 
     /// Creates a secure proxy using the default endpoint = "/" and a custom route builder
     [<PassGenerics>]
-    let createSecureWithBuilder<'t> (routeBuilder: string -> string -> string) : string option -> 't = 
-        createSecureWithEndpointAndBuilder<'t> None routeBuilder
+    let createSecureWithBuilder<'t> (routeBuilder: string -> string -> string) (auth: string) :  't = 
+        createSecureWithEndpointAndBuilderImpl<'t> None routeBuilder (Some auth)
