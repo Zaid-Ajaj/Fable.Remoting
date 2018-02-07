@@ -33,7 +33,7 @@ let toJson (x: obj) = JsonConvert.SerializeObject(x, [| converter |])
 let ofJson<'t> (input: string) = JsonConvert.DeserializeObject<'t>(input, [| converter |])
 
 let getConfig =
-    let port = ref 1000
+    let port = ref 1024
     fun () ->
         port := !port + 1
         { Suave.Web.defaultConfig 
