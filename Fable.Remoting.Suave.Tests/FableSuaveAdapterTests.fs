@@ -153,7 +153,7 @@ let fableSuaveAdapterTests =
             |> equal "null" 
             
         testCase "Recieving int option to Some output works" <| fun () -> 
-            let defaultConfig = getConfig (random.Next(1000, 9999))
+            let defaultConfig = getConfig ()
             let someInput = postContent "\"non-empty\""
             let testApp = runWith defaultConfig app
             testApp
