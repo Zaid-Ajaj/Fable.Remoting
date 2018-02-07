@@ -33,11 +33,11 @@ let toJson (x: obj) = JsonConvert.SerializeObject(x, [| converter |])
 let ofJson<'t> (input: string) = JsonConvert.DeserializeObject<'t>(input, [| converter |])
 
 let getConfig =
-    let port = ref 1024
-    fun () ->
-        port := !port + 1
+    let mutable port = 1024
+    fun () ->       
         { Suave.Web.defaultConfig 
-            with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" !port ] }
+            with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" (System.Threading.Interlocked.Increment &port) ] }
+            
 let fableSuaveAdapterTests = 
     testList "FableSuaveAdapter tests" [
         testCase "Sending string as input works" <| fun () ->
