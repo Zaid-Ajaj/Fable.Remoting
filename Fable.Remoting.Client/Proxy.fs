@@ -33,7 +33,7 @@ module Proxy =
     let private jsonParse (content: string) : obj = jsNative
     [<Emit("JSON.stringify($0)")>]
     let private stringify (x: obj) : string = jsNative
-    let private proxyFetch typeName methodName returnType (endpoint: string option) (routeBuilder: string -> string -> string) =
+    let private proxyFetch typeName methodName returnType (endpoint: string option) (routeBuilder: string -> string -> string) (auth:string option) =
         fun data -> 
             let route = routeBuilder typeName methodName
             let url = 
@@ -50,8 +50,11 @@ module Proxy =
                     Method HttpMethod.POST
                     Credentials RequestCredentials.Sameorigin
                     requestHeaders 
-                     [ ContentType "application/json; charset=utf8"; 
-                       Cookie document.cookie ] 
+                     [ yield ContentType "application/json; charset=utf8"; 
+                       yield Cookie document.cookie
+                       match auth with
+                       |Some auth -> yield Authorization auth
+                       |None -> ()  ] 
                 ] 
 
                 let makeReqProps props = 
@@ -114,8 +117,8 @@ module Proxy =
         )
         |> List.ofSeq
 
-    /// Creates a proxy using a custom endpoint and a route builder
-    let [<PassGenerics>] createWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string): 't = 
+    /// Creates a secure proxy using a custom endpoint and a route builder
+    let [<PassGenerics>] createSecureWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string) (auth: string option) : 't = 
         // create an empty object literal
         let proxy = obj()
         let typeName = typeof<'t>.Name
@@ -127,22 +130,37 @@ module Proxy =
             // T
             let returnType = asyncOfreturnType.GenericTypeArguments.[0]
             let fieldName = fst field
-            setProp fieldName (proxyFetch typeName fieldName returnType endpoint routeBuilder) proxy
+            setProp fieldName (proxyFetch typeName fieldName returnType endpoint routeBuilder auth) proxy
         )
         unbox proxy
-
-
+    /// Creates a proxy using a custom endpoint and a route builder
+    let [<PassGenerics>] createWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string): 't = 
+        createSecureWithEndpointAndBuilder<'t> endpoint routeBuilder None
 
     /// Creates a proxy that routes method calls to /typeName/methodName
     let [<PassGenerics>] create<'t>  : 't = 
-        createWithEndpointAndBuilder<'t> (Some "/") (sprintf "/%s/%s")
+        createSecureWithEndpointAndBuilder<'t> (Some "/") (sprintf "/%s/%s") None
 
     /// Creates a proxy using a custom endpoint and the default route builder.
     [<PassGenerics>]
     let createWithEndpoint<'t> (endpoint: string) : 't = 
-        createWithEndpointAndBuilder<'t> (Some endpoint) (sprintf "/%s/%s")
+        createSecureWithEndpointAndBuilder<'t> (Some endpoint) (sprintf "/%s/%s") None
 
     /// Creates a proxy using the default endpoint = "/" and a custom route builder
     [<PassGenerics>]
     let createWithBuilder<'t> (routeBuilder: string -> string -> string) : 't = 
-        createWithEndpointAndBuilder<'t> None routeBuilder
+        createSecureWithEndpointAndBuilder<'t> None routeBuilder None
+
+    /// Creates a secure proxy that routes method calls to /typeName/methodName
+    let [<PassGenerics>] createSecure<'t>  : string option -> 't = 
+        createSecureWithEndpointAndBuilder<'t> (Some "/") (sprintf "/%s/%s")
+
+    /// Creates a secure proxy using a custom endpoint and the default route builder.
+    [<PassGenerics>]
+    let createSecureWithEndpoint<'t> (endpoint: string) : string option -> 't = 
+        createSecureWithEndpointAndBuilder<'t> (Some endpoint) (sprintf "/%s/%s")
+
+    /// Creates a secure proxy using the default endpoint = "/" and a custom route builder
+    [<PassGenerics>]
+    let createSecureWithBuilder<'t> (routeBuilder: string -> string -> string) : string option -> 't = 
+        createSecureWithEndpointAndBuilder<'t> None routeBuilder
