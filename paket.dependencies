@@ -11,7 +11,8 @@ nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.TestHost
 nuget Newtonsoft.Json
 nuget NUnit
-nuget Suave 
+nuget Suave
+nuget Saturn 
 nuget Microsoft.CSharp
 clitool dotnet-fable
 

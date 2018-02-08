@@ -1,0 +1,7 @@
+FSharp.Core
+Newtonsoft.Json
+Expecto
+Giraffe
+Saturn
+Microsoft.AspNetCore.TestHost
+Microsoft.AspNetCore.Hosting

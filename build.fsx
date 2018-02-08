@@ -22,6 +22,7 @@ let JsonTestsDll = testDll "Json"
 let ServerTestsDll = testDll "Server"
 let SuaveTestDll = testDll "Suave"
 let GiraffeTestDll = testDll "Giraffe"
+let SaturnTestDll = testDll "Saturn"
 
 
 let cwd = __SOURCE_DIRECTORY__
@@ -36,6 +37,7 @@ let Server = getPath "Server"
 let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
+let Saturn = getPath "Saturn"
 
 let clean projectPath = 
     [ projectPath </> "bin"
@@ -62,10 +64,15 @@ Target "PublishReflection" (publish Reflection)
 
 Target "PublishSuave" (publish Suave)
 Target "PublishGiraffe" (publish Giraffe)
+Target "PublishSaturn" (publish Saturn)
 
 Target "CleanGiraffe" <| fun _ ->
     clean (getPath "Giraffe")
     clean (getPath "Giraffe.Tests")
+
+Target "CleanSaturn" <| fun _ ->
+    clean (getPath "Saturn")
+    clean (getPath "Saturn.Tests")
 
 Target "CleanSuave" <| fun _ ->
     clean (getPath "Suave")
@@ -119,10 +126,25 @@ Target "BuildRunGiraffeTests" <| fun _ ->
 Target "RunGiraffeTests" <| fun _ ->
     run "." "dotnet" GiraffeTestDll
 
+Target "RestoreBuildRunSaturnTests" <| fun _ ->
+    run "." "dotnet"  ("restore " + proj "Saturn.Tests")
+    run "." "dotnet" ("build " + proj "Saturn.Tests" + " --configuration=Release")
+    run "." "dotnet" SaturnTestDll
+
+Target "BuildRunSaturnTests" <| fun _ ->
+    run "." "dotnet" ("build " + proj "Saturn.Tests" + " --configuration=Release")
+    run "." "dotnet" SaturnTestDll
+
+Target "RunSaturnTests" <| fun _ ->
+    run "." "dotnet" SaturnTestDll
+
 Target "Default" <| DoNothing
 
 "CleanGiraffe" 
     ==> "BuildRunGiraffeTests"
+
+"CleanSaturn" 
+    ==> "BuildRunSaturnTests"
 
 "CleanSuave" 
   ==> "BuildRunSuaveTests"
@@ -139,6 +161,9 @@ Target "BuildRunAllTests" <| fun _ ->
     run "." "dotnet" SuaveTestDll
     // Giraffe        
     run "." "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
-    run "." "dotnet" GiraffeTestDll 
+    run "." "dotnet" GiraffeTestDll
+    // Saturn        
+    run "." "dotnet" ("build " + proj "Saturn.Tests" + " --configuration=Release")
+    run "." "dotnet" SaturnTestDll 
     
 RunTargetOrDefault "BuildRunAllTests"
