@@ -8,4 +8,4 @@ script:
  - travis_wait dotnet run -p Fable.Remoting.Server.Tests/Fable.Remoting.Server.Tests.fsproj
  - travis_wait dotnet run -p Fable.Remoting.Suave.Tests/Fable.Remoting.Suave.Tests.fsproj
  - travis_wait dotnet run -p Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj
- - travis_wait dotnet run -p Fable.Remoting.Saturn.Tests/Fable.Saturn.Giraffe.Tests.fsproj
+ - travis_wait dotnet run -p Fable.Remoting.Saturn.Tests/Fable.Remoting.Saturn.Tests.fsproj
