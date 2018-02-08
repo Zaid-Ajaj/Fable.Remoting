@@ -1,26 +1,19 @@
 ﻿module FableSaturnAdapterTests
 
 open System
-open System.Net
 open System.Net.Http
-open System.IO
-open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
-open Microsoft.AspNetCore.TestHost
-open Microsoft.Extensions.DependencyInjection
-open Giraffe.Middleware
-open Giraffe.HttpHandlers
 open Giraffe.Tasks
 
 open Expecto
 open Types
-open Mono.Cecil
 open Saturn.Application
 open Saturn.Router
 
 // Test helpers
+open Fable.Remoting.Giraffe
 open Fable.Remoting.Saturn
-FableSaturnAdapter.logger <- Some (printfn "%s")
+FableGiraffeAdapter.logger <- Some (printfn "%s")
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
@@ -62,9 +55,9 @@ let request (path: string) (body: string) =
     makeRequest (postReq path body)
 
 let ofJson<'t> (input: string) = 
-    FableSaturnAdapter.deserialize<'t> input
+    FableGiraffeAdapter.deserialize<'t> input
 let toJson (x: obj) = 
-    FableSaturnAdapter.json x
+    FableGiraffeAdapter.json x
 
 let FableSaturnAdapterTests = 
     testList "FableSaturnAdapter tests" [
