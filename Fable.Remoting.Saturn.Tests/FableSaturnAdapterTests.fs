@@ -31,7 +31,7 @@ let testScope = scope {
 
 let app = application {
     router testScope
-    url "http://127.0.0.1/"
+    url "http://127.0.0.1:8080/"
 }
 
 let postContent (input: string) =  new StringContent(input, Text.Encoding.UTF8)
@@ -39,7 +39,7 @@ let postContent (input: string) =  new StringContent(input, Text.Encoding.UTF8)
 let server = app.RunAsync()
 
 let postReq (path : string) (body: string) =
-    let url = "http://127.0.0.1" + path
+    let url = "http://127.0.0.1:8080" + path
     let request = new HttpRequestMessage(HttpMethod.Post, url)
     request.Content <- postContent body
     request
