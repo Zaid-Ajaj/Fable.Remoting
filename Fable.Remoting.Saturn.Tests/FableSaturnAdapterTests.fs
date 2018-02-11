@@ -3,7 +3,7 @@
 open System
 open System.Net.Http
 open Microsoft.AspNetCore.Hosting
-open Giraffe.Tasks
+open Giraffe
 
 open Expecto
 open Types
@@ -11,9 +11,8 @@ open Saturn.Application
 open Saturn.Router
 
 // Test helpers
-open Fable.Remoting.Giraffe
 open Fable.Remoting.Saturn
-FableGiraffeAdapter.logger <- Some (printfn "%s")
+FableSaturnAdapter.logger <- Some (printfn "%s")
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""

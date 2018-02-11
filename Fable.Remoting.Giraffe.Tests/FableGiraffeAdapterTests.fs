@@ -1,16 +1,12 @@
 ﻿module FableGiraffeAdapterTests
 
 open System
-open System.Net
 open System.Net.Http
 open System.IO
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
-open Microsoft.Extensions.DependencyInjection
-open Giraffe.Middleware
-open Giraffe.HttpHandlers
-open Giraffe.Tasks
+open Giraffe
 open Fable.Remoting.Giraffe
 open Expecto
 open Types
@@ -22,7 +18,7 @@ let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
 let failUnexpect (x: obj) = Expect.equal false true (sprintf "%A was not expected" x) 
-let giraffeApp : HttpHandler = FableGiraffeAdapter.httpHandlerFor implementation
+let giraffeApp = FableGiraffeAdapter.httpHandlerFor implementation
 let postContent (input: string) =  new StringContent(input, Text.Encoding.UTF8)
 let configureApp (app : IApplicationBuilder) =
     app.UseGiraffe giraffeApp

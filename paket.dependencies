@@ -6,13 +6,13 @@ nuget FAKE
 nuget FSharp.Core
 nuget Fable.Core
 nuget Fable.PowerPack
-nuget Giraffe
 nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.TestHost
 nuget Newtonsoft.Json
 nuget NUnit
 nuget Suave
-nuget Saturn 
+nuget Giraffe ~> 1.0.0
+nuget Saturn
 nuget Microsoft.CSharp
 clitool dotnet-fable
 

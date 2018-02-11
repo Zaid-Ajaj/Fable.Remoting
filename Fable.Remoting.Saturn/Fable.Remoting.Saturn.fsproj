@@ -8,7 +8,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;saturn</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>0.1.0-pre</Version>
+    <Version>1.0</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
   </PropertyGroup>
 
@@ -17,7 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Fable.Remoting.Giraffe\Fable.Remoting.Giraffe.fsproj" />
+    <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
+    <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
   </ItemGroup>
   
   <Import Project="..\.paket\Paket.Restore.targets" />

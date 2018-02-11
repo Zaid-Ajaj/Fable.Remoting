@@ -5,8 +5,8 @@ open Newtonsoft.Json
 open Fable.Remoting.Json
 open Fable.Remoting.Server
 open Microsoft.AspNetCore.Http
-open Giraffe.HttpHandlers
-open Giraffe.Tasks
+
+open Giraffe
 
 type RouteInfo = {
     path: string
@@ -100,7 +100,7 @@ module FableGiraffeAdapter =
 
             task {
                 try 
-                  let! unwrappedFromAsync = result
+                  let! unwrappedFromAsync = Async.StartAsTask result 
                   let serializedResult = json unwrappedFromAsync
                   ctx.Response.StatusCode <- 200
                   return! text serializedResult next ctx

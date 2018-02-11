@@ -53,8 +53,8 @@ module Proxy =
                      [ yield ContentType "application/json; charset=utf8"; 
                        yield Cookie document.cookie
                        match auth with
-                       |Some auth -> yield Authorization auth
-                       |None -> ()  ] 
+                       | Some auth -> yield Authorization auth
+                       | None -> ()  ] 
                 ] 
 
                 let makeReqProps props = 
