@@ -2,7 +2,6 @@ source https://www.nuget.org/api/v2/
 
 storage: none
 nuget Expecto
-nuget FAKE
 nuget FSharp.Core
 nuget Fable.Core
 nuget Fable.PowerPack
@@ -12,9 +11,14 @@ nuget Newtonsoft.Json
 nuget NUnit
 nuget Suave
 nuget Giraffe ~> 1.0.0
-nuget Saturn
 nuget Microsoft.CSharp
 clitool dotnet-fable
+
+group Saturn
+    source https://www.nuget.org/api/v2
+    nuget Saturn
+    nuget Giraffe ~> 0.1.0-beta-700
+
 
 group Build
     framework >= net45
