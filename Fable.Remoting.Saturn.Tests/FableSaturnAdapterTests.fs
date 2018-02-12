@@ -54,9 +54,9 @@ let request (path: string) (body: string) =
     makeRequest (postReq path body)
 
 let ofJson<'t> (input: string) = 
-    FableGiraffeAdapter.deserialize<'t> input
+    deserialize<'t> input
 let toJson (x: obj) = 
-    FableGiraffeAdapter.json x
+    json x
 
 let FableSaturnAdapterTests = 
     testList "FableSaturnAdapter tests" [

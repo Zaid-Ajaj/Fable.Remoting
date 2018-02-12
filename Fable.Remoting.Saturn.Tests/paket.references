@@ -1,6 +1,8 @@
 FSharp.Core
 Newtonsoft.Json
 Expecto
-Saturn
 Microsoft.AspNetCore.TestHost
 Microsoft.AspNetCore.Hosting
+
+group Saturn
+  Saturn
