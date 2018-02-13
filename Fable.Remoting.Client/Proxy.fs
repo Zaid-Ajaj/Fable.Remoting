@@ -15,11 +15,21 @@ module Proxy =
         response: Response
     }
 
+    let mutable private authHandler : Option<string option -> unit> = None
+    let mutable private forbiddenHandler : Option<string option -> unit> = None
     let mutable private errorHandler : Option<ErrorInfo -> unit> = None
 
     /// When an error is thrown on the server and it is intercepted by the global `onError` handler, the server can either ignore the error or propagate an object that contains information of the server. In the case that a message is propagated then this error handler intercepts that error serialized as json along with the route and response information 
     let onError (handler: ErrorInfo -> unit) = 
         errorHandler <- Some handler
+    
+    /// When an unauthorized error is thrown on the server, this handler intercepts that error along with the optional authorization string information
+    let onAuthError (handler: string option -> unit) = 
+        authHandler <- Some handler
+
+    /// When a forbidden error is thrown on the server, this handler intercepts that error along with the optional authorization string information
+    let onForbiddenError (handler: string option -> unit) = 
+        forbiddenHandler <- Some handler        
 
     [<Emit("$2[$0] = $1")>]
     let private setProp (propName: string) (propValue: obj) (any: obj) : unit = jsNative
@@ -67,6 +77,18 @@ module Proxy =
                 | 200 -> 
                     // success result
                     return ofJsonAsType jsonResponse returnType
+                | 401  ->
+                    // unauthorized result
+                    match authHandler with
+                    |Some handler -> handler auth
+                    |None -> ()
+                    return! failwith "Auth error"
+                | 403  ->
+                    // forbidden result
+                    match forbiddenHandler with
+                    |Some handler -> handler auth
+                    |None -> ()
+                    return! failwith "Forbidden error"
                 | 500 -> 
                     // Error from server
                     let customError = jsonParse jsonResponse

@@ -121,7 +121,7 @@ module FableSaturnAdapter =
                             let result = { error = value; ignored = false; handled = true }
                             return! text (json result) next ctx
                      | None -> 
-                        let result = { error = "Server error: not handled"; ignored = false; handled = true }
+                        let result = { error = "Server error: not handled"; ignored = false; handled = false }
                         return! text (json result) next ctx
             }
             
