@@ -23,8 +23,8 @@ dotnet new SAFE --Server giraffe --Remoting
 
 Feedback and suggestions are very much welcome.
 
-## Available Packages:
-
+## Available Packages: 
+ 
 | Library  | Version |
 | ------------- | ------------- |
 | Fable.Remoting.Client  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client) |
