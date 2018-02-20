@@ -10,15 +10,10 @@ nuget Microsoft.AspNetCore.TestHost
 nuget Newtonsoft.Json
 nuget NUnit
 nuget Suave
-nuget Giraffe ~> 1.0.0
+nuget Giraffe
 nuget Microsoft.CSharp
+nuget Saturn
 clitool dotnet-fable
-
-group Saturn
-    source https://www.nuget.org/api/v2
-    nuget Saturn
-    nuget Giraffe ~> 0.1.0-beta-700
-
 
 group Build
     framework >= net45
