@@ -8,7 +8,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;saturn</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.0</Version>
+    <Version>1.1</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
   </PropertyGroup>
 
