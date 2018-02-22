@@ -11,8 +11,9 @@ open Saturn.Application
 open Saturn.Router
 
 // Test helpers
+open Fable.Remoting.Giraffe
 open Fable.Remoting.Saturn
-FableSaturnAdapter.logger <- Some (printfn "%s")
+FableGiraffeAdapter.logger <- Some (printfn "%s")
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
@@ -54,9 +55,9 @@ let request (path: string) (body: string) =
     makeRequest (postReq path body)
 
 let ofJson<'t> (input: string) = 
-    deserialize<'t> input
+    FableGiraffeAdapter.deserialize<'t> input
 let toJson (x: obj) = 
-    json x
+    FableGiraffeAdapter.json x
 
 let FableSaturnAdapterTests = 
     testList "FableSaturnAdapter tests" [

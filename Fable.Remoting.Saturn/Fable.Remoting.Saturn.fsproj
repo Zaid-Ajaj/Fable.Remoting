@@ -17,8 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
-    <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
+    <ProjectReference Include="..\Fable.Remoting.Giraffe\Fable.Remoting.Giraffe.fsproj" />    
   </ItemGroup>
   
   <Import Project="..\.paket\Paket.Restore.targets" />
