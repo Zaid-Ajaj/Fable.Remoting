@@ -43,8 +43,15 @@ module Proxy =
     let private jsonParse (content: string) : obj = jsNative
     [<Emit("JSON.stringify($0)")>]
     let private stringify (x: obj) : string = jsNative
+
+    [<Emit("arguments")>]
+    let private args (): obj[] = jsNative 
+
     let private proxyFetch typeName methodName returnType (endpoint: string option) (routeBuilder: string -> string -> string) (auth:string option) =
-        fun data -> 
+        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 ->
+            let data = [
+                arg0;arg1;arg2;arg3;arg4;arg5;arg6;arg7;arg8;arg9;arg10;arg11;arg12
+             ]
             let route = routeBuilder typeName methodName
             let url = 
               match endpoint with
@@ -133,14 +140,15 @@ module Proxy =
             let funcParamterTypes = 
                 FSharpType.GetFunctionElements (propInfo.PropertyType)
                 |> typed<System.Type []>
-            if Seq.length funcParamterTypes > 2 then 
-                failwith (funcNotSupportedMsg funcName)
-            else (funcName, funcParamterTypes)
+            //if Seq.length funcParamterTypes > 2 then 
+            //    failwith (funcNotSupportedMsg funcName)
+            //else (funcName, funcParamterTypes)
+            (funcName, funcParamterTypes)
         )
         |> List.ofSeq
 
     
-    let [<PassGenerics>] private createSecureWithEndpointAndBuilderImpl<'t> (endpoint: string option) (routeBuilder : string -> string -> string) (auth: string option) : 't = 
+    let [<PassGenerics>]  private createSecureWithEndpointAndBuilderImpl<'t> (endpoint: string option) (routeBuilder : string -> string -> string) (auth: string option) : 't = 
         // create an empty object literal
         let proxy = obj()
         let typeName = typeof<'t>.Name

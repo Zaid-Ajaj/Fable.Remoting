@@ -3,6 +3,4 @@ Newtonsoft.Json
 Expecto
 Microsoft.AspNetCore.TestHost
 Microsoft.AspNetCore.Hosting
-
-group Saturn
-  Saturn
+Saturn
