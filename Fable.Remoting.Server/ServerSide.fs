@@ -135,6 +135,7 @@ module SharedCE =
             {state with Logger=Some logger}
         /// Defines an optional `logger : (string -> unit)` for backward compatibility
         [<CustomOperation("use_some_logger")>]
+        [<System.Obsolete("For backward compatibility only.")>]
         member __.UseSomeLogger(state,logger)=
             {state with Logger=logger}
         /// Defines an error `handler : ErrorHandler`
@@ -143,6 +144,7 @@ module SharedCE =
             {state with ErrorHandler=Some errorHandler}
         /// Defines an optional error `handler : ErrorHandler` for backward compatibility
         [<CustomOperation("use_some_error_handler")>]
+        [<System.Obsolete("For backward compatibility only.")>]
         member __.UseSomeErrorHandler(state,errorHandler)=
             {state with ErrorHandler=errorHandler}
     /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation

@@ -187,6 +187,7 @@ module Proxy =
                 {state with Endpoint = Some endpoint}
             /// Pins the proxy at an optional endpoint. For backward compatibility
             [<CustomOperation("at_some_endpoint")>]
+            [<System.Obsolete("For backward compatibility only.")>]
             member __.AtSomeEndpoint(state,endpoint) =
                 {state with Endpoint = endpoint}
             /// Sets an optional error handler for server errors.
@@ -195,6 +196,7 @@ module Proxy =
                 {state with ServerErrorHandler = Some errorHandler}
             /// Sets an optional error handler for server errors. For backward compatibility
             [<CustomOperation("use_some_error_handler")>]
+            [<System.Obsolete("For backward compatibility only.")>]
             member __.UseSomeErrorHandler(state,errorHandler) =
                 {state with ServerErrorHandler = errorHandler}
             /// Sets an error handler that takes the optional authorization used on the request header for unauthorized errors.
@@ -203,6 +205,7 @@ module Proxy =
                 {state with AuthErrorHandler = Some errorHandler}
             /// Sets an optional error handler that takes the optional authorization used on the request header for unauthorized errors. For backward compatibility
             [<CustomOperation("use_some_auth_error_handler")>]
+            [<System.Obsolete("For backward compatibility only.")>]
             member __.UseSomeAuthErrorHandler(state,errorHandler) =
                 {state with AuthErrorHandler = errorHandler}
             /// Sets an error handler that takes the optional authorization used on the request header for forbidden errors.
@@ -210,7 +213,7 @@ module Proxy =
             member __.UseForbiddenErrorHandler(state,errorHandler) =
                 {state with ForbiddenErrorHandler = Some errorHandler}
             /// Sets an optional error handler that takes the optional authorization used on the request header for forbidden errors. For backward compatibility
-
+            [<System.Obsolete("For backward compatibility only.")>]
             [<CustomOperation("use_some_forbidden_error_handler")>]
             member __.UseSomeForbiddenErrorHandler(state,errorHandler) =
                 {state with ForbiddenErrorHandler = errorHandler}
@@ -220,6 +223,7 @@ module Proxy =
                 {state with Authorization = Some token}
             /// Sets an optional authorization string to send with the request onto the Authorization header. For backward compatibility
             [<CustomOperation("with_some_token")>]
+            [<System.Obsolete("For backward compatibility only.")>]
             member __.WithSomeToken(state,token) =
                 {state with Authorization = token}
             /// Sets a builder that takes the implementation type and method name. Used to define the proxy path
