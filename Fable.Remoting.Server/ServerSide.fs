@@ -1,13 +1,16 @@
 ﻿namespace Fable.Remoting.Server
 
-open FSharp.Reflection
+open Fable.Remoting.Json
+open System.Text
+open Newtonsoft.Json.Linq
+open Newtonsoft.Json
 
 type IAsyncBoxer =  
     abstract BoxAsyncResult : obj -> Async<obj>
 
 type AsyncBoxer<'T>() = 
     interface IAsyncBoxer with
-        member this.BoxAsyncResult(boxedAsync: obj) : Async<obj> = 
+        member __.BoxAsyncResult(boxedAsync: obj) : Async<obj> = 
             match boxedAsync with
             | :? Async<'T> as unboxedAsyncOfGenericValueT -> 
                 async { 
@@ -43,9 +46,6 @@ module ServerSide =
          let propType = propInfo.PropertyType 
          
          let fsharpFuncArgs = getFsharpFuncArgs propType
-         // A
-         let argumentType = fsharpFuncArgs.[0]
-
          // Async<B>
          let asyncOfB = fsharpFuncArgs |> Array.last
          // B
@@ -61,3 +61,87 @@ module ServerSide =
             let! asyncResult = boxer.BoxAsyncResult fsAsync
             return asyncResult
          }
+[<AutoOpen>]
+module SharedCE =
+    type RouteInfo = {
+        path: string
+        methodName: string
+    }
+
+    type ErrorResult = 
+        | Ignore 
+        | Propagate of obj
+
+    type ErrorHandler = System.Exception -> RouteInfo -> ErrorResult
+
+    type CustomErrorResult<'a> =
+        { error: 'a; 
+          ignored: bool;
+          handled: bool; }
+    type BuilderOptions = {
+        Logger : (string -> unit) option
+        ErrorHandler: ErrorHandler option
+        Builder: string -> string -> string
+    }
+    with
+        static member Empty =
+            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"}
+
+    type RemoteBuilder<'a>(implementation: 'a) =
+        let fableConverter = FableJsonConverter()
+
+        let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
+        let toLogger logf = string >> logf
+        let logDeserializationTypes logger (text: string) (inputType: System.Type[]) = 
+            logger |> Option.iter(fun logf ->
+                StringBuilder()
+                |> writeLn "Fable.Remoting:"
+                |> writeLn "About to deserialize JSON:"
+                |> writeLn text
+                |> writeLn (sprintf "Into .NET Types: [%s]" (inputType |> Array.map (fun e -> e.FullName.Replace("+", ".")) |> String.concat ", "))
+                |> writeLn ""                
+                |> toLogger logf)
+        member __.Implementation = implementation
+        
+        /// Deserialize a json string using FableConverter
+        member __.Deserialize {Logger=logger} (json: string) (inputType: System.Type[]) =
+            logDeserializationTypes logger json inputType
+            let args = JArray.Parse json
+            let serializer = JsonSerializer()
+            serializer.Converters.Add fableConverter
+            Seq.zip args inputType |> Seq.toArray |> Array.map (fun (o,t) -> o.ToObject(t,serializer))
+        
+        member __.Json {Logger=logger} value =
+          let result = JsonConvert.SerializeObject(value, fableConverter)
+          logger |> Option.iter(fun logf ->
+              StringBuilder()
+              |> writeLn "Fable.Remoting: Returning serialized result back to client"
+              |> writeLn result
+              |> toLogger logf)            
+          result
+           
+        member __.Yield(_) =  
+            BuilderOptions.Empty
+            
+        [<CustomOperation("with_builder")>]
+        member __.WithBuilder(state,builder)=
+            {state with Builder=builder}
+        [<CustomOperation("with_default")>]
+        member __.WithDefault(state)=
+            {state with Builder=BuilderOptions.Empty.Builder}
+        [<CustomOperation("use_logger")>]
+        member __.UseLogger(state,logger)=
+            {state with Logger=Some logger}
+        [<CustomOperation("use_some_logger")>]
+        member __.UseSomeLogger(state,logger)=
+            {state with Logger=logger}
+        [<CustomOperation("use_error_handler")>]
+        member __.UseErrorHandler(state,errorHandler)=
+            {state with ErrorHandler=Some errorHandler}
+        [<CustomOperation("use_some_error_handler")>]
+        member __.UseSomeErrorHandler(state,errorHandler)=
+            {state with ErrorHandler=errorHandler}
+
+
+
+    let remoting = RemoteBuilder

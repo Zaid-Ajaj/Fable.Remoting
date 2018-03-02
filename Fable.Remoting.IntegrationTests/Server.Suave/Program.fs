@@ -1,4 +1,5 @@
 ﻿open Suave 
+open Fable.Remoting.Server
 open Fable.Remoting.Suave
 open ServerImpl
 open SharedTypes
