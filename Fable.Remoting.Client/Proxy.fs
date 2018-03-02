@@ -73,87 +73,88 @@ module Proxy =
                     (funcName, funcParamterTypes)
                 )
                 |> List.ofSeq
-            
-    type RemoteBuilder<'a>() =
-            [<PassGenerics>]
-            let proxyFetch options typeName methodName returnType =
-                fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 ->
-                    let data = [
-                        arg0;arg1;arg2;arg3;arg4;arg5;arg6;arg7;arg8;arg9;arg10;arg11;arg12
-                     ]
-                    let route = options.Builder typeName methodName
-                    let url = 
-                      match options.Endpoint with
-                      | Some path -> 
-                         if path.EndsWith("/") 
-                         then sprintf "%s%s" path route
-                         else sprintf "%s/%s" path route
-                      | None -> route
-                    promise {
-                        // Send RPC POST request to the server
-                        let requestProps = [
-                            Body (unbox (toJson data))
-                            Method HttpMethod.POST
-                            Credentials RequestCredentials.Sameorigin
-                            requestHeaders 
-                             [ yield ContentType "application/json; charset=utf8"; 
-                               yield Cookie document.cookie
-                               match options.Authorization with
-                               | Some auth -> yield Authorization auth
-                               | None -> ()  ] 
-                        ] 
 
-                        let makeReqProps props = 
-                            keyValueList CaseRules.LowerFirst props :?> RequestInit
-                        // use GlobalFetch.fetch to control error handling
-                        let! response = GlobalFetch.fetch(RequestInfo.Url url, makeReqProps requestProps)
-                        //let! response = Fetch.fetch url requestProps
-                        let! jsonResponse = response.text()
-                        match response.Status with
-                        | 200 -> 
-                            // success result
-                            return ofJsonAsType jsonResponse returnType
-                        | 401  ->
-                            // unauthorized result
-                            match options.AuthErrorHandler with
-                            |Some handler -> handler options.Authorization
-                            |None -> ()
-                            return! failwith "Auth error"
-                        | 403  ->
-                            // forbidden result
-                            match forbiddenHandler with
-                            |Some handler -> handler options.Authorization
-                            |None -> ()
-                            return! failwith "Forbidden error"
-                        | 500 -> 
-                            // Error from server
-                            let customError = jsonParse jsonResponse
-                            // manually read properties of the the object literal representing the error 
-                            match getAs<bool> customError "ignored" with
-                            | true -> return! failwith (getAs<string> customError "error")
-                            | false -> 
-                                match getAs<bool> customError "handled" with
-                                | false -> 
-                                    // throw a generic server error because it was not handled on the server 
-                                    return! failwith (getAs<string> customError "error")
-                                | true -> 
-                                    // handled and not ignored -> error message propagated
-                                    let error = stringify (getAs<obj> customError "error")
-                                    // collect error information along the response data
-                                    let errorInfo = 
-                                      { path = url; 
-                                        methodName = methodName; 
-                                        error = error;
-                                        response = response }
-                                    // send the error to the client side error handler
-                                    match options.ServerErrorHandler with
-                                    | Some handler -> 
-                                        handler errorInfo
-                                        return! failwith "Server error"
-                                    | None -> return! failwith "Server error"
-                        | _ -> return! failwith "Unknown response status"
-                    }
-                    |> Async.AwaitPromise   
+    let private proxyFetch options typeName methodName returnType =
+        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 ->
+            let data = [
+                arg0;arg1;arg2;arg3;arg4;arg5;arg6;arg7;arg8;arg9;arg10;arg11;arg12
+             ]
+            let route = options.Builder typeName methodName
+            let url = 
+              match options.Endpoint with
+              | Some path -> 
+                 if path.EndsWith("/") 
+                 then sprintf "%s%s" path route
+                 else sprintf "%s/%s" path route
+              | None -> route
+            promise {
+                // Send RPC POST request to the server
+                let requestProps = [
+                    Body (unbox (toJson data))
+                    Method HttpMethod.POST
+                    Credentials RequestCredentials.Sameorigin
+                    requestHeaders 
+                     [ yield ContentType "application/json; charset=utf8"; 
+                       yield Cookie document.cookie
+                       match options.Authorization with
+                       | Some auth -> yield Authorization auth
+                       | None -> ()  ] 
+                ] 
+
+                let makeReqProps props = 
+                    keyValueList CaseRules.LowerFirst props :?> RequestInit
+                // use GlobalFetch.fetch to control error handling
+                let! response = GlobalFetch.fetch(RequestInfo.Url url, makeReqProps requestProps)
+                //let! response = Fetch.fetch url requestProps
+                let! jsonResponse = response.text()
+                match response.Status with
+                | 200 -> 
+                    // success result
+                    return ofJsonAsType jsonResponse returnType
+                | 401  ->
+                    // unauthorized result
+                    match options.AuthErrorHandler with
+                    |Some handler -> handler options.Authorization
+                    |None -> ()
+                    return! failwith "Auth error"
+                | 403  ->
+                    // forbidden result
+                    match forbiddenHandler with
+                    |Some handler -> handler options.Authorization
+                    |None -> ()
+                    return! failwith "Forbidden error"
+                | 500 -> 
+                    // Error from server
+                    let customError = jsonParse jsonResponse
+                    // manually read properties of the the object literal representing the error 
+                    match getAs<bool> customError "ignored" with
+                    | true -> return! failwith (getAs<string> customError "error")
+                    | false -> 
+                        match getAs<bool> customError "handled" with
+                        | false -> 
+                            // throw a generic server error because it was not handled on the server 
+                            return! failwith (getAs<string> customError "error")
+                        | true -> 
+                            // handled and not ignored -> error message propagated
+                            let error = stringify (getAs<obj> customError "error")
+                            // collect error information along the response data
+                            let errorInfo = 
+                              { path = url; 
+                                methodName = methodName; 
+                                error = error;
+                                response = response }
+                            // send the error to the client side error handler
+                            match options.ServerErrorHandler with
+                            | Some handler -> 
+                                handler errorInfo
+                                return! failwith "Server error"
+                            | None -> return! failwith "Server error"
+                | _ -> return! failwith "Unknown response status"
+            }
+            |> Async.AwaitPromise   
+
+    type RemoteBuilder<'a>() =
+            
 
             let funcNotSupportedMsg funcName = 
                 [ sprintf "Fable.Remoting.Client: Function %s cannot be used for client proxy" funcName
