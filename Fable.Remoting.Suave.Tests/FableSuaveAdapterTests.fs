@@ -25,7 +25,8 @@ FableSuaveAdapter.onError <| fun ex routeInfo ->
     Propagate (ex.Message)
 
 let app = FableSuaveAdapter.webPartFor implementation
-let postContent (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
+let postContent (input: string) =  new StringContent(sprintf "[%s]" input, System.Text.Encoding.UTF8)
+let postRaw (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
 
 let converter : JsonConverter = FableJsonConverter() :> JsonConverter
 let toJson (x: obj) = JsonConvert.SerializeObject(x, [| converter |])
@@ -244,4 +245,22 @@ let fableSuaveAdapterTests =
             testApp
             |> req POST "/IProtocol/floatList" (Some someInput)
             |> equal "4.2"
+
+        testCase "Invoking with two arguments works" <| fun () -> 
+            let defaultConfig = getConfig ()
+            let someInput = postRaw "[13, 17]"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req POST "/IProtocol/multipleSum" (Some someInput)
+            |> equal "30"
+
+        testCase "Invoking with lots of arguments works" <| fun () -> 
+            let defaultConfig = getConfig ()
+            let someInput = postRaw "[\"Test\", 17, 5.0]"
+            let testApp = runWith defaultConfig app
+            testApp
+            |> req POST "/IProtocol/lotsOfArgs" (Some someInput)
+            |> equal "\"string: Test; int: 17; float: 5.000000\""
+
+            
     ]

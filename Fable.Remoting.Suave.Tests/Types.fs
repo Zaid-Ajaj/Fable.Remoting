@@ -34,6 +34,8 @@ type IProtocol = {
     echoMap : Map<string, int> -> Async<Map<string, int>>
 
     throwError : string -> Async<int>
+    multipleSum : int -> int -> Async<int>
+    lotsOfArgs : string -> int -> float -> Async<string>
 }
 
 let implementation = {
@@ -62,4 +64,6 @@ let implementation = {
     echoBigInteger = fun xs -> async { return Seq.sum xs }
     echoMap = fun x -> async { return x }
     throwError = fun x -> async { failwith "I am thrown from adapter function"; return 1 }
+    multipleSum = fun a b -> async {return a + b}
+    lotsOfArgs = fun s i f -> async {return sprintf "string: %s; int: %i; float: %f" s i f}
  }

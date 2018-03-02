@@ -10,6 +10,7 @@ open Newtonsoft.Json
 
 open Fable.Remoting.Json
 open Fable.Remoting.Server
+open Newtonsoft.Json.Linq
 
 type RouteInfo = {
     path: string
@@ -50,28 +51,29 @@ module FableSuaveAdapter =
         onErrorHandler <- Some handler
 
 
-    let private logDeserialization (text: string) (inputType: System.Type) = 
+    let private logDeserializationTypes (text: string) (inputType: System.Type[]) = 
         StringBuilder()
         |> writeLn "Fable.Remoting:"
         |> writeLn "About to deserialize JSON:"
         |> writeLn text
-        |> writeLn (sprintf "Into .NET Type: %s" (inputType.FullName.Replace("+", ".")))
+        |> writeLn (sprintf "Into .NET Types: [%s]" (inputType |> Array.map (fun e -> e.FullName.Replace("+", ".")) |> String.concat ", "))
         |> writeLn ""
-        |> toLogger
-        
+        |> toLogger    
 
     /// Deserialize a json string using FableConverter
-    let deserialize (json: string) (inputType: System.Type) =
-        logDeserialization json inputType
-        let parameterTypes = [| typeof<string>; typeof<System.Type>; typeof<JsonConverter array> |]
-        let deserialize = typeof<JsonConvert>.GetMethod("DeserializeObject", parameterTypes) 
-        let result = deserialize.Invoke(null, [| json; inputType; [| fableConverter |] |])
-        result
+    let deserialize (json: string) (inputType: System.Type[]) =
+        logDeserializationTypes json inputType
+        let args = JArray.Parse json
+        let serializer = JsonSerializer()
+        serializer.Converters.Add fableConverter
+        Seq.zip args inputType |> Seq.toArray |> Array.map (fun (o,t) -> o.ToObject(t,serializer))
+        
+        
            
 
     // Get data from request body and deserialize.
     // getResourceFromReq : HttpRequest -> obj
-    let private getResourceFromReq (req : HttpRequest) (inputType: System.Type)  =
+    let private getResourceFromReq (req : HttpRequest) (inputType: System.Type[])  =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
         deserialize json inputType
         
@@ -92,7 +94,10 @@ module FableSuaveAdapter =
 
     let private handleRequest methodName serverImplementation routePath = 
         let inputType = ServerSide.getInputType methodName serverImplementation
-        let hasArg = inputType.FullName <> "Microsoft.FSharp.Core.Unit"
+        let hasArg =
+            match inputType with
+            |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
+            |_ -> true
         fun (req: HttpRequest) ->
             Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) logger
             let requestBodyData = 
@@ -100,8 +105,8 @@ module FableSuaveAdapter =
                 // then don't bother getting any input from request
                 match hasArg with 
                 | true  -> getResourceFromReq req inputType
-                | false -> null
-            let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData hasArg
+                | false -> [|null|]
+            let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
             async {
                 try
                   let! dynamicResult = result

@@ -31,7 +31,7 @@ let createHost() =
 let postReq (path : string) (body: string) =
     let url = "http://127.0.0.1" + path
     let request = new HttpRequestMessage(HttpMethod.Post, url)
-    request.Content <- postContent body
+    request.Content <- postContent (sprintf "[%s]" body)
     request
 
 let runTask task =

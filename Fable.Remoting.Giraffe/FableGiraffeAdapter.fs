@@ -7,6 +7,7 @@ open Fable.Remoting.Server
 open Microsoft.AspNetCore.Http
 
 open Giraffe
+open Newtonsoft.Json.Linq
 
 type RouteInfo = {
     path: string
@@ -53,6 +54,15 @@ module FableGiraffeAdapter =
         |> writeLn ""
         |> toLogger
 
+    let private logDeserializationTypes (text: string) (inputType: System.Type[]) = 
+        StringBuilder()
+        |> writeLn "Fable.Remoting:"
+        |> writeLn "About to deserialize JSON:"
+        |> writeLn text
+        |> writeLn (sprintf "Into .NET Types: [%s]" (inputType |> Array.map (fun e -> e.FullName.Replace("+", ".")) |> String.concat ", "))
+        |> writeLn ""
+        |> toLogger   
+
     let private logSerializedResult (json: string) = 
         StringBuilder()
         |> writeLn "Fable.Remoting: Returning serialized result back to client"
@@ -67,6 +77,13 @@ module FableGiraffeAdapter =
         let deserialize = typeof<JsonConvert>.GetMethod("DeserializeObject", parameterTypes) 
         let result = deserialize.Invoke(null, [| json; inputType; [| fableConverter |] |])
         result
+    let deserializeByTypes (json: string) (inputType: System.Type[]) =
+        logDeserializationTypes json inputType
+        let args = JArray.Parse json
+        let serializer = JsonSerializer()
+        serializer.Converters.Add fableConverter
+        Seq.zip args inputType |> Seq.toArray |> Array.map (fun (o,t) -> o.ToObject(t,serializer))
+        
 
     let deserialize<'t> (json: string) : 't = 
         JsonConvert.DeserializeObject<'t>(json, fableConverter)
@@ -80,23 +97,26 @@ module FableGiraffeAdapter =
 
     // Get data from request body and deserialize.
     // getResourceFromReq : HttpRequest -> obj
-    let getResourceFromReq (ctx : HttpContext) (inputType: System.Type) =
+    let getResourceFromReq (ctx : HttpContext) (inputType: System.Type[]) =
         let requestBodyStream = ctx.Request.Body
         use streamReader = new StreamReader(requestBodyStream)
         let requestBodyContent = streamReader.ReadToEnd()
-        deserializeByType requestBodyContent inputType
+        deserializeByTypes requestBodyContent inputType
     
     let handleRequest methodName serverImplementation routePath = 
         let inputType = ServerSide.getInputType methodName serverImplementation
-        let hasArg = inputType.FullName <> "Microsoft.FSharp.Core.Unit"
+        let hasArg =
+            match inputType with
+            |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
+            |_ -> true
         fun (next : HttpFunc) (ctx : HttpContext) ->
             Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) logger
             let requestBodyData = 
                 match hasArg with 
                 | true  -> getResourceFromReq ctx inputType
-                | false -> null
+                | false -> [|null|]
                 
-            let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData hasArg
+            let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
 
             task {
                 try 

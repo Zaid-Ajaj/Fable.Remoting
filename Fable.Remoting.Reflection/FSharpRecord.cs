@@ -15,7 +15,7 @@ namespace Fable.Remoting.Reflection
     {
         static B Pipe<A, B>(this A x, Func<A, B> f) => f(x);
 
-        public static dynamic Invoke(string methodName, object implementation, object arg, bool hasArg)
+        public static dynamic Invoke(string methodName, object implementation, object[] args)
         {
             object funcObj =
                  implementation
@@ -29,7 +29,7 @@ namespace Fable.Remoting.Reflection
 
             var func = funcMethods.First(x => x.Name == "Invoke");        
 
-            return hasArg ? func.Invoke(funcObj, new object[] { (dynamic)arg })
+            return args.Length > 0 ? func.Invoke(funcObj, args)
                           : func.Invoke(funcObj, new object[] { null });
 
                      //.Pipe((FSharpFunc<dynamic, dynamic> fsFunc) => hasArg ? fsFunc.Invoke((dynamic)arg) : fsFunc.Invoke(null));
