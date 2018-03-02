@@ -50,9 +50,9 @@ module FableGiraffeAdapter =
             task {
                 try 
                   let! unwrappedFromAsync = Async.StartAsTask result 
-                  let serializedResult = json unwrappedFromAsync
+                  let serializedResult = builder.Json options unwrappedFromAsync
                   ctx.Response.StatusCode <- 200
-                  return! text (builder.Json options serializedResult)  next ctx
+                  return! text serializedResult next ctx
                 with
                   | ex ->
                      ctx.Response.StatusCode <- 500
