@@ -11,14 +11,13 @@ open System.Text
 
 [<AutoOpen>]
 module FableSuaveAdapter =
-  ///Legacy logger for backward compatibility
+  /// Legacy logger for backward compatibility. Use `use_logger` on the computation expression instead
   let mutable logger : (string -> unit) option = None
-  ///Legacy ErrorHandler for backward compatibility
-
-  let mutable private onErrorHandler : ErrorHandler option = None 
+  /// Legacy ErrorHandler for backward compatibility. Use `use_error_handler` on the computation expression instead
+  let mutable private onErrorHandler : ErrorHandler option = None
 
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
-  let onError (handler: ErrorHandler) = 
+  let onError (handler: ErrorHandler) =
         onErrorHandler <- Some handler
   type RemoteBuilder<'a> with
    member builder.Run(options:SharedCE.BuilderOptions) =
@@ -26,7 +25,7 @@ module FableSuaveAdapter =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
         builder.Deserialize options json inputType
 
-    let handleRequest methodName serverImplementation routePath = 
+    let handleRequest methodName serverImplementation routePath =
         let inputType = ServerSide.getInputType methodName serverImplementation
         let hasArg =
             match inputType with
@@ -34,10 +33,10 @@ module FableSuaveAdapter =
             |_ -> true
         fun (req: HttpRequest) ->
             Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
-            let requestBodyData = 
+            let requestBodyData =
                 // if input is unit
                 // then don't bother getting any input from request
-                match hasArg with 
+                match hasArg with
                 | true  -> getResourceFromReq req inputType
                 | false -> [|null|]
             let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
@@ -47,8 +46,8 @@ module FableSuaveAdapter =
                 try
                   let! dynamicResult = result
                   return builder.Json options dynamicResult |> onSuccess
-                with 
-                  | ex -> 
+                with
+                  | ex ->
                      Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
                      let route : RouteInfo = { path = routePath; methodName = methodName  }
                      match options.ErrorHandler with
@@ -57,39 +56,25 @@ module FableSuaveAdapter =
                         match result with
                         // Server error ignored by error handler
                         | Ignore ->
-                            let result = { error = "Server error: ignored"; ignored = true; handled = true }  
+                            let result = { error = "Server error: ignored"; ignored = true; handled = true }
                             return builder.Json options result |> onFailure
                         // Server error mapped into some other `value` by error handler
-                        | Propagate value ->  
+                        | Propagate value ->
                             let result = { error = value; ignored = false; handled = true }
                             return builder.Json options result |> onFailure
                      // There no server handler
-                     | None -> 
+                     | None ->
                         let result = { error = "Server error: not handled"; ignored = true; handled = false }
                         return builder.Json options result |> onFailure
-                }  
+                }
             |> Async.RunSynchronously
 
-    // Get data from request body and deserialize.
-    // getResourceFromReq : HttpRequest -> obj
-    
-    (*
-        
-      match resultType with
-      | Success ->  OK result >=> Writers.setMimeType "application/json; charset=utf-8"
-      | Error -> OK result >=> Writers.setMimeType "application/json; charset=utf-8"
-                           >=> Writers.setStatus HttpCode.HTTP_500
-    *)
-    
-    
-    /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.
-  
     let sb = StringBuilder()
     let typeName = builder.Implementation.GetType().Name
     sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
     builder.Implementation.GetType()
         |> FSharpType.GetRecordFields
-        |> Seq.map (fun propInfo -> 
+        |> Seq.map (fun propInfo ->
             let methodName = propInfo.Name
             let fullPath = options.Builder typeName methodName
             sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
@@ -99,7 +84,8 @@ module FableSuaveAdapter =
         |> fun routes ->
             options.Logger |> Option.iter (fun logf -> string sb |> logf)
             choose routes
-    
+  /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.
+
   let webPartWithBuilderFor implementation (builder:string->string->string) : WebPart =
     remoting implementation {
             with_builder builder
@@ -108,5 +94,5 @@ module FableSuaveAdapter =
         }
 
     /// Creates a WebPart from the given implementation of a protocol. Uses the default route builder: `sprintf "/%s/%s"`.
-  let webPartFor implementation : WebPart = 
+  let webPartFor implementation : WebPart =
         webPartWithBuilderFor implementation (sprintf "/%s/%s")
