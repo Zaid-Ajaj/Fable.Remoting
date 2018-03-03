@@ -1,4 +1,4 @@
-﻿open Suave 
+﻿open Suave
 open Fable.Remoting.Server
 open Fable.Remoting.Suave
 open ServerImpl
@@ -11,8 +11,8 @@ FableSuaveAdapter.onError <| fun ex routeInfo ->
     Propagate ex.Message
 
 [<EntryPoint>]
-let main argv = 
+let main argv =
     FableSuaveAdapter.logger <- Some (printfn "%s")
     printfn "%A" argv
     startWebServer defaultConfig fableWebPart
-    0 
+    0
