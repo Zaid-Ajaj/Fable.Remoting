@@ -80,9 +80,9 @@ module Proxy =
                 |> List.ofSeq
 
     let private proxyFetch options typeName methodName returnType =
-        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 ->
+        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 arg13 arg14 arg15->
             let data = [
-                arg0;arg1;arg2;arg3;arg4;arg5;arg6;arg7;arg8;arg9;arg10;arg11;arg12
+                box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15
              ]
             let route = options.Builder typeName methodName
             let url =
@@ -174,11 +174,50 @@ module Proxy =
                 fields |> List.iter (fun field ->
                     let funcTypes = snd field
                     // Async<T>
-                    let asyncOfreturnType = funcTypes.[1]
+                    let asyncOfreturnType = funcTypes |> Array.last
                     // T
                     let returnType = asyncOfreturnType.GenericTypeArguments.[0]
                     let fieldName = fst field
-                    setProp fieldName (proxyFetch state typeName fieldName returnType) proxy
+                    let normalize n =
+                        let fn = proxyFetch state typeName fieldName returnType
+                        match n with
+                        |0 ->
+                            box (fn null null null null null null null null null null null null null null null null)
+                        |1 ->
+                            box (fun a -> fn a null null null null null null null null null null null null null null null)
+                        |2 ->
+                            box (fun a b -> fn a b null null null null null null null null null null null null null null)
+                        |3 ->
+                            box (fun a b c -> fn a b c null null null null null null null null null null null null null)
+                        |4 ->
+                            box (fun a b c d -> fn a b c d null null null null null null null null null null null null)
+                        |5 ->
+                            box (fun a b c d e -> fn a b c d e null null null null null null null null null null null)
+                        |6 ->
+                            box (fun a b c d e f -> fn a b c d e f null null null null null null null null null null)
+                        |7 ->
+                            box (fun a b c d e f g -> fn a b c d e f g null null null null null null null null null)
+                        |8 ->
+                            box (fun a b c d e f g h -> fn a b c d e f g h null null null null null null null null)
+                        |9 ->
+                            box (fun a b c d e f g h i -> fn a b c d e f g h i null null null null null null null)
+                        |10 ->
+                            box (fun a b c d e f g h i j -> fn a b c d e f g h i j null null null null null null)
+                        |11 ->
+                            box (fun a b c d e f g h i j k -> fn a b c d e f g h i j k null null null null null)
+                        |12 ->
+                            box (fun a b c d e f g h i j k l -> fn a b c d e f g h i j k l null null null null)
+                        |13 ->
+                            box (fun a b c d e f g h i j k l m -> fn a b c d e f g h i j k l m null null null)
+                        |14 ->
+                            box (fun a b c d e f g h i j k l m n -> fn a b c d e f g h i j k l m n null null)
+                        |15 ->
+                            box (fun a b c d e f g h i j k l m n o -> fn a b c d e f g h i j k l m n o null)
+                        |16 ->
+                            box fn
+                        |_ -> failwith "Only up to 16 arguments are supported"
+                        
+                    setProp fieldName (normalize (funcTypes.Length-1)) proxy
                 )
                 unbox proxy
             /// Pins the proxy at an endpoint
