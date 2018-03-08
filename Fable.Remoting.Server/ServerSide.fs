@@ -80,6 +80,10 @@ module SharedCE =
           handled: bool; }
     type RequestContext = {
         Host : string
+        Port : int
+        Path : string
+        Headers : Map<string,string list>
+        Cookies : Map<string,string>
     }
     type ResponseOverride = {
         StatusCode : int option

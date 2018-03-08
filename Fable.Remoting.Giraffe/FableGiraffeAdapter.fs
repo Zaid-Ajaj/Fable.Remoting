@@ -24,9 +24,21 @@ module FableGiraffeAdapter =
 
   type RemoteBuilder<'a>(implementation)=
    inherit RemoteBuilderBase<'a,HttpContext,HttpHandler>(implementation)
-   override __.Context(ctx) = { 
+   override __.Context(ctx) =
+    //let x = ctx.Request.Cookies
+    { 
        Host = ctx.Request.Host.Host
-   }
+       Port = ctx.Request.Host.Port.Value
+       Path = ctx.Request.Path.Value
+       Headers =
+        ctx.Request.Headers
+        |> Seq.map (fun (KeyValue (k,v)) -> k, v |> Seq.toList)
+        |> Map.ofSeq
+       Cookies =
+        ctx.Request.Cookies 
+        |> Seq.map (|KeyValue|)
+        |> Map.ofSeq
+    }
    override builder.Run(options:SharedCE.BuilderOptions) =
 
     // Get data from request body and deserialize.
