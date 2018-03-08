@@ -11,9 +11,12 @@ open Fable.Remoting.Giraffe
 open Expecto
 open Types
 open Mono.Cecil
+open Newtonsoft.Json
+open Newtonsoft.Json
+open Fable.Remoting.Json
 
 // Test helpers
-FableGiraffeAdapter.logger <- Some (printfn "%s")
+FableGiraffeAdapter.logger <- Some (eprintfn "%s")
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
@@ -52,11 +55,13 @@ let makeRequest (request : HttpRequestMessage) =
 let request (path: string) (body: string) = 
     makeRequest (postReq path body)
 
-let ofJson<'t> (input: string) = 
-    FableGiraffeAdapter.deserialize<'t> input
-let toJson (x: obj) = 
-    FableGiraffeAdapter.json x
+let private fableConverter = FableJsonConverter()
 
+let ofJson<'t> (input: string) = 
+    JsonConvert.DeserializeObject<'t>(input, fableConverter)
+let toJson (x: obj) = 
+    JsonConvert.SerializeObject(x, fableConverter)
+ 
 let fableGiraffeAdapterTests = 
     testList "FableGiraffeAdapter tests" [
         testCase "String round trip" <| fun () ->   

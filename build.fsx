@@ -22,8 +22,6 @@ let JsonTestsDll = testDll "Json"
 let ServerTestsDll = testDll "Server"
 let SuaveTestDll = testDll "Suave"
 let GiraffeTestDll = testDll "Giraffe"
-let SaturnTestDll = testDll "Saturn"
-
 
 let cwd = __SOURCE_DIRECTORY__
 let dotnet = "dotnet"
@@ -37,16 +35,14 @@ let Server = getPath "Server"
 let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
-let Saturn = getPath "Saturn"
-
-let clean projectPath = 
+let clean projectPath =
     [ projectPath </> "bin"
       projectPath </> "obj" ] |> CleanDirs
 
 let publish projectPath = fun () ->
     clean projectPath
     "pack -c Release"
-    |> run projectPath dotnet 
+    |> run projectPath dotnet
     let nugetKey =
         match environVarOrNone "NUGET_KEY" with
         | Some nugetKey -> nugetKey
@@ -64,15 +60,10 @@ Target "PublishReflection" (publish Reflection)
 
 Target "PublishSuave" (publish Suave)
 Target "PublishGiraffe" (publish Giraffe)
-Target "PublishSaturn" (publish Saturn)
 
 Target "CleanGiraffe" <| fun _ ->
     clean (getPath "Giraffe")
     clean (getPath "Giraffe.Tests")
-
-Target "CleanSaturn" <| fun _ ->
-    clean (getPath "Saturn")
-    clean (getPath "Saturn.Tests")
 
 Target "CleanSuave" <| fun _ ->
     clean (getPath "Suave")
@@ -126,27 +117,12 @@ Target "BuildRunGiraffeTests" <| fun _ ->
 Target "RunGiraffeTests" <| fun _ ->
     run "." "dotnet" GiraffeTestDll
 
-Target "RestoreBuildRunSaturnTests" <| fun _ ->
-    run "." "dotnet"  ("restore " + proj "Saturn.Tests")
-    run "." "dotnet" ("build " + proj "Saturn.Tests" + " --configuration=Release")
-    run "." "dotnet" SaturnTestDll
-
-Target "BuildRunSaturnTests" <| fun _ ->
-    run "." "dotnet" ("build " + proj "Saturn.Tests" + " --configuration=Release")
-    run "." "dotnet" SaturnTestDll
-
-Target "RunSaturnTests" <| fun _ ->
-    run "." "dotnet" SaturnTestDll
-
 Target "Default" <| DoNothing
 
-"CleanGiraffe" 
+"CleanGiraffe"
     ==> "BuildRunGiraffeTests"
 
-"CleanSaturn" 
-    ==> "BuildRunSaturnTests"
-
-"CleanSuave" 
+"CleanSuave"
   ==> "BuildRunSuaveTests"
 
 Target "BuildRunAllTests" <| fun _ ->
@@ -159,11 +135,8 @@ Target "BuildRunAllTests" <| fun _ ->
     // Suave
     run "." "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
     run "." "dotnet" SuaveTestDll
-    // Giraffe        
+    // Giraffe
     run "." "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
     run "." "dotnet" GiraffeTestDll
-    // Saturn        
-    run "." "dotnet" ("build " + proj "Saturn.Tests" + " --configuration=Release")
-    run "." "dotnet" SaturnTestDll 
-    
+
 RunTargetOrDefault "BuildRunAllTests"

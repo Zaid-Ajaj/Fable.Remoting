@@ -1,5 +1,6 @@
 ﻿module FableSuaveAdapterTests
 
+open Fable.Remoting.Server
 open Fable.Remoting.Suave
 open Fable.Remoting.Json
 
