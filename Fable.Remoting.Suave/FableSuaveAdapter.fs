@@ -20,10 +20,25 @@ module FableSuaveAdapter =
   let onError (handler: ErrorHandler) =
         onErrorHandler <- Some handler
   type RemoteBuilder<'a>(implementation:'a) =
-   inherit RemoteBuilderBase<'a,HttpRequest,WebPart<HttpContext>>(implementation)
-   override __.Context(ctx) = {
-       Host = ctx.host
-   }
+   inherit RemoteBuilderBase<'a,HttpContext,WebPart<HttpContext>>(implementation)
+   override __.Context(ctx) =
+    //let x = ctx.userState
+    {
+       Host = ctx.request.host
+       Port = ctx.request.url.Port
+       Path = ctx.request.path
+       Authorization = ctx.request.headers |> List.tryPick (function (a,v) when a.ToLower() = "authorization" -> Some v | _ -> None)
+       Headers =
+          Map.empty |>
+          List.foldBack
+            (fun (k,v) m ->
+              let result =
+                match m |> Map.tryFind k with
+                |Some vals -> v::vals
+                |None -> [v]
+              m |> Map.add k result) ctx.request.headers
+       Cookies = ctx.userState |> Map.map (fun _ v -> string v)
+    }
    override builder.Run(options:SharedCE.BuilderOptions) =
     let getResourceFromReq (req : HttpRequest) (inputType: System.Type[])  =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
@@ -35,7 +50,8 @@ module FableSuaveAdapter =
             match inputType with
             |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
             |_ -> true
-        fun (req: HttpRequest) ->
+        fun (req: HttpRequest) (ctx:HttpContext) ->
+
             Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
             let requestBodyData =
                 // if input is unit
@@ -45,11 +61,11 @@ module FableSuaveAdapter =
                 | false -> [|null|]
             let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
             let onSuccess result = OK result >=> Writers.setMimeType "application/json; charset=utf-8"
-            let onFailure result = onSuccess result >=> Writers.setStatus HttpCode.HTTP_500
+            let onFailure result = onSuccess result  >=> Writers.setStatus HttpCode.HTTP_500
             async {
                 try
                   let! dynamicResult = result
-                  return builder.Json options dynamicResult |> onSuccess
+                  return builder.Json options dynamicResult |> fun a -> onSuccess a ctx
                 with
                   | ex ->
                      Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
@@ -61,15 +77,15 @@ module FableSuaveAdapter =
                         // Server error ignored by error handler
                         | Ignore ->
                             let result = { error = "Server error: ignored"; ignored = true; handled = true }
-                            return builder.Json options result |> onFailure
+                            return builder.Json options result |> fun a -> onFailure a ctx
                         // Server error mapped into some other `value` by error handler
                         | Propagate value ->
                             let result = { error = value; ignored = false; handled = true }
-                            return builder.Json options result |> onFailure
+                            return builder.Json options result |> fun a -> onFailure a ctx
                      // There no server handler
                      | None ->
                         let result = { error = "Server error: not handled"; ignored = true; handled = false }
-                        return builder.Json options result |> onFailure
+                        return builder.Json options result |> fun a -> onFailure a ctx
                 }
             |> Async.RunSynchronously
 
@@ -96,7 +112,7 @@ module FableSuaveAdapter =
   /// `    use_logger logger` to set a `logger : (string -> unit)`
   /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
   /// `}`
-  let remoting = RemoteBuilder            
+  let remoting = RemoteBuilder
   /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.
   let webPartWithBuilderFor implementation (builder:string->string->string) : WebPart =
     remoting implementation {

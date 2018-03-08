@@ -78,8 +78,13 @@ module SharedCE =
         { error: 'a;
           ignored: bool;
           handled: bool; }
-    type RequestContext = {
+    type Context = {
         Host : string
+        Port : int
+        Path : string
+        Headers : Map<string,string list>
+        Cookies : Map<string,string>
+        Authentication : string option
     }
     type ResponseOverride = {
         StatusCode : int option
@@ -90,7 +95,7 @@ module SharedCE =
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler option
         Builder: string -> string -> string
-        CustomHandlers : Map<string,RequestContext -> ResponseOverride option>
+        CustomHandlers : Map<string,Context -> ResponseOverride option>
     }
     with
         static member Empty =
@@ -129,9 +134,9 @@ module SharedCE =
               |> writeLn result
               |> toLogger logf)
           result
-        
+
         abstract member Run : BuilderOptions -> 'handler
-        abstract member Context : 'ctx -> RequestContext
+        abstract member Context : 'ctx -> Context
         member __.Zero() =
             BuilderOptions.Empty
         member __.Yield(_) =
@@ -158,4 +163,4 @@ module SharedCE =
         [<System.Obsolete("For backward compatibility only.")>]
         member __.UseSomeErrorHandler(state,errorHandler)=
             {state with ErrorHandler=errorHandler}
-        
+

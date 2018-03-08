@@ -124,7 +124,7 @@ module Proxy =
                     return! failwith "Auth error"
                 | 403  ->
                     // forbidden result
-                    match forbiddenHandler with
+                    match options.ForbiddenErrorHandler with
                     |Some handler -> handler options.Authorization
                     |None -> ()
                     return! failwith "Forbidden error"

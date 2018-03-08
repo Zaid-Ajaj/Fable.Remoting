@@ -24,9 +24,22 @@ module FableGiraffeAdapter =
 
   type RemoteBuilder<'a>(implementation)=
    inherit RemoteBuilderBase<'a,HttpContext,HttpHandler>(implementation)
-   override __.Context(ctx) = { 
+   override __.Context(ctx) =
+    //let x = ctx.Request.Cookies
+    {
        Host = ctx.Request.Host.Host
-   }
+       Port = ctx.Request.Host.Port.Value
+       Path = ctx.Request.Path.Value
+       Authorization = ctx.Request.Headers |> Seq.tryPick (function KeyValue (k,v) when k.ToLower() = "authorization" -> v |> Seq.tryHead |_ -> None)
+       Headers =
+        ctx.Request.Headers
+        |> Seq.map (fun (KeyValue (k,v)) -> k, v |> Seq.toList)
+        |> Map.ofSeq
+       Cookies =
+        ctx.Request.Cookies
+        |> Seq.map (|KeyValue|)
+        |> Map.ofSeq
+    }
    override builder.Run(options:SharedCE.BuilderOptions) =
 
     // Get data from request body and deserialize.
@@ -93,7 +106,7 @@ module FableGiraffeAdapter =
     |> fun routes ->
         options.Logger |> Option.iter (fun logf -> string sb |> logf)
         choose routes
-  
+
   /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
   /// Usage:
   /// `let server = remoting implementation {()}` for default options at /typeName/methodName
@@ -102,7 +115,7 @@ module FableGiraffeAdapter =
   /// `    use_logger logger` to set a `logger : (string -> unit)`
   /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
   /// `}`
-  let remoting = RemoteBuilder     
+  let remoting = RemoteBuilder
   let httpHandlerWithBuilderFor<'t> (implementation : 't) builder =
     remoting implementation {
         with_builder builder
