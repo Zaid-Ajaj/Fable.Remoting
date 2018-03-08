@@ -19,8 +19,12 @@ module FableSuaveAdapter =
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
   let onError (handler: ErrorHandler) =
         onErrorHandler <- Some handler
-  type RemoteBuilder<'a> with
-   member builder.Run(options:SharedCE.BuilderOptions) =
+  type RemoteBuilder<'a>(implementation:'a) =
+   inherit RemoteBuilderBase<'a,HttpRequest,WebPart<HttpContext>>(implementation)
+   override __.Context(ctx) = {
+       Host = ctx.host
+   }
+   override builder.Run(options:SharedCE.BuilderOptions) =
     let getResourceFromReq (req : HttpRequest) (inputType: System.Type[])  =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
         builder.Deserialize options json inputType
@@ -84,8 +88,16 @@ module FableSuaveAdapter =
         |> fun routes ->
             options.Logger |> Option.iter (fun logf -> string sb |> logf)
             choose routes
+  /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
+  /// Usage:
+  /// `let server = remoting implementation {()}` for default options at /typeName/methodName
+  /// `let server = remoting implementation = remoting {`
+  /// `    with_builder builder` to set a `builder : (string -> string -> string)`
+  /// `    use_logger logger` to set a `logger : (string -> unit)`
+  /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
+  /// `}`
+  let remoting = RemoteBuilder            
   /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.
-
   let webPartWithBuilderFor implementation (builder:string->string->string) : WebPart =
     remoting implementation {
             with_builder builder

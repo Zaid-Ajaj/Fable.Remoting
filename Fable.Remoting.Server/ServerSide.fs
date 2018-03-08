@@ -78,18 +78,27 @@ module SharedCE =
         { error: 'a;
           ignored: bool;
           handled: bool; }
+    type RequestContext = {
+        Host : string
+    }
+    type ResponseOverride = {
+        StatusCode : int option
+        Headers: Map<string,string> option
+        Body: string option
+    }
     type BuilderOptions = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler option
         Builder: string -> string -> string
+        CustomHandlers : Map<string,RequestContext -> ResponseOverride option>
     }
     with
         static member Empty =
-            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"}
+            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
 
-    type RemoteBuilder<'a>(implementation: 'a) =
+    [<AbstractClass>]
+    type RemoteBuilderBase<'a,'ctx,'handler>(implementation: 'a) =
         let fableConverter = FableJsonConverter()
-
         let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
         let toLogger logf = string >> logf
         let logDeserializationTypes logger (text: string) (inputType: System.Type[]) =
@@ -120,7 +129,9 @@ module SharedCE =
               |> writeLn result
               |> toLogger logf)
           result
-
+        
+        abstract member Run : BuilderOptions -> 'handler
+        abstract member Context : 'ctx -> RequestContext
         member __.Zero() =
             BuilderOptions.Empty
         member __.Yield(_) =
@@ -147,12 +158,4 @@ module SharedCE =
         [<System.Obsolete("For backward compatibility only.")>]
         member __.UseSomeErrorHandler(state,errorHandler)=
             {state with ErrorHandler=errorHandler}
-    /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
-    /// Usage:
-    /// `let server = remoting implementation {()}` for default options at /typeName/methodName
-    /// `let server = remoting implementation = remoting {`
-    /// `    with_builder builder` to set a `builder : (string -> string -> string)`
-    /// `    use_logger logger` to set a `logger : (string -> unit)`
-    /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
-    /// `}`
-    let remoting = RemoteBuilder
+        

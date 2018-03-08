@@ -8,6 +8,7 @@ open System.IO
 open System.Text
 
 open Fable.Remoting.Server
+open Fable.Remoting.Server.SharedCE
 
 [<AutoOpen>]
 module FableGiraffeAdapter =
@@ -21,8 +22,12 @@ module FableGiraffeAdapter =
   let onError (handler: ErrorHandler) =
         onErrorHandler <- Some handler
 
-  type RemoteBuilder<'a> with
-   member builder.Run(options:SharedCE.BuilderOptions) =
+  type RemoteBuilder<'a>(implementation)=
+   inherit RemoteBuilderBase<'a,HttpContext,HttpHandler>(implementation)
+   override __.Context(ctx) = { 
+       Host = ctx.Request.Host.Host
+   }
+   override builder.Run(options:SharedCE.BuilderOptions) =
 
     // Get data from request body and deserialize.
     // getResourceFromReq : HttpRequest -> obj
@@ -88,7 +93,16 @@ module FableGiraffeAdapter =
     |> fun routes ->
         options.Logger |> Option.iter (fun logf -> string sb |> logf)
         choose routes
-
+  
+  /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
+  /// Usage:
+  /// `let server = remoting implementation {()}` for default options at /typeName/methodName
+  /// `let server = remoting implementation = remoting {`
+  /// `    with_builder builder` to set a `builder : (string -> string -> string)`
+  /// `    use_logger logger` to set a `logger : (string -> unit)`
+  /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
+  /// `}`
+  let remoting = RemoteBuilder     
   let httpHandlerWithBuilderFor<'t> (implementation : 't) builder =
     remoting implementation {
         with_builder builder
