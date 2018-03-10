@@ -21,22 +21,35 @@ module FableSuaveAdapter =
         onErrorHandler <- Some handler
   type RemoteBuilder<'a>(implementation:'a) =
    inherit RemoteBuilderBase<'a,HttpContext,WebPart<HttpContext>>(implementation)
+<<<<<<< HEAD
    override __.Context(ctx) =
+=======
+   override __.Context(ctx) =     
+>>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
     //let x = ctx.userState
     {
        Host = ctx.request.host
        Port = ctx.request.url.Port
        Path = ctx.request.path
+<<<<<<< HEAD
        Authorization = ctx.request.headers |> List.tryPick (function (a,v) when a.ToLower() = "authorization" -> Some v | _ -> None)
        Headers =
           Map.empty |>
+=======
+       Headers =
+          Map.empty |>        
+>>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
           List.foldBack
             (fun (k,v) m ->
               let result =
                 match m |> Map.tryFind k with
                 |Some vals -> v::vals
                 |None -> [v]
+<<<<<<< HEAD
               m |> Map.add k result) ctx.request.headers
+=======
+              m |> Map.add k result) ctx.request.headers 
+>>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
        Cookies = ctx.userState |> Map.map (fun _ v -> string v)
     }
    override builder.Run(options:SharedCE.BuilderOptions) =
@@ -51,7 +64,11 @@ module FableSuaveAdapter =
             |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
             |_ -> true
         fun (req: HttpRequest) (ctx:HttpContext) ->
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
             Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
             let requestBodyData =
                 // if input is unit

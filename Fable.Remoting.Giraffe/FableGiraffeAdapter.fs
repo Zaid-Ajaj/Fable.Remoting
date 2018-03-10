@@ -26,17 +26,28 @@ module FableGiraffeAdapter =
    inherit RemoteBuilderBase<'a,HttpContext,HttpHandler>(implementation)
    override __.Context(ctx) =
     //let x = ctx.Request.Cookies
+<<<<<<< HEAD
     {
        Host = ctx.Request.Host.Host
        Port = ctx.Request.Host.Port.Value
        Path = ctx.Request.Path.Value
        Authorization = ctx.Request.Headers |> Seq.tryPick (function KeyValue (k,v) when k.ToLower() = "authorization" -> v |> Seq.tryHead |_ -> None)
+=======
+    { 
+       Host = ctx.Request.Host.Host
+       Port = ctx.Request.Host.Port.Value
+       Path = ctx.Request.Path.Value
+>>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
        Headers =
         ctx.Request.Headers
         |> Seq.map (fun (KeyValue (k,v)) -> k, v |> Seq.toList)
         |> Map.ofSeq
        Cookies =
+<<<<<<< HEAD
         ctx.Request.Cookies
+=======
+        ctx.Request.Cookies 
+>>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
         |> Seq.map (|KeyValue|)
         |> Map.ofSeq
     }
