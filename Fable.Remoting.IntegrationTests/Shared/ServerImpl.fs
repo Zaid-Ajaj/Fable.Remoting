@@ -8,7 +8,7 @@ module Async =
         async { return x }
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
-let implementation : IServer  = {
+let server : IServer  = {
     // primitive types
     getLength = fun input -> Async.result input.Length
     echoInteger = Async.result
@@ -34,4 +34,5 @@ let implementation : IServer  = {
     echoBigInteger = Async.result
     throwError = fun () -> async { return! failwith "Generating custom server error" }
     echoMap = Async.result
+    multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
 }

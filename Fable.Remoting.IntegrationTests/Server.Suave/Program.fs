@@ -4,15 +4,12 @@ open Fable.Remoting.Suave
 open ServerImpl
 open SharedTypes
 
-let fableWebPart = FableSuaveAdapter.webPartWithBuilderFor implementation routeBuilder
+let fableWebPart = remoting server { 
+    with_builder routeBuilder
+    use_logger (printfn "%s")
+    use_error_handler (fun ex routeInfo ->
+      printfn "Error at: %A" routeInfo
+      Propagate ex.Message)
+}
 
-FableSuaveAdapter.onError <| fun ex routeInfo ->
-    printfn "Error at: %A" routeInfo
-    Propagate ex.Message
-
-[<EntryPoint>]
-let main argv =
-    FableSuaveAdapter.logger <- Some (printfn "%s")
-    printfn "%A" argv
-    startWebServer defaultConfig fableWebPart
-    0
+startWebServer defaultConfig fableWebPart

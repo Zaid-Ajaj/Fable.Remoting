@@ -12,7 +12,7 @@ let errorHandler (ex : Exception) (logger : ILogger) =
     logger.LogError(EventId(), ex, "An unhandled exception has occurred while executing the request.")
     clearResponse >=> setStatusCode 500 >=> text ex.Message
 
-let webApp = FableGiraffeAdapter.httpHandlerWithBuilderFor implementation routeBuilder
+let webApp = FableGiraffeAdapter.httpHandlerWithBuilderFor server routeBuilder
 
 let configureApp (app : IApplicationBuilder) =
     app.UseGiraffeErrorHandler(errorHandler)

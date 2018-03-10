@@ -52,6 +52,9 @@ type IServer = {
     echoMap : Map<string, int> -> Async<Map<string, int>>
     // errors
     throwError : unit -> Async<string>
+    
+    // mutli-arg functions
+    multiArgFunc : string -> int -> bool -> Async<int>
 }
 
 
