@@ -19,13 +19,15 @@ let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
 
-FableSuaveAdapter.logger <- Some (printfn "%s")
-
-FableSuaveAdapter.onError <| fun ex routeInfo ->
+let errorHandler (ex: exn) (_: RouteInfo) = 
     printfn "Propagating exception message back to client: %s" ex.Message
     Propagate (ex.Message)
 
-let app = FableSuaveAdapter.webPartFor implementation
+let app = remoting implementation { 
+    use_error_handler errorHandler
+    use_logger (printfn "%s") 
+}
+
 let postContent (input: string) =  new StringContent(sprintf "[%s]" input, System.Text.Encoding.UTF8)
 let postRaw (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
 

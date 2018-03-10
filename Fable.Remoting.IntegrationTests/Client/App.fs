@@ -237,3 +237,12 @@ QUnit.testCaseAsync "IServer.throwError" <| fun test ->
          | ex -> 
             printfn "Qunit.testCase error handler %s" ex.Message
     }
+
+QUnit.testCaseAsync "IServer.mutliArgFunc" <| fun test ->
+    async { 
+        let! output = server.multiArgFunc "hello" 10 false
+        test.equal 15 output 
+
+        let! sndOutput = server.multiArgFunc "byebye" 5 true
+        test.equal 12 sndOutput
+    }
