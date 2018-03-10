@@ -23,6 +23,7 @@ type TestRec = {
     simpleUnionMethod: SimpleUnion -> SimpleUnion
     intSeq: seq<int> -> int
     simpleRecordMethod: SimpleRecord -> SimpleRecord
+    multiArgFunc : string -> int -> bool -> int
 }
 
 let fsharpRecordTests = 
@@ -40,6 +41,7 @@ let fsharpRecordTests =
         simpleUnionMethod = function One -> Two | Two -> One
         intSeq = fun xs -> Seq.sum xs
         simpleRecordMethod = fun record -> { record with Int = record.Int + 10 }
+        multiArgFunc = fun str n b -> str.Length + n + (if b then 1 else 0)
     }
 
     testList "FSharpRecord tests" [
@@ -54,7 +56,6 @@ let fsharpRecordTests =
             let output = invoke "simpleMethod" testRec ([|box input|]) true
             equal 5 (unbox<int> output)
 
-        // failing because of this blocker: https://github.com/dotnet/corefx/issues/23387
         testCase "Invkoing genericUnion on record dynamically works" <| fun () ->
             let input = Just 5
             let output = invoke "genericUnion" testRec ([|box input|]) true
@@ -64,6 +65,15 @@ let fsharpRecordTests =
             let input = [| 1 .. 10 |]
             let output = invoke "arrayMethod" testRec ([|box input|]) true
             equal 55 (unbox<int> output)
+
+        testCase "Invoking multi-arg function works" <| fun () ->
+            let input = [| box "hello"; box 10; box false |]
+            let output = invoke "multiArgFunc" testRec input true
+            equal 15 (unbox<int> output)
+
+            let input = [| box "byebye"; box 5; box true |]
+            let output = invoke "multiArgFunc" testRec input true
+            equal 12 (unbox<int> output)
         
         testCase "Invoking arrayMethod with empty array" <| fun () -> 
             let input : int []= [| |]
