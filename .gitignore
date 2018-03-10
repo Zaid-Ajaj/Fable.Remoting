@@ -242,5 +242,5 @@ packages
 # FAKE - F# Make
 .fake/
 paket-files/
-docs/_book/
-docs/_book
+documentation/_book/
+documentation/_book
