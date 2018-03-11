@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Setup Client · GitBook</title>
+        <title>Setup Giraffe · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,8 +53,10 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
+    <link rel="next" href="saturn.html" />
     
-    <link rel="prev" href="saturn.html" />
+    
+    <link rel="prev" href="suave.html" />
     
 
     </head>
@@ -122,7 +124,7 @@
             
         </li>
     
-        <li class="chapter " data-level="1.4" data-path="giraffe.html">
+        <li class="chapter active" data-level="1.4" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -148,7 +150,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="1.6" data-path="client.html">
+        <li class="chapter " data-level="1.6" data-path="client.html">
             
                 <a href="client.html">
             
@@ -191,7 +193,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Setup Client</a>
+        <a href=".." >Setup Giraffe</a>
     </h1>
 </div>
 
@@ -206,48 +208,45 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="client">Client</h1>
-<p>On your client Fable project, you reference the the shared API types:</p>
+                                <h1 id="setup-giraffe">Setup Giraffe</h1>
+<p>On your Giraffe project, you reference the the shared API types:</p>
 <pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;../Shared/SharedModels.fs&quot;</span> /&gt;</span>
 <span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;Program.fs&quot;</span> /&gt;</span>
 </code></pre>
-<p>Now you need to install the client package: <a href="https://www.nuget.org/packages/Fable.Remoting.Client/" target="_blank">Fable.Remoting.Client</a>:</p>
-<pre><code>paket add Fable.Remoting.Client --project path/to/Client.fsproj
-</code></pre><h2 id="proxy-creation">Proxy creation</h2>
-<p>Now that you have installed the package, you can use it to create a proxy: An object with which you are able to call the server in a type-safe manner: </p>
-<pre><code class="lang-fs"><span class="hljs-keyword">open</span> ShareModels
-<span class="hljs-keyword">open</span> Fable.Remoting.Client
+<p>Now you need to install the Suave-specific package: <a href="https://www.nuget.org/packages/Fable.Remoting.Giraffe/" target="_blank">Fable.Remoting.Giraffe</a>:</p>
+<pre><code>paket add Fable.Remoting.Giraffe --project path/to/Server.fsproj
+</code></pre><h2 id="expose-the-api-as-a-httphanlder">Expose the API as a HttpHanlder:</h2>
+<pre><code class="lang-fs"><span class="hljs-comment">// Program.fs</span>
 
-<span class="hljs-comment">// musicStore : IMusicStore</span>
-<span class="hljs-keyword">let</span> musicStore = Proxy.remoting&lt;IMusicStore&gt; {()}
+<span class="hljs-keyword">open</span> Giraffe
+<span class="hljs-keyword">open</span> SharedModels
+<span class="hljs-keyword">open</span> Fable.Remoting.Server
+<span class="hljs-keyword">open</span> Fable.Remoting.Giraffe
 
-async {
-    <span class="hljs-keyword">let!</span> albums = musicStore.allAlbums() 
-    <span class="hljs-keyword">for</span> album <span class="hljs-keyword">in</span> albums <span class="hljs-keyword">do</span>
-        printfn <span class="hljs-string">&quot;%s (%s)&quot;</span> album.Title album.Genre
-}
-|&gt; Async.StartImmediate
-</code></pre>
-<h2 id="webpack-dev-server-configuration">Webpack dev server configuration</h2>
-<p>When you are working with <code>webpack-dev-server</code> you want to use re-route the HTTP requests from your from the developement server to ypur actual backend, for that you use the following configuration, assuming you are running <code>webpack-dev-server</code> on port 8080 and your backend is running on port 8083. You would change this block:</p>
-<pre><code class="lang-js">devServer: {
-  contentBase: resolve(<span class="hljs-string">&apos;./public&apos;</span>),
-  port: <span class="hljs-number">8080</span>
-}
-</code></pre>
-<p>to this:</p>
-<pre><code class="lang-js">devServer: {
-  contentBase: resolve(<span class="hljs-string">&apos;./public&apos;</span>),
-  port: <span class="hljs-number">8080</span>,
-  <span class="hljs-comment">// tell webpack-dev-server to re-route all requests </span>
-  <span class="hljs-comment">// from dev-server to the actual server</span>
-  proxy: {
-    <span class="hljs-string">&apos;/*&apos;</span>: { 
-      <span class="hljs-comment">// assuming the suave server is running on port 8083</span>
-      target: <span class="hljs-string">&quot;http://localhost:8083&quot;</span>,
-      changeOrigin: <span class="hljs-literal">true</span>
-    }
-}
+<span class="hljs-keyword">let</span> musicStore : IMusicStore = {
+    <span class="hljs-comment">(* Your implementation here *)</span>
+} 
+
+<span class="hljs-comment">// create the HttpHandler using the remoting CE </span>
+<span class="hljs-keyword">let</span> fableWebApp = remoting musicStore {()} 
+
+<span class="hljs-keyword">let</span> configureApp (app : IApplicationBuilder) =
+    <span class="hljs-comment">// Add Giraffe to the ASP.NET Core pipeline</span>
+    app.UseGiraffe fableWebApp
+
+<span class="hljs-keyword">let</span> configureServices (services : IServiceCollection) =
+    <span class="hljs-comment">// Add Giraffe dependencies</span>
+    services.AddGiraffe() |&gt; ignore
+
+<span class="hljs-meta">[&lt;EntryPoint&gt;]</span>
+<span class="hljs-keyword">let</span> main _ =
+    WebHostBuilder()
+        .UseKestrel()
+        .Configure(Action&lt;IApplicationBuilder&gt; configureApp)
+        .ConfigureServices(configureServices)
+        .Build()
+        .Run()
+    <span class="hljs-number">0</span>
 </code></pre>
 
                                 
@@ -276,10 +275,14 @@ async {
 
             
                 
-                <a href="saturn.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page: Setup Saturn">
+                <a href="suave.html" class="navigation navigation-prev " aria-label="Previous page: Setup Suave">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
+                
+                <a href="saturn.html" class="navigation navigation-next " aria-label="Next page: Setup Saturn">
+                    <i class="fa fa-angle-right"></i>
+                </a>
                 
             
         
@@ -288,7 +291,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Setup Client","level":"1.6","depth":1,"previous":{"title":"Setup Saturn","level":"1.5","depth":1,"path":"src/saturn.md","ref":"src/saturn.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/client.md","mtime":"2018-03-11T18:19:20.872Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-11T18:44:46.869Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Setup Giraffe","level":"1.4","depth":1,"next":{"title":"Setup Saturn","level":"1.5","depth":1,"path":"src/saturn.md","ref":"src/saturn.md","articles":[]},"previous":{"title":"Setup Suave","level":"1.3","depth":1,"path":"src/suave.md","ref":"src/suave.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/giraffe.md","mtime":"2018-03-11T18:43:48.527Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-11T18:44:46.869Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
