@@ -41,7 +41,7 @@ let musicStore : IMusicStore = {
 Now you are almost ready to expose the API to your client and have these functions being callable directly. Start by setting up the server with your web framework of choice: 
 
 - [Setup Suave](suave.md)
-- Setup Giraffe: TODO
-- Setup Saturn: TODO
+- [Setup Giraffe](giraffe.md)
+- [Setup Saturn](saturn.md)
 
 Afterwards you can [setup Fable Client](client.md) 
