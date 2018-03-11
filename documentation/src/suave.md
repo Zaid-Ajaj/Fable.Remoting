@@ -15,7 +15,7 @@ Now that you have installed the Remoting package, you can create a `WebPart` and
 
 open Suave
 open Suave.Filters
-open Suave.Succesfull
+open Suave.Successful
 open SharedModels
 open Fable.Remoting.Server
 open Fable.Remoting.Suave
