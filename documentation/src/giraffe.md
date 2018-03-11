@@ -21,7 +21,7 @@ let musicStore : IMusicStore = {
     (* Your implementation here *)
 } 
 
-// create the web part using the remoting CE 
+// create the HttpHandler using the remoting CE 
 let fableWebApp = remoting musicStore {()} 
 
 let configureApp (app : IApplicationBuilder) =
