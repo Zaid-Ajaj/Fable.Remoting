@@ -26,28 +26,17 @@ module FableGiraffeAdapter =
    inherit RemoteBuilderBase<'a,HttpContext,HttpHandler>(implementation)
    override __.Context(ctx) =
     //let x = ctx.Request.Cookies
-<<<<<<< HEAD
     {
        Host = ctx.Request.Host.Host
        Port = ctx.Request.Host.Port.Value
        Path = ctx.Request.Path.Value
        Authorization = ctx.Request.Headers |> Seq.tryPick (function KeyValue (k,v) when k.ToLower() = "authorization" -> v |> Seq.tryHead |_ -> None)
-=======
-    { 
-       Host = ctx.Request.Host.Host
-       Port = ctx.Request.Host.Port.Value
-       Path = ctx.Request.Path.Value
->>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
        Headers =
         ctx.Request.Headers
         |> Seq.map (fun (KeyValue (k,v)) -> k, v |> Seq.toList)
         |> Map.ofSeq
        Cookies =
-<<<<<<< HEAD
         ctx.Request.Cookies
-=======
-        ctx.Request.Cookies 
->>>>>>> 32dc12319cbd74f3648e2c912e3dd0655ce77655
         |> Seq.map (|KeyValue|)
         |> Map.ofSeq
     }
@@ -68,23 +57,36 @@ module FableGiraffeAdapter =
             |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
             |_ -> true
         fun (next : HttpFunc) (ctx : HttpContext) ->
+          let handlerOverride =  options.CustomHandlers |> Map.tryFind methodName |> Option.map (fun f ->
+                    Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking custom handler for method %s" methodName)) options.Logger
+                    builder.Context(ctx) |> f ) |> Option.flatten
+          let (statusCodeOverride, bodyOverride, headersOverride) =
+                match handlerOverride with
+                |Some {StatusCode = sc; Body = b; Headers = hd} -> (sc,b,hd)
+                |None -> (None,None,None)
+          match bodyOverride with
+          |Some b ->
+                task {
+                    ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 200
+                    headersOverride |> Option.iter(Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v)))
+                    return! text b next ctx
+                }
+          |None ->
             Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
             let requestBodyData =
                 match hasArg with
                 | true  -> getResourceFromReq ctx inputType
                 | false -> [|null|]
-
             let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
-
             task {
                 try
                   let! unwrappedFromAsync = Async.StartAsTask result
                   let serializedResult = builder.Json options unwrappedFromAsync
-                  ctx.Response.StatusCode <- 200
+                  ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 200
                   return! text serializedResult next ctx
                 with
                   | ex ->
-                     ctx.Response.StatusCode <- 500
+                     ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 500
                      Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
                      match options.ErrorHandler with
                      | Some handler ->

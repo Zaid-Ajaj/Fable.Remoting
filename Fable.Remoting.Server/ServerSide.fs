@@ -84,7 +84,7 @@ module SharedCE =
         Path : string
         Headers : Map<string,string list>
         Cookies : Map<string,string>
-        Authentication : string option
+        Authorization : string option
     }
     type ResponseOverride = {
         StatusCode : int option
@@ -95,7 +95,7 @@ module SharedCE =
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler option
         Builder: string -> string -> string
-        CustomHandlers : Map<string,Context -> ResponseOverride option>
+        CustomHandlers : Map<string, Context -> ResponseOverride option>
     }
     with
         static member Empty =
