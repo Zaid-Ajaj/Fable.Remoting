@@ -22,8 +22,8 @@ module FableGiraffeAdapter =
   let onError (handler: ErrorHandler) =
         onErrorHandler <- Some handler
 
-  type RemoteBuilder<'a>(implementation)=
-   inherit RemoteBuilderBase<'a,HttpContext,HttpHandler>(implementation)
+  type RemoteBuilder(implementation)=
+   inherit RemoteBuilderBase<HttpContext,HttpHandler>()
    override __.Context(ctx) =
     //let x = ctx.Request.Cookies
     {
@@ -104,16 +104,16 @@ module FableGiraffeAdapter =
             }
 
     let sb = StringBuilder()
-    let typeName = builder.Implementation.GetType().Name
+    let typeName = implementation.GetType().Name
     sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
-    builder.Implementation.GetType()
+    implementation.GetType()
         |> FSharpType.GetRecordFields
         |> Seq.map (fun propInfo ->
         let methodName = propInfo.Name
         let fullPath = options.Builder typeName methodName
         sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
         POST >=> route fullPath
-             >=> warbler (fun _ -> handleRequest methodName builder.Implementation fullPath)
+             >=> warbler (fun _ -> handleRequest methodName implementation fullPath)
     )
     |> List.ofSeq
     |> fun routes ->
@@ -129,12 +129,12 @@ module FableGiraffeAdapter =
   /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
   /// `}`
   let remoting = RemoteBuilder
-  let httpHandlerWithBuilderFor<'t> (implementation : 't) builder =
+  let httpHandlerWithBuilderFor implementation builder =
     remoting implementation {
         with_builder builder
         use_some_logger logger
         use_some_error_handler onErrorHandler
     }
 
-  let httpHandlerFor<'t> (implementation : 't) : HttpHandler =
+  let httpHandlerFor implementation : HttpHandler =
         httpHandlerWithBuilderFor implementation (sprintf "/%s/%s")

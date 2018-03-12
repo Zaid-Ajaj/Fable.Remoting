@@ -19,8 +19,8 @@ module FableSuaveAdapter =
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
   let onError (handler: ErrorHandler) =
         onErrorHandler <- Some handler
-  type RemoteBuilder<'a>(implementation:'a) =
-   inherit RemoteBuilderBase<'a,HttpContext,WebPart<HttpContext>>(implementation)
+  type RemoteBuilder(implementation) =
+   inherit RemoteBuilderBase<HttpContext,WebPart<HttpContext>>()
    override __.Context(ctx) =
     //let x = ctx.userState
     {
@@ -108,15 +108,15 @@ module FableSuaveAdapter =
             |> Async.RunSynchronously
 
     let sb = StringBuilder()
-    let typeName = builder.Implementation.GetType().Name
+    let typeName = implementation.GetType().Name
     sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
-    builder.Implementation.GetType()
+    implementation.GetType()
         |> FSharpType.GetRecordFields
         |> Seq.map (fun propInfo ->
             let methodName = propInfo.Name
             let fullPath = options.Builder typeName methodName
             sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
-            POST >=> path fullPath >=> request (handleRequest methodName builder.Implementation fullPath)
+            POST >=> path fullPath >=> request (handleRequest methodName implementation fullPath)
         )
         |> List.ofSeq
         |> fun routes ->

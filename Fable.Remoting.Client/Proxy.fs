@@ -291,6 +291,14 @@ module Proxy =
             [<CustomOperation("add_fable_header")>]
             member __.CustomHeader(state, header) =
                 {state with Headers = header::state.Headers}
+            [<CustomOperation("use_custom_handler_for")>]
+            member __.UseCustomHandler(state,method,status,handler) =
+                let map = 
+                    match state.CustomHandlers |> Map.tryFind method with
+                    |Some map -> map |> Map.add status handler
+                    |None -> Map.empty |> Map.add status handler
+                {state with CustomHandlers = state.CustomHandlers |> Map.add method map }
+            
     /// Computation expression to create a remoting proxy.
     /// Usage:
     /// `let proxy : IType = remoting {()}` for default options at /typeName/methodName

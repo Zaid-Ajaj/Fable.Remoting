@@ -102,7 +102,7 @@ module SharedCE =
             {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
 
     [<AbstractClass>]
-    type RemoteBuilderBase<'a,'ctx,'handler>(implementation: 'a) =
+    type RemoteBuilderBase<'ctx,'handler>() =
         let fableConverter = FableJsonConverter()
         let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
         let toLogger logf = string >> logf
@@ -115,8 +115,6 @@ module SharedCE =
                 |> writeLn (sprintf "Into .NET Types: [%s]" (inputType |> Array.map (fun e -> e.FullName.Replace("+", ".")) |> String.concat ", "))
                 |> writeLn ""
                 |> toLogger logf)
-        /// Exposes the implementation to the builder
-        member __.Implementation = implementation
 
         /// Deserialize a json string using FableConverter
         member __.Deserialize {Logger=logger} (json: string) (inputType: System.Type[]) =
@@ -163,4 +161,7 @@ module SharedCE =
         [<System.Obsolete("For backward compatibility only.")>]
         member __.UseSomeErrorHandler(state,errorHandler)=
             {state with ErrorHandler=errorHandler}
-
+        [<CustomOperation("use_custom_handler_for")>]
+        member __.UseCustomHandler(state,method,handler) =
+            {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
+            
