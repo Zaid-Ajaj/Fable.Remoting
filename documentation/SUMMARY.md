@@ -6,3 +6,4 @@
 - [Setup Giraffe](src/giraffe.md)
 - [Setup Saturn](src/saturn.md)
 - [Setup Client](src/client.md)
+- [Error Handling](src/error-handling.md)
