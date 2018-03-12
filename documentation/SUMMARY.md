@@ -6,4 +6,5 @@
 - [Setup Giraffe](src/giraffe.md)
 - [Setup Saturn](src/saturn.md)
 - [Setup Client](src/client.md)
+- [Custom Route Paths](src/route-builder.md)
 - [Error Handling](src/error-handling.md)
