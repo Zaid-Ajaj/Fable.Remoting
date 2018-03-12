@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Error Handling · GitBook</title>
+        <title>Custom Route Paths · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,8 +53,10 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
+    <link rel="next" href="error-handling.html" />
     
-    <link rel="prev" href="route-builder.html" />
+    
+    <link rel="prev" href="client.html" />
     
 
     </head>
@@ -161,7 +163,7 @@
             
         </li>
     
-        <li class="chapter " data-level="1.7" data-path="route-builder.html">
+        <li class="chapter active" data-level="1.7" data-path="route-builder.html">
             
                 <a href="route-builder.html">
             
@@ -174,7 +176,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="1.8" data-path="error-handling.html">
+        <li class="chapter " data-level="1.8" data-path="error-handling.html">
             
                 <a href="error-handling.html">
             
@@ -217,7 +219,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Error Handling</a>
+        <a href=".." >Custom Route Paths</a>
     </h1>
 </div>
 
@@ -232,46 +234,32 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="error-handling">Error Handling</h1>
-<p>You might ask: What happens when an exception is thrown on the server by one of the RPC methods? </p>
-<p>Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to a global exception hanlder of the type <code>Exception -&gt; RouteInfo -&gt; ErrorResult</code> where <code>ErrorResult</code> is defined as:</p>
-<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ErrorResult</span> </span>= 
-    | Ignore
-    | Propagate <span class="hljs-keyword">of</span> obj
-</code></pre>
-<p>With <code>ErrorResult</code> you choose either to propagate a custom message back to the client or just ignore the error. You don&apos;t want the exception data (message or stacktrace) to be returned to the client. Either way, an exception will be thrown on the call-site from the client with a generic error message. If you chose to propagate a custom error message, it will be passed off to a global handler on the client, here is a full example on the server:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">open</span> System
+                                <h1 id="custom-route-paths">Custom Route Paths</h1>
+<p>By default, the path of the generated routes are of the form <code>/{typeName}/{methodName}</code>. For our <code>IMusicStore</code> type, the method <code>createAlbum</code> will have the route <code>/IMusicStore/createAlbum</code>. You can override this behaviour by providing your own route builder. For example, to prefix your route with <code>/api</code> you can use the following:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> routeBuilder (typeName: string) (methodName: string) = 
+    sprintf <span class="hljs-string">&quot;/api/%s/%s&quot;</span> typeName methodName
 
-<span class="hljs-comment">// Custom error will be propagated back to client</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">CustomError</span> </span>= { errorMsg: string }
-
-<span class="hljs-keyword">let</span> errorHandler (ex: Exception) (routeInfo: RouteInfo) = 
-    <span class="hljs-comment">// do some logging</span>
-    printfn <span class="hljs-string">&quot;Error at %s on method %s&quot;</span> routeInfo.path routeInfo.methodName
-    <span class="hljs-comment">// decide whether or not you want to propagate the error to the client</span>
-    <span class="hljs-keyword">match</span> ex <span class="hljs-keyword">with</span>
-    | :? System.IOException <span class="hljs-keyword">as</span> x -&gt;
-        <span class="hljs-comment">// propagate custom error, this is intercepted by the client</span>
-        <span class="hljs-keyword">let</span> customError = { errorMsg = <span class="hljs-string">&quot;Something terrible happend&quot;</span> }
-        Propagate customError
-    | :? System.Exception <span class="hljs-keyword">as</span> x -&gt;
-        <span class="hljs-comment">// ignore error</span>
-        Ignore
-</code></pre>
-<p>Use the error handler using the <code>remoting</code> builder:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = remoting musicStore {
-    use_error_handler errorHandler
+<span class="hljs-comment">// now use it with remoting builder</span>
+<span class="hljs-keyword">let</span> webApp = remoting musicStore {
+    with_builder routeBuilder
 }
 </code></pre>
-<p>On the client, you can intercept the propagated custom error messages, also using a global handler:</p>
-<pre><code class="lang-fs"><span class="hljs-comment">// Assuming the type CustomError is shared with the client too</span>
-
-<span class="hljs-keyword">let</span> errorHandler (info: ErrorInfo) = 
-    <span class="hljs-keyword">let</span> customError = ofJson&lt;CustomError&gt; errorInfo.error
-    printfn <span class="hljs-string">&quot;Oh noo: %s&quot;</span> custromError.errorMsg)
-
+<p>Ofcourse, the routes must match both on client and server, so we override the behaviour on the client too:</p>
+<pre><code class="lang-fs"><span class="hljs-comment">// Assuming the function routeBuilder is shared </span>
+<span class="hljs-comment">// between the client and server</span>
 <span class="hljs-keyword">let</span> musicStore = Proxy.remoting&lt;IMusicStore&gt; {
-    use_error_handler errorHandler
+    with_builder routeBuilder
+}
+</code></pre>
+<p>On last thing you need to consider it you are using <code>webpack-dev-server</code>, you might want to proxy the requests that start with <code>/api</code> from the developement server to the actual F# backend using the following configuration:</p>
+<pre><code class="lang-js">devServer: {
+  contentBase: resolve(<span class="hljs-string">&apos;./public&apos;</span>),
+  port: <span class="hljs-number">8080</span>,
+  proxy: {
+    <span class="hljs-string">&apos;/api/*&apos;</span>: {
+      target: <span class="hljs-string">&quot;http://localhost:8083&quot;</span>,
+      changeOrigin: <span class="hljs-literal">true</span>
+    }
 }
 </code></pre>
 
@@ -301,10 +289,14 @@
 
             
                 
-                <a href="route-builder.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page: Custom Route Paths">
+                <a href="client.html" class="navigation navigation-prev " aria-label="Previous page: Setup Client">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
+                
+                <a href="error-handling.html" class="navigation navigation-next " aria-label="Next page: Error Handling">
+                    <i class="fa fa-angle-right"></i>
+                </a>
                 
             
         
@@ -313,7 +305,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Error Handling","level":"1.8","depth":1,"previous":{"title":"Custom Route Paths","level":"1.7","depth":1,"path":"src/route-builder.md","ref":"src/route-builder.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/error-handling.md","mtime":"2018-03-12T01:34:04.681Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-12T01:50:39.411Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Custom Route Paths","level":"1.7","depth":1,"next":{"title":"Error Handling","level":"1.8","depth":1,"path":"src/error-handling.md","ref":"src/error-handling.md","articles":[]},"previous":{"title":"Setup Client","level":"1.6","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/route-builder.md","mtime":"2018-03-12T01:49:47.451Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-12T01:50:39.411Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
