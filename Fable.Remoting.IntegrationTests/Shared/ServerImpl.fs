@@ -35,4 +35,5 @@ let server : IServer  = {
     throwError = fun () -> async { return! failwith "Generating custom server error" }
     echoMap = Async.result
     multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
+    overriddenFunction = fun str -> async { return! failwith str }
 }

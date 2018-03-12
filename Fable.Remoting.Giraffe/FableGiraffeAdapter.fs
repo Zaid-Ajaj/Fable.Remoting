@@ -60,48 +60,70 @@ module FableGiraffeAdapter =
           let handlerOverride =  options.CustomHandlers |> Map.tryFind methodName |> Option.map (fun f ->
                     Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking custom handler for method %s" methodName)) options.Logger
                     builder.Context(ctx) |> f ) |> Option.flatten
-          let (statusCodeOverride, bodyOverride, headersOverride) =
+          let (statusCodeOverride, bodyOverride, headersOverride, abort) =
                 match handlerOverride with
-                |Some {StatusCode = sc; Body = b; Headers = hd} -> (sc,b,hd)
-                |None -> (None,None,None)
-          match bodyOverride with
-          |Some b ->
+                |Some ({StatusCode = sc; Body = b; Headers = hd; Abort = abort} as overrides) ->
+                    Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Overrides: %0A" overrides)) options.Logger
+                    (sc,b,hd,abort)
+                |None -> (None, None, None, false)
+          if abort then
+            task {return None}
+          else  
+              match bodyOverride with
+              |Some b ->
+                    task {
+                        ctx.Response.StatusCode <-
+                            match statusCodeOverride with
+                            |None -> 200
+                            |Some statusCode ->
+                                Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Setting status %i" statusCode)) options.Logger
+                                statusCode
+                        headersOverride 
+                        |> Option.iter(fun m -> 
+                            Option.iter (fun logf -> logf "Fable.Remoting: Setting headers") options.Logger
+                            m |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v)))
+                        return! text b next ctx
+                    }
+              |None ->
+                Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
+                let requestBodyData =
+                    match hasArg with
+                    | true  -> getResourceFromReq ctx inputType
+                    | false -> [|null|]
+                let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
                 task {
-                    ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 200
-                    headersOverride |> Option.iter(Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v)))
-                    return! text b next ctx
+                    try
+                      let! unwrappedFromAsync = Async.StartAsTask result
+                      let serializedResult = builder.Json options unwrappedFromAsync
+                      headersOverride 
+                        |> Option.iter(fun m -> 
+                            Option.iter (fun logf -> logf "Fable.Remoting: Setting headers") options.Logger
+                            m |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v)))
+                      ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 200
+                      return! text serializedResult next ctx
+                    with
+                      | ex ->
+                         ctx.Response.StatusCode <-
+                            match statusCodeOverride with
+                            |None -> 500
+                            |Some statusCode ->
+                                Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Setting status %i" statusCode)) options.Logger
+                                statusCode
+                         Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
+                         match options.ErrorHandler with
+                         | Some handler ->
+                            let routeInfo = { path = routePath; methodName = methodName }
+                            match handler ex routeInfo with
+                            | Ignore ->
+                                let result = { error = "Server error: ignored"; ignored = true; handled = true }
+                                return! text (builder.Json options result) next ctx
+                            | Propagate value ->
+                                let result = { error = value; ignored = false; handled = true }
+                                return! text (builder.Json options result) next ctx
+                         | None ->
+                            let result = { error = "Server error: not handled"; ignored = false; handled = false }
+                            return! text (builder.Json options result) next ctx
                 }
-          |None ->
-            Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
-            let requestBodyData =
-                match hasArg with
-                | true  -> getResourceFromReq ctx inputType
-                | false -> [|null|]
-            let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
-            task {
-                try
-                  let! unwrappedFromAsync = Async.StartAsTask result
-                  let serializedResult = builder.Json options unwrappedFromAsync
-                  ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 200
-                  return! text serializedResult next ctx
-                with
-                  | ex ->
-                     ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 500
-                     Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
-                     match options.ErrorHandler with
-                     | Some handler ->
-                        let routeInfo = { path = routePath; methodName = methodName }
-                        match handler ex routeInfo with
-                        | Ignore ->
-                            let result = { error = "Server error: ignored"; ignored = true; handled = true }
-                            return! text (builder.Json options result) next ctx
-                        | Propagate value ->
-                            let result = { error = value; ignored = false; handled = true }
-                            return! text (builder.Json options result) next ctx
-                     | None ->
-                        let result = { error = "Server error: not handled"; ignored = false; handled = false }
-                        return! text (builder.Json options result) next ctx
-            }
 
     let sb = StringBuilder()
     let typeName = implementation.GetType().Name

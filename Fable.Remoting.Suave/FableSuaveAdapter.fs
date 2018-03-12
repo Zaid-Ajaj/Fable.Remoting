@@ -54,58 +54,72 @@ module FableSuaveAdapter =
           let handlerOverride =  options.CustomHandlers |> Map.tryFind methodName |> Option.map (fun f ->
                     Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking custom handler for method %s" methodName)) options.Logger
                     builder.Context(ctx) |> f ) |> Option.flatten
-          let (statusCodeOverride, bodyOverride, headersOverride) =
+          let (statusCodeOverride, bodyOverride, headersOverride, abort) =
                 match handlerOverride with
-                |Some {StatusCode = sc; Body = b; Headers = hd} -> (sc,b,hd)
-                |None -> (None,None,None)
-          match bodyOverride with
-          |Some b ->
+                |Some ({StatusCode = sc; Body = b; Headers = hd; Abort = abort} as overrides) ->
+                    Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Overrides: %0A" overrides)) options.Logger
+                    (sc,b,hd,abort)
+                |None -> (None, None, None, false)
+          if abort then
+            async {return None}
+          else
             let setHeaders =
-              match headersOverride with
-              |Some headers -> headers |> Map.fold (fun ctx k v -> ctx >=> Writers.addHeader k v) succeed
-              |None -> succeed
-            let setStatus =
-                match statusCodeOverride with
-                |Some statusCode -> fun ctx -> {ctx with response = {ctx.response with status = {ctx.response.status with code = statusCode}}}
-                |None -> id
-            {ctx with response = {ctx.response with content = HttpContent.Bytes (System.Text.Encoding.UTF8.GetBytes b)}} |>setStatus  |> setHeaders
-          |None ->
-            Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
-            let requestBodyData =
-                // if input is unit
-                // then don't bother getting any input from request
-                match hasArg with
-                | true  -> getResourceFromReq req inputType
-                | false -> [|null|]
-            let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
-            let onSuccess result = OK result >=> Writers.setMimeType "application/json; charset=utf-8"
-            let onFailure result = onSuccess result  >=> Writers.setStatus HttpCode.HTTP_500
-            async {
-                try
-                  let! dynamicResult = result
-                  return builder.Json options dynamicResult |> fun a -> onSuccess a ctx
-                with
-                  | ex ->
-                     Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
-                     let route : RouteInfo = { path = routePath; methodName = methodName  }
-                     match options.ErrorHandler with
-                     | Some handler ->
-                        let result = handler ex route
-                        match result with
-                        // Server error ignored by error handler
-                        | Ignore ->
-                            let result = { error = "Server error: ignored"; ignored = true; handled = true }
-                            return builder.Json options result |> fun a -> onFailure a ctx
-                        // Server error mapped into some other `value` by error handler
-                        | Propagate value ->
-                            let result = { error = value; ignored = false; handled = true }
-                            return builder.Json options result |> fun a -> onFailure a ctx
-                     // There no server handler
-                     | None ->
-                        let result = { error = "Server error: not handled"; ignored = true; handled = false }
-                        return builder.Json options result |> fun a -> onFailure a ctx
-                }
-            |> Async.RunSynchronously
+                  match headersOverride with
+                  |Some headers ->
+                    Option.iter (fun logf -> logf "Fable.Remoting: Setting headers") options.Logger
+                    headers |> Map.fold (fun ctx k v -> ctx >=> Writers.addHeader k v) (fun ctx -> async {return Some ctx})
+                  |None -> (fun ctx -> async {return Some ctx})
+            let setStatus code =
+                    match statusCodeOverride with
+                    |Some statusCode ->
+                        Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Setting status %i" statusCode)) options.Logger
+                        fun ctx -> async {return Some {ctx with response = {ctx.response with status = {ctx.response.status with code = statusCode}}}}
+                    |None -> Writers.setStatus code
+            match bodyOverride with
+            |Some b -> (setHeaders >=> setStatus HTTP_200 >=> (fun ctx -> async {return Some {ctx with response = {ctx.response with content = HttpContent.Bytes (System.Text.Encoding.UTF8.GetBytes b)}}})) ctx
+            |None ->    
+                let flow code response  = 
+                    setHeaders
+                    >=>
+                    OK response                     
+                    >=> setStatus code
+                    >=> Writers.setMimeType "application/json; charset=utf-8"
+                Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
+                let requestBodyData =
+                    // if input is unit
+                    // then don't bother getting any input from request
+                    match hasArg with
+                    | true  -> getResourceFromReq req inputType
+                    | false -> [|null|]
+                let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
+                let onSuccess = flow HttpCode.HTTP_200 
+                let onFailure = flow HttpCode.HTTP_500
+                async {
+                    try
+                      let! dynamicResult = result
+                      return! builder.Json options dynamicResult |> fun a -> onSuccess a ctx
+                    with
+                      | ex ->
+                         Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
+                         let route : RouteInfo = { path = routePath; methodName = methodName  }
+                         match options.ErrorHandler with
+                         | Some handler ->
+                            let result = handler ex route
+                            match result with
+                            // Server error ignored by error handler
+                            | Ignore ->
+                                let result = { error = "Server error: ignored"; ignored = true; handled = true }
+                                return! builder.Json options result |> fun a -> onFailure a ctx
+                            // Server error mapped into some other `value` by error handler
+                            | Propagate value ->
+                                let result = { error = value; ignored = false; handled = true }
+                                return! builder.Json options result |> fun a -> onFailure a ctx
+                         // There no server handler
+                         | None ->
+                            let result = { error = "Server error: not handled"; ignored = true; handled = false }
+                            return! builder.Json options result |> fun a -> onFailure a ctx
+                    }
+                
 
     let sb = StringBuilder()
     let typeName = implementation.GetType().Name

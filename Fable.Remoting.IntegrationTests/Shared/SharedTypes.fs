@@ -55,6 +55,9 @@ type IServer = {
     
     // mutli-arg functions
     multiArgFunc : string -> int -> bool -> Async<int>
+
+    // overridden function
+    overriddenFunction : string -> Async<int>
 }
 
 

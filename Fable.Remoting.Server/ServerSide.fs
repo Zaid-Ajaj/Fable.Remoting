@@ -90,6 +90,7 @@ module SharedCE =
         StatusCode : int option
         Headers: Map<string,string> option
         Body: string option
+        Abort: bool
     }
     type BuilderOptions = {
         Logger : (string -> unit) option

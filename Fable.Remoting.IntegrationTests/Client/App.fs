@@ -246,3 +246,9 @@ QUnit.testCaseAsync "IServer.mutliArgFunc" <| fun test ->
         let! sndOutput = server.multiArgFunc "byebye" 5 true
         test.equal 12 sndOutput
     }
+
+QUnit.testCaseAsync "IServer.overriddenFunction" <| fun test ->
+    async { 
+        let! output = server.overriddenFunction "hello"
+        test.equal 42 output
+    }
