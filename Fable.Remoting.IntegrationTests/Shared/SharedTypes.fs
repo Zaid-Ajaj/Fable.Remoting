@@ -58,6 +58,8 @@ type IServer = {
 
     // overridden function
     overriddenFunction : string -> Async<int>
+
+    customStatusCode : unit -> Async<string>
 }
 
 

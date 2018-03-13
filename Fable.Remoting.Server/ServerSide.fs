@@ -91,7 +91,20 @@ module SharedCE =
         Headers: Map<string,string> option
         Body: string option
         Abort: bool
-    }
+    } with
+        static member Default = {
+            StatusCode = None
+            Headers = None
+            Body = None
+            Abort = false
+        }
+        member this.withStatusCode(status) =
+            {this with StatusCode=Some status}
+        member this.withHeaders(headers) = 
+            {this with Headers = Some headers}
+        member this.withBody(body) = 
+            {this with Body = Some body}
+
     type BuilderOptions = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler option

@@ -36,4 +36,5 @@ let server : IServer  = {
     echoMap = Async.result
     multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
     overriddenFunction = fun str -> async { return! failwith str }
+    customStatusCode = fun () -> async {return "No content"}
 }

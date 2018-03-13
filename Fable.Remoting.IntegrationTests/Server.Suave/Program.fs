@@ -10,8 +10,8 @@ let fableWebPart = remoting server {
     use_error_handler (fun ex routeInfo ->
       printfn "Error at: %A" routeInfo
       Propagate ex.Message)
-    use_custom_handler_for "overriddenFunction"
-      (fun _ -> Some {Body=Some "42";Headers=None;StatusCode=None;Abort=false})
+    use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
+    use_custom_handler_for "customStatusCode" (fun _ -> ResponseOverride.Default.withStatusCode 204 |> Some)
 }
 
 startWebServer defaultConfig fableWebPart

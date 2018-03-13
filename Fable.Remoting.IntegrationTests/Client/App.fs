@@ -8,7 +8,10 @@ Proxy.onError <| fun errorInfo ->
     printfn "Handling server error in the client"
     printfn "Recieved %A" errorInfo.error
 
-let server = Proxy.createWithBuilder<IServer> routeBuilder
+let server = Proxy.remoting<IServer> {
+    with_builder routeBuilder
+    use_custom_handler_for "customStatusCode" 204 (fun _ -> Ok (box "No content"))
+    }
 
 QUnit.registerModule "Fable.Remoting"
 
@@ -251,4 +254,10 @@ QUnit.testCaseAsync "IServer.overriddenFunction" <| fun test ->
     async { 
         let! output = server.overriddenFunction "hello"
         test.equal 42 output
+    }
+
+QUnit.testCaseAsync "IServer.customStatusCode" <| fun test ->
+    async { 
+        let! output = server.customStatusCode ()
+        test.equal "No content" output
     }
