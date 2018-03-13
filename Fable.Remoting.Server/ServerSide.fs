@@ -78,14 +78,6 @@ module SharedCE =
         { error: 'a;
           ignored: bool;
           handled: bool; }
-    type Context = {
-        Host : string
-        Port : int
-        Path : string
-        Headers : Map<string,string list>
-        Cookies : Map<string,string>
-        Authorization : string option
-    }
     type ResponseOverride = {
         StatusCode : int option
         Headers: Map<string,string> option
@@ -104,17 +96,16 @@ module SharedCE =
             {this with Headers = Some headers}
         member this.withBody(body) = 
             {this with Body = Some body}
-
-    type BuilderOptions = {
+    
+    type BuilderOptions<'ctx> = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler option
         Builder: string -> string -> string
-        CustomHandlers : Map<string, Context -> ResponseOverride option>
+        CustomHandlers : Map<string, 'ctx -> ResponseOverride option>
     }
     with
-        static member Empty =
+        static member Empty : BuilderOptions<'ctx> =
             {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
-
     [<AbstractClass>]
     type RemoteBuilderBase<'ctx,'handler>() =
         let fableConverter = FableJsonConverter()
@@ -147,12 +138,11 @@ module SharedCE =
               |> toLogger logf)
           result
 
-        abstract member Run : BuilderOptions -> 'handler
-        abstract member Context : 'ctx -> Context
+        abstract member Run : BuilderOptions<'ctx> -> 'handler        
         member __.Zero() =
-            BuilderOptions.Empty
+            BuilderOptions<'ctx>.Empty
         member __.Yield(_) =
-            BuilderOptions.Empty
+            BuilderOptions<'ctx>.Empty
         /// Defines a custom builder that takes a `builder : (string -> string -> string)` that takes the typeName and methodNameto return a endpoint
         [<CustomOperation("with_builder")>]
         member __.WithBuilder(state,builder)=
@@ -179,3 +169,4 @@ module SharedCE =
         member __.UseCustomHandler(state,method,handler) =
             {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
             
+    

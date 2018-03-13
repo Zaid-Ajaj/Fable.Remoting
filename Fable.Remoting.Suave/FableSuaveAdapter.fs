@@ -21,25 +21,8 @@ module FableSuaveAdapter =
         onErrorHandler <- Some handler
   type RemoteBuilder(implementation) =
    inherit RemoteBuilderBase<HttpContext,WebPart<HttpContext>>()
-   override __.Context(ctx) =
-    //let x = ctx.userState
-    {
-       Host = ctx.request.host
-       Port = ctx.request.url.Port
-       Path = ctx.request.path
-       Authorization = ctx.request.headers |> List.tryPick (function (a,v) when a.ToLower() = "authorization" -> Some v | _ -> None)
-       Headers =
-          Map.empty |>
-          List.foldBack
-            (fun (k,v) m ->
-              let result =
-                match m |> Map.tryFind k with
-                |Some vals -> v::vals
-                |None -> [v]
-              m |> Map.add k result) ctx.request.headers
-       Cookies = ctx.userState |> Map.map (fun _ v -> string v)
-    }
-   override builder.Run(options:SharedCE.BuilderOptions) =
+   
+   override builder.Run(options:SharedCE.BuilderOptions<HttpContext>) =
     let getResourceFromReq (req : HttpRequest) (inputType: System.Type[])  =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
         builder.Deserialize options json inputType
@@ -51,9 +34,10 @@ module FableSuaveAdapter =
             |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
             |_ -> true
         fun (req: HttpRequest) (ctx:HttpContext) ->
-          let handlerOverride =  options.CustomHandlers |> Map.tryFind methodName |> Option.map (fun f ->
+          let handlerOverride =
+            options.CustomHandlers |> Map.tryFind methodName |> Option.map (fun f ->
                     Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking custom handler for method %s" methodName)) options.Logger
-                    builder.Context(ctx) |> f ) |> Option.flatten
+                    f ctx) |> Option.flatten
           let (statusCodeOverride, bodyOverride, headersOverride, abort) =
                 match handlerOverride with
                 |Some ({StatusCode = sc; Body = b; Headers = hd; Abort = abort} as overrides) ->

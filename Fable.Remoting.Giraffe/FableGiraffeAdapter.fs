@@ -24,23 +24,8 @@ module FableGiraffeAdapter =
 
   type RemoteBuilder(implementation)=
    inherit RemoteBuilderBase<HttpContext,HttpHandler>()
-   override __.Context(ctx) =
-    //let x = ctx.Request.Cookies
-    {
-       Host = ctx.Request.Host.Host
-       Port = ctx.Request.Host.Port.Value
-       Path = ctx.Request.Path.Value
-       Authorization = ctx.Request.Headers |> Seq.tryPick (function KeyValue (k,v) when k.ToLower() = "authorization" -> v |> Seq.tryHead |_ -> None)
-       Headers =
-        ctx.Request.Headers
-        |> Seq.map (fun (KeyValue (k,v)) -> k, v |> Seq.toList)
-        |> Map.ofSeq
-       Cookies =
-        ctx.Request.Cookies
-        |> Seq.map (|KeyValue|)
-        |> Map.ofSeq
-    }
-   override builder.Run(options:SharedCE.BuilderOptions) =
+
+   override builder.Run(options:SharedCE.BuilderOptions<HttpContext>) =
 
     // Get data from request body and deserialize.
     // getResourceFromReq : HttpRequest -> obj
@@ -57,9 +42,10 @@ module FableGiraffeAdapter =
             |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
             |_ -> true
         fun (next : HttpFunc) (ctx : HttpContext) ->
-          let handlerOverride =  options.CustomHandlers |> Map.tryFind methodName |> Option.map (fun f ->
+          let handlerOverride =
+            options.CustomHandlers |> Map.tryFind methodName |> Option.map (fun f ->
                     Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking custom handler for method %s" methodName)) options.Logger
-                    builder.Context(ctx) |> f ) |> Option.flatten
+                    f ctx) |> Option.flatten
           let (statusCodeOverride, bodyOverride, headersOverride, abort) =
                 match handlerOverride with
                 |Some ({StatusCode = sc; Body = b; Headers = hd; Abort = abort} as overrides) ->
