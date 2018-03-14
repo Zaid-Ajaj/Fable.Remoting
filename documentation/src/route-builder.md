@@ -19,12 +19,13 @@ let musicStore = Proxy.remoting<IMusicStore> {
     with_builder routeBuilder
 }
 ```
-On last thing you need to consider it you are using `webpack-dev-server`, you might want to proxy the requests that start with `/api` from the developement server to the actual F# backend using the following configuration:
+On last thing you need to consider if you are using `webpack-dev-server` is that you need to delegate the requests that start with `/api` from the developement server to the actual F# backend using the following configuration:
 ```js
 devServer: {
   contentBase: resolve('./public'),
   port: 8080,
   proxy: {
+    // delegate the requests prefixed with /api/
     '/api/*': {
       target: "http://localhost:8083",
       changeOrigin: true
