@@ -48,6 +48,7 @@ module Proxy =
            ForbiddenErrorHandler  : (string option -> unit) option
            ServerErrorHandler     : (ErrorInfo -> unit) option
            CustomHandlers         : Map<string, Map<int,ResponseContext -> Result<obj,exn>>>
+           CustomHeaders          : Map<string, HttpRequestHeaders list>
            Endpoint               : string option
            Headers                : HttpRequestHeaders list
            Builder                : (string -> string -> string)
@@ -58,6 +59,7 @@ module Proxy =
                    ForbiddenErrorHandler = None
                    ServerErrorHandler    = None
                    CustomHandlers        = Map.empty
+                   CustomHeaders         = Map.empty
                    Endpoint              = None
                    Headers               = [
                                             ContentType "application/json; charset=utf8"
@@ -134,7 +136,7 @@ module Proxy =
                             | None -> exn "Server error" |> Error ] |> Map.ofList
 
         let handlers = options.CustomHandlers |> Map.tryFind methodName |> Option.defaultValue defaultHandlers
-
+        let customHeaders = options.CustomHeaders |> Map.tryFind methodName |> Option.defaultValue []
 
         fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 arg13 arg14 arg15 ->
             let data = [
@@ -146,7 +148,7 @@ module Proxy =
                     Body (unbox (toJson data))
                     Method HttpMethod.POST
                     Credentials RequestCredentials.Sameorigin
-                    requestHeaders options.Headers
+                    requestHeaders (customHeaders@options.Headers)
                 ]
 
                 let makeReqProps props =
@@ -289,16 +291,30 @@ module Proxy =
                 {state with Headers = (Custom header)::state.Headers}
             /// Sets a defined Fable PowerPack header from `HttpRequestHeaders`
             [<CustomOperation("add_fable_header")>]
-            member __.CustomHeader(state, header) =
+            member __.FableHeader(state, header) =
                 {state with Headers = header::state.Headers}
+            [<CustomOperation("add_custom_header_for")>]
+            /// Sets a custom `key,value` header for a specific method
+            member __.CustomHeaderFor(state, method, header) =
+                match state.CustomHeaders |> Map.tryFind method with
+                |Some headers ->
+                    {state with CustomHeaders = state.CustomHeaders |> Map.add method ((Custom header)::headers)}
+                |None -> {state with CustomHeaders = state.CustomHeaders |> Map.add method [Custom header]}
+            /// Sets a defined Fable PowerPack header from `HttpRequestHeaders` for a specific method
+            [<CustomOperation("add_fable_header_for")>]
+            member __.FableHeaderFor(state, method, header) =
+                match state.CustomHeaders |> Map.tryFind method with
+                |Some headers ->
+                    {state with CustomHeaders = state.CustomHeaders |> Map.add method (header::headers)}
+                |None -> {state with CustomHeaders = state.CustomHeaders |> Map.add method [header]}
             [<CustomOperation("use_custom_handler_for")>]
             member __.UseCustomHandler(state,method,status,handler) =
-                let map = 
+                let map =
                     match state.CustomHandlers |> Map.tryFind method with
                     |Some map -> map |> Map.add status handler
                     |None -> Map.empty |> Map.add status handler
                 {state with CustomHandlers = state.CustomHandlers |> Map.add method map }
-            
+
     /// Computation expression to create a remoting proxy.
     /// Usage:
     /// `let proxy : IType = remoting {()}` for default options at /typeName/methodName
