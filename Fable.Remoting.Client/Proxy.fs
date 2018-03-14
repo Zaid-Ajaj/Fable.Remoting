@@ -287,19 +287,19 @@ module Proxy =
                 {state with Builder = builder}
             [<CustomOperation("add_custom_header")>]
             /// Sets a custom `key,value` header
-            member __.CustomHeader(state, header) =
-                {state with Headers = (Custom header)::state.Headers}
+            member __.CustomHeader(state, (key:string,value:obj)) =
+                {state with Headers = (unbox<HttpRequestHeaders>(key,value))::state.Headers}
             /// Sets a defined Fable PowerPack header from `HttpRequestHeaders`
             [<CustomOperation("add_fable_header")>]
             member __.FableHeader(state, header) =
                 {state with Headers = header::state.Headers}
             [<CustomOperation("add_custom_header_for")>]
             /// Sets a custom `key,value` header for a specific method
-            member __.CustomHeaderFor(state, method, header) =
+            member __.CustomHeaderFor(state, method, (key:string,value:#obj)) =
                 match state.CustomHeaders |> Map.tryFind method with
                 |Some headers ->
-                    {state with CustomHeaders = state.CustomHeaders |> Map.add method ((Custom header)::headers)}
-                |None -> {state with CustomHeaders = state.CustomHeaders |> Map.add method [Custom header]}
+                    {state with CustomHeaders = state.CustomHeaders |> Map.add method (((unbox<HttpRequestHeaders>(key,value)))::headers)}
+                |None -> {state with CustomHeaders = state.CustomHeaders |> Map.add method [(unbox<HttpRequestHeaders>(key,value))]}
             /// Sets a defined Fable PowerPack header from `HttpRequestHeaders` for a specific method
             [<CustomOperation("add_fable_header_for")>]
             member __.FableHeaderFor(state, method, header) =
