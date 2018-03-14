@@ -278,11 +278,12 @@
     with_builder routeBuilder
 }
 </code></pre>
-<p>On last thing you need to consider it you are using <code>webpack-dev-server</code>, you might want to proxy the requests that start with <code>/api</code> from the developement server to the actual F# backend using the following configuration:</p>
+<p>On last thing you need to consider if you are using <code>webpack-dev-server</code> is that you need to delegate the requests that start with <code>/api</code> from the developement server to the actual F# backend using the following configuration:</p>
 <pre><code class="lang-js">devServer: {
   contentBase: resolve(<span class="hljs-string">&apos;./public&apos;</span>),
   port: <span class="hljs-number">8080</span>,
   proxy: {
+    <span class="hljs-comment">// delegate the requests prefixed with /api/</span>
     <span class="hljs-string">&apos;/api/*&apos;</span>: {
       target: <span class="hljs-string">&quot;http://localhost:8083&quot;</span>,
       changeOrigin: <span class="hljs-literal">true</span>
@@ -332,7 +333,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Custom Route Paths","level":"3.1","depth":1,"next":{"title":"Error Handling","level":"3.2","depth":1,"path":"src/error-handling.md","ref":"src/error-handling.md","articles":[]},"previous":{"title":"Setup Client","level":"2.5","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/route-builder.md","mtime":"2018-03-12T01:49:47.451Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-14T16:47:21.967Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Custom Route Paths","level":"3.1","depth":1,"next":{"title":"Error Handling","level":"3.2","depth":1,"path":"src/error-handling.md","ref":"src/error-handling.md","articles":[]},"previous":{"title":"Setup Client","level":"2.5","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/route-builder.md","mtime":"2018-03-14T16:55:47.000Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-14T16:56:32.252Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
