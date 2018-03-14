@@ -8,7 +8,7 @@ Now you need to install the Suave-specific package: [Fable.Remoting.Giraffe](htt
 ```
 paket add Fable.Remoting.Giraffe --project path/to/Server.fsproj
 ```
-## Expose the API as a HttpHanlder:
+## Expose the API as a HttpHandler:
 ```fs
 // Program.fs
 

@@ -1,8 +1,8 @@
 # Fable.Remoting
 
-Fable.Remoting is a library that enables type-safe client-server communication for F# featuring the popular web frameworks on the server and [Fable](http://fable.io/) on the client.This library lets you think about your client-server interactions in terms of pure stateless functions while using HTTP internally for communication.  
+Fable.Remoting is a library that enables type-safe client-server communication for F# featuring the popular web frameworks on the server and [Fable](http://fable.io/) on the client.This library lets you think about your client-server interactions in terms of pure stateless functions by defining a shared interface (see [Modeling Shared API](src/modeling-api.md)) that is used by both the client and server.
 
-As the name suggests, it is inspired by [Websharper's Remoting](https://developers.websharper.com/docs/v4.x/fs/remoting) feature but it uses fundementally different mechanism to achieve the same goal. 
+As the name suggests, it is inspired by [Websharper's Remoting](https://developers.websharper.com/docs/v4.x/fs/remoting) feature but it uses different mechanism to achieve the same goal. 
 
 Supported Web Frameworks
  - [Suave](https://github.com/SuaveIO/suave)
