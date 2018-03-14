@@ -1,7 +1,6 @@
-# Getting Started
+# Model Shared API
 Before installing anything, you can start off by modeling an interface that represents your client-server interactions. The definition of this interface will be shared between the client and the server. Such interface is represented in F# as a record with the fields of the record being functions. 
 
-## Model your API
 Suppose you are modelling an API for a music store, then it would look something like this:
  ```fs
 // SharedModels.fs
