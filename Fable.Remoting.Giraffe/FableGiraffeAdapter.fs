@@ -29,13 +29,13 @@ module FableGiraffeAdapter =
 
     // Get data from request body and deserialize.
     // getResourceFromReq : HttpRequest -> obj
-    let getResourceFromReq (ctx : HttpContext) (inputType: System.Type[]) =
+    let getResourceFromReq (ctx : HttpContext) (inputType: System.Type[]) (genericType: System.Type[]) =
         let requestBodyStream = ctx.Request.Body
         use streamReader = new StreamReader(requestBodyStream)
         let requestBodyContent = streamReader.ReadToEnd()
-        builder.Deserialize options requestBodyContent inputType
+        builder.Deserialize options requestBodyContent inputType ctx genericType
 
-    let handleRequest methodName serverImplementation routePath =
+    let handleRequest methodName serverImplementation genericType routePath =
         let inputType = ServerSide.getInputType methodName serverImplementation
         let hasArg =
             match inputType with
@@ -74,7 +74,7 @@ module FableGiraffeAdapter =
                 Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
                 let requestBodyData =
                     match hasArg with
-                    | true  -> getResourceFromReq ctx inputType
+                    | true  -> getResourceFromReq ctx inputType genericType
                     | false -> [|null|]
                 let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
                 task {
@@ -112,7 +112,12 @@ module FableGiraffeAdapter =
                 }
 
     let sb = StringBuilder()
-    let typeName = implementation.GetType().Name
+    let t = implementation.GetType()
+    let typeName =
+        match t.GenericTypeArguments with
+        |[||] -> t.Name
+        |[|_|] -> t.Name.[0..t.Name.Length-3]
+        |_ -> failwith "Only one generic type can be injected"
     sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
     implementation.GetType()
         |> FSharpType.GetRecordFields
@@ -121,7 +126,7 @@ module FableGiraffeAdapter =
         let fullPath = options.Builder typeName methodName
         sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
         POST >=> route fullPath
-             >=> warbler (fun _ -> handleRequest methodName implementation fullPath)
+             >=> warbler (fun _ -> handleRequest methodName implementation (t.GenericTypeArguments) fullPath)
     )
     |> List.ofSeq
     |> fun routes ->

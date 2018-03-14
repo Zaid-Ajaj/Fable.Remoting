@@ -20,6 +20,10 @@ let versionTestServer = Proxy.remoting<IVersionTestServer> {
     add_custom_header_for "v4" ("version",4)
     }
 
+let contextTestServer = Proxy.remoting<IContextTest<unit>>{
+    with_builder routeBuilder
+}
+
 QUnit.registerModule "Fable.Remoting"
 
 QUnit.testCaseAsync "IServer.getLegth" <| fun test ->
@@ -278,5 +282,9 @@ QUnit.testCaseAsync "IVersionTestServer.customVersions" <| fun test ->
         test.equal "v3" v3
         let! v4 = versionTestServer.v4 ()
         test.equal "v4" v4
-
+    }
+QUnit.testCaseAsync "IContextTest.test" <| fun test ->
+    async {
+        let! ctxTest = contextTestServer.callWithCtx ()
+        test.equal ctxTest "/api/IContextTest/callWithCtx"
     }

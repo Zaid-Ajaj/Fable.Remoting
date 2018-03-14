@@ -23,11 +23,11 @@ module FableSuaveAdapter =
    inherit RemoteBuilderBase<HttpContext,WebPart<HttpContext>>()
    
    override builder.Run(options:SharedCE.BuilderOptions<HttpContext>) =
-    let getResourceFromReq (req : HttpRequest) (inputType: System.Type[])  =
+    let getResourceFromReq (req : HttpRequest) (ctx : HttpContext) (inputType: System.Type[]) (genericTypes: System.Type[])  =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
-        builder.Deserialize options json inputType
+        builder.Deserialize options json inputType ctx genericTypes
 
-    let handleRequest methodName serverImplementation routePath =
+    let handleRequest methodName serverImplementation genericTypes routePath =
         let inputType = ServerSide.getInputType methodName serverImplementation
         let hasArg =
             match inputType with
@@ -73,7 +73,7 @@ module FableSuaveAdapter =
                     // if input is unit
                     // then don't bother getting any input from request
                     match hasArg with
-                    | true  -> getResourceFromReq req inputType
+                    | true  -> getResourceFromReq req ctx inputType genericTypes
                     | false -> [|null|]
                 let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
                 let onSuccess = flow HttpCode.HTTP_200 
@@ -106,7 +106,12 @@ module FableSuaveAdapter =
                 
 
     let sb = StringBuilder()
-    let typeName = implementation.GetType().Name
+    let t = implementation.GetType()
+    let typeName =
+        match t.GenericTypeArguments with
+        |[||] -> t.Name
+        |[|_|] -> t.Name.[0..t.Name.Length-3]
+        |_ -> failwith "Only one generic type can be injected"    
     sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
     implementation.GetType()
         |> FSharpType.GetRecordFields
@@ -114,7 +119,7 @@ module FableSuaveAdapter =
             let methodName = propInfo.Name
             let fullPath = options.Builder typeName methodName
             sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
-            POST >=> path fullPath >=> request (handleRequest methodName implementation fullPath)
+            POST >=> path fullPath >=> request (handleRequest methodName implementation (t.GenericTypeArguments) fullPath)
         )
         |> List.ofSeq
         |> fun routes ->

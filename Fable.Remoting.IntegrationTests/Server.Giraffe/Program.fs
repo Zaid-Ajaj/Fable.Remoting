@@ -34,9 +34,15 @@ let versionTestWebApp =
     use_custom_handler_for "v2" (isVersion "2")
   }
 
+let contextTestWebApp =
+    remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.Request.Path.Value}} {
+        use_logger (printfn "%s")
+        with_builder routeBuilder
+    }
+
 let configureApp (app : IApplicationBuilder) =
     app.UseGiraffeErrorHandler(errorHandler)
-       .UseGiraffe(choose [webApp;versionTestWebApp])
+       .UseGiraffe(choose [webApp;versionTestWebApp;contextTestWebApp])
 
 
 [<EntryPoint>]

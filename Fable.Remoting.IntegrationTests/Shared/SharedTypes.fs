@@ -72,3 +72,7 @@ type IVersionTestServer = {
 }
 
 let versionTestBuilder _ _ = "/api/version/data"
+
+type IContextTest<'ctx> = {
+    callWithCtx : 'ctx -> Async<string>
+}

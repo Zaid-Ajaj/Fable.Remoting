@@ -28,4 +28,10 @@ let versionTestWebPart =
     use_custom_handler_for "v2" (isVersion "2")
   }
 
-startWebServer defaultConfig (choose [fableWebPart;versionTestWebPart])
+let contextTestWebApp =
+    remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
+        use_logger (printfn "%s")
+        with_builder routeBuilder
+    }
+
+startWebServer defaultConfig (choose [fableWebPart;versionTestWebPart;contextTestWebApp])

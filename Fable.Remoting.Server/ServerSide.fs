@@ -122,12 +122,19 @@ module SharedCE =
                 |> toLogger logf)
 
         /// Deserialize a json string using FableConverter
-        member __.Deserialize {Logger=logger} (json: string) (inputType: System.Type[]) =
+        member __.Deserialize {Logger=logger} (json: string) (inputType: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             logDeserializationTypes logger json inputType
             let args = JArray.Parse json
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
-            Seq.zip args inputType |> Seq.toArray |> Array.map (fun (o,t) -> o.ToObject(t,serializer))
+            let converter = 
+                match genericTypes with
+                |[|a|] -> fun (o:JToken,t:System.Type) ->
+                    if a.GUID = t.GUID then
+                       box context
+                    else o.ToObject(t,serializer)
+                |_  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)
+            Seq.zip args inputType |> Seq.toArray |> Array.map converter
         /// Serialize the value into a json string using FableConverter
         member __.Json {Logger=logger} value =
           let result = JsonConvert.SerializeObject(value, fableConverter)
