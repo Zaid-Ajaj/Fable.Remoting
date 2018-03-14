@@ -53,7 +53,7 @@
     <link rel="shortcut icon" href="gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="src/getting-started.html" />
+    <link rel="next" href="src/modeling-api.html" />
     
     
 
@@ -96,12 +96,19 @@
             
         </li>
     
-        <li class="chapter " data-level="1.2" data-path="src/getting-started.html">
+
+    
+        
+        <li class="header">Scaffold from scratch</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="src/modeling-api.html">
             
-                <a href="src/getting-started.html">
+                <a href="src/modeling-api.html">
             
                     
-                    Getting Started
+                    Model Shared API
             
                 </a>
             
@@ -109,7 +116,7 @@
             
         </li>
     
-        <li class="chapter " data-level="1.3" data-path="src/suave.html">
+        <li class="chapter " data-level="2.2" data-path="src/suave.html">
             
                 <a href="src/suave.html">
             
@@ -122,7 +129,7 @@
             
         </li>
     
-        <li class="chapter " data-level="1.4" data-path="src/giraffe.html">
+        <li class="chapter " data-level="2.3" data-path="src/giraffe.html">
             
                 <a href="src/giraffe.html">
             
@@ -135,7 +142,7 @@
             
         </li>
     
-        <li class="chapter " data-level="1.5" data-path="src/saturn.html">
+        <li class="chapter " data-level="2.4" data-path="src/saturn.html">
             
                 <a href="src/saturn.html">
             
@@ -148,7 +155,7 @@
             
         </li>
     
-        <li class="chapter " data-level="1.6" data-path="src/client.html">
+        <li class="chapter " data-level="2.5" data-path="src/client.html">
             
                 <a href="src/client.html">
             
@@ -161,7 +168,14 @@
             
         </li>
     
-        <li class="chapter " data-level="1.7" data-path="src/route-builder.html">
+
+    
+        
+        <li class="header">Advanced</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="src/route-builder.html">
             
                 <a href="src/route-builder.html">
             
@@ -174,12 +188,25 @@
             
         </li>
     
-        <li class="chapter " data-level="1.8" data-path="src/error-handling.html">
+        <li class="chapter " data-level="3.2" data-path="src/error-handling.html">
             
                 <a href="src/error-handling.html">
             
                     
                     Error Handling
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="src/modeling-authentication.html">
+            
+                <a href="src/modeling-authentication.html">
+            
+                    
+                    Modeling Authentication
             
                 </a>
             
@@ -233,14 +260,27 @@
                                 <section class="normal markdown-section">
                                 
                                 <h1 id="fableremoting">Fable.Remoting</h1>
-<p>Fable.Remoting is a library that enables type-safe client-server communication for F# featuring the popular web frameworks on the server and <a href="http://fable.io/" target="_blank">Fable</a> on the client.   </p>
+<p>Fable.Remoting is a library that enables type-safe client-server communication for F# featuring the popular web frameworks on the server and <a href="http://fable.io/" target="_blank">Fable</a> on the client.This library lets you think about your client-server interactions in terms of pure stateless functions while using HTTP internally for communication.  </p>
+<p>As the name suggests, it is inspired by <a href="https://developers.websharper.com/docs/v4.x/fs/remoting" target="_blank">Websharper&apos;s Remoting</a> feature but it uses fundementally different mechanism to achieve the same goal. </p>
 <p>Supported Web Frameworks</p>
 <ul>
 <li><a href="https://github.com/SuaveIO/suave" target="_blank">Suave</a></li>
 <li><a href="https://github.com/giraffe-fsharp/Giraffe" target="_blank">Giraffe</a></li>
 <li><a href="https://github.com/SaturnFramework/Saturn" target="_blank">Saturn</a></li>
 </ul>
-<p><a href="src/getting-started.html">Getting Started</a></p>
+<h2 id="quick-start">Quick Start</h2>
+<p>You start off using the <a href="https://github.com/SAFE-Stack/SAFE-template" target="_blank">SAFE template</a> where Fable.Remoting is one of the scaffolding options:</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># install the template</span>
+dotnet new -i SAFE.Template
+<span class="hljs-comment"># scaffold a new Fable/Suave project with Fable.Remoting</span>
+dotnet new SAFE --Remoting
+<span class="hljs-comment"># Giraffe as your server</span>
+dotnet new SAFE --Server giraffe --Remoting
+<span class="hljs-comment"># Saturn on the server</span>
+dotnet new SAFE --Server saturn --Remoting
+</code></pre>
+<h2 id="scaffold-from-scratch">Scaffold from scratch</h2>
+<p>You can also create a project from scratch and add Fable.Remoting yourself, start off by <a href="src/modeling-api.html">modeling the shared API</a>.</p>
 
                                 
                                 </section>
@@ -269,7 +309,7 @@
             
                 
                 
-                <a href="src/getting-started.html" class="navigation navigation-next navigation-unique" aria-label="Next page: Getting Started">
+                <a href="src/modeling-api.html" class="navigation navigation-next navigation-unique" aria-label="Next page: Model Shared API">
                     <i class="fa fa-angle-right"></i>
                 </a>
                 
@@ -280,7 +320,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/getting-started.md","ref":"src/getting-started.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-03-10T23:11:22.709Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-12T01:50:39.411Z"},"basePath":".","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Model Shared API","level":"2.1","depth":1,"path":"src/modeling-api.md","ref":"src/modeling-api.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-03-14T15:19:52.590Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-14T16:12:43.493Z"},"basePath":".","book":{"language":""}});
         });
     </script>
 </div>

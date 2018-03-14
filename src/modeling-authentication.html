@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Setup Client · GitBook</title>
+        <title>Modeling Authentication · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,10 +53,8 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="route-builder.html" />
     
-    
-    <link rel="prev" href="saturn.html" />
+    <link rel="prev" href="error-handling.html" />
     
 
     </head>
@@ -157,7 +155,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="2.5" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -203,7 +201,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.3" data-path="modeling-authentication.html">
+        <li class="chapter active" data-level="3.3" data-path="modeling-authentication.html">
             
                 <a href="modeling-authentication.html">
             
@@ -246,7 +244,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Setup Client</a>
+        <a href=".." >Modeling Authentication</a>
     </h1>
 </div>
 
@@ -261,49 +259,54 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="client">Client</h1>
-<p>On your client Fable project, you reference the the shared API types:</p>
-<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;../Shared/SharedModels.fs&quot;</span> /&gt;</span>
-<span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;Program.fs&quot;</span> /&gt;</span>
-</code></pre>
-<p>Now you need to install the client package: <a href="https://www.nuget.org/packages/Fable.Remoting.Client/" target="_blank">Fable.Remoting.Client</a>:</p>
-<pre><code>paket add Fable.Remoting.Client --project path/to/Client.fsproj
-</code></pre><h2 id="proxy-creation">Proxy creation</h2>
-<p>Now that you have installed the package, you can use it to create a proxy: An object with which you are able to call the server in a type-safe manner: </p>
-<pre><code class="lang-fs"><span class="hljs-keyword">open</span> ShareModels
-<span class="hljs-keyword">open</span> Fable.Remoting.Client
+                                <h1 id="modeling-authentication">Modeling Authentication</h1>
+<p>When it comes to web applications, authentication and authorization are usually implemented in terms of cookies and headers of requests and responses, this is not the case when using <code>Fable.Remoting</code> to implement security features because we are only using stateless pure functions and thus we need to &quot;forget&quot; about HTTP (headers/cookies/session state) when modeling authentication and authorization for our application.  </p>
+<p>The following API models a book store interface with some of the functions requiring the user to be logged in. We use tokens to authenticate/authorize users:</p>
+<pre><code class="lang-fs"><span class="hljs-comment">// Shared.fs</span>
 
-<span class="hljs-comment">// musicStore : IMusicStore</span>
-<span class="hljs-keyword">let</span> musicStore = Proxy.remoting&lt;IMusicStore&gt; {()}
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthToken</span> </span>= AuthToken <span class="hljs-keyword">of</span> string
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">LoginInfo</span> </span>= { Username: string; Password: string }
 
-async {
-    <span class="hljs-keyword">let!</span> albums = musicStore.allAlbums() 
-    <span class="hljs-keyword">for</span> album <span class="hljs-keyword">in</span> albums <span class="hljs-keyword">do</span>
-        printfn <span class="hljs-string">&quot;%s (%s)&quot;</span> album.Title album.Genre
+<span class="hljs-comment">// possible errors when logging in</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">LoginError</span> </span>= 
+    | UserDoesNotExist
+    | PasswordIncorrect
+    | AccountBanned
+
+<span class="hljs-comment">// a request with a token</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">SecureRequest</span>&lt;<span class="hljs-title">&apos;t</span>&gt; </span>= { Token : string; Content : <span class="hljs-symbol">&apos;t</span> }
+
+<span class="hljs-comment">// possible authentication/authorization errors     </span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthError</span> </span>= 
+   | UserTokenExpired
+   | TokenInvalid
+   | UserDoesNotHaveAccess
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">BookId</span> </span>= BookId <span class="hljs-keyword">of</span> int
+<span class="hljs-comment">// domain model</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">Book</span> </span>= { Id: int; Title: string; <span class="hljs-comment">(* other propeties *)</span> }
+
+<span class="hljs-comment">// things that could go wrong </span>
+<span class="hljs-comment">// when removing a book from a users wishlist</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">BookRemovalFromWithList</span> </span>= 
+    | BookSuccessfullyRemoved
+    | BookDoesNotExist
+
+<span class="hljs-comment">// the book store protocol</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IBookStoreApi</span> </span>= {
+    <span class="hljs-comment">// login to acquire an auth token   </span>
+    login : LoginInfo -&gt; Async&lt;Result&lt;AuthToken, LoginError&gt;&gt;
+    <span class="hljs-comment">// &quot;public&quot; function: no auth needed</span>
+    searchBooksByTitle : string -&gt; Async&lt;list&lt;Book&gt;&gt; 
+    <span class="hljs-comment">// secure function, requires a token</span>
+    booksOnWishlist : AuthToken -&gt; Async&lt;Result&lt;list&lt;Book&gt;, AuthError&gt;&gt;, 
+    <span class="hljs-comment">// secure function, requires a token and a book id</span>
+    removeBookFromWishlist : SecureRequest&lt;BookId&gt; -&gt; Async&lt;Result&lt;BookRemovalFromWithList, AuthError&gt;&gt;
+    <span class="hljs-comment">// etc . . . </span>
 }
-|&gt; Async.StartImmediate
 </code></pre>
-<h2 id="webpack-dev-server-configuration">Webpack dev server configuration</h2>
-<p>When you are working with <code>webpack-dev-server</code> you want to use re-route the HTTP requests from your from the developement server to ypur actual backend, for that you use the following configuration, assuming you are running <code>webpack-dev-server</code> on port 8080 and your backend is running on port 8083. You would change this block:</p>
-<pre><code class="lang-js">devServer: {
-  contentBase: resolve(<span class="hljs-string">&apos;./public&apos;</span>),
-  port: <span class="hljs-number">8080</span>
-}
-</code></pre>
-<p>to this:</p>
-<pre><code class="lang-js">devServer: {
-  contentBase: resolve(<span class="hljs-string">&apos;./public&apos;</span>),
-  port: <span class="hljs-number">8080</span>,
-  <span class="hljs-comment">// tell webpack-dev-server to re-route all requests </span>
-  <span class="hljs-comment">// from dev-server to the actual server</span>
-  proxy: {
-    <span class="hljs-string">&apos;/*&apos;</span>: { 
-      <span class="hljs-comment">// assuming the suave server is running on port 8083</span>
-      target: <span class="hljs-string">&quot;http://localhost:8083&quot;</span>,
-      changeOrigin: <span class="hljs-literal">true</span>
-    }
-}
-</code></pre>
+<p>Just by looking at the types you can tell what the application does. Implementing such interface on the server requires that you generate an authorization/authentication token when invoking the <code>login</code> function, <a href="https://jwt.io/" target="_blank">JSON Web Tokens</a> are good match for this type of scenario&apos;s and then use the resulting token in subsequent requests. There is no <em>implicit</em> logged in user nor some &quot;user context&quot;, everything is stateless and explicit. </p>
+<p>The drawback of this approach is that you have to validate the auth token yourself for every secure function. </p>
 
                                 
                                 </section>
@@ -331,14 +334,10 @@ async {
 
             
                 
-                <a href="saturn.html" class="navigation navigation-prev " aria-label="Previous page: Setup Saturn">
+                <a href="error-handling.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page: Error Handling">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
-                
-                <a href="route-builder.html" class="navigation navigation-next " aria-label="Next page: Custom Route Paths">
-                    <i class="fa fa-angle-right"></i>
-                </a>
                 
             
         
@@ -347,7 +346,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Setup Client","level":"2.5","depth":1,"next":{"title":"Custom Route Paths","level":"3.1","depth":1,"path":"src/route-builder.md","ref":"src/route-builder.md","articles":[]},"previous":{"title":"Setup Saturn","level":"2.4","depth":1,"path":"src/saturn.md","ref":"src/saturn.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/client.md","mtime":"2018-03-11T18:19:20.872Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-14T16:12:43.493Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Modeling Authentication","level":"3.3","depth":1,"previous":{"title":"Error Handling","level":"3.2","depth":1,"path":"src/error-handling.md","ref":"src/error-handling.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/modeling-authentication.md","mtime":"2018-03-14T16:03:16.564Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-14T16:12:43.493Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
