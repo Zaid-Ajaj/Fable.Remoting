@@ -60,6 +60,8 @@ type IServer = {
     overriddenFunction : string -> Async<int>
 
     customStatusCode : unit -> Async<string>
+    //Pure async
+    pureAsync : Async<int>
 }
 let routeBuilder typeName methodName =
     sprintf "/api/%s/%s" typeName methodName

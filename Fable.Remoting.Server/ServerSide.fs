@@ -25,8 +25,11 @@ module ServerSide =
 
     open System
     open Fable.Remoting.Reflection
-    let rec getFsharpFuncArgs (propType:System.Type) = [|
-            match propType.GetGenericArguments() with
+    let rec getFsharpFuncArgs (propType:System.Type) = 
+        if propType.GUID = typeof<Async<_>>.GUID then
+            [|propType|]    
+        else    
+          [|match propType.GetGenericArguments() with
             |[|a; b|] when b.GUID = (typeof<FSharpFunc<_,_>>).GUID -> yield a;yield! getFsharpFuncArgs b
             |a -> yield! a |]
 
@@ -37,8 +40,9 @@ module ServerSide =
                 .GetProperty(methodName)
                 .PropertyType
             |> getFsharpFuncArgs
-
-          arr.[..arr.Length-2]
+          match arr with
+          |[|_|] -> [||]
+          |arr -> arr.[..arr.Length-2]
 
     let dynamicallyInvoke (methodName: string) implementation methodArgs =
          let propInfo = implementation.GetType().GetProperty(methodName)
@@ -54,8 +58,11 @@ module ServerSide =
          let boxer = typedefof<AsyncBoxer<_>>.MakeGenericType(typeBFromAsyncOfB)
                      |> Activator.CreateInstance
                      :?> IAsyncBoxer
-
-         let fsAsync = FSharpRecord.Invoke (methodName, implementation, methodArgs)
+        
+         let fsAsync =
+            match fsharpFuncArgs with
+            |[|_|] -> propInfo.GetValue(implementation,null)
+            |_ ->  FSharpRecord.Invoke (methodName, implementation, methodArgs)
 
          async {
             let! asyncResult = boxer.BoxAsyncResult fsAsync
@@ -130,7 +137,7 @@ module SharedCE =
             let converter = 
                 match genericTypes with
                 |[|a|] -> fun (o:JToken,t:System.Type) ->
-                    if a.GUID = t.GUID then
+                    if a.GUID = t.GUID && a.GUID = typeof<'ctx>.GUID then
                        box context
                     else o.ToObject(t,serializer)
                 |_  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)

@@ -267,6 +267,12 @@ QUnit.testCaseAsync "IServer.overriddenFunction" <| fun test ->
         test.equal 42 output
     }
 
+QUnit.testCaseAsync "IServer.pureAsync" <| fun test ->
+    async {
+        let! output = server.pureAsync
+        test.equal 42 output
+    }
+
 QUnit.testCaseAsync "IServer.customStatusCode" <| fun test ->
     async {
         let! output = server.customStatusCode ()

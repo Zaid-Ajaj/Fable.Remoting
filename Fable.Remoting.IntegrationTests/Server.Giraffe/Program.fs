@@ -16,6 +16,7 @@ let errorHandler (ex : Exception) (logger : ILogger) =
 
 let webApp = remoting server {
     with_builder routeBuilder
+    use_logger (printfn "%s")
     use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
     use_custom_handler_for "customStatusCode" (fun _ -> ResponseOverride.Default.withStatusCode 204 |> Some)
 }

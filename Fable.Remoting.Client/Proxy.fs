@@ -82,13 +82,18 @@ module Proxy =
     [<PassGenerics>]
     let private fields<'t> =
                 FSharpType.GetRecordFields typeof<'t>
-                |> Seq.filter (fun propInfo -> FSharpType.IsFunction (propInfo.PropertyType))
-                |> Seq.map (fun propInfo ->
-                    let funcName = propInfo.Name
-                    let funcParamterTypes =
-                        FSharpType.GetFunctionElements (propInfo.PropertyType)
-                        |> typed<System.Type []>
-                    (funcName, funcParamterTypes)
+                |> Seq.choose
+                    (fun propInfo ->                        
+                        match propInfo.PropertyType with
+                        |t when FSharpType.IsFunction t ->                        
+                            let funcName = propInfo.Name
+                            let funcParamterTypes =
+                                FSharpType.GetFunctionElements (propInfo.PropertyType)
+                                |> typed<System.Type []>
+                            Some (funcName, funcParamterTypes)
+                        |t when box (t?definition?name) = box "Async" ->
+                            Some(propInfo.Name, [|t|])
+                        |_ -> None
                 )
                 |> List.ofSeq
 
