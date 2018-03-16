@@ -1,5 +1,6 @@
-# Model Shared API
-Before installing anything, you can start off by modeling an interface that represents your client-server interactions. The definition of this interface will be shared between the client and the server. Such interface is represented in F# as a record with the fields of the record being functions. 
+# Getting Started
+
+Before installing anything, you can start off by modeling an interface that represents your client-server interactions. The definition of this interface along with types used within it will be shared between the client and the server, later on you will reference this shared file from both projects. Such interface is represented in F# as a record with the fields of the record being functions. 
 
 Suppose you are modelling an API for a music store, then it would look something like this:
  ```fs
@@ -23,9 +24,12 @@ type IMusicStore = {
  }
 ```
 As you can see, our interface is the `IMusicStore` record the fields of such record are functions of the shape:
-```
+```fs
 'A -> Async<'B>
 'A -> 'B -> Async<'C>
+'A -> 'B -> 'C -> Async<'D>
+
+// etc...
 ```
 ## Provide an implementation 
 On the server, you would provide an implementation of the above API. 

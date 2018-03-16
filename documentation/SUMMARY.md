@@ -1,9 +1,9 @@
 # Summary
 
 - [Introduction](README.md)
+- [Getting Started](src/basics.md)
 
 ### Scaffold from scratch
-- [Model Shared API](src/modeling-api.md)
 - [Setup Suave](src/suave.md)
 - [Setup Giraffe](src/giraffe.md)
 - [Setup Saturn](src/saturn.md)
