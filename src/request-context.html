@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Setup Giraffe · GitBook</title>
+        <title>Accessing Request Context · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,10 +53,8 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="saturn.html" />
     
-    
-    <link rel="prev" href="suave.html" />
+    <link rel="prev" href="modeling-authentication.html" />
     
 
     </head>
@@ -131,7 +129,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -216,7 +214,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.4" data-path="request-context.html">
+        <li class="chapter active" data-level="3.4" data-path="request-context.html">
             
                 <a href="request-context.html">
             
@@ -259,7 +257,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Setup Giraffe</a>
+        <a href=".." >Accessing Request Context</a>
     </h1>
 </div>
 
@@ -274,45 +272,50 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="setup-giraffe">Setup Giraffe</h1>
-<p>On your Giraffe project, you reference the the shared API types:</p>
-<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;../Shared/SharedModels.fs&quot;</span> /&gt;</span>
-<span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;Program.fs&quot;</span> /&gt;</span>
+                                <h1 id="accessing-request-context">Accessing Request Context</h1>
+<p>Sometimes you might need to read data from the incoming request, Maybe to validate a request header or to do some kind of logging. We will demonstrate this with Suave, the same logic follows for the other web frameworks. We also want to be able to do this without sacrificing the shape the shared interface. </p>
+<p>The idea is to make the remoting handler <em>dependent</em> on the incoming request. </p>
+<p>Here is an example, we create a secure remoting handler by reading the authorization headers from the request and deciding what to return back to the client. </p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthError</span> </span>= 
+   | UserTokenExpired
+   | UserTokenInvalid
+   | UserDoesNotHaveAccess
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span> </span>= {
+    <span class="hljs-comment">// public function, no token required</span>
+    popularAlbums : unit -&gt; Async&lt;Result&lt;Album list, AuthError&gt;&gt;
+}
+
+<span class="hljs-comment">// the IMusicStore is DEPENDENT on the incoming request</span>
+<span class="hljs-comment">// createBookApi : HttpRequest -&gt; IMusicStore</span>
+<span class="hljs-keyword">let</span> createMusicStore (req: HttpRequest) =
+    <span class="hljs-comment">// read the value of the authorization header</span>
+    <span class="hljs-keyword">let</span> authorizationHeader = 
+        req.headers
+        |&gt; List.tryFind (<span class="hljs-keyword">fun</span> (key, _) -&gt; key = <span class="hljs-string">&quot;authorization&quot;</span>)
+        |&gt; Option.map snd
+    <span class="hljs-comment">// construct the music store </span>
+    <span class="hljs-keyword">let</span> musicStore = { 
+        popularAlbums = <span class="hljs-keyword">fun</span> () -&gt; async {
+            <span class="hljs-keyword">match</span> Security.validate authHeader <span class="hljs-keyword">with</span> 
+            | None -&gt; <span class="hljs-keyword">return</span> (Error UserTokenInvalid)
+            | Some user -&gt;
+                <span class="hljs-keyword">let</span> albums = Db.getPopularAlbums user
+                <span class="hljs-keyword">return</span> (Ok albums)
+        }
+    }
+
+    musicStore
 </code></pre>
-<p>Now you need to install the Suave-specific package: <a href="https://www.nuget.org/packages/Fable.Remoting.Giraffe/" target="_blank">Fable.Remoting.Giraffe</a>:</p>
-<pre><code>paket add Fable.Remoting.Giraffe --project path/to/Server.fsproj
-</code></pre><h2 id="expose-the-api-as-a-httphandler">Expose the API as a HttpHandler:</h2>
-<pre><code class="lang-fs"><span class="hljs-comment">// Program.fs</span>
+<p>As you can see, constructing <code>IMusicStore</code> depends on an incoming <code>HttpRequest</code>, you read the authorization header and decide what to return to the logged in user. </p>
+<p>Now you can create a <code>WebPart</code> using the <code>request</code> constructor from Suave</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = 
+    choose [ 
+        GET &gt;=&gt; path <span class="hljs-string">&quot;/&quot;</span> &gt;=&gt; OK <span class="hljs-string">&quot;Hello from root&quot;</span>
+        request createMusicStore
+    ]
 
-<span class="hljs-keyword">open</span> Giraffe
-<span class="hljs-keyword">open</span> SharedModels
-<span class="hljs-keyword">open</span> Fable.Remoting.Server
-<span class="hljs-keyword">open</span> Fable.Remoting.Giraffe
-
-<span class="hljs-keyword">let</span> musicStore : IMusicStore = {
-    <span class="hljs-comment">(* Your implementation here *)</span>
-} 
-
-<span class="hljs-comment">// create the HttpHandler using the remoting CE </span>
-<span class="hljs-keyword">let</span> fableWebApp = remoting musicStore {()} 
-
-<span class="hljs-keyword">let</span> configureApp (app : IApplicationBuilder) =
-    <span class="hljs-comment">// Add Giraffe to the ASP.NET Core pipeline</span>
-    app.UseGiraffe fableWebApp
-
-<span class="hljs-keyword">let</span> configureServices (services : IServiceCollection) =
-    <span class="hljs-comment">// Add Giraffe dependencies</span>
-    services.AddGiraffe() |&gt; ignore
-
-<span class="hljs-meta">[&lt;EntryPoint&gt;]</span>
-<span class="hljs-keyword">let</span> main _ =
-    WebHostBuilder()
-        .UseKestrel()
-        .Configure(Action&lt;IApplicationBuilder&gt; configureApp)
-        .ConfigureServices(configureServices)
-        .Build()
-        .Run()
-    <span class="hljs-number">0</span>
+startWebServer defaultConfig webApp
 </code></pre>
 
                                 
@@ -341,14 +344,10 @@
 
             
                 
-                <a href="suave.html" class="navigation navigation-prev " aria-label="Previous page: Setup Suave">
+                <a href="modeling-authentication.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page: Modeling Authentication">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
-                
-                <a href="saturn.html" class="navigation navigation-next " aria-label="Next page: Setup Saturn">
-                    <i class="fa fa-angle-right"></i>
-                </a>
                 
             
         
@@ -357,7 +356,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Setup Giraffe","level":"2.2","depth":1,"next":{"title":"Setup Saturn","level":"2.3","depth":1,"path":"src/saturn.md","ref":"src/saturn.md","articles":[]},"previous":{"title":"Setup Suave","level":"2.1","depth":1,"path":"src/suave.md","ref":"src/suave.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/giraffe.md","mtime":"2018-03-14T16:40:15.002Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-16T12:54:50.356Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"3.4","depth":1,"previous":{"title":"Modeling Authentication","level":"3.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-03-16T12:51:35.166Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-16T12:54:50.356Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
