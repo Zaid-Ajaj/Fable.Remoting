@@ -13,3 +13,4 @@
 - [Custom Route Paths](src/route-builder.md)
 - [Error Handling](src/error-handling.md)
 - [Modeling Authentication](src/modeling-authentication.md)
+- [Accessing Request Context](src/request-context.md)
