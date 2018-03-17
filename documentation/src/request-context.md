@@ -47,10 +47,16 @@ But now there is a little problem: How do you call the server from the client if
 ```fs
 // Client
 
-let musicStore = Proxy.remoting<IMusicStore<unit>> {()} 
+// doesn't send authorization header value
+let musicStore =  Proxy.remoting<IMusicStore<unit>> {()}
+
+// sends an authorization header with every request
+let secureMusicStore = Proxy.remoting<IMusicStore<unit>> {
+    use_token "Bearer <authorization value here>"
+} 
 
 async {
-    let! favoriteAlbums = musicStore.favoriteAlbums() 
+    let! favoriteAlbums = secureMusicStore.favoriteAlbums() 
     for album in favoriteAlbums do
         printfn "%s" album.Title
 }
