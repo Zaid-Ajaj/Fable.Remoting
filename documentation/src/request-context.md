@@ -16,7 +16,7 @@ Now, here is an implementation of the interface:
 ```fs
 let musicStore : IMusicStore<HttpContext> = {
     // return favorite albums of current logged-in user
-    favoriteAlbums = fun ctx -> {
+    favoriteAlbums = fun ctx -> async {
         // get the authorization header, if any
         let authHeader = 
             ctx.request.headers
