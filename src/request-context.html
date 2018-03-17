@@ -361,10 +361,16 @@ startWebServer defaultConfig webApp
 <p>But now there is a little problem: How do you call the server from the client if the functions require a <code>&apos;Context</code> as an input? Well you simply provide a <code>unit</code> as the generic parameter and everything just works out:</p>
 <pre><code class="lang-fs"><span class="hljs-comment">// Client</span>
 
-<span class="hljs-keyword">let</span> musicStore = Proxy.remoting&lt;IMusicStore&lt;unit&gt;&gt; {()} 
+<span class="hljs-comment">// doesn&apos;t send authorization header value</span>
+<span class="hljs-keyword">let</span> musicStore =  Proxy.remoting&lt;IMusicStore&lt;unit&gt;&gt; {()}
+
+<span class="hljs-comment">// sends an authorization header with every request</span>
+<span class="hljs-keyword">let</span> secureMusicStore = Proxy.remoting&lt;IMusicStore&lt;unit&gt;&gt; {
+    use_token <span class="hljs-string">&quot;Bearer &lt;authorization value here&gt;&quot;</span>
+} 
 
 async {
-    <span class="hljs-keyword">let!</span> favoriteAlbums = musicStore.favoriteAlbums() 
+    <span class="hljs-keyword">let!</span> favoriteAlbums = secureMusicStore.favoriteAlbums() 
     <span class="hljs-keyword">for</span> album <span class="hljs-keyword">in</span> favoriteAlbums <span class="hljs-keyword">do</span>
         printfn <span class="hljs-string">&quot;%s&quot;</span> album.Title
 }
@@ -413,7 +419,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"3.5","depth":1,"next":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"3.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-03-17T15:28:25.518Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-17T21:35:23.414Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"3.5","depth":1,"next":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"3.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-03-17T21:41:12.291Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-17T21:42:23.700Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
