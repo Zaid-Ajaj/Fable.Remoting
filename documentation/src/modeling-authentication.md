@@ -1,8 +1,10 @@
 # Modeling Authentication
 
-When it comes to web applications, authentication and authorization are usually implemented in terms of cookies and headers of requests and responses, this is not the case when using `Fable.Remoting` to implement security features because we are only using stateless pure functions and thus we need to "forget" about HTTP (headers/cookies/session state) when modeling authentication and authorization for our application.  
+When it comes to web applications, authentication and authorization are usually implemented in terms of cookies and headers of requests and responses, this is not the case when using `Fable.Remoting` to implement security features. This is because we are only using stateless pure functions and thus we need to *"forget"* about HTTP (headers/cookies/session state) when modeling authentication and authorization for our application.  
 
-The following API models a book store interface with some of the functions requiring the user to be logged in. We use tokens to authenticate/authorize users:
+> Note: the following modeling technique is the *recommended* implementation of auth when using Fable.Remoting. However, it is not the only way and it is still possible to use Http  mechanisms (headers/cookies) to secure your end points, see [Implicit Authentication](implicit-authentication.md).
+
+The following API models a book store interface with some of the functions requiring the user to be logged in and other functions to publicly available. We use stateless tokens that we pass around to authenticate or authorize the users:
 
 ```fs
 // Shared.fs

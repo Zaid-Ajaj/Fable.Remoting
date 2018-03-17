@@ -13,8 +13,9 @@
 - [Custom Route Paths](src/route-builder.md)
 - [Error Handling](src/error-handling.md)
 - [Modeling Authentication](src/modeling-authentication.md)
+- [Implicit Authentication](src/implicit-authentication.md)
 - [Accessing Request Context](src/request-context.md)
 
-### Other
+### Misc
 - [Troubleshooting](src/troubleshoot.md)
 - [Credits](src/credits.md)

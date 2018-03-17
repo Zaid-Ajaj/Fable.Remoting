@@ -6,5 +6,5 @@ Many many thanks to [Diego Esmerio](https://github.com/Nhowka) for his awesome w
  - Uniform API for the library across the server and the client,
  - Support for multi-argument remoting functions
  - Contexual injection for reading the request context
- - Using plain 'Async<'T>` in the definition of the functions
+ - Using plain `Async<'T>` in the definition of the functions
  - many others...
