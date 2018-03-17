@@ -25,10 +25,10 @@ module ServerSide =
 
     open System
     open Fable.Remoting.Reflection
-    let rec getFsharpFuncArgs (propType:System.Type) = 
+    let rec getFsharpFuncArgs (propType:System.Type) =
         if propType.GUID = typeof<Async<_>>.GUID then
-            [|propType|]    
-        else    
+            [|propType|]
+        else
           [|match propType.GetGenericArguments() with
             |[|a; b|] when b.GUID = (typeof<FSharpFunc<_,_>>).GUID -> yield a;yield! getFsharpFuncArgs b
             |a -> yield! a |]
@@ -58,7 +58,7 @@ module ServerSide =
          let boxer = typedefof<AsyncBoxer<_>>.MakeGenericType(typeBFromAsyncOfB)
                      |> Activator.CreateInstance
                      :?> IAsyncBoxer
-        
+
          let fsAsync =
             match fsharpFuncArgs with
             |[|_|] -> propInfo.GetValue(implementation,null)
@@ -85,6 +85,7 @@ module SharedCE =
         { error: 'a;
           ignored: bool;
           handled: bool; }
+    ///Settings for overriding the response
     type ResponseOverride = {
         StatusCode : int option
         Headers: Map<string,string> option
@@ -97,13 +98,18 @@ module SharedCE =
             Body = None
             Abort = false
         }
+        ///Don't handle the request
+        static member Ignore = Some {ResponseOverride.Default with Abort=true}
+        ///Defines the status code
         member this.withStatusCode(status) =
             {this with StatusCode=Some status}
-        member this.withHeaders(headers) = 
+        ///Defines the response headers
+        member this.withHeaders(headers) =
             {this with Headers = Some headers}
-        member this.withBody(body) = 
+        ///Defines the response body (prevents calling the original async workflow)
+        member this.withBody(body) =
             {this with Body = Some body}
-    
+
     type BuilderOptions<'ctx> = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler option
@@ -134,7 +140,7 @@ module SharedCE =
             let args = JArray.Parse json
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
-            let converter = 
+            let converter =
                 match genericTypes with
                 |[|a|] -> fun (o:JToken,t:System.Type) ->
                     if a.GUID = t.GUID && a.GUID = typeof<'ctx>.GUID then
@@ -152,7 +158,7 @@ module SharedCE =
               |> toLogger logf)
           result
 
-        abstract member Run : BuilderOptions<'ctx> -> 'handler        
+        abstract member Run : BuilderOptions<'ctx> -> 'handler
         member __.Zero() =
             BuilderOptions<'ctx>.Empty
         member __.Yield(_) =
@@ -180,7 +186,7 @@ module SharedCE =
         member __.UseSomeErrorHandler(state,errorHandler)=
             {state with ErrorHandler=errorHandler}
         [<CustomOperation("use_custom_handler_for")>]
+        /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
         member __.UseCustomHandler(state,method,handler) =
             {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
-            
-    
+

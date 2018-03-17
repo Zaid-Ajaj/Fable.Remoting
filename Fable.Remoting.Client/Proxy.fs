@@ -83,9 +83,9 @@ module Proxy =
     let private fields<'t> =
                 FSharpType.GetRecordFields typeof<'t>
                 |> Seq.choose
-                    (fun propInfo ->                        
+                    (fun propInfo ->
                         match propInfo.PropertyType with
-                        |t when FSharpType.IsFunction t ->                        
+                        |t when FSharpType.IsFunction t ->
                             let funcName = propInfo.Name
                             let funcParamterTypes =
                                 FSharpType.GetFunctionElements (propInfo.PropertyType)
@@ -312,6 +312,7 @@ module Proxy =
                 |Some headers ->
                     {state with CustomHeaders = state.CustomHeaders |> Map.add method (header::headers)}
                 |None -> {state with CustomHeaders = state.CustomHeaders |> Map.add method [header]}
+            /// Sets a custom handler that takes the method's name, the status code returned and a function that takes a `ResponseContext` and return a `Result<obj,exn>`. In the `Error` case it will be thrown and in the `Ok` case the object will be returned
             [<CustomOperation("use_custom_handler_for")>]
             member __.UseCustomHandler(state,method,status,handler) =
                 let map =
