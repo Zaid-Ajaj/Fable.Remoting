@@ -14,5 +14,7 @@
 - [Error Handling](src/error-handling.md)
 - [Modeling Authentication](src/modeling-authentication.md)
 - [Accessing Request Context](src/request-context.md)
+
+### Other
 - [Troubleshooting](src/troubleshoot.md)
 - [Credits](src/credits.md)
