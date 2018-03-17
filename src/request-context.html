@@ -232,7 +232,7 @@
 
     
         
-        <li class="header">Other</li>
+        <li class="header">Misc</li>
         
         
     
@@ -309,48 +309,53 @@
                                 
                                 <h1 id="accessing-request-context">Accessing Request Context</h1>
 <p>Sometimes you might need to read data from the incoming request, Maybe to validate a request header or to do some kind of logging. We will demonstrate this with Suave, the same logic follows for the other web frameworks. We also want to be able to do this without sacrificing the shape the shared interface. </p>
-<p>The idea is to make the remoting handler <em>dependent</em> on the incoming request. </p>
-<p>Here is an example, we create a secure remoting handler by reading the authorization headers from the request and deciding what to return back to the client. </p>
-<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthError</span> </span>= 
-   | UserTokenExpired
-   | UserTokenInvalid
-   | UserDoesNotHaveAccess
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span> </span>= {
-    <span class="hljs-comment">// public function, no token required</span>
-    popularAlbums : unit -&gt; Async&lt;Result&lt;Album list, AuthError&gt;&gt;
+<p>The idea is to make the remoting handler <em>dependent</em> on the incoming request context. We do this by parameterizing the definition of the shared interface with a generic context type</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span>&lt;<span class="hljs-title">&apos;Context</span>&gt; </span>= {
+    <span class="hljs-comment">/// return favorite albums of current logged in user</span>
+    favoriteAlbums : &apos;Context -&gt; Async&lt;Album list&gt;
 }
-
-<span class="hljs-comment">// the IMusicStore is DEPENDENT on the incoming request</span>
-<span class="hljs-comment">// createBookApi : HttpRequest -&gt; IMusicStore</span>
-<span class="hljs-keyword">let</span> createMusicStore (req: HttpRequest) =
-    <span class="hljs-comment">// read the value of the authorization header</span>
-    <span class="hljs-keyword">let</span> authorizationHeader = 
-        req.headers
-        |&gt; List.tryFind (<span class="hljs-keyword">fun</span> (key, _) -&gt; key = <span class="hljs-string">&quot;authorization&quot;</span>)
-        |&gt; Option.map snd
-    <span class="hljs-comment">// construct the music store </span>
-    <span class="hljs-keyword">let</span> musicStore = { 
-        popularAlbums = <span class="hljs-keyword">fun</span> () -&gt; async {
-            <span class="hljs-keyword">match</span> Security.validate authHeader <span class="hljs-keyword">with</span> 
-            | None -&gt; <span class="hljs-keyword">return</span> (Error UserTokenInvalid)
-            | Some user -&gt;
-                <span class="hljs-keyword">let</span> albums = Db.getPopularAlbums user
-                <span class="hljs-keyword">return</span> (Ok albums)
-        }
-    }
-
-    musicStore
 </code></pre>
-<p>As you can see, constructing <code>IMusicStore</code> depends on an incoming <code>HttpRequest</code>, you read the authorization header and decide what to return to the logged in user. </p>
-<p>Now you can create a <code>WebPart</code> using the <code>request</code> constructor from Suave</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = 
+<p>Notice the <code>&apos;Context</code> generic parameter in the definition, this type is going to be of type <code>HttpContext</code>  from Suave when we provide an implementation but we don&apos;t hardcode that fact to make the definition applicable to the different web frameworks but also to make the interface callable from a proxy on client, more on this later.  </p>
+<p>Now, here is an implementation of the interface:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicStore : IMusicStore&lt;HttpContext&gt; = {
+    <span class="hljs-comment">// return favorite albums of current logged-in user</span>
+    favoriteAlbums = <span class="hljs-keyword">fun</span> ctx -&gt; async {
+        <span class="hljs-comment">// get the authorization header, if any</span>
+        <span class="hljs-keyword">let</span> authHeader = 
+            ctx.request.headers
+            |&gt; List.tryFind (<span class="hljs-keyword">fun</span> (key, _) -&gt; key = <span class="hljs-string">&quot;authorization&quot;</span>)
+            |&gt; Option.map snd 
+
+        <span class="hljs-keyword">match</span> Security.extractUser authHeader <span class="hljs-keyword">with</span>
+        | None -&gt; <span class="hljs-keyword">return</span> [] <span class="hljs-comment">// no albums </span>
+        | Some user -&gt; 
+            <span class="hljs-keyword">let!</span> favoriteAlbums = Database.favoriteAlbums user
+            <span class="hljs-keyword">return</span> favoriteAlbums
+    }
+}
+</code></pre>
+<p>Now that you an implementation, you can just create the <code>WebPart</code> like you would usually do in Suave:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> fableWebPart = remoting musicStore {()}
+
+<span class="hljs-keyword">let</span> webApp = 
     choose [ 
         GET &gt;=&gt; path <span class="hljs-string">&quot;/&quot;</span> &gt;=&gt; OK <span class="hljs-string">&quot;Hello from root&quot;</span>
-        request createMusicStore
+        fableWebPart
     ]
 
 startWebServer defaultConfig webApp
+</code></pre>
+<p>But now there is a little problem: How do you call the server from the client if the functions require a <code>&apos;Context</code> as an input? Well you simply provide a <code>unit</code> as the generic parameter and everything just works out:</p>
+<pre><code class="lang-fs"><span class="hljs-comment">// Client</span>
+
+<span class="hljs-keyword">let</span> musicStore = Proxy.remoting&lt;IMusicStore&lt;unit&gt;&gt; {()} 
+
+async {
+    <span class="hljs-keyword">let!</span> favoriteAlbums = musicStore.favoriteAlbums() 
+    <span class="hljs-keyword">for</span> album <span class="hljs-keyword">in</span> favoriteAlbums <span class="hljs-keyword">do</span>
+        printfn <span class="hljs-string">&quot;%s&quot;</span> album.Title
+}
+|&gt; Async.StartImmediate
 </code></pre>
 
                                 
@@ -395,7 +400,7 @@ startWebServer defaultConfig webApp
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"3.4","depth":1,"next":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Modeling Authentication","level":"3.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-03-16T12:51:35.166Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-16T18:58:33.010Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"3.4","depth":1,"next":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Modeling Authentication","level":"3.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-03-17T15:28:25.518Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-17T15:30:27.402Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
