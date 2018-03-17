@@ -10,6 +10,7 @@
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
     <Version>2.0.0</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,6 @@
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
   </ItemGroup>
-  
+
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

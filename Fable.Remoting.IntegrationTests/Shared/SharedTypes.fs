@@ -2,13 +2,13 @@ module SharedTypes
 
 open System
 
-type Record = { 
+type Record = {
     Prop1 : string
     Prop2 : int
     Prop3 : int option
 }
 
-type Maybe<'t> = 
+type Maybe<'t> =
     | Just of 't
     | Nothing
 
@@ -19,15 +19,15 @@ type GenericRecord<'t> = {
     OtherValue : int
 }
 
-type IServer = { 
+type IServer = {
     // primitive types
-    getLength : string -> Async<int>  
-    echoInteger : int -> Async<int>  
+    getLength : string -> Async<int>
+    echoInteger : int -> Async<int>
     echoString : string -> Async<string>
     echoBool : bool -> Async<bool>
     echoIntOption : int option -> Async<int option>
     echoStringOption : string option -> Async<string option>
-    
+
     // Union types, simple and generic
     echoGenericUnionInt : Maybe<int> -> Async<Maybe<int>>
     echoGenericUnionString : Maybe<string> -> Async<Maybe<string>>
@@ -39,7 +39,7 @@ type IServer = {
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
 
     // lists
-    echoIntList : int list -> Async<int list> 
+    echoIntList : int list -> Async<int list>
     echoStringList : string list -> Async<string list>
     echoBoolList : bool list -> Async<bool list>
     echoListOfListsOfStrings : string list list -> Async<string list list>
@@ -48,15 +48,33 @@ type IServer = {
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint -> Async<bigint>
 
-    // maps 
+    // maps
     echoMap : Map<string, int> -> Async<Map<string, int>>
     // errors
     throwError : unit -> Async<string>
-    
+
     // mutli-arg functions
     multiArgFunc : string -> int -> bool -> Async<int>
+
+    // overridden function
+    overriddenFunction : string -> Async<int>
+
+    customStatusCode : unit -> Async<string>
+    //Pure async
+    pureAsync : Async<int>
+}
+let routeBuilder typeName methodName =
+    sprintf "/api/%s/%s" typeName methodName
+
+type IVersionTestServer = {
+    v4 : unit -> Async<string>
+    v3 : unit -> Async<string>
+    v2 : unit -> Async<string>
+    v1 : unit -> Async<string>
 }
 
+let versionTestBuilder _ _ = "/api/version/data"
 
-let routeBuilder typeName methodName = 
-    sprintf "/api/%s/%s" typeName methodName
+type IContextTest<'ctx> = {
+    callWithCtx : 'ctx -> Async<string>
+}

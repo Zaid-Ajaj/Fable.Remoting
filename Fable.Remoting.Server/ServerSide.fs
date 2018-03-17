@@ -25,8 +25,11 @@ module ServerSide =
 
     open System
     open Fable.Remoting.Reflection
-    let rec getFsharpFuncArgs (propType:System.Type) = [|
-            match propType.GetGenericArguments() with
+    let rec getFsharpFuncArgs (propType:System.Type) =
+        if propType.GUID = typeof<Async<_>>.GUID then
+            [|propType|]
+        else
+          [|match propType.GetGenericArguments() with
             |[|a; b|] when b.GUID = (typeof<FSharpFunc<_,_>>).GUID -> yield a;yield! getFsharpFuncArgs b
             |a -> yield! a |]
 
@@ -37,8 +40,9 @@ module ServerSide =
                 .GetProperty(methodName)
                 .PropertyType
             |> getFsharpFuncArgs
-
-          arr.[..arr.Length-2]
+          match arr with
+          |[|_|] -> [||]
+          |arr -> arr.[..arr.Length-2]
 
     let dynamicallyInvoke (methodName: string) implementation methodArgs =
          let propInfo = implementation.GetType().GetProperty(methodName)
@@ -55,7 +59,10 @@ module ServerSide =
                      |> Activator.CreateInstance
                      :?> IAsyncBoxer
 
-         let fsAsync = FSharpRecord.Invoke (methodName, implementation, methodArgs)
+         let fsAsync =
+            match fsharpFuncArgs with
+            |[|_|] -> propInfo.GetValue(implementation,null)
+            |_ ->  FSharpRecord.Invoke (methodName, implementation, methodArgs)
 
          async {
             let! asyncResult = boxer.BoxAsyncResult fsAsync
@@ -78,18 +85,43 @@ module SharedCE =
         { error: 'a;
           ignored: bool;
           handled: bool; }
-    type BuilderOptions = {
+    ///Settings for overriding the response
+    type ResponseOverride = {
+        StatusCode : int option
+        Headers: Map<string,string> option
+        Body: string option
+        Abort: bool
+    } with
+        static member Default = {
+            StatusCode = None
+            Headers = None
+            Body = None
+            Abort = false
+        }
+        ///Don't handle the request
+        static member Ignore = Some {ResponseOverride.Default with Abort=true}
+        ///Defines the status code
+        member this.withStatusCode(status) =
+            {this with StatusCode=Some status}
+        ///Defines the response headers
+        member this.withHeaders(headers) =
+            {this with Headers = Some headers}
+        ///Defines the response body (prevents calling the original async workflow)
+        member this.withBody(body) =
+            {this with Body = Some body}
+
+    type BuilderOptions<'ctx> = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler option
         Builder: string -> string -> string
+        CustomHandlers : Map<string, 'ctx -> ResponseOverride option>
     }
     with
-        static member Empty =
-            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"}
-
-    type RemoteBuilder<'a>(implementation: 'a) =
+        static member Empty : BuilderOptions<'ctx> =
+            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
+    [<AbstractClass>]
+    type RemoteBuilderBase<'ctx,'handler>() =
         let fableConverter = FableJsonConverter()
-
         let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
         let toLogger logf = string >> logf
         let logDeserializationTypes logger (text: string) (inputType: System.Type[]) =
@@ -101,16 +133,21 @@ module SharedCE =
                 |> writeLn (sprintf "Into .NET Types: [%s]" (inputType |> Array.map (fun e -> e.FullName.Replace("+", ".")) |> String.concat ", "))
                 |> writeLn ""
                 |> toLogger logf)
-        /// Exposes the implementation to the builder
-        member __.Implementation = implementation
 
         /// Deserialize a json string using FableConverter
-        member __.Deserialize {Logger=logger} (json: string) (inputType: System.Type[]) =
+        member __.Deserialize {Logger=logger} (json: string) (inputType: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             logDeserializationTypes logger json inputType
             let args = JArray.Parse json
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
-            Seq.zip args inputType |> Seq.toArray |> Array.map (fun (o,t) -> o.ToObject(t,serializer))
+            let converter =
+                match genericTypes with
+                |[|a|] -> fun (o:JToken,t:System.Type) ->
+                    if a.GUID = t.GUID && a.GUID = typeof<'ctx>.GUID then
+                       box context
+                    else o.ToObject(t,serializer)
+                |_  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)
+            Seq.zip args inputType |> Seq.toArray |> Array.map converter
         /// Serialize the value into a json string using FableConverter
         member __.Json {Logger=logger} value =
           let result = JsonConvert.SerializeObject(value, fableConverter)
@@ -121,10 +158,11 @@ module SharedCE =
               |> toLogger logf)
           result
 
+        abstract member Run : BuilderOptions<'ctx> -> 'handler
         member __.Zero() =
-            BuilderOptions.Empty
+            BuilderOptions<'ctx>.Empty
         member __.Yield(_) =
-            BuilderOptions.Empty
+            BuilderOptions<'ctx>.Empty
         /// Defines a custom builder that takes a `builder : (string -> string -> string)` that takes the typeName and methodNameto return a endpoint
         [<CustomOperation("with_builder")>]
         member __.WithBuilder(state,builder)=
@@ -147,12 +185,8 @@ module SharedCE =
         [<System.Obsolete("For backward compatibility only.")>]
         member __.UseSomeErrorHandler(state,errorHandler)=
             {state with ErrorHandler=errorHandler}
-    /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
-    /// Usage:
-    /// `let server = remoting implementation {()}` for default options at /typeName/methodName
-    /// `let server = remoting implementation = remoting {`
-    /// `    with_builder builder` to set a `builder : (string -> string -> string)`
-    /// `    use_logger logger` to set a `logger : (string -> unit)`
-    /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
-    /// `}`
-    let remoting = RemoteBuilder
+        [<CustomOperation("use_custom_handler_for")>]
+        /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
+        member __.UseCustomHandler(state,method,handler) =
+            {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
+

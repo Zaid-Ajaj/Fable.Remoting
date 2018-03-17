@@ -4,7 +4,6 @@ open FSharp.Reflection
 open Fable.PowerPack
 open Fable.Core
 open Fable.Core.JsInterop
-open Fable.Import.Browser
 open Fable.PowerPack.Fetch
 
 module Proxy =
@@ -36,22 +35,36 @@ module Proxy =
     let onForbiddenError (handler: string option -> unit) =
         forbiddenHandler <- Some handler
 
+    type ResponseContext = {
+        Body          : string
+        Authorization : string option
+        ReturnType    : System.Type
+        Response      : Response
+    }
+
     type RemoteBuilderOptions =
         {
-           AuthErrorHandler         : (string option -> unit) option
-           ForbiddenErrorHandler    : (string option -> unit) option
-           ServerErrorHandler       : (ErrorInfo -> unit) option
-           Endpoint                 : string option
-           Authorization            : string option
-           Builder                  : (string -> string -> string)
+           AuthErrorHandler       : (string option -> unit) option
+           ForbiddenErrorHandler  : (string option -> unit) option
+           ServerErrorHandler     : (ErrorInfo -> unit) option
+           CustomHandlers         : Map<string, Map<int,ResponseContext -> Result<obj,exn>>>
+           CustomHeaders          : Map<string, HttpRequestHeaders list>
+           Endpoint               : string option
+           Headers                : HttpRequestHeaders list
+           Builder                : (string -> string -> string)
         }
         with
             static member Empty =  {
                    AuthErrorHandler      = None
                    ForbiddenErrorHandler = None
                    ServerErrorHandler    = None
+                   CustomHandlers        = Map.empty
+                   CustomHeaders         = Map.empty
                    Endpoint              = None
-                   Authorization         = None
+                   Headers               = [
+                                            ContentType "application/json; charset=utf8"
+                                            Cookie Fable.Import.Browser.document.cookie
+                                            ]
                    Builder               = sprintf ("/%s/%s")
                 }
     [<Emit("$2[$0] = $1")>]
@@ -69,76 +82,48 @@ module Proxy =
     [<PassGenerics>]
     let private fields<'t> =
                 FSharpType.GetRecordFields typeof<'t>
-                |> Seq.filter (fun propInfo -> FSharpType.IsFunction (propInfo.PropertyType))
-                |> Seq.map (fun propInfo ->
-                    let funcName = propInfo.Name
-                    let funcParamterTypes =
-                        FSharpType.GetFunctionElements (propInfo.PropertyType)
-                        |> typed<System.Type []>
-                    (funcName, funcParamterTypes)
+                |> Seq.choose
+                    (fun propInfo ->
+                        match propInfo.PropertyType with
+                        |t when FSharpType.IsFunction t ->
+                            let funcName = propInfo.Name
+                            let funcParamterTypes =
+                                FSharpType.GetFunctionElements (propInfo.PropertyType)
+                                |> typed<System.Type []>
+                            Some (funcName, funcParamterTypes)
+                        |t when box (t?definition?name) = box "Async" ->
+                            Some(propInfo.Name, [|t|])
+                        |_ -> None
                 )
                 |> List.ofSeq
 
     let private proxyFetch options typeName methodName returnType =
-        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 arg13 arg14 arg15->
-            let data = [
-                box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15
-             ]
-            let route = options.Builder typeName methodName
-            let url =
+        let route = options.Builder typeName methodName
+        let url =
               match options.Endpoint with
               | Some path ->
                  if path.EndsWith("/")
                  then sprintf "%s%s" path route
                  else sprintf "%s/%s" path route
               | None -> route
-            promise {
-                // Send RPC POST request to the server
-                let requestProps = [
-                    Body (unbox (toJson data))
-                    Method HttpMethod.POST
-                    Credentials RequestCredentials.Sameorigin
-                    requestHeaders
-                     [ yield ContentType "application/json; charset=utf8";
-                       yield Cookie document.cookie
-                       match options.Authorization with
-                       | Some auth -> yield Authorization auth
-                       | None -> ()  ]
-                ]
-
-                let makeReqProps props =
-                    keyValueList CaseRules.LowerFirst props :?> RequestInit
-                // use GlobalFetch.fetch to control error handling
-                let! response = GlobalFetch.fetch(RequestInfo.Url url, makeReqProps requestProps)
-                //let! response = Fetch.fetch url requestProps
-                let! jsonResponse = response.text()
-                match response.Status with
-                | 200 ->
-                    // success result
-                    return ofJsonAsType jsonResponse returnType
-                | 401  ->
-                    // unauthorized result
-                    match options.AuthErrorHandler with
-                    |Some handler -> handler options.Authorization
-                    |None -> ()
-                    return! failwith "Auth error"
-                | 403  ->
-                    // forbidden result
-                    match forbiddenHandler with
-                    |Some handler -> handler options.Authorization
-                    |None -> ()
-                    return! failwith "Forbidden error"
-                | 500 ->
-                    // Error from server
-                    let customError = jsonParse jsonResponse
+        let defaultHandlers = [
+            200, fun {Body = b; ReturnType = rt} -> ofJsonAsType b rt |> Ok
+            401, fun {Authorization = a} ->
+                    options.AuthErrorHandler |> Option.iter (fun handler -> handler a)
+                    exn "Auth error" |> Error
+            403, fun {Authorization = a} ->
+                    options.ForbiddenErrorHandler |> Option.iter (fun handler -> handler a)
+                    exn "Forbidden error" |> Error
+            500, fun {Body = b; Response = r} ->
+                    let customError = jsonParse b
                     // manually read properties of the the object literal representing the error
                     match getAs<bool> customError "ignored" with
-                    | true -> return! failwith (getAs<string> customError "error")
+                    | true -> exn (getAs<string> customError "error") |> Error
                     | false ->
                         match getAs<bool> customError "handled" with
                         | false ->
                             // throw a generic server error because it was not handled on the server
-                            return! failwith (getAs<string> customError "error")
+                            exn (getAs<string> customError "error") |> Error
                         | true ->
                             // handled and not ignored -> error message propagated
                             let error = stringify (getAs<obj> customError "error")
@@ -147,13 +132,46 @@ module Proxy =
                               { path = url;
                                 methodName = methodName;
                                 error = error;
-                                response = response }
+                                response = r }
                             // send the error to the client side error handler
                             match options.ServerErrorHandler with
                             | Some handler ->
                                 handler errorInfo
-                                return! failwith "Server error"
-                            | None -> return! failwith "Server error"
+                                exn "Server error" |> Error
+                            | None -> exn "Server error" |> Error ] |> Map.ofList
+
+        let handlers = options.CustomHandlers |> Map.tryFind methodName |> Option.defaultValue defaultHandlers
+        let customHeaders = options.CustomHeaders |> Map.tryFind methodName |> Option.defaultValue []
+
+        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 arg13 arg14 arg15 ->
+            let data = [
+                box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15
+             ]
+            promise {
+                // Send RPC POST request to the server
+                let requestProps = [
+                    Body (unbox (toJson data))
+                    Method HttpMethod.POST
+                    Credentials RequestCredentials.Sameorigin
+                    requestHeaders (customHeaders@options.Headers)
+                ]
+
+                let makeReqProps props =
+                    keyValueList CaseRules.LowerFirst props :?> RequestInit
+                // use GlobalFetch.fetch to control error handling
+                let! response = GlobalFetch.fetch(RequestInfo.Url url, makeReqProps requestProps)
+                //let! response = Fetch.fetch url requestProps
+                let! jsonResponse = response.text()
+                let context = {
+                    Authorization = options.Headers |> Seq.tryPick (function (Authorization token) -> Some token | _ -> None)
+                    Body=jsonResponse
+                    ReturnType = returnType
+                    Response = response}
+                match handlers |> Map.tryFind response.Status with
+                | Some handler ->
+                    match handler context with
+                    |Ok v -> return v
+                    |Error exn -> return! raise exn
                 | _ -> return! failwith "Unknown response status"
             }
             |> Async.AwaitPromise
@@ -216,7 +234,7 @@ module Proxy =
                         |16 ->
                             box fn
                         |_ -> failwith "Only up to 16 arguments are supported"
-                        
+
                     setProp fieldName (normalize (funcTypes.Length-1)) proxy
                 )
                 unbox proxy
@@ -259,16 +277,50 @@ module Proxy =
             /// Sets an authorization string to send with the request onto the Authorization header.
             [<CustomOperation("with_token")>]
             member __.WithToken(state,token) =
-                {state with Authorization = Some token}
+                {state with Headers = (Authorization token)::state.Headers}
             /// Sets an optional authorization string to send with the request onto the Authorization header. For backward compatibility
             [<CustomOperation("with_some_token")>]
             [<System.Obsolete("For backward compatibility only.")>]
             member __.WithSomeToken(state,token) =
-                {state with Authorization = token}
+                match token with
+                |Some auth ->
+                    {state with Headers = (Authorization auth)::state.Headers}
+                |None -> state
             /// Sets a builder that takes the implementation type and method name. Used to define the proxy path
             [<CustomOperation("with_builder")>]
             member __.WithBuilder(state,builder) =
                 {state with Builder = builder}
+            [<CustomOperation("add_custom_header")>]
+            /// Sets a custom `key,value` header
+            member __.CustomHeader(state, (key:string,value:obj)) =
+                {state with Headers = (unbox<HttpRequestHeaders>(key,value))::state.Headers}
+            /// Sets a defined Fable PowerPack header from `HttpRequestHeaders`
+            [<CustomOperation("add_fable_header")>]
+            member __.FableHeader(state, header) =
+                {state with Headers = header::state.Headers}
+            [<CustomOperation("add_custom_header_for")>]
+            /// Sets a custom `key,value` header for a specific method
+            member __.CustomHeaderFor(state, method, (key:string,value:#obj)) =
+                match state.CustomHeaders |> Map.tryFind method with
+                |Some headers ->
+                    {state with CustomHeaders = state.CustomHeaders |> Map.add method (((unbox<HttpRequestHeaders>(key,value)))::headers)}
+                |None -> {state with CustomHeaders = state.CustomHeaders |> Map.add method [(unbox<HttpRequestHeaders>(key,value))]}
+            /// Sets a defined Fable PowerPack header from `HttpRequestHeaders` for a specific method
+            [<CustomOperation("add_fable_header_for")>]
+            member __.FableHeaderFor(state, method, header) =
+                match state.CustomHeaders |> Map.tryFind method with
+                |Some headers ->
+                    {state with CustomHeaders = state.CustomHeaders |> Map.add method (header::headers)}
+                |None -> {state with CustomHeaders = state.CustomHeaders |> Map.add method [header]}
+            /// Sets a custom handler that takes the method's name, the status code returned and a function that takes a `ResponseContext` and return a `Result<obj,exn>`. In the `Error` case it will be thrown and in the `Ok` case the object will be returned
+            [<CustomOperation("use_custom_handler_for")>]
+            member __.UseCustomHandler(state,method,status,handler) =
+                let map =
+                    match state.CustomHandlers |> Map.tryFind method with
+                    |Some map -> map |> Map.add status handler
+                    |None -> Map.empty |> Map.add status handler
+                {state with CustomHandlers = state.CustomHandlers |> Map.add method map }
+
     /// Computation expression to create a remoting proxy.
     /// Usage:
     /// `let proxy : IType = remoting {()}` for default options at /typeName/methodName
