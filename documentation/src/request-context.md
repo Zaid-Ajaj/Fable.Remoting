@@ -10,7 +10,7 @@ type IMusicStore<'Context> = {
     favoriteAlbums : 'Context -> Async<Album list>
 }
 ```
-Notice the `'Context` generic parameter in the definition, this type is going to be of type `HttpContext`  from Suave when we provide an implementation but we don't hardcode that fact to make the definition applicable to the different web frameworks.  
+Notice the `'Context` generic parameter in the definition, this type is going to be of type `HttpContext`  from Suave when we provide an implementation but we don't hardcode that fact to make the definition applicable to the different web frameworks but also to make the interface callable from a proxy on client, more on this later.  
 
 Now, here is an implementation of the interface:
 ```fs
