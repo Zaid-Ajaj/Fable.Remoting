@@ -14,6 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Reflection.fs" />
     <Compile Include="ServerSide.fs" />
   </ItemGroup>
 

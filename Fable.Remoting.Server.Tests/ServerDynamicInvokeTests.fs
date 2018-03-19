@@ -2,6 +2,7 @@
 
 open Expecto
 open Fable.Remoting.Server
+open Fable.Remoting.Reflection
 open Types
 
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
@@ -28,16 +29,7 @@ type TestRec = {
 let fsharpRecordTests = 
 
     let invoke (methodName: string) (record: obj) (input: obj[]) (_: bool) =
-        let propInfo = record.GetType().GetProperty(methodName)
-        let innerValue = propInfo.GetValue(record,null)
-        let func =
-            innerValue.GetType().GetMethods()
-            |> Array.find (fun m -> m.Name = "Invoke")
-        func.Invoke(innerValue,
-            match input with
-            |[||] -> [|null|]
-            |args -> args)
-        
+        FSharpRecord.Invoke(methodName, record, input) 
 
     let testRec = { 
         genericUnion = function Just x -> x | _ -> 0 
