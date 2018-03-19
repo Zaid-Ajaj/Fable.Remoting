@@ -17,8 +17,7 @@
     <Compile Include="ServerSide.fs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Fable.Remoting.Reflection\Fable.Remoting.Reflection.csproj" />
+  <ItemGroup>    
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
   </ItemGroup>
 

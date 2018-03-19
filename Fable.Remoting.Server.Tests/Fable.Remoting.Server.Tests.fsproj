@@ -11,8 +11,7 @@
     <Compile Include="App.fs" />
   </ItemGroup>
   
-  <ItemGroup>
-    <ProjectReference Include="..\Fable.Remoting.Reflection\Fable.Remoting.Reflection.csproj" />
+  <ItemGroup>    
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />

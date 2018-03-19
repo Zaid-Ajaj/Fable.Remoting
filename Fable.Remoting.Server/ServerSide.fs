@@ -23,8 +23,7 @@ type AsyncBoxer<'T>() =
 
 module ServerSide =
 
-    open System
-    open Fable.Remoting.Reflection
+    open System    
     let rec getFsharpFuncArgs (propType:System.Type) =
         if propType.GUID = typeof<Async<_>>.GUID then
             [|propType|]
@@ -58,11 +57,18 @@ module ServerSide =
          let boxer = typedefof<AsyncBoxer<_>>.MakeGenericType(typeBFromAsyncOfB)
                      |> Activator.CreateInstance
                      :?> IAsyncBoxer
-
+         let innerValue = propInfo.GetValue(implementation,null)
          let fsAsync =
             match fsharpFuncArgs with
-            |[|_|] -> propInfo.GetValue(implementation,null)
-            |_ ->  FSharpRecord.Invoke (methodName, implementation, methodArgs)
+            |[|_|] -> innerValue
+            |_ -> 
+                let func =
+                    innerValue.GetType().GetMethods()
+                    |> Array.find (fun m -> m.Name = "Invoke")
+                func.Invoke(innerValue,
+                    match methodArgs with
+                    |[||] -> [|null|]
+                    |args -> args)
 
          async {
             let! asyncResult = boxer.BoxAsyncResult fsAsync
