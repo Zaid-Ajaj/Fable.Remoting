@@ -50,8 +50,9 @@ let musicStore : IMusicStore = {
     allAlbums = fun () -> Database.getAllAlbums() 
    
     albumById = fun id -> async {
-        // findAlbumById : int -> Option<Album>
-        return! Databse.findAlbumById id
+        // findAlbumById : int -> Async<Option<Album>>
+        let! album = Databse.findAlbumById id
+        return album
     }
 
     createAlbum = fun title genre released -> async { (* you get the idea *) }
