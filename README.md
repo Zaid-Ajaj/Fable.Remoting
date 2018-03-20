@@ -1,10 +1,13 @@
-# Fable.Remoting [In-depth Introduction](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
+# Fable.Remoting 
 
 [![Build Status](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting.svg?branch=master)](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting)
 
-## About
-Automated and type-safe client-server communication (RPC) for Fable Apps. This is a library that abstracts http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. The library supports Suave and Giraffe on the server and Fable on the client.
+### [Documentation](https://zaid-ajaj.github.io/Fable.Remoting/)
+### [In-depth Introduction (Blog)](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
 
+Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable Apps. This is a library that abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
+
+The library supports Suave, Giraffe or Saturn on the server and Fable on the client.
 
 ## Quick Start
 Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
@@ -49,13 +52,15 @@ type Student = {
 // Shared specs between Server and Client
 type IServer = {
     studentByName : string -> Async<Student option>
-    allStudents : unit -> Async<seq<Student>>
+    allStudents : Async<list<Student>>
 }
 ```
 The type `IServer` is very important, this is the specification of what your server shares with the client. `Fable.Remoting` expects such type to only have functions returning `Async` on the final result:
-```
+```fs
+Async<A>
 A -> Async<B>
 A -> B -> Async<C>
+// etc...
 ```
 Try to put such types in seperate files to reference these files later from the Client
 
@@ -69,20 +74,18 @@ let getStudents() = [
         { Name = "Diana"; Age = 22; }
     ]
 
-let pure x = async { return x }
-
 // An implementation of the `IServer` protocol
 let server : IServer = {
 
-    studentByName = fun name ->
-        getStudents()
-        |> List.tryFind (fun student -> student.Name = name)
-        |> pure
+    studentByName = fun name -> async {
+        let student = 
+            getStudents()
+            |> List.tryFind (fun student -> student.Name = name)
 
-    allStudents = fun () ->
-        getStudents()
-        |> Seq.ofList
-        |> pure
+        return student
+    }
+
+    allStudents = async { return getStudents() } 
 }
 
 ```
