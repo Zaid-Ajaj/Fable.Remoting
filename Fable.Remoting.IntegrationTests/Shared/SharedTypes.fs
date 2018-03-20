@@ -62,7 +62,9 @@ type IServer = {
     customStatusCode : unit -> Async<string>
     //Pure async
     pureAsync : Async<int>
+    asyncNestedGeneric : Async<GenericRecord<Maybe<Option<string>>>>
 }
+
 let routeBuilder typeName methodName =
     sprintf "/api/%s/%s" typeName methodName
 

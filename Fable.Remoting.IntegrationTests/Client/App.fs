@@ -9,16 +9,16 @@ Proxy.onError <| fun errorInfo ->
     printfn "Recieved %A" errorInfo.error
 
 let server = Proxy.remoting<IServer> {
-    with_builder routeBuilder
+    use_route_builder routeBuilder
     use_custom_handler_for "customStatusCode" 204 (fun _ -> Ok (box "No content"))
     }
 
 let versionTestServer = Proxy.remoting<IVersionTestServer> {
-    with_builder versionTestBuilder
+    use_route_builder versionTestBuilder
     add_custom_header_for "v2" ("version",2)
     add_custom_header_for "v3" ("version",3)
     add_custom_header_for "v4" ("version",4)
-    }
+}
 
 let contextTestServer = Proxy.remoting<IContextTest<unit>>{
     with_builder routeBuilder
@@ -261,6 +261,17 @@ QUnit.testCaseAsync "IServer.mutliArgFunc" <| fun test ->
         test.equal 12 sndOutput
     }
 
+QUnit.testCaseAsync "IServer.mutliArgFunc partially applied" <| fun test ->
+    async {
+        let partialFunc = server.multiArgFunc "hello" 10
+        let! output =  partialFunc false
+        test.equal 15 output
+
+        let otherPartialFunc = server.multiArgFunc "byebye"
+        let! sndOutput = otherPartialFunc 5 true
+        test.equal 12 sndOutput
+    }
+
 QUnit.testCaseAsync "IServer.overriddenFunction" <| fun test ->
     async {
         let! output = server.overriddenFunction "hello"
@@ -271,6 +282,12 @@ QUnit.testCaseAsync "IServer.pureAsync" <| fun test ->
     async {
         let! output = server.pureAsync
         test.equal 42 output
+    }
+
+QUnit.testCaseAsync "IServer.asyncNestedGeneric" <| fun test ->
+    async {
+        let! result = server.asyncNestedGeneric
+        test.equal true (result = { OtherValue = 10; Value = Just (Some "value") })
     }
 
 QUnit.testCaseAsync "IServer.customStatusCode" <| fun test ->

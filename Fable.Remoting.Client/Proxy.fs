@@ -286,9 +286,13 @@ module Proxy =
                 |Some auth ->
                     {state with Headers = (Authorization auth)::state.Headers}
                 |None -> state
-            /// Sets a builder that takes the implementation type and method name. Used to define the proxy path
+            /// Alias for `use_route_builder`. Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`.             
             [<CustomOperation("with_builder")>]
             member __.WithBuilder(state,builder) =
+                {state with Builder = builder}
+            /// Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`. 
+            [<CustomOperation("use_route_builder")>]
+            member __.UseRouteBuilder(state,builder) =
                 {state with Builder = builder}
             [<CustomOperation("add_custom_header")>]
             /// Sets a custom `key,value` header

@@ -38,6 +38,12 @@ let server : IServer  = {
     overriddenFunction = fun str -> async { return! failwith str }
     customStatusCode = fun () -> async {return "No content"}
     pureAsync = async {return 42}
+    asyncNestedGeneric = async {
+        return {
+            Value = Just (Some "value")
+            OtherValue = 10
+        }
+    }
 }
 
 let versionTestServer : IVersionTestServer = {
