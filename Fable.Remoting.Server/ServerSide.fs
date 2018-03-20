@@ -167,6 +167,10 @@ module SharedCE =
         [<CustomOperation("with_builder")>]
         member __.WithBuilder(state,builder)=
             {state with Builder=builder}
+        /// Defines a custom builder that takes a `builder : (string -> string -> string)` that takes the typeName and methodNameto return a endpoint
+        [<CustomOperation("use_route_builder")>]
+        member __.UseRouteBuilder(state,builder)=
+            {state with Builder=builder}
         /// Defines a `logger : (string -> unit)`
         [<CustomOperation("use_logger")>]
         member __.UseLogger(state,logger)=
