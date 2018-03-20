@@ -271,37 +271,6 @@ Proxy.remoting {
 
 Done! You can now use that function from the client too.
 
-## Customizations
-You can generate different paths for your POST routes on the server very easily using  a route builder, for example to generate routes with paths prefixed with `/api/`:
-```fs
-let routeBuilder typeName methodName =
- sprintf "/api/%s/%s" typeName methodName
-
-let webApp = remoting server {
-    with_builder routeBuilder
-}
-```
-Ofcourse, the proxy generated on the client has to match the routes created on the server:
-```fs
-let routeBuilder typeName methodName =
- sprintf "/api/%s/%s" typeName methodName
-
-let server = Proxy.remoting<IServer> {
-    with_builder routeBuilder
-    }
-```
-And webpack-dev-server config:
-```js
-devServer: {
-  contentBase: resolve('./public'),
-  port: 8080,
-  proxy: {
-    '/api/*': { // tell webpack-dev-server to re-route requests that start with /api/
-      target: "http://localhost:8083",// assuming the suave server is hosted op port 8083
-      changeOrigin: true
-    }
-}
-```
 ## Authorization
 
 You can define a string to be passed to the server into the `Authorization` header, so you can also use the server generated endpoint inside a protected flow. You can set handlers to take action in case of `Unauthorized` or `Forbidden` errors, having access to the used string.
