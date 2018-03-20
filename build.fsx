@@ -117,6 +117,22 @@ Target "BuildRunGiraffeTests" <| fun _ ->
 Target "RunGiraffeTests" <| fun _ ->
     run "." "dotnet" GiraffeTestDll
 
+Target "InstallDocs" <| fun _ ->
+    run "docs" "npm" "install"
+
+Target "BuildDocs" <| fun _ ->
+    run "docs" "npm" "run build"
+
+Target "ServeDocs" <| fun _ ->
+    async { 
+        run "docs" "npm" "run serve"
+    }
+    |> Async.StartImmediate
+    
+
+Target "PublishDocs" <| fun _ ->
+    run "docs" "npm" "run publish"
+
 Target "Default" <| DoNothing
 
 "CleanGiraffe"
