@@ -124,22 +124,54 @@ module SharedCE =
         let fableConverter = FableJsonConverter()
         let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
         let toLogger logf = string >> logf
-        let logDeserializationTypes logger (text: string) (inputType: System.Type[]) =
+        let rec typePrinter (valueType: System.Type) = 
+            let simplifyGeneric = function 
+                | "Microsoft.FSharp.Core.FSharpOption" -> "Option"
+                | "Microsoft.FSharp.Collections.FSharpList" -> "FSharpList"
+                | "Microsoft.FSharp.Core.FSharpResult" -> "Result"
+                | "Microsoft.FSharp.Collections.FSharpMap" -> "Map"
+                | otherwise -> otherwise
+
+            match valueType.FullName.Replace("+", ".") with 
+            | "System.String" -> "string"
+            | "System.Boolean" -> "bool"
+            | "System.Int32" -> "int"
+            | "System.Double" -> "double"
+            | "System.Numerics.BigInteger" -> "bigint"
+            | "Microsoft.FSharp.Core.Unit" -> "unit"
+            | "Suave.Http.HttpContext" -> "HttpContext"
+            | other -> 
+                match valueType.GetGenericArguments() with 
+                | [|  |] -> other 
+                | genericTypeArguments -> 
+                    let typeParts = other.Split('`')
+                    let typeName = typeParts.[0]
+                    Array.map typePrinter genericTypeArguments
+                    |> String.concat ", "
+                    |> sprintf "%s<%s>" (simplifyGeneric typeName) 
+
+
+        let logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
             logger |> Option.iter(fun logf ->
                 StringBuilder()
                 |> writeLn "Fable.Remoting:"
                 |> writeLn "About to deserialize JSON:"
-                |> writeLn text
-                |> writeLn (sprintf "Into .NET Types: [%s]" (inputType |> Array.map (fun e -> e.FullName.Replace("+", ".")) |> String.concat ", "))
+                |> writeLn (text())
+                |> writeLn "Into .NET Types:"
+                |> writeLn (sprintf "[%s]" (inputTypes |> Array.map typePrinter |> String.concat ", "))
                 |> writeLn ""
                 |> toLogger logf)
 
         /// Deserialize a json string using FableConverter
-        member __.Deserialize {Logger=logger} (json: string) (inputType: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
-            logDeserializationTypes logger json inputType
-            let args = JArray.Parse json
+        member __.Deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
+            // ignore the extra null arguments sent by client 
+            let args = Seq.zip (JArray.Parse json) inputTypes
+            // Delayed logging: only log serialized data when a logger is configured 
+            logDeserializationTypes logger (fun () -> JsonConvert.SerializeObject(Seq.map fst args, fableConverter)) inputTypes
+            // create a converter function that converts an array 
+            // of JSON arguments into a list of concrete .NET types 
             let converter =
                 match genericTypes with
                 |[|a|] -> fun (o:JToken,t:System.Type) ->
@@ -147,7 +179,11 @@ module SharedCE =
                        box context
                     else o.ToObject(t,serializer)
                 |_  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)
-            Seq.zip args inputType |> Seq.toArray |> Array.map converter
+            
+            args
+            |> Seq.toArray 
+            |> Array.map converter
+
         /// Serialize the value into a json string using FableConverter
         member __.Json {Logger=logger} value =
           let result = JsonConvert.SerializeObject(value, fableConverter)
