@@ -143,11 +143,12 @@ module FableGiraffeAdapter =
   /// `}`
   let remoting = RemoteBuilder
   let httpHandlerWithBuilderFor implementation builder =
-    remoting implementation {
-        with_builder builder
-        use_some_logger logger
-        use_some_error_handler onErrorHandler
-    }
+    let r = remoting implementation
+    let zero = r.Zero()
+    let withBuilder = r.WithBuilder(zero,builder)
+    let useLogger = logger |> Option.fold (fun s e -> r.UseLogger(s,e)) withBuilder
+    let useErrorHandler = onErrorHandler |> Option.fold (fun s e -> r.UseErrorHandler(s,e)) useLogger
+    r.Run(useErrorHandler)
 
   let httpHandlerFor implementation : HttpHandler =
         httpHandlerWithBuilderFor implementation (sprintf "/%s/%s")
