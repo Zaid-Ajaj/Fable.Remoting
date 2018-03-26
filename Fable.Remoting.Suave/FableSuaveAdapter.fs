@@ -136,11 +136,12 @@ module FableSuaveAdapter =
   let remoting = RemoteBuilder
   /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.
   let webPartWithBuilderFor implementation (builder:string->string->string) : WebPart =
-    remoting implementation {
-            with_builder builder
-            use_some_logger logger
-            use_some_error_handler onErrorHandler
-        }
+    let r = remoting implementation
+    let zero = r.Zero()
+    let withBuilder = r.WithBuilder(zero,builder)
+    let useLogger = logger |> Option.fold (fun s e -> r.UseLogger(s,e)) withBuilder
+    let useErrorHandler = onErrorHandler |> Option.fold (fun s e -> r.UseErrorHandler(s,e)) useLogger
+    r.Run(useErrorHandler)
 
     /// Creates a WebPart from the given implementation of a protocol. Uses the default route builder: `sprintf "/%s/%s"`.
   let webPartFor implementation : WebPart =

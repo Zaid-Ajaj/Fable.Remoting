@@ -242,55 +242,27 @@ module Proxy =
             [<CustomOperation("at_endpoint")>]
             member __.AtEndpoint(state,endpoint) =
                 {state with Endpoint = Some endpoint}
-            /// Pins the proxy at an optional endpoint. For backward compatibility
-            [<CustomOperation("at_some_endpoint")>]
-            [<System.Obsolete("For backward compatibility only.")>]
-            member __.AtSomeEndpoint(state,endpoint) =
-                {state with Endpoint = endpoint}
             /// Sets an optional error handler for server errors.
             [<CustomOperation("use_error_handler")>]
             member __.UseErrorHandler(state,errorHandler) =
                 {state with ServerErrorHandler = Some errorHandler}
-            /// Sets an optional error handler for server errors. For backward compatibility
-            [<CustomOperation("use_some_error_handler")>]
-            [<System.Obsolete("For backward compatibility only.")>]
-            member __.UseSomeErrorHandler(state,errorHandler) =
-                {state with ServerErrorHandler = errorHandler}
             /// Sets an error handler that takes the optional authorization used on the request header for unauthorized errors.
             [<CustomOperation("use_auth_error_handler")>]
             member __.UseAuthErrorHandler(state,errorHandler) =
                 {state with AuthErrorHandler = Some errorHandler}
-            /// Sets an optional error handler that takes the optional authorization used on the request header for unauthorized errors. For backward compatibility
-            [<CustomOperation("use_some_auth_error_handler")>]
-            [<System.Obsolete("For backward compatibility only.")>]
-            member __.UseSomeAuthErrorHandler(state,errorHandler) =
-                {state with AuthErrorHandler = errorHandler}
             /// Sets an error handler that takes the optional authorization used on the request header for forbidden errors.
             [<CustomOperation("use_forbidden_error_handler")>]
             member __.UseForbiddenErrorHandler(state,errorHandler) =
                 {state with ForbiddenErrorHandler = Some errorHandler}
-            /// Sets an optional error handler that takes the optional authorization used on the request header for forbidden errors. For backward compatibility
-            [<System.Obsolete("For backward compatibility only.")>]
-            [<CustomOperation("use_some_forbidden_error_handler")>]
-            member __.UseSomeForbiddenErrorHandler(state,errorHandler) =
-                {state with ForbiddenErrorHandler = errorHandler}
             /// Sets an authorization string to send with the request onto the Authorization header.
             [<CustomOperation("with_token")>]
             member __.WithToken(state,token) =
                 {state with Headers = (Authorization token)::state.Headers}
-            /// Sets an optional authorization string to send with the request onto the Authorization header. For backward compatibility
-            [<CustomOperation("with_some_token")>]
-            [<System.Obsolete("For backward compatibility only.")>]
-            member __.WithSomeToken(state,token) =
-                match token with
-                |Some auth ->
-                    {state with Headers = (Authorization auth)::state.Headers}
-                |None -> state
-            /// Alias for `use_route_builder`. Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`.             
+            /// Alias for `use_route_builder`. Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`.
             [<CustomOperation("with_builder")>]
             member __.WithBuilder(state,builder) =
                 {state with Builder = builder}
-            /// Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`. 
+            /// Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`.
             [<CustomOperation("use_route_builder")>]
             member __.UseRouteBuilder(state,builder) =
                 {state with Builder = builder}
@@ -339,14 +311,14 @@ module Proxy =
     [<PassGenerics>]
     let remoting<'t> = RemoteBuilder()
     let [<PassGenerics>] private createSecureWithEndpointAndBuilderImpl<'t> (endpoint: string option) (routeBuilder : string -> string -> string) (auth: string option) : 't =
-        remoting {
-            with_builder routeBuilder
-            with_some_token auth
-            at_some_endpoint endpoint
-            use_some_error_handler errorHandler
-            use_some_forbidden_error_handler forbiddenHandler
-            use_some_auth_error_handler authHandler
-        }
+        let zero = remoting.Zero()
+        let withBuilder = remoting.WithBuilder(zero, routeBuilder)
+        let withToken = auth |> Option.fold (fun s e -> remoting.WithToken(s,e)) withBuilder
+        let atEndpoint = endpoint |> Option.fold (fun s e -> remoting.AtEndpoint(s,e)) withToken
+        let useErrorHandler = errorHandler |> Option.fold (fun s e -> remoting.UseErrorHandler(s,e)) atEndpoint
+        let useForbiddenErrorHandler = forbiddenHandler |> Option.fold (fun s e -> remoting.UseForbiddenErrorHandler(s,e)) useErrorHandler
+        let useAuthErrorHandler = authHandler |> Option.fold (fun s e -> remoting.UseAuthErrorHandler(s,e)) useForbiddenErrorHandler
+        remoting.Run(useAuthErrorHandler)
 
     /// Creates a proxy using a custom endpoint and a route builder
     let [<PassGenerics>] createWithEndpointAndBuilder<'t> (endpoint: string option) (routeBuilder : string -> string -> string): 't =

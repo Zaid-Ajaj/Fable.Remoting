@@ -210,21 +210,11 @@ module SharedCE =
         /// Defines a `logger : (string -> unit)`
         [<CustomOperation("use_logger")>]
         member __.UseLogger(state,logger)=
-            {state with Logger=Some logger}
-        /// Defines an optional `logger : (string -> unit)` for backward compatibility
-        [<CustomOperation("use_some_logger")>]
-        [<System.Obsolete("For backward compatibility only.")>]
-        member __.UseSomeLogger(state,logger)=
-            {state with Logger=logger}
+            {state with Logger=Some logger}        
         /// Defines an error `handler : ErrorHandler`
         [<CustomOperation("use_error_handler")>]
         member __.UseErrorHandler(state,errorHandler)=
-            {state with ErrorHandler=Some errorHandler}
-        /// Defines an optional error `handler : ErrorHandler` for backward compatibility
-        [<CustomOperation("use_some_error_handler")>]
-        [<System.Obsolete("For backward compatibility only.")>]
-        member __.UseSomeErrorHandler(state,errorHandler)=
-            {state with ErrorHandler=errorHandler}
+            {state with ErrorHandler=Some errorHandler}        
         [<CustomOperation("use_custom_handler_for")>]
         /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
         member __.UseCustomHandler(state,method,handler) =
