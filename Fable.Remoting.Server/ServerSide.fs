@@ -140,6 +140,7 @@ module SharedCE =
             | "System.Numerics.BigInteger" -> "bigint"
             | "Microsoft.FSharp.Core.Unit" -> "unit"
             | "Suave.Http.HttpContext" -> "HttpContext"
+            | "Microsoft.AspNetCore.Http.HttpContext" -> "HttpContext"
             | other -> 
                 match valueType.GetGenericArguments() with 
                 | [|  |] -> other 
