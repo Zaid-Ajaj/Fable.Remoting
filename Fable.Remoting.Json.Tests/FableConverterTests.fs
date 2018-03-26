@@ -37,7 +37,7 @@ let converterTest =
             | otherwise -> fail()
 
         testCase "Union with DateTime conversion" <| fun () ->  
-            let dateInput = DateTime.Now
+            let dateInput = DateTime.Now.ToUniversalTime()
             let serialized = serialize (UnionWithDateTime.Date dateInput) 
             let deserialized = deserialize<UnionWithDateTime> serialized 
             match deserialized with 
