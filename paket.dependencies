@@ -18,3 +18,8 @@ group Build
     framework >= net45
     source https://www.nuget.org/api/v2
     nuget FAKE
+
+group SaturnTests
+    source https://www.nuget.org/api/v2/
+    storage: none
+    nuget Saturn
