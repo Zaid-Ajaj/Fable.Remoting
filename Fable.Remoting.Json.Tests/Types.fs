@@ -1,5 +1,7 @@
 ﻿module Types
 
+open System 
+
 type Record = { 
     Prop1 : string
     Prop2 : int
@@ -9,6 +11,10 @@ type Record = {
 type Maybe<'t> = 
     | Just of 't
     | Nothing
+
+type UnionWithDateTime = 
+    | Date of DateTime
+    | Int of int
 
 type AB = A | B
 

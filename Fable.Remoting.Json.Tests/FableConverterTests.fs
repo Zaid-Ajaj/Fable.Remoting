@@ -35,7 +35,21 @@ let converterTest =
             match deserialized with
             | Some "value" -> pass()
             | otherwise -> fail()
-   
+
+        testCase "Union with DateTime conversion" <| fun () ->  
+            let dateInput = DateTime.Now
+            let serialized = serialize (UnionWithDateTime.Date dateInput) 
+            let deserialized = deserialize<UnionWithDateTime> serialized 
+            match deserialized with 
+            | Int _ -> fail() 
+            | Date dateOutput ->
+                Expect.equal dateInput.Second dateOutput.Second "Seconds are the same"
+                Expect.equal dateInput.Minute dateOutput.Minute "Minutes are the same" 
+                Expect.equal dateInput.Hour dateOutput.Hour "Hours are the same" 
+                Expect.equal dateInput.Day dateOutput.Day "Days are the same" 
+                Expect.equal dateInput.Month dateOutput.Month "Months are the same" 
+                Expect.equal dateInput.Year dateOutput.Year "Year are the same" 
+                Expect.equal dateInput.Kind dateOutput.Kind "Kinds are the same"
 
         testCase "Single case union is deserialized correctly" <| fun () ->
           // assert that deserialization works
