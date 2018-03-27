@@ -97,7 +97,7 @@ module Proxy =
                 )
                 |> List.ofSeq
 
-    let private proxyFetch options typeName methodName returnType =
+    let private proxyFetch options typeName methodName returnType typeCount =
         let route = options.Builder typeName methodName
         let url =
               match options.Endpoint with
@@ -144,9 +144,9 @@ module Proxy =
         let customHeaders = options.CustomHeaders |> Map.tryFind methodName |> Option.defaultValue []
 
         fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 arg13 arg14 arg15 ->
-            let data = [
-                box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15
-             ]
+            let data = 
+               [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15 ] 
+               |> List.take typeCount
             promise {
                 // Send RPC POST request to the server
                 let requestProps = [
@@ -197,7 +197,7 @@ module Proxy =
                     let returnType = asyncOfreturnType.GenericTypeArguments.[0]
                     let fieldName = fst field
                     let normalize n =
-                        let fn = proxyFetch state typeName fieldName returnType
+                        let fn = proxyFetch state typeName fieldName returnType n
                         match n with
                         |0 ->
                             box (fn null null null null null null null null null null null null null null null null)
@@ -235,7 +235,7 @@ module Proxy =
                             box fn
                         |_ -> failwith "Only up to 16 arguments are supported"
 
-                    setProp fieldName (normalize (funcTypes.Length-1)) proxy
+                    setProp fieldName (normalize (funcTypes.Length - 1)) proxy
                 )
                 unbox proxy
             /// Pins the proxy at an endpoint
