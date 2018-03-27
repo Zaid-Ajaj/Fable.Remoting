@@ -197,7 +197,7 @@ module Proxy =
                     let returnType = asyncOfreturnType.GenericTypeArguments.[0]
                     let fieldName = fst field
                     let normalize n =
-                        let fn = proxyFetch state typeName fieldName returnType (funcTypes.Length - 1)
+                        let fn = proxyFetch state typeName fieldName returnType n
                         match n with
                         |0 ->
                             box (fn null null null null null null null null null null null null null null null null)
@@ -235,7 +235,7 @@ module Proxy =
                             box fn
                         |_ -> failwith "Only up to 16 arguments are supported"
 
-                    setProp fieldName (normalize (funcTypes.Length-1)) proxy
+                    setProp fieldName (normalize (funcTypes.Length - 1)) proxy
                 )
                 unbox proxy
             /// Pins the proxy at an endpoint
