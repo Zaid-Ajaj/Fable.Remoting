@@ -3,7 +3,10 @@ open Fable.Remoting.Server
 open Fable.Remoting.Suave
 open ServerImpl
 open SharedTypes
-
+open System.IO
+open Suave.Files
+open Suave.Operators
+open Suave.Filters
 let fableWebPart = remoting server {
     with_builder routeBuilder
     use_logger (printfn "%s")
@@ -34,4 +37,26 @@ let contextTestWebApp =
         with_builder routeBuilder
     }
 
-startWebServer defaultConfig (choose [fableWebPart;versionTestWebPart;contextTestWebApp])
+let webApp = 
+  choose [ GET >=> browseHome
+           fableWebPart 
+           versionTestWebPart
+           contextTestWebApp ]
+
+let rec findRoot dir =
+    if File.Exists(System.IO.Path.Combine(dir, "paket.dependencies"))
+    then dir
+    else
+        let parent = Directory.GetParent(dir)
+        if isNull parent then
+            failwith "Couldn't find root directory"
+        findRoot parent.FullName
+
+let root = findRoot (Directory.GetCurrentDirectory())
+let (</>) x y = Path.Combine(x, y)
+
+let client = root </> "Fable.Remoting.IntegrationTests" </> "client-dist"
+
+let config = { defaultConfig with homeFolder = Some client }
+
+startWebServer config webApp
