@@ -91,7 +91,7 @@ module Proxy =
                                 FSharpType.GetFunctionElements (propInfo.PropertyType)
                                 |> typed<System.Type []>
                             Some (funcName, funcParamterTypes)
-                        |t when box (t?definition?name) = box "Async" ->
+                        |t when box (t?definition?name) = box (typeof<Async<_>>?definition?name) ->
                             Some(propInfo.Name, [|t|])
                         |_ -> None
                 )
