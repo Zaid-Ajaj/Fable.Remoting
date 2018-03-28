@@ -135,4 +135,12 @@ let main argv =
     cts.Cancel()
     driver.Quit()
 
-    0 // return an integer exit code
+    try 
+      let failedCount = int failed.Text
+      if failed <> 0 then 1
+      else 0
+    with
+    | e ->
+        printfn "Error occured while parsing the number of failed tests"
+        printfn "%s\n%s" e.Message e.StackTrace
+        1 // return an integer exit code
