@@ -137,7 +137,7 @@ let main argv =
 
     try 
       let failedCount = int failed.Text
-      if failed <> 0 then 1
+      if failedCount <> 0 then 1
       else 0
     with
     | e ->
