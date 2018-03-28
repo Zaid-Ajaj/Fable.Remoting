@@ -128,6 +128,8 @@ let main argv =
     let failed = driver.FindElementByClassName("failed")
     let success = driver.FindElementByClassName("passed")
 
+    let failedText = failed.Text
+
     printfn ""
     printfn "Passed: %s" success.Text
     printfn "Failed: %s" failed.Text
@@ -136,7 +138,7 @@ let main argv =
     driver.Quit()
 
     try 
-      let failedCount = int failed.Text
+      let failedCount = int failedText
       if failedCount <> 0 then 1
       else 0
     with
