@@ -14,10 +14,10 @@ module FableSuaveAdapter =
   /// Legacy logger for backward compatibility. Use `use_logger` on the computation expression instead
   let mutable logger : (string -> unit) option = None
   /// Legacy ErrorHandler for backward compatibility. Use `use_error_handler` on the computation expression instead
-  let mutable private onErrorHandler : ErrorHandler option = None
+  let mutable private onErrorHandler : ErrorHandler<HttpContext> option = None
 
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
-  let onError (handler: ErrorHandler) =
+  let onError (handler: ErrorHandler<HttpContext>) =
         onErrorHandler <- Some handler
   type RemoteBuilder(implementation) =
    inherit RemoteBuilderBase<HttpContext,WebPart<HttpContext>>()
@@ -85,10 +85,13 @@ module FableSuaveAdapter =
                     with
                       | ex ->
                          Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
-                         let route : RouteInfo = { path = routePath; methodName = methodName  }
+                         let routeInfo : RouteInfo<HttpContext> = 
+                           {  path = routePath
+                              methodName = methodName
+                              httpContext = ctx  }
                          match options.ErrorHandler with
                          | Some handler ->
-                            let result = handler ex route
+                            let result = handler ex routeInfo
                             match result with
                             // Server error ignored by error handler
                             | Ignore ->
