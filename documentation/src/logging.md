@@ -42,8 +42,15 @@ let webAppWithLogging : WebPart = SerilogAdapter.Enable(webApp)
 ```fs
 // configure Serilog
 Log.Logger <- 
-    LoggerConfiguration()
-      .WriteTo.Console() // open Serilog.Sinks.Console
+    LoggerConfiguration() 
+      // use package Destructurama.FSharp.NetCore 
+      // https://www.nuget.org/packages/Destructurama.FSharp.NetCore/
+      // this helps Serilog deserialize the fsharp types
+      .Destructure.FSharpTypes()
+      // use package Serilog.Sinks.Console  
+      // https://github.com/serilog/serilog-sinks-console
+      .WriteTo.Console() 
+      // add more sinks etc.
       .CreateLogger() 
 ```
 4 - Start the web server
