@@ -18,6 +18,7 @@ open System
 open Suave.SerilogExtensions
 open Suave 
 
+// Log enhandled exceptions 
 let errorHandler (ex: Exception) 
                  (routeInfo: RouteInfo<HttpContext>) =
     // get a contextual logger with RequestId attached to it
@@ -63,7 +64,7 @@ type IMusicStore = {
     albums : Async<list<Album>>
 }
 ```
-then you need to extend the definition to be able to read from the HttpContext, see [Accessing Request Context](request-suave.md):
+then you need to extend the definition to be able to read from the HttpContext, see [Accessing Request Context](request-context.md):
 ```fs
 type IMusicStore<'context> {
     albums : 'context -> Async<list<Albums>>

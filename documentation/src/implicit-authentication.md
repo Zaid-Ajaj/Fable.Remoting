@@ -3,7 +3,7 @@
 Using `Fable.Remoting` only as part of your web application is a key feature of the library (and the reason why we call it a library instead of a framework). It should be easy to integrate it with an exisiting web application too, especially when it comes to authentication and authorization, you most likely already have a mechanism to secure your application endpoints. 
 
 ### Scenario of an existing application
-For example you might have `requireAuthenticated` WebPart/HttpHandler that you put before your secure endpoints like the following:
+For example you might have `requiresAuthenticated` WebPart/HttpHandler that you put before your secure endpoints like the following:
 
 ```fs
 let webApp = 
@@ -11,11 +11,11 @@ let webApp =
         GET >=> path "/" >=> OK "Public api"
         (* Other parts *)
         POST >=> path "/secure"
-             >=> requireAuthenticated
+             >=> requiresAuthenticated
              >=> OK "User Logged in"  
     ]
 ```
-Where we are assuming that `requireAuthenticated` checks whether or not a user is logged in by checking the Authorization header of the incoming request. Everytime the client sends a secure request, the client also provides a valid authentication header, so far so good. 
+Where we are assuming that `requiresAuthenticated` checks whether or not a user is logged in by checking the Authorization header of the incoming request. Everytime the client sends a secure request, the client also provides a valid authentication header, so far so good. 
 
 Ideally, we want to integrate the remoting handler as follows:
 ```fs
@@ -26,7 +26,7 @@ let webApp =
         GET >=> path "/" >=> OK "Public api"
         (* Other parts *)
         POST >=> path "/secure"
-             >=> requireAuthenticated
+             >=> requiresAuthenticated
              >=> OK "User Logged in"  
 
         requiresAuthenticated >=> fableWebPart
@@ -46,4 +46,4 @@ let musicStore = Proxy.remoting<IMusicStore> {
 Now you can use `musicStore` like you would usually do. 
 
 ### Cookie Authentication 
-You might be asking: what if the `requireAuthenticated` validates the *cookie* in the request instead of authorization header to check whether or not a user logged in? Then there is nothing special to do on the client side of things because the `Cookie` header is automatically included in client requests with the value `document.cookie` which holds whatever cookie(s) that was cached when the user logged in. 
+You might be asking: what if the `requiresAuthenticated` validates the *cookie* in the request instead of authorization header to check whether or not a user logged in? Then there is nothing special to do on the client side of things because the `Cookie` header is automatically included in client requests with the value `document.cookie` which holds whatever cookie(s) that was cached when the user logged in. 

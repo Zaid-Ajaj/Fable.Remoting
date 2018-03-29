@@ -2,7 +2,11 @@
 
 You might ask: What happens when an exception is thrown on the server by one of the RPC methods? 
 
-Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to a global exception handler of the type `Exception -> RouteInfo -> ErrorResult` where `ErrorResult` is defined as:
+Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to a global exception handler of the type 
+```fs
+Exception -> RouteInfo<HttpContext> -> ErrorResult
+``` 
+where `ErrorResult` is defined as:
 ```fs
 type ErrorResult = 
     | Ignore
@@ -15,7 +19,7 @@ open System
 // Custom error will be propagated back to client
 type CustomError = { errorMsg: string }
 
-let errorHandler (ex: Exception) (routeInfo: RouteInfo) = 
+let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) = 
     // do some logging
     printfn "Error at %s on method %s" routeInfo.path routeInfo.methodName
     // decide whether or not you want to propagate the error to the client
