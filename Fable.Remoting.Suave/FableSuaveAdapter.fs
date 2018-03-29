@@ -14,10 +14,10 @@ module FableSuaveAdapter =
   /// Legacy logger for backward compatibility. Use `use_logger` on the computation expression instead
   let mutable logger : (string -> unit) option = None
   /// Legacy ErrorHandler for backward compatibility. Use `use_error_handler` on the computation expression instead
-  let mutable private onErrorHandler : ErrorHandler option = None
+  let mutable private onErrorHandler : ErrorHandler<HttpContext> option = None
 
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
-  let onError (handler: ErrorHandler) =
+  let onError (handler: ErrorHandler<HttpContext>) =
         onErrorHandler <- Some handler
   type RemoteBuilder(implementation) =
    inherit RemoteBuilderBase<HttpContext,WebPart<HttpContext>>()
@@ -72,77 +72,4 @@ module FableSuaveAdapter =
                 let requestBodyData =
                     // if input is unit
                     // then don't bother getting any input from request
-                    match hasArg with
-                    | true  -> getResourceFromReq req ctx inputType genericTypes
-                    | false -> [|null|]
-                let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
-                let onSuccess = flow HttpCode.HTTP_200 
-                let onFailure = flow HttpCode.HTTP_500
-                async {
-                    try
-                      let! dynamicResult = result
-                      return! builder.Json options dynamicResult |> fun a -> onSuccess a ctx
-                    with
-                      | ex ->
-                         Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
-                         let route : RouteInfo = { path = routePath; methodName = methodName  }
-                         match options.ErrorHandler with
-                         | Some handler ->
-                            let result = handler ex route
-                            match result with
-                            // Server error ignored by error handler
-                            | Ignore ->
-                                let result = { error = "Server error: ignored"; ignored = true; handled = true }
-                                return! builder.Json options result |> fun a -> onFailure a ctx
-                            // Server error mapped into some other `value` by error handler
-                            | Propagate value ->
-                                let result = { error = value; ignored = false; handled = true }
-                                return! builder.Json options result |> fun a -> onFailure a ctx
-                         // There no server handler
-                         | None ->
-                            let result = { error = "Server error: not handled"; ignored = true; handled = false }
-                            return! builder.Json options result |> fun a -> onFailure a ctx
-                    }
-                
-
-    let sb = StringBuilder()
-    let t = implementation.GetType()
-    let typeName =
-        match t.GenericTypeArguments with
-        |[||] -> t.Name
-        |[|_|] -> t.Name.[0..t.Name.Length-3]
-        |_ -> failwith "Only one generic type can be injected"    
-    sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
-    implementation.GetType()
-        |> FSharpType.GetRecordFields
-        |> Seq.map (fun propInfo ->
-            let methodName = propInfo.Name
-            let fullPath = options.Builder typeName methodName
-            sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
-            POST >=> path fullPath >=> request (handleRequest methodName implementation (t.GenericTypeArguments) fullPath)
-        )
-        |> List.ofSeq
-        |> fun routes ->
-            options.Logger |> Option.iter (fun logf -> string sb |> logf)
-            choose routes
-  /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
-  /// Usage:
-  /// `let server = remoting implementation {()}` for default options at /typeName/methodName
-  /// `let server = remoting implementation = remoting {`
-  /// `    with_builder builder` to set a `builder : (string -> string -> string)`
-  /// `    use_logger logger` to set a `logger : (string -> unit)`
-  /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
-  /// `}`
-  let remoting = RemoteBuilder
-  /// Creates a `WebPart` from the given implementation of a protocol and a route builder to specify how to the paths should be built.
-  let webPartWithBuilderFor implementation (builder:string->string->string) : WebPart =
-    let r = remoting implementation
-    let zero = r.Zero()
-    let withBuilder = r.WithBuilder(zero,builder)
-    let useLogger = logger |> Option.fold (fun s e -> r.UseLogger(s,e)) withBuilder
-    let useErrorHandler = onErrorHandler |> Option.fold (fun s e -> r.UseErrorHandler(s,e)) useLogger
-    r.Run(useErrorHandler)
-
-    /// Creates a WebPart from the given implementation of a protocol. Uses the default route builder: `sprintf "/%s/%s"`.
-  let webPartFor implementation : WebPart =
-        webPartWithBuilderFor implementation (sprintf "/%s/%s")
+  
