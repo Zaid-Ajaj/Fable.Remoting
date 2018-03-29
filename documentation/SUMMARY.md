@@ -15,6 +15,7 @@
 - [Modeling Authentication](src/modeling-authentication.md)
 - [Implicit Authentication](src/implicit-authentication.md)
 - [Accessing Request Context](src/request-context.md)
+- [Logging](src/logging.md)
 
 ### Misc
 - [Troubleshooting](src/troubleshoot.md)
