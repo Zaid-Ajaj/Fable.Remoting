@@ -98,7 +98,7 @@ module FableGiraffeAdapter =
                          Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
                          match options.ErrorHandler with
                          | Some handler ->
-                            let routeInfo = 
+                            let routeInfo : RouteInfo<HttpContext> = 
                               { path = routePath
                                 methodName = methodName
                                 httpContext = ctx }
