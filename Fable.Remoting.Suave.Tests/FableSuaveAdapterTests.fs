@@ -19,7 +19,7 @@ let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
 
-let errorHandler (ex: exn) (_: RouteInfo<HttpContext>) = 
+let errorHandler (ex: exn) (_: RouteInfo<_>) = 
     printfn "Propagating exception message back to client: %s" ex.Message
     Propagate (ex.Message)
 
