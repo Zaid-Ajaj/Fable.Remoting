@@ -16,10 +16,10 @@ module FableGiraffeAdapter =
   let mutable logger : (string -> unit) option = None
   /// Legacy ErrorHandler for backward compatibility
 
-  let mutable private onErrorHandler : ErrorHandler option = None
+  let mutable private onErrorHandler : ErrorHandler<HttpContext> option = None
 
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
-  let onError (handler: ErrorHandler) =
+  let onError (handler: ErrorHandler<HttpContext>) =
         onErrorHandler <- Some handler
 
   type RemoteBuilder(implementation)=
@@ -98,7 +98,10 @@ module FableGiraffeAdapter =
                          Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
                          match options.ErrorHandler with
                          | Some handler ->
-                            let routeInfo = { path = routePath; methodName = methodName }
+                            let routeInfo : RouteInfo<HttpContext> = 
+                              { path = routePath
+                                methodName = methodName
+                                httpContext = ctx }
                             match handler ex routeInfo with
                             | Ignore ->
                                 let result = { error = "Server error: ignored"; ignored = true; handled = true }

@@ -70,16 +70,17 @@ module ServerSide =
          }
 [<AutoOpen>]
 module SharedCE =
-    type RouteInfo = {
+    type RouteInfo<'ctx> = {
         path: string
         methodName: string
+        httpContext: 'ctx
     }
 
     type ErrorResult =
         | Ignore
         | Propagate of obj
 
-    type ErrorHandler = System.Exception -> RouteInfo -> ErrorResult
+    type ErrorHandler<'ctx> = System.Exception -> RouteInfo<'ctx> -> ErrorResult
 
     type CustomErrorResult<'a> =
         { error: 'a;
@@ -112,7 +113,7 @@ module SharedCE =
 
     type BuilderOptions<'ctx> = {
         Logger : (string -> unit) option
-        ErrorHandler: ErrorHandler option
+        ErrorHandler: ErrorHandler<'ctx> option
         Builder: string -> string -> string
         CustomHandlers : Map<string, 'ctx -> ResponseOverride option>
     }
