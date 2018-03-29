@@ -373,8 +373,15 @@ mono .paket/paket.exe add Suave.SerilogExtensions
 <p>3 - Create the logger and configure the sinks:</p>
 <pre><code class="lang-fs"><span class="hljs-comment">// configure Serilog</span>
 Log.Logger &lt;- 
-    LoggerConfiguration()
-      .WriteTo.Console() <span class="hljs-comment">// open Serilog.Sinks.Console</span>
+    LoggerConfiguration() 
+      <span class="hljs-comment">// use package Destructurama.FSharp.NetCore </span>
+      <span class="hljs-comment">// https://www.nuget.org/packages/Destructurama.FSharp.NetCore/</span>
+      <span class="hljs-comment">// this helps Serilog deserialize the fsharp types</span>
+      .Destructure.FSharpTypes()
+      <span class="hljs-comment">// use package Serilog.Sinks.Console  </span>
+      <span class="hljs-comment">// https://github.com/serilog/serilog-sinks-console</span>
+      .WriteTo.Console() 
+      <span class="hljs-comment">// add more sinks etc.</span>
       .CreateLogger()
 </code></pre>
 <p>4 - Start the web server</p>
@@ -475,7 +482,7 @@ Log.Logger &lt;-
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Logging","level":"3.6","depth":1,"next":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"3.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-03-29T11:48:00.561Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-29T11:53:06.916Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Logging","level":"3.6","depth":1,"next":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"3.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-03-29T11:58:47.366Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-29T11:59:56.714Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
