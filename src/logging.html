@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Credits · GitBook</title>
+        <title>Logging · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,8 +53,10 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
+    <link rel="next" href="troubleshoot.html" />
     
-    <link rel="prev" href="troubleshoot.html" />
+    
+    <link rel="prev" href="request-context.html" />
     
 
     </head>
@@ -240,7 +242,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.6" data-path="logging.html">
+        <li class="chapter active" data-level="3.6" data-path="logging.html">
             
                 <a href="logging.html">
             
@@ -273,7 +275,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="4.2" data-path="credits.html">
+        <li class="chapter " data-level="4.2" data-path="credits.html">
             
                 <a href="credits.html">
             
@@ -316,7 +318,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Credits</a>
+        <a href=".." >Logging</a>
     </h1>
 </div>
 
@@ -331,16 +333,104 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="credits">Credits</h1>
-<p>Special thanks to <a href="https://github.com/alfonsogarciacaro" target="_blank">Alfonso Garcia-Caro</a>, the auther himself of the Fable compiler for his awesome work on Fable and for being open and for helping me add reflection features to Fable which make the implementation of the library possible in the first place on the client.  </p>
-<p>Many many thanks to <a href="https://github.com/Nhowka" target="_blank">Diego Esmerio</a> for his awesome work on implementing these features: </p>
-<ul>
-<li>Uniform API for the library across the server and the client,</li>
-<li>Support for multi-argument remoting functions</li>
-<li>Contexual injection for reading the request context</li>
-<li>Using plain <code>Async&lt;&apos;T&gt;</code> in the definition of the functions</li>
-<li>many others...</li>
-</ul>
+                                <h1 id="logging">Logging</h1>
+<p>Logging is dead-simple to integrate with <code>Fable.Remoting</code>, if you are using Suave, then <a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Suave.SerilogExtensions</a> is what we recommend to use where <a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Serilog</a> is the logging framework of choice.</p>
+<blockquote>
+<p>Logging extensions for Giraffe/Saturn are not yet available.</p>
+</blockquote>
+<h2 id="basic-use-case">Basic use case</h2>
+<p>1 - Install from Nuget:</p>
+<pre><code class="lang-bash">dotnet add package Suave.SerilogExtensions
+<span class="hljs-comment"># or if you are using paket</span>
+mono .paket/paket.exe add Suave.SerilogExtensions
+</code></pre>
+<p>2 - Wrap your <code>remoting</code> WebPart with the Serilog adapter:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">open</span> System
+<span class="hljs-comment">// ...</span>
+<span class="hljs-keyword">open</span> Suave.SerilogExtensions
+<span class="hljs-keyword">open</span> Suave 
+
+<span class="hljs-keyword">let</span> errorHandler (ex: Exception) 
+                 (routeInfo: RouteInfo&lt;HttpContext&gt;) =
+    <span class="hljs-comment">// get a contextual logger with RequestId attached to it</span>
+    <span class="hljs-keyword">let</span> contextLogger = routeInfo.httpContext.Logger()
+    <span class="hljs-comment">// log the exception with relevant data</span>
+    <span class="hljs-keyword">let</span> errorMsgTemplate = <span class="hljs-string">&quot;Error occured while invoking {MethodName} at {RoutePath}&quot;</span>
+    contextLogger.Error(ex, errorMsgTemplate, routeInfo.methodName, routeInfo.path)
+    <span class="hljs-comment">// No need to propagate custom errors back to client</span>
+    Ignore
+
+<span class="hljs-comment">// create the remoting WebPart</span>
+<span class="hljs-keyword">let</span> webApp : WebPart = remoting musicStore {
+    use_route_builder (sprintfn <span class="hljs-string">&quot;/api/%s/%s&quot;</span>)
+    use_error_handler errorHandler 
+}
+
+<span class="hljs-comment">// Enable logging</span>
+<span class="hljs-keyword">let</span> webAppWithLogging : WebPart = SerilogAdapter.Enable(webApp)
+</code></pre>
+<p>3 - Create the logger and configure the sinks:</p>
+<pre><code class="lang-fs"><span class="hljs-comment">// configure Serilog</span>
+Log.Logger &lt;- 
+    LoggerConfiguration()
+      .WriteTo.Console() <span class="hljs-comment">// open Serilog.Sinks.Console</span>
+      .CreateLogger()
+</code></pre>
+<p>4 - Start the web server</p>
+<pre><code>startWebServer defaultConfig webAppWithLogging
+</code></pre><p><a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Suave.SerilogExtensions</a> contains many configuration options that you might want to check out. </p>
+<h2 id="using-logger-from-remoting-functions">Using logger from remoting functions</h2>
+<p>Ofcourse, we don&apos;t want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remoting functions, you need to access to <code>HttpContext</code> and call <code>httpContext.Logger()</code> to get a contexual logger you can log events from. </p>
+<blockquote>
+<p>Logger() is an extension method provided from Suave.SerilogExtensions</p>
+</blockquote>
+<p>Suppose your protocol had the type:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span> </span>= {
+    albums : Async&lt;list&lt;Album&gt;&gt;
+}
+</code></pre>
+<p>then you need to extend the definition to be able to read from the HttpContext, see <a href="request-suave.md">Accessing Request Context</a>:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span>&lt;<span class="hljs-title">&apos;context</span>&gt; {</span>
+    albums : &apos;context -&gt; Async&lt;list&lt;Albums&gt;&gt;
+}
+</code></pre>
+<p>with implementation:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicStore : IMusicStore&lt;HttpContext&gt; { 
+    albums : httpContext -&gt; async {
+        <span class="hljs-comment">// get the contexual logger</span>
+        <span class="hljs-keyword">let</span> logger = httpContext.Logger()
+        logger.Information(<span class="hljs-string">&quot;Retrieving albums from database&quot;</span>)
+        <span class="hljs-keyword">let!</span> albums = Database.getAllAlbums()
+        logger.Information(<span class="hljs-string">&quot;Read {AlbumCount} albums from database&quot;</span>, List.length albums)
+        <span class="hljs-keyword">return</span> albums
+    }
+}
+</code></pre>
+<h1 id="without-extending-protocol-definition">Without extending protocol definition</h1>
+<p>You can also gain access to the HttpContext from &quot;outside&quot; the remoting handler using the <code>context</code> helper function from Suave:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = context &lt;| <span class="hljs-keyword">fun</span> httpContext -&gt;
+    <span class="hljs-keyword">let</span> musicStore : IMusicStore = {
+        albums = async {
+            <span class="hljs-keyword">let</span> logger = httpContext.Logger()
+            logger.Information(<span class="hljs-string">&quot;Retrieving albums from database&quot;</span>)
+            <span class="hljs-keyword">let!</span> albums = Database.getAllAlbums()
+            logger.Information(<span class="hljs-string">&quot;Read {AlbumCount} albums from database&quot;</span>,
+            List.length albums)
+            <span class="hljs-keyword">return</span> albums
+        }
+    }
+
+    <span class="hljs-comment">// create and return the remoting WebPart</span>
+    remoting musicStore {
+        use_route_builder (sprintfn <span class="hljs-string">&quot;/api/%s/%s&quot;</span>)
+        use_error_handler errorHandler 
+    }
+
+<span class="hljs-comment">// Wrap with Serilog adapter</span>
+<span class="hljs-keyword">let</span> webAppWithLogging = SerilogAdapter.Enable(webApp)
+
+<span class="hljs-comment">// etc...</span>
+</code></pre>
 
                                 
                                 </section>
@@ -368,10 +458,14 @@
 
             
                 
-                <a href="troubleshoot.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page: Troubleshooting">
+                <a href="request-context.html" class="navigation navigation-prev " aria-label="Previous page: Accessing Request Context">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
+                
+                <a href="troubleshoot.html" class="navigation navigation-next " aria-label="Next page: Troubleshooting">
+                    <i class="fa fa-angle-right"></i>
+                </a>
                 
             
         
@@ -380,7 +474,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Credits","level":"4.2","depth":1,"previous":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/credits.md","mtime":"2018-03-28T18:55:43.353Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-29T05:00:37.063Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Logging","level":"3.6","depth":1,"next":{"title":"Troubleshooting","level":"4.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"3.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-03-29T04:58:01.705Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-03-29T05:00:37.063Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
