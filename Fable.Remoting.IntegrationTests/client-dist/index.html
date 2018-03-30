@@ -15,5 +15,17 @@
     <div id="qunit-fixture"></div>
 
     <script src="bundle.js"></script>
+    <script>
+      var passedTests = [];
+      var failedTests = [];
+
+      QUnit.log(function(testItem) {
+        if (testItem.result) {
+          passedTests.push(testItem);
+        } else {
+          failedTests.push(result);
+        }
+      });
+    </script>
   </body>
 </html>

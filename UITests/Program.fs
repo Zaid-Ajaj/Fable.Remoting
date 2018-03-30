@@ -98,33 +98,26 @@ let main argv =
     use driver = new FirefoxDriver(driversDir, options)
     driver.Url <- "http://localhost:8080/index.html"
     
-    // give tests time to run
-    Threading.Thread.Sleep(30 * 1000)
+    let mutable testsFinishedRunning = false
 
-    //let testsContainer = driver.FindElementById("qunit-tests")
-    //let testCases = testsContainer.FindElements(OpenQA.Selenium.By.TagName("li"))
-    //
-    //for testCase in testCases do
-    //    printfn "%s" testCase.Text
-    //    let name = testCase.FindElement(By.ClassName("test-name"))
-    //    let counts = testCase.FindElement(By.ClassName("counts"))
-    //    let assertContainer = testCase.FindElement(By.ClassName("qunit-assert-list"))
-    //    let asserts = assertContainer.FindElements(By.TagName("li"))
-    //    printfn "Fable.Remoting: %s (%s)" name.Text counts.Text
-    //    printfn "  | "
-    //    for assertCase in asserts do
-    //        let passed = assertCase.GetAttribute("class") = "pass"
-    //        if passed then
-    //            let message = assertCase.FindElement(By.ClassName("test-message"))
-    //            let runtime = assertCase.FindElement(By.ClassName("runtime"))
-    //            printfn "  |-- %s (took about %s) -> Passed" message.Text runtime.Text
-    //        else
-    //            let message = assertCase.FindElement(By.ClassName("test-message"))
-    //            let runtime = assertCase.FindElement(By.ClassName("runtime"))
-    //            Console.ForegroundColor <- ConsoleColor.Red
-    //            printfn "  | %s (took about %s) -> Failed" message.Text runtime.Text
-    //            Console.ResetColor()
-   
+    while not testsFinishedRunning do
+      // give tests time to run
+      printfn "Tests have not finished running yet"
+      printfn "Waiting for another 10 seconds"
+      Threading.Thread.Sleep(10 * 1000)
+      try 
+        driver.FindElementByClassName("failed") |> ignore
+        testsFinishedRunning <- true
+      with 
+        | _ -> ()
+
+    let passedTests = unbox<string> (driver.ExecuteScript("return JSON.stringify(passedTests, null, 4);"))
+    let failedTests = unbox<string> (driver.ExecuteScript("return JSON.stringify(failedTests, null, 4);"))
+    Console.ForegroundColor <- ConsoleColor.Green
+    printfn "Tests Passed: \n%s" passedTests
+    Console.ForegroundColor <- ConsoleColor.Red
+    printfn "Tests Failed: \n%s" failedTests
+    Console.ResetColor()
     let failed = driver.FindElementByClassName("failed")
     let success = driver.FindElementByClassName("passed")
 
