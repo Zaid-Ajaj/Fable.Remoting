@@ -2,6 +2,7 @@
 
 Logging is dead-simple to integrate with `Fable.Remoting`, if you are using Suave, then [Suave.SerilogExtensions](https://github.com/Zaid-Ajaj/Suave.SerilogExtensions) is what we recommend to use where [Serilog](https://github.com/Zaid-Ajaj/Suave.SerilogExtensions) is the logging framework of choice.
 
+> Suave.SerilogExtensions is specially written to work with Fable.Remoting, although it would work just great with any Suave app.
 > Logging extensions for Giraffe/Saturn are not yet available.
 
 ## Basic use case
@@ -18,7 +19,7 @@ open System
 open Suave.SerilogExtensions
 open Suave 
 
-// Log enhandled exceptions 
+// Log unhandled exceptions 
 let errorHandler (ex: Exception) 
                  (routeInfo: RouteInfo<HttpContext>) =
     // get a contextual logger with RequestId attached to it
@@ -43,9 +44,8 @@ let webAppWithLogging : WebPart = SerilogAdapter.Enable(webApp)
 // configure Serilog
 Log.Logger <- 
     LoggerConfiguration() 
-      // use package Destructurama.FSharp.NetCore 
-      // https://www.nuget.org/packages/Destructurama.FSharp.NetCore/
-      // this helps Serilog deserialize the fsharp types
+      // Suave.SerilogExtensions has native destructuring mechanism
+      // this helps Serilog deserialize the fsharp types like unions/records
       .Destructure.FSharpTypes()
       // use package Serilog.Sinks.Console  
       // https://github.com/serilog/serilog-sinks-console
