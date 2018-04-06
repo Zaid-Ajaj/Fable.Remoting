@@ -21,6 +21,7 @@ type GenericRecord<'t> = {
 
 type IServer = {
     // primitive types
+    simpleUnit : unit -> Async<int>
     getLength : string -> Async<int>
     echoInteger : int -> Async<int>
     echoString : string -> Async<string>

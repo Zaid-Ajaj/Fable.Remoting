@@ -8,7 +8,7 @@ open Suave.Files
 open Suave.Operators
 open Suave.Filters
 let fableWebPart = remoting server {
-    with_builder routeBuilder
+    use_route_builder routeBuilder
     use_logger (printfn "%s")
     use_error_handler (fun ex routeInfo ->
       printfn "Error at: %A" routeInfo
@@ -25,7 +25,7 @@ let isVersion v (ctx:HttpContext) =
 let versionTestWebPart =
   remoting versionTestServer {
     use_logger (printfn "%s")
-    with_builder versionTestBuilder
+    use_route_builder versionTestBuilder
     use_custom_handler_for "v4" (isVersion "4")
     use_custom_handler_for "v3" (isVersion "3")
     use_custom_handler_for "v2" (isVersion "2")
@@ -34,7 +34,7 @@ let versionTestWebPart =
 let contextTestWebApp =
     remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
         use_logger (printfn "%s")
-        with_builder routeBuilder
+        use_route_builder routeBuilder
     }
 
 let webApp = 

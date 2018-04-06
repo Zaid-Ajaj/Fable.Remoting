@@ -17,7 +17,7 @@ open ServerImpl
 open OpenQA.Selenium
 
 let fableWebPart = remoting server {
-    with_builder routeBuilder
+    use_route_builder routeBuilder
     use_error_handler (fun ex routeInfo ->
       Propagate ex.Message)
     use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
@@ -32,7 +32,7 @@ let isVersion v (ctx:HttpContext) =
 
 let versionTestWebPart =
   remoting versionTestServer {
-    with_builder versionTestBuilder
+    use_route_builder versionTestBuilder
     use_custom_handler_for "v4" (isVersion "4")
     use_custom_handler_for "v3" (isVersion "3")
     use_custom_handler_for "v2" (isVersion "2")
@@ -40,7 +40,7 @@ let versionTestWebPart =
 
 let contextTestWebApp =
     remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
-        with_builder routeBuilder
+        use_route_builder routeBuilder
     }
 
 

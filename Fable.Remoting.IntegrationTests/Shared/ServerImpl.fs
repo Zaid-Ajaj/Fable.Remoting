@@ -10,6 +10,7 @@ module Async =
 // a simple implementation, just return whatever value you get (echo the input)
 let server : IServer  = {
     // primitive types
+    simpleUnit = fun () -> async { return 42 }
     getLength = fun input -> Async.result input.Length
     echoInteger = Async.result
     echoString = Async.result

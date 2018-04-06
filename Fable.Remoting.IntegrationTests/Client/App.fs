@@ -11,7 +11,7 @@ Proxy.onError <| fun errorInfo ->
 let server = Proxy.remoting<IServer> {
     use_route_builder routeBuilder
     use_custom_handler_for "customStatusCode" 204 (fun _ -> Ok (box "No content"))
-    }
+}
 
 let versionTestServer = Proxy.remoting<IVersionTestServer> {
     use_route_builder versionTestBuilder
@@ -40,6 +40,11 @@ QUnit.testCaseAsync "ISever.echoInteger" <| fun test ->
         do test.equal sndResult 15
     }
 
+QUnit.testCaseAsync "IServer.simpleUnit" <| fun test -> 
+    async {
+        let! result = server.simpleUnit() 
+        do test.equal result 42
+    }
 
 QUnit.testCaseAsync "IServer.echoString" <| fun test ->
     async {
