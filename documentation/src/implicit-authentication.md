@@ -40,7 +40,7 @@ This means, that requests coming from the client proxy cannot reach the `fableWe
 let authorizationToken = "Bearer <rest of token value>"
 
 let musicStore = Proxy.remoting<IMusicStore> {
-    use_token authorizationToken
+    with_token authorizationToken
 }
 ```
 Now you can use `musicStore` like you would usually do. 

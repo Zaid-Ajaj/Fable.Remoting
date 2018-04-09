@@ -52,7 +52,7 @@ let musicStore =  Proxy.remoting<IMusicStore<unit>> {()}
 
 // sends an authorization header with every request
 let secureMusicStore = Proxy.remoting<IMusicStore<unit>> {
-    use_token "Bearer <authorization value here>"
+    with_token "Bearer <authorization value here>"
 } 
 
 async {
