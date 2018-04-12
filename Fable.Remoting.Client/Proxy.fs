@@ -6,7 +6,7 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack.Fetch
 
-module Proxy =
+module Proxy =  
     type ErrorInfo = {
         path: string;
         methodName: string;
@@ -34,6 +34,8 @@ module Proxy =
     /// When a forbidden error is thrown on the server, this handler intercepts that error along with the optional authorization string information
     let onForbiddenError (handler: string option -> unit) =
         forbiddenHandler <- Some handler
+    /// Cached empty token as default value if neither "with_token" or "with_token_callback" are set
+    let private emptyToken = Promise.lift ""
 
     type ResponseContext = {
         Body          : string
@@ -51,6 +53,7 @@ module Proxy =
            CustomHeaders          : Map<string, HttpRequestHeaders list>
            Endpoint               : string option
            Headers                : HttpRequestHeaders list
+           TokenCallback          : (unit -> Fable.Import.JS.Promise<string>)
            Builder                : (string -> string -> string)
         }
         with
@@ -65,6 +68,7 @@ module Proxy =
                                             ContentType "application/json; charset=utf8"
                                             Cookie Fable.Import.Browser.document.cookie
                                             ]
+                   TokenCallback         = (fun _ -> emptyToken)
                    Builder               = sprintf ("/%s/%s")
                 }
     [<Emit("$2[$0] = $1")>]
@@ -148,12 +152,15 @@ module Proxy =
                [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15 ] 
                |> List.take typeCount
             promise {
+                let! token = options.TokenCallback()
+                let authHeader = if isNull token || token = "" then [] else [Authorization token]
+
                 // Send RPC POST request to the server
                 let requestProps = [
                     Body (unbox (toJson data))
                     Method HttpMethod.POST
                     Credentials RequestCredentials.Sameorigin
-                    requestHeaders (customHeaders@options.Headers)
+                    requestHeaders (customHeaders@options.Headers@authHeader)
                 ]
 
                 let makeReqProps props =
@@ -163,7 +170,7 @@ module Proxy =
                 //let! response = Fetch.fetch url requestProps
                 let! jsonResponse = response.text()
                 let context = {
-                    Authorization = options.Headers |> Seq.tryPick (function (Authorization token) -> Some token | _ -> None)
+                    Authorization = if isNull token || token = "" then None else Some token
                     Body=jsonResponse
                     ReturnType = returnType
                     Response = response}
@@ -257,7 +264,11 @@ module Proxy =
             /// Sets an authorization string to send with the request onto the Authorization header.
             [<CustomOperation("with_token")>]
             member __.WithToken(state,token) =
-                {state with Headers = (Authorization token)::state.Headers}
+                {state with TokenCallback = (fun _ -> Promise.lift token)}
+            /// Sets a callback which is invoked on every request to acquire a authorization string which will be set onto the Authorization header.
+            [<CustomOperation("with_token_callback")>]
+            member __.WithTokenCallback(state,callback) =
+                {state with TokenCallback = callback}              
             /// Alias for `use_route_builder`. Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`.
             [<CustomOperation("with_builder")>]
             member __.WithBuilder(state,builder) =
@@ -355,3 +366,4 @@ module Proxy =
     [<PassGenerics>]
     let createSecureWithBuilder<'t> (routeBuilder: string -> string -> string) (auth: string) :  't =
         createSecureWithEndpointAndBuilderImpl<'t> None routeBuilder (Some auth)
+        
