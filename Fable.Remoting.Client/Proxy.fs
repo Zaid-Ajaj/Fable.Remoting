@@ -35,7 +35,7 @@ module Proxy =
     let onForbiddenError (handler: string option -> unit) =
         forbiddenHandler <- Some handler
     /// Cached empty token as default value if neither "with_token" or "with_token_callback" are set
-    let private emptyToken = Promise.lift ""
+    let private emptyToken = Promise.lift None
 
     type ResponseContext = {
         Body          : string
@@ -53,7 +53,7 @@ module Proxy =
            CustomHeaders          : Map<string, HttpRequestHeaders list>
            Endpoint               : string option
            Headers                : HttpRequestHeaders list
-           TokenCallback          : (unit -> Fable.Import.JS.Promise<string>)
+           TokenCallback          : (unit -> Fable.Import.JS.Promise<string option>)
            Builder                : (string -> string -> string)
         }
         with
@@ -153,7 +153,7 @@ module Proxy =
                |> List.take typeCount
             promise {
                 let! token = options.TokenCallback()
-                let authHeader = if isNull token || token = "" then [] else [Authorization token]
+                let authHeader = match token with None -> [] | Some token -> [Authorization token]
 
                 // Send RPC POST request to the server
                 let requestProps = [
@@ -170,7 +170,7 @@ module Proxy =
                 //let! response = Fetch.fetch url requestProps
                 let! jsonResponse = response.text()
                 let context = {
-                    Authorization = if isNull token || token = "" then None else Some token
+                    Authorization = token
                     Body=jsonResponse
                     ReturnType = returnType
                     Response = response}
@@ -264,7 +264,7 @@ module Proxy =
             /// Sets an authorization string to send with the request onto the Authorization header.
             [<CustomOperation("with_token")>]
             member __.WithToken(state,token) =
-                {state with TokenCallback = (fun _ -> Promise.lift token)}
+                {state with TokenCallback = (fun _ -> Promise.lift (Some token))}
             /// Sets a callback which is invoked on every request to acquire a authorization string which will be set onto the Authorization header.
             [<CustomOperation("with_token_callback")>]
             member __.WithTokenCallback(state,callback) =
