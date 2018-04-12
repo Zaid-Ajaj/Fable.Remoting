@@ -6,13 +6,19 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack.Fetch
 
-module Proxy =  
+module Proxy =
     type ErrorInfo = {
         path: string;
         methodName: string;
         error: string;
         response: Response
     }
+
+    type TokenCallbackOption =
+        | Lifetime
+        | OnError of retries:int
+        | EveryRequest
+
     /// On Unauthorized error handler (for backward compatibility)
 
     let mutable private authHandler : Option<string option -> unit> = None
@@ -34,8 +40,6 @@ module Proxy =
     /// When a forbidden error is thrown on the server, this handler intercepts that error along with the optional authorization string information
     let onForbiddenError (handler: string option -> unit) =
         forbiddenHandler <- Some handler
-    /// Cached empty token as default value if neither "with_token" or "with_token_callback" are set
-    let private emptyToken = Promise.lift None
 
     type ResponseContext = {
         Body          : string
@@ -53,7 +57,8 @@ module Proxy =
            CustomHeaders          : Map<string, HttpRequestHeaders list>
            Endpoint               : string option
            Headers                : HttpRequestHeaders list
-           TokenCallback          : (unit -> Fable.Import.JS.Promise<string option>)
+           Authorization          : string option ref
+           TokenCallback          : (TokenCallbackOption * (unit -> Fable.Import.JS.Promise<string option>)) option
            Builder                : (string -> string -> string)
         }
         with
@@ -68,7 +73,8 @@ module Proxy =
                                             ContentType "application/json; charset=utf8"
                                             Cookie Fable.Import.Browser.document.cookie
                                             ]
-                   TokenCallback         = (fun _ -> emptyToken)
+                   Authorization         = ref None
+                   TokenCallback         = None
                    Builder               = sprintf ("/%s/%s")
                 }
     [<Emit("$2[$0] = $1")>]
@@ -148,19 +154,36 @@ module Proxy =
         let customHeaders = options.CustomHeaders |> Map.tryFind methodName |> Option.defaultValue []
 
         fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 arg13 arg14 arg15 ->
-            let data = 
-               [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15 ] 
+            let data =
+               [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15 ]
                |> List.take typeCount
-            promise {
-                let! token = options.TokenCallback()
-                let authHeader = match token with None -> [] | Some token -> [Authorization token]
-
+            let (callback,beforeRequest,retries) =
+                match options.TokenCallback with
+                    |None -> None, false, 0
+                    |Some (Lifetime, callback) ->
+                        Some callback, false, 0
+                    |Some (EveryRequest,callback) ->
+                        Some callback, true, 0
+                    |Some (OnError n, callback) ->
+                        Some callback, false, n
+            let rec call callback beforeRequest retries =
+              promise {
+                if beforeRequest || (!options.Authorization).IsNone then
+                    match callback with
+                    |Some c ->
+                        let! t = c()
+                        options.Authorization := t
+                    |None -> ()
+                let headers =
+                    match !options.Authorization with
+                    |Some e -> (Authorization e)::(customHeaders@options.Headers)
+                    |None -> customHeaders@options.Headers
                 // Send RPC POST request to the server
                 let requestProps = [
                     Body (unbox (toJson data))
                     Method HttpMethod.POST
                     Credentials RequestCredentials.Sameorigin
-                    requestHeaders (customHeaders@options.Headers@authHeader)
+                    requestHeaders headers
                 ]
 
                 let makeReqProps props =
@@ -170,7 +193,7 @@ module Proxy =
                 //let! response = Fetch.fetch url requestProps
                 let! jsonResponse = response.text()
                 let context = {
-                    Authorization = token
+                    Authorization = !options.Authorization
                     Body=jsonResponse
                     ReturnType = returnType
                     Response = response}
@@ -178,11 +201,13 @@ module Proxy =
                 | Some handler ->
                     match handler context with
                     |Ok v -> return v
-                    |Error exn -> return! raise exn
-                | _ -> return! failwith "Unknown response status"
-            }
-            |> Async.AwaitPromise
-
+                    |Error exn ->
+                        if retries = 0 then
+                            return! raise exn
+                        else
+                            return! call callback true (retries-1)
+                | _ -> return! failwith "Unknown response status" }
+            call callback beforeRequest retries |> Async.AwaitPromise
     type RemoteBuilder<'a>() =
             member __.Yield(_) =
                 RemoteBuilderOptions.Empty
@@ -264,11 +289,20 @@ module Proxy =
             /// Sets an authorization string to send with the request onto the Authorization header.
             [<CustomOperation("with_token")>]
             member __.WithToken(state,token) =
-                {state with TokenCallback = (fun _ -> Promise.lift (Some token))}
+                state.Authorization := Some token
+                state
             /// Sets a callback which is invoked on every request to acquire a authorization string which will be set onto the Authorization header.
             [<CustomOperation("with_token_callback")>]
             member __.WithTokenCallback(state,callback) =
-                {state with TokenCallback = callback}              
+                {state with TokenCallback = Some (EveryRequest,callback)}
+            /// Sets a callback which is invoked on the first request to acquire a authorization string which will be set onto the Authorization header.
+            [<CustomOperation("with_lifetime_token_callback")>]
+            member __.WithLifetimeTokenCallback(state,callback) =
+                {state with TokenCallback = Some (Lifetime,callback)}
+            /// Sets a callback which is invoked on every failed request to acquire a authorization string which will be set onto the Authorization header. Takes an additional number of retries.
+            [<CustomOperation("with_on_error_token_callback")>]
+            member __.WithOnErrorTokenCallback(state,callback, retries) =
+                {state with TokenCallback = Some (OnError retries,callback)}
             /// Alias for `use_route_builder`. Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`.
             [<CustomOperation("with_builder")>]
             member __.WithBuilder(state,builder) =
@@ -366,4 +400,3 @@ module Proxy =
     [<PassGenerics>]
     let createSecureWithBuilder<'t> (routeBuilder: string -> string -> string) (auth: string) :  't =
         createSecureWithEndpointAndBuilderImpl<'t> None routeBuilder (Some auth)
-        
