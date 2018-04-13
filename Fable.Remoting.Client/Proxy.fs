@@ -15,7 +15,7 @@ module Proxy =
     }
 
     type TokenCallbackOption =
-        | Lifetime
+        | ProxyLifetime
         | OnError of retries:int
         | EveryRequest
 
@@ -58,7 +58,9 @@ module Proxy =
            Endpoint               : string option
            Headers                : HttpRequestHeaders list
            Authorization          : string option ref
-           TokenCallback          : (TokenCallbackOption * (unit -> Fable.Import.JS.Promise<string option>)) option
+           TokenCallback          : (unit -> Fable.Import.JS.Promise<string option>) option
+           TokenCallbackOption    : TokenCallbackOption
+           Retries                : int
            Builder                : (string -> string -> string)
         }
         with
@@ -75,6 +77,8 @@ module Proxy =
                                             ]
                    Authorization         = ref None
                    TokenCallback         = None
+                   TokenCallbackOption   = EveryRequest
+                   Retries               = 0
                    Builder               = sprintf ("/%s/%s")
                 }
     [<Emit("$2[$0] = $1")>]
@@ -157,15 +161,14 @@ module Proxy =
             let data =
                [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15 ]
                |> List.take typeCount
-            let (callback,beforeRequest,retries) =
-                match options.TokenCallback with
-                    |None -> None, false, 0
-                    |Some (Lifetime, callback) ->
-                        Some callback, false, 0
-                    |Some (EveryRequest,callback) ->
-                        Some callback, true, 0
-                    |Some (OnError n, callback) ->
-                        Some callback, false, n
+            let (beforeRequest,retries) =
+                match options.TokenCallbackOption with
+                    |Lifetime ->
+                        false, options.Retries
+                    |EveryRequest ->
+                        true, options.Retries
+                    |OnError n ->
+                        false, n
             let rec call callback beforeRequest retries =
               promise {
                 if beforeRequest || (!options.Authorization).IsNone then
@@ -207,7 +210,7 @@ module Proxy =
                         else
                             return! call callback true (retries-1)
                 | _ -> return! failwith "Unknown response status" }
-            call callback beforeRequest retries |> Async.AwaitPromise
+            call options.TokenCallback beforeRequest retries |> Async.AwaitPromise
     type RemoteBuilder<'a>() =
             member __.Yield(_) =
                 RemoteBuilderOptions.Empty
@@ -291,18 +294,25 @@ module Proxy =
             member __.WithToken(state,token) =
                 state.Authorization := Some token
                 state
+            /// Sets an authorization string to send with the request onto the Authorization header.
+            [<CustomOperation("use_auth_token")>]
+            member this.UseAuthToken t =
+                this.WithToken t
             /// Sets a callback which is invoked on every request to acquire a authorization string which will be set onto the Authorization header.
-            [<CustomOperation("with_token_callback")>]
-            member __.WithTokenCallback(state,callback) =
-                {state with TokenCallback = Some (EveryRequest,callback)}
-            /// Sets a callback which is invoked on the first request to acquire a authorization string which will be set onto the Authorization header.
-            [<CustomOperation("with_lifetime_token_callback")>]
-            member __.WithLifetimeTokenCallback(state,callback) =
-                {state with TokenCallback = Some (Lifetime,callback)}
-            /// Sets a callback which is invoked on every failed request to acquire a authorization string which will be set onto the Authorization header. Takes an additional number of retries.
-            [<CustomOperation("with_on_error_token_callback")>]
-            member __.WithOnErrorTokenCallback(state,callback, retries) =
-                {state with TokenCallback = Some (OnError retries,callback)}
+            [<CustomOperation("acquire_auth_token")>]
+            member __.AcquireAuthToken(state,callback) =
+                {state with TokenCallback = Some callback}
+            /// Configures when the authorization token will be acquired. Define the callback with `acquire_auth_token`
+            /// `ProxyLifetime` - Once on start
+            /// `EveryRequest` - Before every request
+            /// `OnError n` - Only when an error happens. `n` defines the amount of retries.
+            [<CustomOperation("configure_auth_token")>]
+            member __.DefineCallbackOptions(state, options) =
+                {state with TokenCallbackOption = options}
+            /// Defines the amount of retries when an error happens on the proxy
+            [<CustomOperation("configure_retries")>]
+            member __.DefineRetries(state, n) =
+                {state with Retries = n}
             /// Alias for `use_route_builder`. Uses a custom route builder. By default, the route paths have the form `/{typeName}/{methodName}` when you use a custom route builder, you override this behaviour. A custom route builder is a function of type `typeName:string -> methodName:string -> string`.
             [<CustomOperation("with_builder")>]
             member __.WithBuilder(state,builder) =
