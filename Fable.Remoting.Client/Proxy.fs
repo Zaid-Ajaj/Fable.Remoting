@@ -304,7 +304,7 @@ module Proxy =
                 {state with TokenCallback = Some callback}
             /// Configures when the authorization token will be acquired. Define the callback with `acquire_auth_token`
             /// `ProxyLifetime` - Once on start
-            /// `EveryRequest` - Before every request
+            /// `EveryRequest` - Before every request - This is the default
             /// `OnError n` - Only when an error happens. `n` defines the amount of retries.
             [<CustomOperation("configure_auth_token")>]
             member __.DefineCallbackOptions(state, options) =
