@@ -298,7 +298,8 @@ module Proxy =
             [<CustomOperation("use_auth_token")>]
             member this.UseAuthToken t =
                 this.WithToken t
-            /// Sets a callback which is invoked on every request to acquire a authorization string which will be set onto the Authorization header.
+            /// Sets a callback which is invoked to acquire a authorization string which will be set onto the Authorization header.
+            /// By default it's called on every request, but you can configure it using `configure_auth_token`
             [<CustomOperation("acquire_auth_token")>]
             member __.AcquireAuthToken(state,callback) =
                 {state with TokenCallback = Some callback}
