@@ -163,7 +163,7 @@ module Proxy =
                |> List.take typeCount
             let (beforeRequest,retries) =
                 match options.TokenCallbackOption with
-                    |Lifetime ->
+                    |ProxyLifetime ->
                         false, options.Retries
                     |EveryRequest ->
                         true, options.Retries
