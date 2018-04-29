@@ -19,7 +19,7 @@ type LoginError =
     | AccountBanned
 
 // a request with a token
-type SecureRequest<'t> = { Token : string; Content : 't }
+type SecureRequest<'t> = { Token : AuthToken; Content : 't }
 
 // possible authentication/authorization errors     
 type AuthError = 
@@ -29,11 +29,11 @@ type AuthError =
 
 type BookId = BookId of int
 // domain model
-type Book = { Id: int; Title: string; (* other propeties *) }
+type Book = { Id: BookId; Title: string; (* other propeties *) }
 
 // things that could go wrong 
 // when removing a book from a users wishlist
-type BookRemovalFromWithList = 
+type BookRemovalFromWishlist = 
     | BookSuccessfullyRemoved
     | BookDoesNotExist
 
@@ -46,7 +46,7 @@ type IBookStoreApi = {
     // secure function, requires a token
     booksOnWishlist : AuthToken -> Async<Result<list<Book>, AuthError>>, 
     // secure function, requires a token and a book id
-    removeBookFromWishlist : SecureRequest<BookId> -> Async<Result<BookRemovalFromWithList, AuthError>>
+    removeBookFromWishlist : SecureRequest<BookId> -> Async<Result<BookRemovalFromWishlist, AuthError>>
     // etc . . . 
 }
 ```
