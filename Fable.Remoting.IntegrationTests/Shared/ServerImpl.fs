@@ -30,8 +30,15 @@ let server : IServer  = {
     echoBoolList = Async.result
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
-
+    tuplesAndLists = fun (dict, xs) -> 
+        xs 
+        |> List.map (fun x -> x, x.Length)
+        |> List.append (Map.toList dict)
+        |> Map.ofList  
+        |> Async.result
+        
     echoResult = Async.result
+    echoSingleCase = Async.result
     echoBigInteger = Async.result
     throwError = fun () -> async { return! failwith "Generating custom server error" }
     echoMap = Async.result

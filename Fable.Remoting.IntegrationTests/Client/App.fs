@@ -174,6 +174,13 @@ QUnit.testCaseAsync "IServer.echoIntList" <| fun test ->
         do test.equal true (List.isEmpty echoedList)
     }
 
+QUnit.testCaseAsync "IServer.echoSingleCase" <| fun test ->
+    async { 
+        let! output = server.echoSingleCase (SingleCase 10)
+        match output with 
+        | SingleCase 10 -> test.pass()
+        | other -> test.fail()
+    }
 
 QUnit.testCaseAsync "IServer.echoStringList" <| fun test ->
     async {
@@ -293,6 +300,16 @@ QUnit.testCaseAsync "IServer.asyncNestedGeneric" <| fun test ->
     async {
         let! result = server.asyncNestedGeneric
         test.equal true (result = { OtherValue = 10; Value = Just (Some "value") })
+    }
+
+QUnit.testCaseAsync "IServer.tuplesAndLists" <| fun test ->
+    async {
+        let inputDict = Map.ofList [ "hello", 5 ]
+        let inputStrings = [ "there!" ]
+        let! outputDict = server.tuplesAndLists (inputDict, inputStrings) 
+
+        let expected = Map.ofList [ "hello", 5; "there!", 6 ] 
+        test.equal true (expected = outputDict)  
     }
 
 QUnit.testCaseAsync "IServer.customStatusCode" <| fun test ->

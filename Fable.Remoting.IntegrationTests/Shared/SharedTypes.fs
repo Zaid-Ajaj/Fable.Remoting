@@ -19,6 +19,8 @@ type GenericRecord<'t> = {
     OtherValue : int
 }
 
+type SingleCase = SingleCase of int
+
 type IServer = {
     // primitive types
     simpleUnit : unit -> Async<int>
@@ -54,9 +56,12 @@ type IServer = {
     // errors
     throwError : unit -> Async<string>
 
+    echoSingleCase : SingleCase -> Async<SingleCase>
     // mutli-arg functions
     multiArgFunc : string -> int -> bool -> Async<int>
 
+    // tuples
+    tuplesAndLists : Map<string, int> * string list -> Async<Map<string, int>>
     // overridden function
     overriddenFunction : string -> Async<int>
 
