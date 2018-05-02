@@ -6,6 +6,12 @@ open System
 module Async =
     let result<'a> (x: 'a) : Async<'a> =
         async { return x }
+
+
+let simpleServer : ISimpleServer = {
+    getLength = fun input -> Async.result input.Length
+}
+
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
 let server : IServer  = {

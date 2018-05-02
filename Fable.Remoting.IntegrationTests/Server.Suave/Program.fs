@@ -31,6 +31,11 @@ let versionTestWebPart =
     use_custom_handler_for "v2" (isVersion "2")
   }
 
+let simpleServerWebPart = remoting simpleServer {
+  use_logger (printfn "%s")
+  use_route_builder routeBuilder
+}
+
 let contextTestWebApp =
     remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
         use_logger (printfn "%s")
@@ -41,7 +46,8 @@ let webApp =
   choose [ GET >=> browseHome
            fableWebPart 
            versionTestWebPart
-           contextTestWebApp ]
+           contextTestWebApp 
+           simpleServerWebPart ]
 
 let rec findRoot dir =
     if File.Exists(System.IO.Path.Combine(dir, "paket.dependencies"))

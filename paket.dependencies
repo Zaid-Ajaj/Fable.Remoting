@@ -5,6 +5,7 @@ nuget Expecto
 nuget FSharp.Core
 nuget Fable.Core
 nuget Fable.PowerPack
+nuget Http.fs
 nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.TestHost
 nuget Newtonsoft.Json
