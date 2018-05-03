@@ -1,6 +1,8 @@
 namespace Fable.Remoting.DotnetClient
 
 open Quotations.Patterns
+open Quotations.DerivedPatterns
+open FSharp.Reflection
 
 module Patterns =
     let (| AsyncField |_|) = function 
@@ -11,37 +13,53 @@ module Patterns =
         | Lambda(_, AsyncField(methodName)) -> 
             Some (methodName, [ ])
         | _ -> None
+
+    let (| ProvidedValue |_|) = function 
+        | Value(value, _ ) -> Some value 
+        | NewUnionCase(info, [ ]) -> 
+            FSharpValue.MakeUnion(info, [|  |]) |> Some
+        | NewUnionCase(info, [ Value(value, _) ]) -> 
+            FSharpValue.MakeUnion(info, [| value |]) |> Some
+        | NewUnionCase(info, [ Value(arg1, _);  Value(arg2, _); ]) -> 
+            FSharpValue.MakeUnion(info, [| arg1; arg2; |]) |> Some
+        | NewUnionCase(info, [ Value(arg1, _);  Value(arg2, _);  Value(arg3, _); ]) -> 
+            FSharpValue.MakeUnion(info, [| arg1; arg2; arg3 |]) |> Some
+        | NewUnionCase(info, [ Value(arg1, _);  Value(arg2, _);  Value(arg3, _); Value(arg4, _) ]) -> 
+            FSharpValue.MakeUnion(info, [| arg1; arg2; arg3; arg4 |]) |> Some
+        | NewUnionCase(info, [ Value(arg1, _);  Value(arg2, _);  Value(arg3, _); Value(arg4, _); Value(arg5, _) ]) -> 
+            FSharpValue.MakeUnion(info, [| arg1; arg2; arg3; arg4; arg4 |]) |> Some
+        | _ -> None
     let (| OneArg |_|) = function 
-        | Lambda(_, Application (AsyncField(methodName), Value((value, _)))) ->
+        | Lambda(_, Application (AsyncField(methodName), ProvidedValue(value))) ->
             Some (methodName, [ value ])
         | _ -> None 
     let (| TwoArgs |_|) = function 
-        | Lambda(_, Application (OneArg(methodName, args) , Value((arg, _)))) ->
+        | Lambda(_, Application (OneArg(methodName, args) , ProvidedValue(arg))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
     let (| ThreeArgs |_|) = function 
-        | Lambda(_, Application (TwoArgs(methodName, args) , Value((arg, _)))) ->
+        | Lambda(_, Application (TwoArgs(methodName, args) , ProvidedValue(arg))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
     let (| FourArgs |_|) = function 
-        | Lambda(_, Application (ThreeArgs(methodName, args) , Value((arg, _)))) ->
+        | Lambda(_, Application (ThreeArgs(methodName, args) , ProvidedValue(arg))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
     let (| FiveArgs |_|) = function 
-        | Lambda(_, Application (FourArgs(methodName, args) , Value((arg, _)))) ->
+        | Lambda(_, Application (FourArgs(methodName, args) , ProvidedValue(arg))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
 
     let (| SixArgs |_|) = function 
-        | Lambda(_, Application (FiveArgs(methodName, args) , Value((arg, _)))) ->
+        | Lambda(_, Application (FiveArgs(methodName, args) , ProvidedValue(arg))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
 
     let (| SevenArgs |_|) = function 
-        | Lambda(_, Application (SixArgs(methodName, args) , Value((arg, _)))) ->
+        | Lambda(_, Application (SixArgs(methodName, args) , ProvidedValue(arg))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
     let (| EightArgs |_|) = function 
-        | Lambda(_, Application (SevenArgs(methodName, args) , Value((arg, _)))) ->
+        | Lambda(_, Application (SevenArgs(methodName, args) , ProvidedValue(arg))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
