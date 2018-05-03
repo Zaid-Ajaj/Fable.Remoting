@@ -171,11 +171,44 @@
 
     
         
+        <li class="header">Dotnet Client</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="src/dotnet-client.html">
+            
+                <a href="src/dotnet-client.html">
+            
+                    
+                    Getting Started from .NET
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="src/dotnet-client-limitations.html">
+            
+                <a href="src/dotnet-client-limitations.html">
+            
+                    
+                    Limitations
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
         <li class="header">Advanced</li>
         
         
     
-        <li class="chapter " data-level="3.1" data-path="src/route-builder.html">
+        <li class="chapter " data-level="4.1" data-path="src/route-builder.html">
             
                 <a href="src/route-builder.html">
             
@@ -188,7 +221,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="src/error-handling.html">
+        <li class="chapter " data-level="4.2" data-path="src/error-handling.html">
             
                 <a href="src/error-handling.html">
             
@@ -201,7 +234,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.3" data-path="src/modeling-authentication.html">
+        <li class="chapter " data-level="4.3" data-path="src/modeling-authentication.html">
             
                 <a href="src/modeling-authentication.html">
             
@@ -214,7 +247,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.4" data-path="src/implicit-authentication.html">
+        <li class="chapter " data-level="4.4" data-path="src/implicit-authentication.html">
             
                 <a href="src/implicit-authentication.html">
             
@@ -227,7 +260,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.5" data-path="src/request-context.html">
+        <li class="chapter " data-level="4.5" data-path="src/request-context.html">
             
                 <a href="src/request-context.html">
             
@@ -240,7 +273,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.6" data-path="src/logging.html">
+        <li class="chapter " data-level="4.6" data-path="src/logging.html">
             
                 <a href="src/logging.html">
             
@@ -260,7 +293,7 @@
         
         
     
-        <li class="chapter " data-level="4.1" data-path="src/troubleshoot.html">
+        <li class="chapter " data-level="5.1" data-path="src/troubleshoot.html">
             
                 <a href="src/troubleshoot.html">
             
@@ -273,7 +306,7 @@
             
         </li>
     
-        <li class="chapter " data-level="4.2" data-path="src/credits.html">
+        <li class="chapter " data-level="5.2" data-path="src/credits.html">
             
                 <a href="src/credits.html">
             
@@ -332,7 +365,7 @@
                                 <section class="normal markdown-section">
                                 
                                 <h1 id="fableremoting">Fable.Remoting</h1>
-<p>Fable.Remoting is a library that enables type-safe client-server communication for F# featuring <a href="https://github.com/SuaveIO/suave" target="_blank">Suave</a>, <a href="https://github.com/giraffe-fsharp/Giraffe" target="_blank">Giraffe</a> or <a href="https://github.com/SaturnFramework/Saturn" target="_blank">Saturn</a> on the server and <a href="http://fable.io/" target="_blank">Fable</a> on the client.This library lets you think about your client-server interactions in terms of pure stateless functions by defining a shared interface (see <a href="src/basics.html">Getting started</a>) that is used by both the client and server.</p>
+<p>Fable.Remoting is a library that enables type-safe client-server communication for F# featuring <a href="https://github.com/SuaveIO/suave" target="_blank">Suave</a>, <a href="https://github.com/giraffe-fsharp/Giraffe" target="_blank">Giraffe</a> or <a href="https://github.com/SaturnFramework/Saturn" target="_blank">Saturn</a> on the server. On the client you can have either a <a href="http://fable.io/" target="_blank">Fable</a> project or any <a href="src/dotnet-client.html">.NET App</a> like Xamarin or WPF.This library lets you think about your client-server interactions in terms of pure stateless functions by defining a shared interface (see <a href="src/basics.html">Getting started</a>) that is used by both the client and server.</p>
 <p>As the name suggests, it is inspired by <a href="https://developers.websharper.com/docs/v4.x/fs/remoting" target="_blank">Websharper&apos;s Remoting</a> feature but it uses different mechanism to achieve the same goal. </p>
 <h2 id="quick-start">Quick Start</h2>
 <p>You start off using the <a href="https://github.com/SAFE-Stack/SAFE-template" target="_blank">SAFE template</a> where Fable.Remoting is one of the scaffolding options:</p>
@@ -387,7 +420,7 @@ dotnet new SAFE --Server saturn --Remoting
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-03-28T18:55:43.349Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-04-29T21:11:37.764Z"},"basePath":".","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-05-03T14:54:45.000Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-03T15:57:33.035Z"},"basePath":".","book":{"language":""}});
         });
     </script>
 </div>

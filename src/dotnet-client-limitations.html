@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Credits · GitBook</title>
+        <title>Limitations · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,8 +53,10 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
+    <link rel="next" href="route-builder.html" />
     
-    <link rel="prev" href="troubleshoot.html" />
+    
+    <link rel="prev" href="dotnet-client.html" />
     
 
     </head>
@@ -188,7 +190,7 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-client-limitations.html">
+        <li class="chapter active" data-level="3.2" data-path="dotnet-client-limitations.html">
             
                 <a href="dotnet-client-limitations.html">
             
@@ -306,7 +308,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="5.2" data-path="credits.html">
+        <li class="chapter " data-level="5.2" data-path="credits.html">
             
                 <a href="credits.html">
             
@@ -349,7 +351,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Credits</a>
+        <a href=".." >Limitations</a>
     </h1>
 </div>
 
@@ -364,16 +366,22 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="credits">Credits</h1>
-<p>Special thanks to <a href="https://github.com/alfonsogarciacaro" target="_blank">Alfonso Garcia-Caro</a>, the auther himself of the Fable compiler for his awesome work on Fable and for being open and for helping me add reflection features to Fable which make the implementation of the library possible in the first place on the client.  </p>
-<p>Many many thanks to <a href="https://github.com/Nhowka" target="_blank">Diego Esmerio</a> for his awesome work on implementing these features: </p>
-<ul>
-<li>Uniform API for the library across the server and the client,</li>
-<li>Support for multi-argument remoting functions</li>
-<li>Contexual injection for reading the request context</li>
-<li>Using plain <code>Async&lt;&apos;T&gt;</code> in the definition of the functions</li>
-<li>many others...</li>
-</ul>
+                                <h1 id="limitations">Limitations</h1>
+<p>Although using quotations allowed for maximum flexibility, they have a <em>tiny</em> drawback: you have to compile them yourself. The qoutation expression is a piece of the code that the compiler left for you to deal with after parsing and lexing.</p>
+<p>This is fine most of the time, except for when you are <strong>passing parameters that must be computed</strong>: </p>
+<pre><code class="lang-fs"><span class="hljs-comment">// this won&apos;t work</span>
+proxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.computeAdd (<span class="hljs-number">1</span> + <span class="hljs-number">1</span>) @&gt; 
+<span class="hljs-comment">// nor this</span>
+proxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.sumAll [<span class="hljs-number">1</span> .. <span class="hljs-number">10</span>] @&gt;
+</code></pre>
+<p>both sub-expressions <code>(1 + 1)</code> and <code>[1 .. 10]</code> must be computed before sending them to the server, but inside a quoutation expression, it is just parsed code that is yet to be compiled, there are many types of these expression but the workaround is simple: <strong>bind the parameter to a value before passing it to the quotation expression</strong>. So to make them work, just get the inline parameter out to it&apos;s own value:</p>
+<pre><code class="lang-fs"><span class="hljs-comment">// this works now</span>
+<span class="hljs-keyword">let</span> input = <span class="hljs-number">1</span> + <span class="hljs-number">1</span>
+proxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.computeAdd input @&gt; 
+<span class="hljs-comment">// this works too</span>
+<span class="hljs-keyword">let</span> numbers = [<span class="hljs-number">1</span> .. <span class="hljs-number">10</span>]
+proxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.sumAll numbers @&gt;
+</code></pre>
 
                                 
                                 </section>
@@ -401,10 +409,14 @@
 
             
                 
-                <a href="troubleshoot.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page: Troubleshooting">
+                <a href="dotnet-client.html" class="navigation navigation-prev " aria-label="Previous page: Getting Started from .NET">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
+                
+                <a href="route-builder.html" class="navigation navigation-next " aria-label="Next page: Custom Route Paths">
+                    <i class="fa fa-angle-right"></i>
+                </a>
                 
             
         
@@ -413,7 +425,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Credits","level":"5.2","depth":1,"previous":{"title":"Troubleshooting","level":"5.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/credits.md","mtime":"2018-03-28T18:55:43.353Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-03T15:57:33.035Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Limitations","level":"3.2","depth":1,"next":{"title":"Custom Route Paths","level":"4.1","depth":1,"path":"src/route-builder.md","ref":"src/route-builder.md","articles":[]},"previous":{"title":"Getting Started from .NET","level":"3.1","depth":1,"path":"src/dotnet-client.md","ref":"src/dotnet-client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client-limitations.md","mtime":"2018-05-03T15:55:56.338Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-03T15:57:33.035Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
