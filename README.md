@@ -5,9 +5,9 @@
 ### [Documentation](https://zaid-ajaj.github.io/Fable.Remoting/)
 ### [In-depth Introduction (Blog)](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
 
-Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable Apps. This is a library that abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
+Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable and .NET Client Apps. This is a library that abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
 
-The library supports Suave, Giraffe or Saturn on the server and Fable on the client.
+The library supports Suave, Giraffe or Saturn on the server and Fable/.NET on the client.
 
 ## Quick Start
 Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
@@ -33,6 +33,7 @@ Feedback and suggestions are very much welcome.
 | Fable.Remoting.Client  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client) |
 | Fable.Remoting.Suave  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)  |
 | Fable.Remoting.Giraffe  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)  |
+| Fable.Remoting.DotnetClient  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.DotnetClient.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.DotnetClient)  |
 
 ## Scaffold from scratch - Suave
 Create a new F# console app:

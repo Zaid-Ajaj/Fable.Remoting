@@ -21,6 +21,10 @@ type GenericRecord<'t> = {
 
 type SingleCase = SingleCase of int
 
+type ISimpleServer = {
+    getLength : string -> Async<int>
+}
+
 type IServer = {
     // primitive types
     simpleUnit : unit -> Async<int>

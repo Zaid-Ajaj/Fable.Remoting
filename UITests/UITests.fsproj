@@ -6,15 +6,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Fable.Remoting.IntegrationTests/Shared/SharedTypes.fs" />
-     <Compile Include="../Fable.Remoting.IntegrationTests/Shared/ServerImpl.fs" />
+    <Compile Include="../Fable.Remoting.IntegrationTests/Shared/ServerImpl.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-  <Import Project="..\.paket\Paket.Restore.targets" />
-  <ItemGroup>    
+  <ItemGroup>
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Suave\Fable.Remoting.Suave.fsproj" />
-    <ProjectReference Include="..\Fable.Remoting.IntegrationTests\Server.Suave\Server.Suave.fsproj" />    
+    <ProjectReference Include="..\Fable.Remoting.IntegrationTests\Server.Suave\Server.Suave.fsproj" />
   </ItemGroup>
-
+  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
