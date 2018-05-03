@@ -57,6 +57,23 @@ let dotnetClientTests =
             Expect.equal one (Some 20) "Option<int> returned is correct"
             Expect.equal two None "Option<int> returned is correct"
         }
+
+
+        testCaseAsync "IServer.echoStringOption" <| async {
+            let! one = proxy.call <@ fun server -> server.echoStringOption (Some "value") @>
+            let! two = proxy.call <@ fun server -> server.echoStringOption None @>
+            Expect.equal one (Some "value") "Option<string> returned is correct"
+            Expect.equal two None "Option<string> returned is correct"
+        }
+
+        testCaseAsync "IServer.echoStringOption from outside" <| async {
+            let first = Some "value"
+            let second : Option<string> = None 
+            let! one = proxy.call <@ fun server -> server.echoStringOption first @>
+            let! two = proxy.call <@ fun server -> server.echoStringOption second @>
+            Expect.equal one (Some "value") "Option<string> returned is correct"
+            Expect.equal two None "Option<string> returned is correct"
+        }
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with 
