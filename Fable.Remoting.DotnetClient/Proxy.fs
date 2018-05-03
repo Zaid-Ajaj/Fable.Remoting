@@ -20,6 +20,16 @@ module Proxy =
             let! responseText = Http.makePostRequest url serializedInputArgs auth
             return parseAs<'t> responseText
         }
+
+    /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it catched    
+    let safeProxyPost<'t> (functionArguments: obj list) url auth = 
+        let serializedInputArgs = JsonConvert.SerializeObject(functionArguments, converter)
+        async {
+            let! catchedResponse = Async.Catch (Http.makePostRequest url serializedInputArgs auth) 
+            match catchedResponse with 
+            | Choice1Of2 responseText -> return Ok (parseAs<'t> responseText)
+            | Choice2Of2 thrownException -> return Error thrownException
+        }
         
     type Proxy<'t>(builder) = 
         let typeName = typeof<'t>.Name
@@ -30,11 +40,13 @@ module Proxy =
             authHeader <- Http.Authorisation.Token header
 
         /// Call the proxy function by wrapping it inside a quotation expr:
-        /// `async { 
+        /// ```
+        /// async { 
         ///     let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")  
         ///     let! result = proxy.call <@ server -> server.getLength "input" @>
-        ///  }  `    
-        member this.call<'u> (expr: Quotations.Expr<'t -> Async<'u>>) : Async<'u> = 
+        ///  }
+        /// ```    
+        member this.call<'u> (expr: Quotations.Expr<'t -> Async<'u>>) = 
             match expr with 
             | NoArgs (methodName, args) 
             | OneArg (methodName, args)
@@ -47,5 +59,30 @@ module Proxy =
             | EightArgs (methodName, args) -> 
                 let route = builder typeName methodName
                 proxyPost<'u> args route authHeader
+            | otherwise -> failwithf "Quatation expression %A cannot be processed" expr
+
+        /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
+        /// ```
+        ///    async { 
+        ///       let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")  
+        ///       let! result = proxy.callSafely <@ server -> server.getLength "input" @>
+        ///       match result with
+        ///       | Ok result -> (* do stuff with result *)
+        ///       | Error ex -> (* panic! *)
+        ///    }
+        /// ```   
+        member this.callSafely<'u> (expr: Quotations.Expr<'t -> Async<'u>>) : Async<Result<'u, exn>> = 
+            match expr with 
+            | NoArgs (methodName, args) 
+            | OneArg (methodName, args)
+            | TwoArgs (methodName, args)
+            | ThreeArgs (methodName, args) 
+            | FourArgs (methodName, args)
+            | FiveArgs (methodName, args) 
+            | SixArgs (methodName, args)
+            | SevenArgs (methodName, args)
+            | EightArgs (methodName, args) -> 
+                let route = builder typeName methodName
+                safeProxyPost<'u> args route authHeader
             | otherwise -> failwithf "Quatation expression %A cannot be processed" expr
     let create<'t> builder = Proxy<'t>(builder)
