@@ -58,7 +58,6 @@ let dotnetClientTests =
             Expect.equal two None "Option<int> returned is correct"
         }
 
-
         testCaseAsync "IServer.echoStringOption" <| async {
             let! one = proxy.call <@ fun server -> server.echoStringOption (Some "value") @>
             let! two = proxy.call <@ fun server -> server.echoStringOption None @>
@@ -74,6 +73,55 @@ let dotnetClientTests =
             Expect.equal one (Some "value") "Option<string> returned is correct"
             Expect.equal two None "Option<string> returned is correct"
         }
+
+        testCaseAsync "IServer.echoSimpleUnionType" <| async {
+            let! result1 = proxy.call <@ fun server -> server.echoSimpleUnionType One @>
+            let! result2 = proxy.call <@ fun server -> server.echoSimpleUnionType Two @>
+            Expect.equal true (result1 = One) "SimpleUnion returned is correct"
+            Expect.equal true (result2 = Two) "SimpleUnion returned is correct"
+        }
+
+        testCaseAsync "IServer.echoSimpleUnionType from outside" <| async {
+            let first = One
+            let second = Two 
+            let! result1 = proxy.call <@ fun server -> server.echoSimpleUnionType first @>
+            let! result2 = proxy.call <@ fun server -> server.echoSimpleUnionType second @>
+            Expect.equal true (result1 = One) "SimpleUnion returned is correct"
+            Expect.equal true (result2 = Two) "SimpleUnion returned is correct"
+        }
+
+        testCaseAsync "IServer.echoGenericUnionInt" <| async { 
+            let! result1 = proxy.call <@ fun server -> server.echoGenericUnionInt (Just 5) @>
+            let! result2 = proxy.call <@ fun server -> server.echoGenericUnionInt (Just 10) @>
+            let! result3 = proxy.call <@ fun server -> server.echoGenericUnionInt Nothing @>
+
+            Expect.equal true (result1 = Just 5) "GenericUnionInt returned is correct"
+            Expect.equal true (result2 = Just 10) "GenericUnionInt returned is correct"
+            Expect.equal true (result3 = Nothing) "GenericUnionInt returned is correct"         
+        }
+
+        testCaseAsync "IServer.echoGenericUnionString" <| async { 
+            let! result1 = proxy.call <@ fun server -> server.echoGenericUnionString (Just "") @>
+            let! result2 = proxy.call <@ fun server -> server.echoGenericUnionString (Just null) @>
+            let! result3 = proxy.call <@ fun server -> server.echoGenericUnionString Nothing @>
+
+            Expect.equal true (result1 = Just "") "GenericUnionString returned is correct"
+            Expect.equal true (result2 = Just null) "GenericUnionString returned is correct"
+            Expect.equal true (result3 = Nothing) "GenericUnionString returned is correct"         
+        }    
+
+        testCaseAsync "IServer.echoRecord" <| async {
+            let record1 = { Prop1 = "hello"; Prop2 = 10; Prop3 = None }
+            let record2 = { Prop1 = ""; Prop2 = 20; Prop3 = Some 10 }
+            let record3 = { Prop1 = null; Prop2 = 30; Prop3 = Some 20  }
+            let! result1 = proxy.call <@ fun server -> server.echoRecord record1 @>
+            let! result2 = proxy.call <@ fun server -> server.echoRecord record2 @>
+            let! result3 = proxy.call <@ fun server -> server.echoRecord record3 @>
+
+            Expect.equal true (result1 = record1) "Record returned is correct"
+            Expect.equal true (result2 = record2) "Record returned is correct"
+            Expect.equal true (result3 = record3) "Record returned is correct"
+        }    
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with 
