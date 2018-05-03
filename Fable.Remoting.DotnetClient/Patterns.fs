@@ -14,8 +14,7 @@ module Patterns =
             Some (methodName, [ ])
         | _ -> None
 
-    let (| ProvidedValue |_|) = function 
-        | Value(value, _ ) -> Some value 
+    let (|UnionValue|_|) = function 
         | NewUnionCase(info, [ ]) -> 
             FSharpValue.MakeUnion(info, [|  |]) |> Some
         | NewUnionCase(info, [ Value(value, _) ]) -> 
@@ -28,6 +27,23 @@ module Patterns =
             FSharpValue.MakeUnion(info, [| arg1; arg2; arg3; arg4 |]) |> Some
         | NewUnionCase(info, [ Value(arg1, _);  Value(arg2, _);  Value(arg3, _); Value(arg4, _); Value(arg5, _) ]) -> 
             FSharpValue.MakeUnion(info, [| arg1; arg2; arg3; arg4; arg4 |]) |> Some
+        | _ -> None
+
+    let (|RecordValue|_|) = function 
+        | NewRecord(recordType, [ Value(field, _) ]) -> 
+            FSharpValue.MakeRecord(recordType, [| field |]) |> Some
+        | NewRecord(recordType, [ Value(arg1, _);  Value(arg2, _); ]) -> 
+            FSharpValue.MakeRecord(recordType, [| arg1; arg2; |]) |> Some
+        | NewRecord(recordType, [ Value(arg1, _);  Value(arg2, _);  Value(arg3, _); ]) -> 
+            FSharpValue.MakeRecord(recordType, [| arg1; arg2; arg3 |]) |> Some
+        | NewRecord(recordType, [ Value(arg1, _);  Value(arg2, _);  Value(arg3, _); Value(arg4, _) ]) -> 
+            FSharpValue.MakeRecord(recordType, [| arg1; arg2; arg3; arg4 |]) |> Some
+        | NewRecord(recordType, [ Value(arg1, _);  Value(arg2, _);  Value(arg3, _); Value(arg4, _); Value(arg5, _) ]) -> 
+            FSharpValue.MakeRecord(recordType, [| arg1; arg2; arg3; arg4; arg4 |]) |> Some
+        | _ -> None
+    let (| ProvidedValue |_|) = function 
+        | Value(value, _ ) -> Some value 
+        | UnionValue value -> Some value
         | _ -> None
     let (| OneArg |_|) = function 
         | Lambda(_, Application (AsyncField(methodName), ProvidedValue(value))) ->
