@@ -122,6 +122,23 @@ let dotnetClientTests =
             Expect.equal true (result2 = record2) "Record returned is correct"
             Expect.equal true (result3 = record3) "Record returned is correct"
         }    
+
+        testCaseAsync "IServer.echoNestedGeneric from outside" <| async { 
+            let input : GenericRecord<Maybe<int option>> = {
+                Value = Just (Some 5)
+                OtherValue = 2
+            }
+
+            let input2 : GenericRecord<Maybe<int option>> = {
+                Value = Just (None)
+                OtherValue = 2
+            }
+
+            let! result1 = proxy.call <@ fun server -> server.echoNestedGeneric input @>
+            let! result2 = proxy.call <@ fun server -> server.echoNestedGeneric input2 @>
+            Expect.equal true (input = result1) "Nested generic record is correct"
+            Expect.equal true (input2 = result2) "Nested generic record is correct"
+        }
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with 
