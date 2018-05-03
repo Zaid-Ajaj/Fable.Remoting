@@ -9,6 +9,10 @@
 - [Setup Saturn](src/saturn.md)
 - [Setup Client](src/client.md)
 
+### Dotnet Client 
+- [Getting Started from .NET](src/dotnet-client.md)
+- [Limitations](src/dotnet-client-limitations.md)
+
 ### Advanced
 - [Custom Route Paths](src/route-builder.md)
 - [Error Handling](src/error-handling.md)

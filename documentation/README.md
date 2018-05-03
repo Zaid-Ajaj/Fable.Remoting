@@ -1,6 +1,6 @@
 # Fable.Remoting
 
-Fable.Remoting is a library that enables type-safe client-server communication for F# featuring [Suave](https://github.com/SuaveIO/suave), [Giraffe](https://github.com/giraffe-fsharp/Giraffe) or [Saturn](https://github.com/SaturnFramework/Saturn) on the server and [Fable](http://fable.io/) on the client.This library lets you think about your client-server interactions in terms of pure stateless functions by defining a shared interface (see [Getting started](src/basics.md)) that is used by both the client and server.
+Fable.Remoting is a library that enables type-safe client-server communication for F# featuring [Suave](https://github.com/SuaveIO/suave), [Giraffe](https://github.com/giraffe-fsharp/Giraffe) or [Saturn](https://github.com/SaturnFramework/Saturn) on the server. On the client you can have either a [Fable](http://fable.io/) project or any [.NET App](src/dotnet-client.md) like Xamarin or WPF.This library lets you think about your client-server interactions in terms of pure stateless functions by defining a shared interface (see [Getting started](src/basics.md)) that is used by both the client and server.
 
 As the name suggests, it is inspired by [Websharper's Remoting](https://developers.websharper.com/docs/v4.x/fs/remoting) feature but it uses different mechanism to achieve the same goal. 
 

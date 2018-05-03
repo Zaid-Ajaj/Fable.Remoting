@@ -35,6 +35,7 @@ let Server = getPath "Server"
 let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
+let DotnetClient = getPath "DotnetClient"
 let clean projectPath =
     [ projectPath </> "bin"
       projectPath </> "obj" ] |> CleanDirs
@@ -57,7 +58,7 @@ Target "PublishClient" (publish Client)
 Target "PublishJson" (publish Json)
 Target "PublishServer" (publish Server)
 Target "PublishReflection" (publish Reflection)
-
+Target "PublishDotnetClient" (publish DotnetClient)
 Target "PublishSuave" (publish Suave)
 Target "PublishGiraffe" (publish Giraffe)
 
