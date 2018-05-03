@@ -156,6 +156,30 @@ let dotnetClientTests =
             let! echoedList = proxy.call <@ fun server -> server.echoIntList emptyList @>
             Expect.equal true (List.isEmpty echoedList) "The echoed list is correct"          
         }
+
+        testCaseAsync "IServer.echoSingleCase" <| async {
+            let! output = proxy.call <@ fun server -> server.echoSingleCase (SingleCase 10) @>
+            Expect.equal output (SingleCase 10) "Single case union roundtrip works"
+        }
+
+        testCaseAsync "IServer.echoStringList" <| async {
+            let input = ["one"; "two"; null]
+            let! output = proxy.call <@ fun server -> server.echoStringList input @>
+            Expect.equal input output "Echoed list is correct"
+            let emptyList : string list = []  
+            let! echoedList = proxy.call <@ fun server -> server.echoStringList emptyList @>
+            Expect.equal true (List.isEmpty echoedList) "Echoed list is empty"
+        }
+
+        testCaseAsync "IServer.echoBoolList" <| async {
+            let input = [true; false; true]
+            let! output = proxy.call <@ fun server -> server.echoBoolList input @>
+            Expect.equal output input "Echoed list is correct"
+            let emptyList : bool list = [] 
+            let! echoedList = proxy.call <@ fun server -> server.echoBoolList emptyList @>
+            Expect.equal true (List.isEmpty echoedList) "Echoed list is empty"
+        }        
+        
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with 

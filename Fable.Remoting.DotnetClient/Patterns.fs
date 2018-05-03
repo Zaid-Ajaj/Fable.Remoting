@@ -44,6 +44,7 @@ module Patterns =
     let (| ProvidedValue |_|) = function 
         | Value(value, _ ) -> Some value 
         | UnionValue value -> Some value
+        | RecordValue value -> Some value
         | _ -> None
     let (| OneArg |_|) = function 
         | Lambda(_, Application (AsyncField(methodName), ProvidedValue(value))) ->
