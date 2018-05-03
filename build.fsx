@@ -86,6 +86,14 @@ Target "RestoreBuildRunServerTests" <| fun _ ->
     run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
     run "." "dotnet" ServerTestsDll
 
+Target "BuildDotnetClientTests" <| fun _ ->
+    clean (getPath "IntegrationTests" </> "DotnetClient")
+    run (getPath "IntegrationTests" </> "DotnetClient") "dotnet" "build"
+
+Target "RunDotnetClientTests" <| fun _ ->
+    clean (getPath "IntegrationTests" </> "DotnetClient")
+    run (getPath "IntegrationTests" </> "DotnetClient") "dotnet" "run"
+
 Target "BuildRunServerTests" <| fun _ ->
     run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
     run "." "dotnet" ServerTestsDll
