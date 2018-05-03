@@ -370,7 +370,7 @@
 <p>Although Fable.Remoting is initially implemented to allow type-safe communication between a .NET backend and a Fable frontend, it will become a slight inconvenience when you start building a Xamarin or WPF application that needs to talk to the same backend because you need to use raw http for communication. </p>
 <p>However, this is not case anymore because as of now, we implemented a dotnet client that is compatible with web servers that are using Fable.Remoting. This library allows you to re-use the shared protocols/contracts for type-safe communication with your backend the same you did from your Fable backend.</p>
 <h3 id="installation">Installation</h3>
-<p>Install the library nuget: </p>
+<p>Install the library from <a href="https://www.nuget.org/packages/Fable.Remoting.DotnetClient/" target="_blank">Nuget</a>: </p>
 <pre><code class="lang-bash">paket add Fable.Remoting.DotnetClient --project /path/to/App.fsproj
 <span class="hljs-comment"># or </span>
 dotnet nuget add Fable.Remoting.DotnetClient
@@ -384,10 +384,13 @@ dotnet nuget add Fable.Remoting.DotnetClient
 <span class="hljs-keyword">open</span> SharedTypes
 
 <span class="hljs-comment">// specifies how the routes should be generated</span>
-<span class="hljs-keyword">let</span> routes = (sprintf <span class="hljs-string">&quot;http://backend.api.io/v1/%s/%s&quot;</span>)
+<span class="hljs-keyword">let</span> routes = sprintf <span class="hljs-string">&quot;http://backend.api.io/v1/%s/%s&quot;</span>
 
 <span class="hljs-comment">// proxy: Proxy&lt;IServer&gt; </span>
 <span class="hljs-keyword">let</span> proxy = Proxy.create&lt;IServer&gt; routes 
+
+<span class="hljs-comment">// optionally add an authorization header</span>
+proxy.authorisationHeader <span class="hljs-string">&quot;Bearer ...&quot;</span> 
 
 async { 
     <span class="hljs-comment">// length : int</span>
@@ -450,7 +453,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"3.1","depth":1,"next":{"title":"Limitations","level":"3.2","depth":1,"path":"src/dotnet-client-limitations.md","ref":"src/dotnet-client-limitations.md","articles":[]},"previous":{"title":"Setup Client","level":"2.4","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2018-05-03T15:44:20.940Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-03T15:57:33.035Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"3.1","depth":1,"next":{"title":"Limitations","level":"3.2","depth":1,"path":"src/dotnet-client-limitations.md","ref":"src/dotnet-client-limitations.md","articles":[]},"previous":{"title":"Setup Client","level":"2.4","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2018-05-03T16:20:38.381Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-03T16:22:56.354Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
