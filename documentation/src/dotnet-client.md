@@ -5,7 +5,7 @@ Although Fable.Remoting is initially implemented to allow type-safe communicatio
 However, this is not case anymore because as of now, we implemented a dotnet client that is compatible with web servers that are using Fable.Remoting. This library allows you to re-use the shared protocols/contracts for type-safe communication with your backend the same you did from your Fable backend.
 
 ### Installation 
-Install the library nuget: 
+Install the library from [Nuget](https://www.nuget.org/packages/Fable.Remoting.DotnetClient/): 
 ```bash
 paket add Fable.Remoting.DotnetClient --project /path/to/App.fsproj
 # or 
@@ -24,10 +24,13 @@ open Fable.Remoting.DotnetClient
 open SharedTypes
 
 // specifies how the routes should be generated
-let routes = (sprintf "http://backend.api.io/v1/%s/%s")
+let routes = sprintf "http://backend.api.io/v1/%s/%s"
 
 // proxy: Proxy<IServer> 
 let proxy = Proxy.create<IServer> routes 
+
+// optionally add an authorization header
+proxy.authorisationHeader "Bearer ..." 
 
 async { 
     // length : int
