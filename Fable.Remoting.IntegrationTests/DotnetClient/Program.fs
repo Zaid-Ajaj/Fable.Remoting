@@ -180,6 +180,76 @@ let dotnetClientTests =
             Expect.equal true (List.isEmpty echoedList) "Echoed list is empty"
         }        
         
+        testCaseAsync "IServer.echoListOfListsOfStrings" <| async {
+            let input = [["1"; "2"]; ["3"; "4";"5"]]
+            let! output = proxy.call <@ fun server -> server.echoListOfListsOfStrings input @>
+            Expect.equal input output "Echoed list is correct"
+        }   
+
+        testCaseAsync "IServer.echoResult for Result<int, string>" <| async { 
+            let! output = proxy.call <@ fun server -> server.echoResult (Ok 15) @>
+            Expect.equal output (Ok 15) "Result is correct"
+
+            let! output = proxy.call <@ fun server -> server.echoResult (Result.Error "somewhere here") @>
+            Expect.equal output (Result.Error "somewhere here")  "Result is correct"
+        }
+
+        testCaseAsync "IServer.echoMap" <| async {
+            let input = ["hello", 1] |> Map.ofList
+            let! output = proxy.call <@ fun server -> server.echoMap input @>
+            Expect.equal input output "Map is echoed correctly"
+        }
+
+        testCaseAsync "IServer.throwError using callSafely" <| async {
+            let! result = proxy.callSafely <@ fun server -> server.throwError() @> 
+            match result with 
+            | Ok value -> failwithf "Got value %A where an error was expected" value
+            | Result.Error er -> printfn "%s" er.Message; Expect.isTrue true "Works"
+        }
+
+        testCaseAsync "IServer.mutliArgFunc" <| async {
+            let! result = proxy.call <@ fun server -> server.multiArgFunc "hello" 10 false @>
+            Expect.equal 15 result "Result is correct"
+
+            let! sndResult = proxy.call <@ fun server -> server.multiArgFunc "byebye" 5 true @>
+            Expect.equal 12 sndResult "Result is correct"
+        }
+
+        testCaseAsync "IServer.overriddenFunction" <| async {
+            let! result = proxy.call <@ fun server -> server.overriddenFunction "hello" @>
+            Expect.equal 42 result "Overridden functions returns correctly"
+        }
+
+        testCaseAsync "IServer.pureAsync" <| async {
+            let! result = proxy.call <@ fun server -> server.pureAsync @>
+            Expect.equal 42 result "Pure async without parameters works"
+        }
+
+        testCaseAsync "IServer.asyncNestedGeneric" <| async { 
+            let! result = proxy.call <@ fun server -> server.asyncNestedGeneric @>
+            Expect.equal { OtherValue = 10; Value = Just (Some "value") } result "Returned value is correct"
+        }
+
+        testCaseAsync "IServer.echoBigInteger" <| async { 
+            let input = 1I
+            let! output = proxy.call <@ fun server -> server.echoBigInteger input @>
+            Expect.equal input output "Big int is equal"  
+        }
+
+        testCaseAsync "IServer.tuplesAndLists" <| async {
+            let inputDict = Map.ofList [ "hello", 5 ]
+            let inputStrings = [ "there!" ]
+            let! output = proxy.call <@ fun server -> server.tuplesAndLists (inputDict, inputStrings) @>
+            let expected = Map.ofList [ "hello", 5; "there!", 6 ] 
+            Expect.equal output expected "Echoed map is correct"
+        }
+
+        testCaseAsync "IContextTest.test" <| async {
+            let routes = sprintf "http://localhost:8080/api/%s/%s" 
+            let contextProxy = Proxy.create<IContextTest<unit>> routes
+            let! result = contextProxy.call <@ fun server -> server.callWithCtx() @>
+            Expect.equal result "/api/IContextTest/callWithCtx" "Result from contextual proxy is correct"
+        }
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with 

@@ -32,7 +32,11 @@ module Proxy =
         }
         
     type Proxy<'t>(builder) = 
-        let typeName = typeof<'t>.Name
+        let typeName = 
+            let name = typeof<'t>.Name
+            match typeof<'t>.GenericTypeArguments with 
+            | [|  |] -> name
+            | manyArgs -> name.[0 .. name.Length - 3] 
         let mutable authHeader = Http.Authorisation.NoToken
         
         /// Uses the specified string as the authorization header for the requests that the proxy makes to the server
@@ -48,18 +52,10 @@ module Proxy =
         /// ```    
         member this.call<'u> (expr: Quotations.Expr<'t -> Async<'u>>) = 
             match expr with 
-            | NoArgs (methodName, args) 
-            | OneArg (methodName, args)
-            | TwoArgs (methodName, args)
-            | ThreeArgs (methodName, args) 
-            | FourArgs (methodName, args)
-            | FiveArgs (methodName, args) 
-            | SixArgs (methodName, args)
-            | SevenArgs (methodName, args)
-            | EightArgs (methodName, args) -> 
+            | ProxyLambda(methodName, args) -> 
                 let route = builder typeName methodName
                 proxyPost<'u> args route authHeader
-            | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
+            | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
         /// ```
@@ -73,18 +69,9 @@ module Proxy =
         /// ```   
         member this.callSafely<'u> (expr: Quotations.Expr<'t -> Async<'u>>) : Async<Result<'u, exn>> = 
             match expr with 
-            | NoArgs (methodName, args) 
-            | OneArg (methodName, args)
-            | TwoArgs (methodName, args)
-            | ThreeArgs (methodName, args) 
-            | FourArgs (methodName, args)
-            | FiveArgs (methodName, args) 
-            | SixArgs (methodName, args)
-            | SevenArgs (methodName, args)
-            | EightArgs (methodName, args) -> 
+            | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
                 safeProxyPost<'u> args route authHeader
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
-            
     let create<'t> builder = Proxy<'t>(builder)
