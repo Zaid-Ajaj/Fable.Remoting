@@ -5,9 +5,7 @@ open Quotations.Patterns
 module Patterns =
     let (| AsyncField |_|) = function 
         | PropertyGet (Some (_), method, []) -> 
-            if method.PropertyType = typeof<Async<_>> 
-            then Some(method.Name)
-            else None
+            Some(method.Name)
         | _ -> None 
     let (| NoArgs |_|) = function 
         | Lambda(_, AsyncField(methodName)) -> 
@@ -31,5 +29,19 @@ module Patterns =
         | _ -> None 
     let (| FiveArgs |_|) = function 
         | Lambda(_, Application (FourArgs(methodName, args) , Value((arg, _)))) ->
+            Some (methodName, [ yield! args; yield arg ]) 
+        | _ -> None 
+
+    let (| SixArgs |_|) = function 
+        | Lambda(_, Application (FiveArgs(methodName, args) , Value((arg, _)))) ->
+            Some (methodName, [ yield! args; yield arg ]) 
+        | _ -> None 
+
+    let (| SevenArgs |_|) = function 
+        | Lambda(_, Application (SixArgs(methodName, args) , Value((arg, _)))) ->
+            Some (methodName, [ yield! args; yield arg ]) 
+        | _ -> None 
+    let (| EightArgs |_|) = function 
+        | Lambda(_, Application (SevenArgs(methodName, args) , Value((arg, _)))) ->
             Some (methodName, [ yield! args; yield arg ]) 
         | _ -> None 
