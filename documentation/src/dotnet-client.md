@@ -11,7 +11,7 @@ Install the library from [Nuget](https://www.nuget.org/packages/Fable.Remoting.D
 ```bash
 paket add Fable.Remoting.DotnetClient --project /path/to/App.fsproj
 # or 
-dotnet nuget add Fable.Remoting.DotnetClient
+dotnet add package Fable.Remoting.DotnetClient
 ```  
 
 ### Using the library 
