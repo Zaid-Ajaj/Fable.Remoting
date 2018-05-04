@@ -1,6 +1,6 @@
 # Limitations and Workaround
 
-Although using quotations allowed for maximum flexibility, they have a *tiny* drawback: you have to compile them yourself. The quotation expression is a piece of the code that the compiler left for you to deal with in the form of F# Abtract Syntax Tree (AST) after parsing and lexing.
+Although using quotations allowed for maximum flexibility, they have a *tiny* drawback: you have to compile them yourself. The quotation expression is a piece of the code that the compiler left for you to deal with in the form of F# Abstract Syntax Tree (AST) after parsing and lexing.
 
 This is fine most of the time for the proxy implementation, except for when you are **passing parameters that must be computed**: 
 ```fs
