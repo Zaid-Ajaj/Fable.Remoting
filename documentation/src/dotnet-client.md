@@ -41,14 +41,22 @@ async {
 ```
 The major difference is the use of quotations, which simplified and implementation process greatly and keeps the solution entirely type-safe without [fighting with the run-time](https://stackoverflow.com/questions/50131906/f-how-to-create-an-async-function-dynamically-based-on-return-type/50135445) with boxing/unboxing hacks to get types right. 
 
-The `proxy.call` approach allows for more control around the call to the server and can be easily extended, for example, you can *safely* call the server using a different proxy method:
+The `proxy.call` approach allows for more control around the call to the server and can be easily extended, for example, you can *safely* call the server using a different proxy method `proxy.callSafely` which will catch exceptions thrown by the web request at call-site instead of using global handlers like with Fable client:
 ```fs
 async {
     let! result = proxy.callSafely <@ fun server -> server.throwError() @> 
     match result with 
     | Ok value -> (* will not match *) 
-    | Error thrownException -> 
-        // this will match 
-        printfn "%s" thrownException.Message
+    | Error ex -> 
+        | match ex with 
+        | :? Http.InternalServerErrorException -> 
+            Expect.isTrue true "This is the correct exception" 
+        | :? Http.UnauthorisedException -> (* handle authorization *)
+        | :? Http.ForbiddenException -> (* handle forbidded *)
+        | :? Http.NotOkException as notOk -> 
+            // generic http exception for any other status code 
+            // that is not 200 (OK) 
+            let response = notOk.Response
+            (* handle response your self *) 
 }
 ```
