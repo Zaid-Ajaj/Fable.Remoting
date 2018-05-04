@@ -2,7 +2,9 @@
 
 Although Fable.Remoting is initially implemented to allow type-safe communication between a .NET backend and a Fable frontend, it will become a slight inconvenience when you start building a Xamarin or WPF application that needs to talk to the same backend because you need to use raw http for communication. 
 
-However, this is not case anymore because as of now, we implemented a dotnet client that is compatible with web servers that are using Fable.Remoting. This library allows you to re-use the shared protocols/contracts for type-safe communication with your backend the same you did from your Fable backend.
+However, this is not case anymore because as of now, we implemented a dotnet client that is compatible with web servers that are using Fable.Remoting. This library allows you to re-use the shared protocols/contracts for type-safe communication with your backend the same you did from your Fable frontend.
+
+In fact, you can use the dotnet client with a dotnet server without a Fable project involved, think client-server interactions purely in F#.
 
 ### Installation 
 Install the library from [Nuget](https://www.nuget.org/packages/Fable.Remoting.DotnetClient/): 
