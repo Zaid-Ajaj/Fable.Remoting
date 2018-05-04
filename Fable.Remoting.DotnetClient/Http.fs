@@ -1,34 +1,51 @@
 namespace Fable.Remoting.DotnetClient 
 
+open System.Net
+open System
+
+[<RequireQualifiedAccess>]
 module Http = 
 
-    open System.Net
-    open System.IO
+    open System.Net.Http
+    open System.Text
 
     type Authorisation = 
         | Token of string
         | NoToken 
 
+    type UnauthorisedException(content) = 
+        inherit System.Exception(content)
+
+    type InternalServerErrorException(content) = 
+        inherit System.Exception(content)
+
+    type ForbiddenException(content) = 
+        inherit System.Exception(content)
+
+    type NotOkException(response: HttpResponseMessage, content) = 
+        inherit System.Exception(content)
+        member this.Response = response
+        
     // From http://www.fssnip.net/7PK/title/Send-async-HTTP-POST-request
-    let makePostRequest (url : string) (requestBody : string) auth = 
-        let req = WebRequest.CreateHttp url
-        req.CookieContainer <- new CookieContainer()
-        req.Method <- "POST"
-        req.ProtocolVersion <- HttpVersion.Version10
-        let postBytes = System.Text.Encoding.UTF8.GetBytes(requestBody)
-        req.ContentLength <- postBytes.LongLength
-        req.ContentType <- "application/json; charset=utf-8"
+    let makePostRequest (client: HttpClient) (url : string) (requestBody : string) auth : Async<string> = 
+        let contentType = "application/json"
         match auth with 
-        | Token authToken -> req.Headers.["Authorization"] <- authToken 
+        | Token authToken -> 
+            // Add it to client
+            client.DefaultRequestHeaders.Add("Authorization", authToken)
         | NoToken -> () 
 
         async {
-            use reqStream = req.GetRequestStream()
-            do reqStream.Write(postBytes, 0, postBytes.Length)
-            reqStream.Close()
-            use! res = req.AsyncGetResponse() 
-            use stream = res.GetResponseStream()
-            use reader = new StreamReader(stream)
-            let responseText = reader.ReadToEnd()       
-            return responseText
+            use postContent = new StringContent(requestBody, Encoding.UTF8, contentType)
+            let! response = Async.AwaitTask(client.PostAsync(url, postContent))
+            let! responseText = Async.AwaitTask(response.Content.ReadAsStringAsync())
+            if response.IsSuccessStatusCode 
+            then return responseText
+            elif response.StatusCode = HttpStatusCode.InternalServerError 
+            then return raise (new InternalServerErrorException(sprintf "Internal server error (500) while making request to %s" url))
+            elif response.StatusCode = HttpStatusCode.Unauthorized 
+            then return raise (new UnauthorisedException(sprintf "Unauthorized error from the server (401) while making request to %s" url))          
+            elif response.StatusCode = HttpStatusCode.Forbidden
+            then return raise (new ForbiddenException(sprintf "Forbidden error from the server (403) while making request to %s" url))
+            else return raise (new NotOkException(response, sprintf "Http error from server with unknown code white making request to %s" url))
         }
