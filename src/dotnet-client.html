@@ -195,7 +195,7 @@
                 <a href="dotnet-client-limitations.html">
             
                     
-                    Limitations
+                    Limitations and Workaround
             
                 </a>
             
@@ -400,14 +400,22 @@ async {
 }
 </code></pre>
 <p>The major difference is the use of quotations, which simplified and implementation process greatly and keeps the solution entirely type-safe without <a href="https://stackoverflow.com/questions/50131906/f-how-to-create-an-async-function-dynamically-based-on-return-type/50135445" target="_blank">fighting with the run-time</a> with boxing/unboxing hacks to get types right. </p>
-<p>The <code>proxy.call</code> approach allows for more control around the call to the server and can be easily extended, for example, you can <em>safely</em> call the server using a different proxy method:</p>
+<p>The <code>proxy.call</code> approach allows for more control around the call to the server and can be easily extended, for example, you can <em>safely</em> call the server using a different proxy method <code>proxy.callSafely</code> which will catch exceptions thrown by the web request at call-site instead of using global handlers like with Fable client:</p>
 <pre><code class="lang-fs">async {
     <span class="hljs-keyword">let!</span> result = proxy.callSafely &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.throwError() @&gt; 
     <span class="hljs-keyword">match</span> result <span class="hljs-keyword">with</span> 
     | Ok value -&gt; <span class="hljs-comment">(* will not match *)</span> 
-    | Error thrownException -&gt; 
-        <span class="hljs-comment">// this will match </span>
-        printfn <span class="hljs-string">&quot;%s&quot;</span> thrownException.Message
+    | Error ex -&gt; 
+        | <span class="hljs-keyword">match</span> ex <span class="hljs-keyword">with</span> 
+        | :? Http.InternalServerErrorException -&gt; 
+            Expect.isTrue <span class="hljs-keyword">true</span> <span class="hljs-string">&quot;This is the correct exception&quot;</span> 
+        | :? Http.UnauthorisedException -&gt; <span class="hljs-comment">(* handle authorization *)</span>
+        | :? Http.ForbiddenException -&gt; <span class="hljs-comment">(* handle forbidded *)</span>
+        | :? Http.NotOkException <span class="hljs-keyword">as</span> notOk -&gt; 
+            <span class="hljs-comment">// generic http exception for any other status code </span>
+            <span class="hljs-comment">// that is not 200 (OK) </span>
+            <span class="hljs-keyword">let</span> response = notOk.Response
+            <span class="hljs-comment">(* handle response your self *)</span> 
 }
 </code></pre>
 
@@ -442,7 +450,7 @@ async {
                 </a>
                 
                 
-                <a href="dotnet-client-limitations.html" class="navigation navigation-next " aria-label="Next page: Limitations">
+                <a href="dotnet-client-limitations.html" class="navigation navigation-next " aria-label="Next page: Limitations and Workaround">
                     <i class="fa fa-angle-right"></i>
                 </a>
                 
@@ -453,7 +461,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"3.1","depth":1,"next":{"title":"Limitations","level":"3.2","depth":1,"path":"src/dotnet-client-limitations.md","ref":"src/dotnet-client-limitations.md","articles":[]},"previous":{"title":"Setup Client","level":"2.4","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2018-05-03T16:20:38.381Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-03T16:22:56.354Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"3.1","depth":1,"next":{"title":"Limitations and Workaround","level":"3.2","depth":1,"path":"src/dotnet-client-limitations.md","ref":"src/dotnet-client-limitations.md","articles":[]},"previous":{"title":"Setup Client","level":"2.4","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2018-05-04T01:12:50.872Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-04T01:15:14.871Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
