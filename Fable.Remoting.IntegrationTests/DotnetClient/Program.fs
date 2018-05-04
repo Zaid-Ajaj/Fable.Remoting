@@ -204,7 +204,10 @@ let dotnetClientTests =
             let! result = proxy.callSafely <@ fun server -> server.throwError() @> 
             match result with 
             | Ok value -> failwithf "Got value %A where an error was expected" value
-            | Result.Error er -> printfn "%s" er.Message; Expect.isTrue true "Works"
+            | Result.Error ex -> 
+                match ex with 
+                | :? Http.InternalServerErrorException -> Expect.isTrue true "Works"
+                | other -> Expect.isTrue false "Should not happen"
         }
 
         testCaseAsync "IServer.mutliArgFunc" <| async {
