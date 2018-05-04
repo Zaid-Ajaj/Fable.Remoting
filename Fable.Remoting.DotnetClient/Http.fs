@@ -1,13 +1,11 @@
 namespace Fable.Remoting.DotnetClient 
 
-open System.Net
-open System
+open System.Net.Http
+open System.Text
 
 [<RequireQualifiedAccess>]
 module Http = 
 
-    open System.Net.Http
-    open System.Text
 
     type Authorisation = 
         | Token of string
@@ -41,11 +39,11 @@ module Http =
             let! responseText = Async.AwaitTask(response.Content.ReadAsStringAsync())
             if response.IsSuccessStatusCode 
             then return responseText
-            elif response.StatusCode = HttpStatusCode.InternalServerError 
+            elif response.StatusCode = System.Net.HttpStatusCode.InternalServerError 
             then return raise (new InternalServerErrorException(sprintf "Internal server error (500) while making request to %s" url))
-            elif response.StatusCode = HttpStatusCode.Unauthorized 
+            elif response.StatusCode = System.Net.HttpStatusCode.Unauthorized 
             then return raise (new UnauthorisedException(sprintf "Unauthorized error from the server (401) while making request to %s" url))          
-            elif response.StatusCode = HttpStatusCode.Forbidden
+            elif response.StatusCode = System.Net.HttpStatusCode.Forbidden
             then return raise (new ForbiddenException(sprintf "Forbidden error from the server (403) while making request to %s" url))
             else return raise (new NotOkException(response, sprintf "Http error from server with unknown code white making request to %s" url))
         }

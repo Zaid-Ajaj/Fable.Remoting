@@ -9,7 +9,7 @@
     <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
     <Authors>Zaid Ajaj</Authors>
     <Version>1.1.0</Version>
-    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
