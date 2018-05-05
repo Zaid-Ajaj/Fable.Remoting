@@ -200,12 +200,12 @@ let dotnetClientTests =
         }
 
         // Inline values cannot always be compiled, so define first and reference from inside the quotation expression
-        //testCaseAsync "IServer.echoNestedGeneric inline in expression" <| async { 
-        //    let! result1 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (Some 5); OtherValue = 2 }  @>
-        //    let! result2 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (None); OtherValue = 2 } @>
-        //    Expect.equal true ({ Value = Just (Some 5); OtherValue = 2 } = result1) "Nested generic record is correct"
-        //    Expect.equal true ({ Value = Just (None); OtherValue = 2 } = result2) "Nested generic record is correct"
-        //}
+        testCaseAsync "IServer.echoNestedGeneric inline in expression" <| async { 
+            let! result1 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (Some 5); OtherValue = 2 }  @>
+            let! result2 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (None); OtherValue = 2 } @>
+            Expect.equal true ({ Value = Just (Some 5); OtherValue = 2 } = result1) "Nested generic record is correct"
+            Expect.equal true ({ Value = Just (None); OtherValue = 2 } = result2) "Nested generic record is correct"
+        }
 
         testCaseAsync "IServer.echoIntList" <| async {
             let inputList = [1 .. 5]
