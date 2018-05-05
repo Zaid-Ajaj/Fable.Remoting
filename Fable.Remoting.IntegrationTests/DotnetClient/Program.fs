@@ -2,11 +2,70 @@
 
 open System
 open SharedTypes
+open Fable.Remoting.Server
+open Fable.Remoting.Suave
 open Fable.Remoting.DotnetClient 
 open Expecto
 open Expecto.Logging
+open Suave
+open Suave.Files
+open Suave.Operators
+open Suave.Filters
+open ServerImpl
+open System.Threading
 
-let proxy = Proxy.create<IServer> (sprintf "http://localhost:8080/api/%s/%s")
+let fableWebPart = remoting server {
+    use_route_builder routeBuilder
+    use_error_handler (fun ex routeInfo ->
+      printfn "Error at: %A" routeInfo
+      Propagate ex.Message)
+    use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
+    use_custom_handler_for "customStatusCode" (fun _ -> ResponseOverride.Default.withStatusCode 204 |> Some)
+}
+
+let isVersion v (ctx:HttpContext) =
+  if ctx.request.headers |> List.contains ("version",v) then
+    None
+  else
+    Some {ResponseOverride.Default with Abort = true}
+let versionTestWebPart =
+  remoting versionTestServer {
+    use_route_builder versionTestBuilder
+    use_custom_handler_for "v4" (isVersion "4")
+    use_custom_handler_for "v3" (isVersion "3")
+    use_custom_handler_for "v2" (isVersion "2")
+  }
+
+let contextTestWebApp =
+    remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
+        use_route_builder routeBuilder
+    }
+
+let webApp = 
+  choose [ GET >=> browseHome
+           fableWebPart 
+           versionTestWebPart
+           contextTestWebApp  ]
+
+let cts = new CancellationTokenSource() 
+let suaveConfig = 
+    { defaultConfig with
+        bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" 9090 ]
+        bufferSize = 2048
+        cancellationToken = cts.Token }
+
+let listening, server = startWebServerAsync suaveConfig webApp
+Async.Start server 
+printfn "Web server started"
+printfn "Getting server ready to listen for reqeusts"
+listening
+|> Async.RunSynchronously
+|> ignore
+printfn "Server listening to requests"
+
+
+let proxy = Proxy.create<IServer> (sprintf "http://localhost:9090/api/%s/%s")
+
 let dotnetClientTests = 
     testList "Dotnet Client tests" [
 
@@ -141,12 +200,12 @@ let dotnetClientTests =
         }
 
         // Inline values cannot always be compiled, so define first and reference from inside the quotation expression
-        //testCaseAsync "IServer.echoNestedGeneric inline in expression" <| async { 
-        //    let! result1 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (Some 5); OtherValue = 2 }  @>
-        //    let! result2 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (None); OtherValue = 2 } @>
-        //    Expect.equal true ({ Value = Just (Some 5); OtherValue = 2 } = result1) "Nested generic record is correct"
-        //    Expect.equal true ({ Value = Just (None); OtherValue = 2 } = result2) "Nested generic record is correct"
-        //}
+        testCaseAsync "IServer.echoNestedGeneric inline in expression" <| async { 
+            let! result1 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (Some 5); OtherValue = 2 }  @>
+            let! result2 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (None); OtherValue = 2 } @>
+            Expect.equal true ({ Value = Just (Some 5); OtherValue = 2 } = result1) "Nested generic record is correct"
+            Expect.equal true ({ Value = Just (None); OtherValue = 2 } = result2) "Nested generic record is correct"
+        }
 
         testCaseAsync "IServer.echoIntList" <| async {
             let inputList = [1 .. 5]
@@ -248,7 +307,7 @@ let dotnetClientTests =
         }
 
         testCaseAsync "IContextTest.test" <| async {
-            let routes = sprintf "http://localhost:8080/api/%s/%s" 
+            let routes = sprintf "http://localhost:9090/api/%s/%s" 
             let contextProxy = Proxy.create<IContextTest<unit>> routes
             let! result = contextProxy.call <@ fun server -> server.callWithCtx() @>
             Expect.equal result "/api/IContextTest/callWithCtx" "Result from contextual proxy is correct"
@@ -260,4 +319,8 @@ let testConfig =  { Expecto.Tests.defaultConfig with
                         verbosity = LogLevel.Debug }
                         
 [<EntryPoint>]
-let main argv = runTests testConfig dotnetClientTests
+let main argv = 
+    let testResult = runTests testConfig dotnetClientTests
+    // quit server
+    cts.Cancel()
+    testResult

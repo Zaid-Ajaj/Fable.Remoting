@@ -92,8 +92,10 @@ Target "BuildDotnetClientTests" <| fun _ ->
     run (getPath "IntegrationTests" </> "DotnetClient") "dotnet" "build"
 
 Target "RunDotnetClientTests" <| fun _ ->
-    clean (getPath "IntegrationTests" </> "DotnetClient")
-    run (getPath "IntegrationTests" </> "DotnetClient") "dotnet" "run"
+    let path = getPath "IntegrationTests" </> "DotnetClient"
+    clean path
+    run path "dotnet" "restore --no-cache"
+    run path "dotnet" "run"
 
 Target "BuildRunServerTests" <| fun _ ->
     run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
