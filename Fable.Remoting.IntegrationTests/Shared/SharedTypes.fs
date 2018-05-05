@@ -73,6 +73,9 @@ type IServer = {
     //Pure async
     pureAsync : Async<int>
     asyncNestedGeneric : Async<GenericRecord<Maybe<Option<string>>>>
+
+    // edge cases
+    multiArgComplex : bool -> GenericRecord<Maybe<Option<string>>> -> Async<GenericRecord<Maybe<Option<string>>>>
 }
 
 let routeBuilder typeName methodName =

@@ -58,6 +58,8 @@ let server : IServer  = {
             OtherValue = 10
         }
     }
+
+    multiArgComplex = fun flag value -> Async.result value
 }
 
 let versionTestServer : IVersionTestServer = {

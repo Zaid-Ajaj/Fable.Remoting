@@ -302,6 +302,14 @@ QUnit.testCaseAsync "IServer.asyncNestedGeneric" <| fun test ->
         test.equal true (result = { OtherValue = 10; Value = Just (Some "value") })
     }
 
+QUnit.testCaseAsync "IServer.multiArgComplex" <| fun test -> 
+    async {
+        let input = { OtherValue = 10; Value = Just (Some "value") }
+        let partialF = server.multiArgComplex false 
+        let! output = partialF input 
+        test.equal true (input = output)
+    }
+
 QUnit.testCaseAsync "IServer.tuplesAndLists" <| fun test ->
     async {
         let inputDict = Map.ofList [ "hello", 5 ]
