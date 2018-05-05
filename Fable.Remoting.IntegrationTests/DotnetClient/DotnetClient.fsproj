@@ -7,11 +7,13 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\SharedTypes.fs" />
+    <Compile Include="..\Shared\ServerImpl.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../Fable.Remoting.DotnetClient/Fable.Remoting.DotnetClient.fsproj" />
+    <ProjectReference Include="../../Fable.Remoting.Suave/Fable.Remoting.Suave.fsproj" />   
   </ItemGroup>
 
   <Import Project="..\..\.paket\Paket.Restore.targets" />
