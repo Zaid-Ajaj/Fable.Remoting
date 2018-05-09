@@ -76,6 +76,6 @@ module Proxy =
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
     /// Creates a proxy for a type with a route builder
-    let create<'t> builder = Proxy<'t>(builder)
+    let create<'t> builder = Proxy<'t>(builder, None)
     /// Creates a proxy with for a type using a route builder and a custom HttpClient that you provide
-    let custom<'t> builder client = Proxy<'t>(builder, client)
+    let custom<'t> builder client = Proxy<'t>(builder, Some client)
