@@ -32,7 +32,7 @@ module Proxy =
             | Choice2Of2 thrownException -> return Error thrownException
         }
 
-    type Proxy<'t>(builder, ?client) =
+    type Proxy<'t>(builder, client: Option<HttpClient>) =
         let typeName =
             let name = typeof<'t>.Name
             match typeof<'t>.GenericTypeArguments with
@@ -75,5 +75,7 @@ module Proxy =
                 safeProxyPost<'u> args route client authHeader
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
+    /// Creates a proxy for a type with a route builder
     let create<'t> builder = Proxy<'t>(builder)
+    /// Creates a proxy with for a type using a route builder and a custom HttpClient that you provide
     let custom<'t> builder client = Proxy<'t>(builder, client)

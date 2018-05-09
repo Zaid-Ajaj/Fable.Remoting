@@ -24,7 +24,6 @@ module Http =
         inherit System.Exception(content)
         member this.Response = response
         
-    // From http://www.fssnip.net/7PK/title/Send-async-HTTP-POST-request
     let makePostRequest (client: HttpClient) (url : string) (requestBody : string) auth : Async<string> = 
         let contentType = "application/json"
         match auth with 

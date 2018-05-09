@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <Description>Dotnet client proxy that is compatible with Fable.Remoting web servers</Description>
     <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
@@ -8,7 +7,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
