@@ -11,7 +11,9 @@
 
 ### Dotnet Client 
 - [Getting Started from .NET](src/dotnet-client.md)
+- [Custom Http Client](src/dotnet-http-client.md)
 - [Limitations and Workaround](src/dotnet-client-limitations.md)
+
 
 ### Advanced
 - [Custom Route Paths](src/route-builder.md)
