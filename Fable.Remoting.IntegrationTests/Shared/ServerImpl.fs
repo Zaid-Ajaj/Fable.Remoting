@@ -63,6 +63,7 @@ let server : IServer  = {
     echoPrimitiveLong = Async.result
     echoComplexLong = Async.result
     echoOptionalLong =  Async.result
+    echoSingleDULong = Async.result
 }
 
 let versionTestServer : IVersionTestServer = {

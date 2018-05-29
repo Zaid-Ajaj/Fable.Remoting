@@ -21,6 +21,8 @@ type GenericRecord<'t> = {
 
 type SingleCase = SingleCase of int
 
+type SingleLongCase = SingleLongCase of int64
+
 type ISimpleServer = {
     getLength : string -> Async<int>
 }
@@ -81,6 +83,7 @@ type IServer = {
     echoPrimitiveLong : int64 -> Async<int64>
     echoComplexLong : GenericRecord<Int64> -> Async<GenericRecord<Int64>>
     echoOptionalLong : Option<int64> -> Async<Option<int64>>
+    echoSingleDULong : SingleLongCase -> Async<SingleLongCase>
 }
 
 let routeBuilder typeName methodName =
