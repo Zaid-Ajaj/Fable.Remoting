@@ -79,6 +79,7 @@ type IServer = {
 
     // long (int64) conversion
     echoPrimitiveLong : int64 -> Async<int64>
+    echoComplexLong : GenericRecord<Int64> -> Async<GenericRecord<Int64>>
 }
 
 let routeBuilder typeName methodName =
