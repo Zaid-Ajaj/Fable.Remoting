@@ -18,6 +18,8 @@ type UnionWithDateTime =
 
 type AB = A | B
 
+type SingleLongCase = SingleLongCase of int64
+
 type IProtocol = { 
     getLength : string -> Async<int>  
     echoInteger : int -> Async<int>  
