@@ -84,6 +84,7 @@ type IServer = {
     echoComplexLong : GenericRecord<Int64> -> Async<GenericRecord<Int64>>
     echoOptionalLong : Option<int64> -> Async<Option<int64>>
     echoSingleDULong : SingleLongCase -> Async<SingleLongCase>
+    echoLongInGenericUnion : Maybe<int64> -> Async<Maybe<int64>>
 }
 
 let routeBuilder typeName methodName =
