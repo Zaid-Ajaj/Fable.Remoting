@@ -97,6 +97,16 @@ let fableSuaveAdapterTests =
             |> function 
                 | Ok 15 -> pass()
                 | otherwise -> fail()
+
+        testCase "Sending long in single case du roundtrip" <| fun _ ->
+            let defaultConfig = getConfig() 
+            let input = postContent (toJson (SingleLongCase 20L))
+            runWith defaultConfig app
+            |> req POST "/IProtocol/echoSingleDULong" (Some input)
+            |> ofJson<SingleLongCase> 
+            |> function 
+                | SingleLongCase 20L -> pass()
+                | otherwise -> fail()
         
         testCase "Thrown error is catched and returned" <| fun _ -> 
             let defaultConfig = getConfig ()
