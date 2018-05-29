@@ -108,6 +108,14 @@ QUnit.testCaseAsync "IServer.echoComplexLong" <| fun test ->
         do test.equal true (input = output)
     }
 
+QUnit.testCaseAsync "IServer.echoOptionalLong" <| fun test ->
+    async {
+        let! fstResult = server.echoOptionalLong (Some 20L)
+        let! sndResult = server.echoOptionalLong None
+        do test.equal true (fstResult = (Some 20L))
+        do test.equal true (sndResult = None)
+    }
+
 QUnit.testCaseAsync "IServer.echoSimpleUnionType" <| fun test ->
     async {
         let! result1 = server.echoSimpleUnionType One

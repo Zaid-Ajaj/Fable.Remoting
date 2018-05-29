@@ -62,6 +62,7 @@ let server : IServer  = {
     multiArgComplex = fun flag value -> Async.result value
     echoPrimitiveLong = Async.result
     echoComplexLong = Async.result
+    echoOptionalLong =  Async.result
 }
 
 let versionTestServer : IVersionTestServer = {
