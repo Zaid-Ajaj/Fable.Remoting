@@ -91,6 +91,53 @@ QUnit.testCaseAsync "IServer.echoStringOption" <| fun test ->
         do test.equal true (sndResult = None)
     }
 
+QUnit.testCaseAsync "IServer.echoPrimitiveLong" <| fun test ->
+    async {
+        let! fstResult = server.echoPrimitiveLong (20L)
+        let! sndResult = server.echoPrimitiveLong 0L
+        let! thirdResult = server.echoPrimitiveLong -20L
+        do test.equal true (fstResult = 20L)
+        do test.equal true (sndResult = 0L)
+        do test.equal true (thirdResult = -20L)
+    }
+
+QUnit.testCaseAsync "IServer.echoPrimitiveLong with large values" <| fun test -> 
+    async {
+        let! fstResult = server.echoPrimitiveLong System.Int64.MaxValue 
+        let! sndResult = server.echoPrimitiveLong System.Int64.MinValue
+        do test.equal true (fstResult = System.Int64.MaxValue)
+        do test.equal true (sndResult = System.Int64.MinValue)
+    }
+
+QUnit.testCaseAsync "IServer.echoComplexLong" <| fun test -> 
+    async {
+        let input = { Value = 20L; OtherValue = 10 }
+        let! output = server.echoComplexLong input 
+        do test.equal true (input = output)
+    }
+
+QUnit.testCaseAsync "IServer.echoOptionalLong" <| fun test ->
+    async {
+        let! fstResult = server.echoOptionalLong (Some 20L)
+        let! sndResult = server.echoOptionalLong None
+        do test.equal true (fstResult = (Some 20L))
+        do test.equal true (sndResult = None)
+    }
+
+QUnit.testCaseAsync "IServer.echoSingleDULong" <| fun test ->
+    async {
+        let! output = server.echoSingleDULong (SingleLongCase 20L)
+        do test.equal true (output = (SingleLongCase 20L))
+    }
+
+QUnit.testCaseAsync "IServer.echoLongInGenericUnion" <| fun test ->
+    async {
+        let! output = server.echoLongInGenericUnion (Just 20L)
+        let! result = server.echoLongInGenericUnion Nothing 
+        do test.equal true (output = Just 20L)
+        do test.equal true (result = Nothing)
+    }
+    
 QUnit.testCaseAsync "IServer.echoSimpleUnionType" <| fun test ->
     async {
         let! result1 = server.echoSimpleUnionType One

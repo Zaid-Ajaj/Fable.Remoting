@@ -58,6 +58,18 @@ let converterTest =
           | { Id = CustomerId(5) } -> pass()
           | otherwise -> fail() 
 
+        testCase "Single case union with long round trip" <| fun () ->
+          let serialized = serialize (SingleLongCase 20L)
+          match deserialize<SingleLongCase> serialized with 
+          | SingleLongCase 20L -> pass()
+          | otherwise -> fail()
+
+        testCase "Int64 can be deserialized from high/low components" <| fun () ->
+            let serialized = """{ "low": 20, "high": 0, "unsigned": true }"""
+            match deserialize<int64> serialized with  
+            | 20L -> pass()
+            | otherwise -> fail()
+
         testCase "Single case union without types is deserialized correctly" <| fun () ->
           let serialized = serialize { Color = ColorType Red }
           match deserialize<ColorRecord> serialized with

@@ -14,6 +14,8 @@ type Maybe<'t> =
 
 type AB = A | B
 
+type SingleLongCase = SingleLongCase of int64
+
 type IProtocol = { 
     getLength : string -> Async<int>  
     echoInteger : int -> Async<int>  
@@ -36,6 +38,7 @@ type IProtocol = {
     throwError : string -> Async<int>
     multipleSum : int -> int -> Async<int>
     lotsOfArgs : string -> int -> float -> Async<string>
+    echoSingleDULong : SingleLongCase -> Async<SingleLongCase>
 }
 
 let implementation = {
@@ -66,4 +69,5 @@ let implementation = {
     throwError = fun x -> async { failwith "I am thrown from adapter function"; return 1 }
     multipleSum = fun a b -> async {return a + b}
     lotsOfArgs = fun s i f -> async {return sprintf "string: %s; int: %i; float: %f" s i f}
+    echoSingleDULong = fun x -> async { return x } 
  }
