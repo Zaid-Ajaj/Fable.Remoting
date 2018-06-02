@@ -226,7 +226,11 @@ type FableJsonConverter() =
             | JsonToken.StartObject -> // reading { high: int, low: int, unsigned: bool }
                 let internalLong = serializer.Deserialize(reader, typeof<InternalLong>) :?> InternalLong
                 //TODO!!!!!! Will probably not work for values higher than max(int32)
-                upcast System.Convert.ToInt64(internalLong.low)
+                let lowBytes = BitConverter.GetBytes(internalLong.low)
+                let highBytes = BitConverter.GetBytes(internalLong.high)
+                let combinedBytes = Array.concat [ lowBytes; highBytes ]
+                let combineBytesIntoInt64 = BitConverter.ToInt64(combinedBytes, 0)
+                upcast combineBytesIntoInt64
             | token -> 
                 failwithf "Expecting int64 but instead %s" (Enum.GetName(typeof<JsonToken>, token))
         | true, Kind.BigInt ->
