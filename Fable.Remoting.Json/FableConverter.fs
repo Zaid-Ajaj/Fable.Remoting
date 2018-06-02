@@ -77,12 +77,15 @@ module private Cache =
 
 open Cache
 
+ type InternalLong = { high : int; low: int; unsigned: bool }
+
 /// Converts F# options, tuples and unions to a format understandable
 /// by Fable. Code adapted from Lev Gorodinski's original.
 /// See https://goo.gl/F6YiQk
 type FableJsonConverter() =
     inherit Newtonsoft.Json.JsonConverter()
 
+   
     let [<Literal>] PojoDU_TAG = "type"
 
     let advance(reader: JsonReader) =
@@ -220,8 +223,12 @@ type FableJsonConverter() =
                 if t.FullName = "System.UInt64"
                 then upcast System.Convert.ToUInt64(i)
                 else upcast System.Convert.ToInt64(i)
-            | token ->
-                failwithf "Expecting int64 but got %s" <| Enum.GetName(typeof<JsonToken>, token)
+            | JsonToken.StartObject -> // reading { high: int, low: int, unsigned: bool }
+                let internalLong = serializer.Deserialize(reader, typeof<InternalLong>) :?> InternalLong
+                //TODO!!!!!! Will probably not work for values higher than max(int32)
+                upcast System.Convert.ToInt64(internalLong.low)
+            | token -> 
+                failwithf "Expecting int64 but instead %s" (Enum.GetName(typeof<JsonToken>, token))
         | true, Kind.BigInt ->
             match reader.TokenType with
             | JsonToken.String ->
