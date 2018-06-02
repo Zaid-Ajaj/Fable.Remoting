@@ -101,6 +101,14 @@ QUnit.testCaseAsync "IServer.echoPrimitiveLong" <| fun test ->
         do test.equal true (thirdResult = -20L)
     }
 
+QUnit.testCaseAsync "IServer.echoPrimitiveLong with large values" <| fun test -> 
+    async {
+        let! fstResult = server.echoPrimitiveLong System.Int64.MaxValue 
+        let! sndResult = server.echoPrimitiveLong System.Int64.MinValue
+        do test.equal true (fstResult = System.Int64.MaxValue)
+        do test.equal true (sndResult = System.Int64.MinValue)
+    }
+
 QUnit.testCaseAsync "IServer.echoComplexLong" <| fun test -> 
     async {
         let input = { Value = 20L; OtherValue = 10 }

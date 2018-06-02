@@ -225,7 +225,6 @@ type FableJsonConverter() =
                 else upcast System.Convert.ToInt64(i)
             | JsonToken.StartObject -> // reading { high: int, low: int, unsigned: bool }
                 let internalLong = serializer.Deserialize(reader, typeof<InternalLong>) :?> InternalLong
-                //TODO!!!!!! Will probably not work for values higher than max(int32)
                 let lowBytes = BitConverter.GetBytes(internalLong.low)
                 let highBytes = BitConverter.GetBytes(internalLong.high)
                 let combinedBytes = Array.concat [ lowBytes; highBytes ]
