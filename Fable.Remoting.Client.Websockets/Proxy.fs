@@ -202,11 +202,11 @@ module Proxy =
             member __.UseRouteBuilder(state,builder) =
                 {state with Builder = builder}
 
-    /// Computation expression to create a remoting proxy.
+    /// Computation expression to create a remoting proxy via websockets.
     /// Usage:
     /// `let proxy : IType = remoting {()}` for default options at /typeName
     /// `let proxy : IType = remoting {`
-    /// `    with_builder builder` to set a `builder : (string -> string -> string)`
+    /// `    with_builder builder` to set a `builder : (string -> string)`
     /// `}`
     [<PassGenerics>]
     let remoting<'t> = SocketBuilder()
