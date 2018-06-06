@@ -12,6 +12,7 @@ nuget Newtonsoft.Json
 nuget NUnit
 nuget Suave
 nuget Giraffe
+nuget Microsoft.AspNetCore.WebSockets
 
 clitool dotnet-fable
 
