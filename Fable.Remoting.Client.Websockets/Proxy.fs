@@ -204,14 +204,9 @@ module Proxy =
 
     /// Computation expression to create a remoting proxy.
     /// Usage:
-    /// `let proxy : IType = remoting {()}` for default options at /typeName/methodName
+    /// `let proxy : IType = remoting {()}` for default options at /typeName
     /// `let proxy : IType = remoting {`
     /// `    with_builder builder` to set a `builder : (string -> string -> string)`
-    /// `    at_endpoint endpoint` to set a prefix `endpoint : string`
-    /// `    with_token token` to set a `token : string` to be sent on the Authorization header
-    /// `    use_error_handler handler` to set a `handler : (ErrorInfo -> unit)` in case of a server error
-    /// `    use_auth_error_handler handler` to set a `handler : (string option -> unit)` in case of a Unauthorized error
-    /// `    use_forbidden_error_handler handler` to set a `handler : (string option -> unit)` in case of a Forbidden error
     /// `}`
     [<PassGenerics>]
     let remoting<'t> = SocketBuilder()
