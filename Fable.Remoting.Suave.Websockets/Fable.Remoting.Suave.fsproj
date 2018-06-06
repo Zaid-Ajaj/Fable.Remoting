@@ -1,14 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Suave-Fable adapter that generates routes for shared server spec with a Fable client. Client must use Fable.Remoting.Client</Description>
+    <Description>Suave-Fable adapter that generates a bridge for shared server spec with a Fable client via websockets. Client must use Fable.Remoting.Client.Websockets</Description>
     <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
     <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>2.7.1</Version>
+    <Version>0.0.1</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
   </PropertyGroup>

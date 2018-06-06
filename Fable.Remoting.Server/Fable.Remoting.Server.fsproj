@@ -8,9 +8,9 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>3.6.0</Version>
+    <Version>3.6.1</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,7 +18,7 @@
     <Compile Include="ServerSide.fs" />
   </ItemGroup>
 
-  <ItemGroup>    
+  <ItemGroup>
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
   </ItemGroup>
 

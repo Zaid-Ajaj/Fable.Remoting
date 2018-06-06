@@ -68,6 +68,7 @@ module ServerSide =
             let! asyncResult = boxer.BoxAsyncResult fsAsync
             return asyncResult
          }
+
 [<AutoOpen>]
 module SharedCE =
     type RouteInfo<'ctx> = {
@@ -120,50 +121,53 @@ module SharedCE =
     with
         static member Empty : BuilderOptions<'ctx> =
             {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
+    
+    
+    
+    let internal fableConverter = FableJsonConverter()
+    let internal writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
+    let internal toLogger logf = string >> logf
+    let rec internal typePrinter (valueType: System.Type) = 
+        let simplifyGeneric = function 
+            | "Microsoft.FSharp.Core.FSharpOption" -> "Option"
+            | "Microsoft.FSharp.Collections.FSharpList" -> "FSharpList"
+            | "Microsoft.FSharp.Core.FSharpResult" -> "Result"
+            | "Microsoft.FSharp.Collections.FSharpMap" -> "Map"
+            | otherwise -> otherwise
+
+        match valueType.FullName.Replace("+", ".") with 
+        | "System.String" -> "string"
+        | "System.Boolean" -> "bool"
+        | "System.Int32" -> "int"
+        | "System.Double" -> "double"
+        | "System.Numerics.BigInteger" -> "bigint"
+        | "Microsoft.FSharp.Core.Unit" -> "unit"
+        | "Suave.Http.HttpContext" -> "HttpContext"
+        | "Microsoft.AspNetCore.Http.HttpContext" -> "HttpContext"
+        | other -> 
+            match valueType.GetGenericArguments() with 
+            | [|  |] -> other 
+            | genericTypeArguments -> 
+                let typeParts = other.Split('`')
+                let typeName = typeParts.[0]
+                Array.map typePrinter genericTypeArguments
+                |> String.concat ", "
+                |> sprintf "%s<%s>" (simplifyGeneric typeName) 
+
+
+    let internal logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
+        logger |> Option.iter(fun logf ->
+            StringBuilder()
+            |> writeLn "Fable.Remoting:"
+            |> writeLn "About to deserialize JSON:"
+            |> writeLn (text())
+            |> writeLn "Into .NET Types:"
+            |> writeLn (sprintf "[%s]" (inputTypes |> Array.map typePrinter |> String.concat ", "))
+            |> writeLn ""
+            |> toLogger logf)
+    
     [<AbstractClass>]
     type RemoteBuilderBase<'ctx,'handler>() =
-        let fableConverter = FableJsonConverter()
-        let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
-        let toLogger logf = string >> logf
-        let rec typePrinter (valueType: System.Type) = 
-            let simplifyGeneric = function 
-                | "Microsoft.FSharp.Core.FSharpOption" -> "Option"
-                | "Microsoft.FSharp.Collections.FSharpList" -> "FSharpList"
-                | "Microsoft.FSharp.Core.FSharpResult" -> "Result"
-                | "Microsoft.FSharp.Collections.FSharpMap" -> "Map"
-                | otherwise -> otherwise
-
-            match valueType.FullName.Replace("+", ".") with 
-            | "System.String" -> "string"
-            | "System.Boolean" -> "bool"
-            | "System.Int32" -> "int"
-            | "System.Double" -> "double"
-            | "System.Numerics.BigInteger" -> "bigint"
-            | "Microsoft.FSharp.Core.Unit" -> "unit"
-            | "Suave.Http.HttpContext" -> "HttpContext"
-            | "Microsoft.AspNetCore.Http.HttpContext" -> "HttpContext"
-            | other -> 
-                match valueType.GetGenericArguments() with 
-                | [|  |] -> other 
-                | genericTypeArguments -> 
-                    let typeParts = other.Split('`')
-                    let typeName = typeParts.[0]
-                    Array.map typePrinter genericTypeArguments
-                    |> String.concat ", "
-                    |> sprintf "%s<%s>" (simplifyGeneric typeName) 
-
-
-        let logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
-            logger |> Option.iter(fun logf ->
-                StringBuilder()
-                |> writeLn "Fable.Remoting:"
-                |> writeLn "About to deserialize JSON:"
-                |> writeLn (text())
-                |> writeLn "Into .NET Types:"
-                |> writeLn (sprintf "[%s]" (inputTypes |> Array.map typePrinter |> String.concat ", "))
-                |> writeLn ""
-                |> toLogger logf)
-
         /// Deserialize a json string using FableConverter
         member __.Deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             let serializer = JsonSerializer()
@@ -221,4 +225,75 @@ module SharedCE =
         /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
         member __.UseCustomHandler(state,method,handler) =
             {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
+    
+    type SocketBuilderOptions = {
+        SocketBuilder: string -> string
+    }
+    with
+        static member Empty : SocketBuilderOptions =
+            { SocketBuilder = sprintf "/%s"}
 
+    type Result = {
+        Id: int
+        Result: obj
+    }
+
+    type Request = {
+        Id: int
+        Method: string
+        Arguments: obj array
+    }
+   
+    [<AbstractClass>]
+    type SocketBuilderBase<'handler>(implementation) as sbb =
+        let mailbox =
+          MailboxProcessor<Request>.Start (
+            fun mb ->
+                let rec loop () =
+                    async {
+                        let! ({Id=id;Method=methodName;Arguments=args}) = mb.Receive()
+                        let result = ServerSide.dynamicallyInvoke methodName implementation args
+                        async {
+                            let! r = result
+                            let rsp = {Id=id;Result=r}
+                            let srl = sbb.Json rsp
+                            do! sbb.Send srl
+                        } |> Async.Start
+
+                        return! loop ()
+                    }
+                loop ())
+        
+        abstract member Send: string -> Async<unit>
+        abstract member CreateWebSocket: MailboxProcessor<Request> -> string -> 'handler
+        
+        /// Deserialize a json string using FableConverter
+        member __.Deserialize (json: string) =            
+            JsonConvert.DeserializeObject(json,typeof<Request>,fableConverter) :?> Request
+
+        /// Serialize the value into a json string using FableConverter
+        member __.Json value =
+          JsonConvert.SerializeObject(value, fableConverter)
+          
+
+        member sbb.Run {SocketBuilder = builder} =   
+            let name =      
+                let t = implementation.GetType()
+                match t.GenericTypeArguments with
+                |[||] -> t.Name
+                |_ -> failwith "No support for generic record"
+            name |>
+            builder |>         
+            sbb.CreateWebSocket mailbox 
+        member __.Zero() =
+            SocketBuilderOptions.Empty
+        member __.Yield(_) =
+            SocketBuilderOptions.Empty
+        /// Defines a custom builder that takes a `builder : (string -> string -> string)` that takes the typeName and methodNameto return a endpoint
+        [<CustomOperation("with_builder")>]
+        member __.WithBuilder(state,builder)=
+            {state with SocketBuilder=builder}
+        /// Defines a custom builder that takes a `builder : (string -> string -> string)` that takes the typeName and methodNameto return a endpoint
+        [<CustomOperation("use_socket_builder")>]
+        member __.UseSocketBuilder(state,builder)=
+            {state with SocketBuilder=builder}
