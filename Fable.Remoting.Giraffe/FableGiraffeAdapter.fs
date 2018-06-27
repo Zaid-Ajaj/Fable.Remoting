@@ -21,11 +21,8 @@ module FableGiraffeAdapter =
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
   let onError (handler: ErrorHandler<HttpContext>) =
         onErrorHandler <- Some handler
-
-  type RemoteBuilder(implementation)=
-   inherit RemoteBuilderBase<HttpContext,HttpHandler>()
-
-   override builder.Run(options:SharedCE.BuilderOptions<HttpContext>) =
+  let impl implementation =
+   fun (options:SharedCE.BuilderOptions<HttpContext>) ->
 
     // Get data from request body and deserialize.
     // getResourceFromReq : HttpRequest -> obj
@@ -33,7 +30,7 @@ module FableGiraffeAdapter =
         let requestBodyStream = ctx.Request.Body
         use streamReader = new StreamReader(requestBodyStream)
         let requestBodyContent = streamReader.ReadToEnd()
-        builder.Deserialize options requestBodyContent inputType ctx genericType
+        RemoteBuilderBase<HttpContext,HttpHandler>.Deserialize options requestBodyContent inputType ctx genericType
 
     let handleRequest methodName serverImplementation genericType routePath =
         let inputType = ServerSide.getInputType methodName serverImplementation
@@ -54,7 +51,7 @@ module FableGiraffeAdapter =
                 |None -> (None, None, None, false)
           if abort then
             task {return None}
-          else  
+          else
               match bodyOverride with
               |Some b ->
                     task {
@@ -64,8 +61,8 @@ module FableGiraffeAdapter =
                             |Some statusCode ->
                                 Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Setting status %i" statusCode)) options.Logger
                                 statusCode
-                        headersOverride 
-                        |> Option.iter(fun m -> 
+                        headersOverride
+                        |> Option.iter(fun m ->
                             Option.iter (fun logf -> logf "Fable.Remoting: Setting headers") options.Logger
                             m |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v)))
                         return! text b next ctx
@@ -80,9 +77,9 @@ module FableGiraffeAdapter =
                 task {
                     try
                       let! unwrappedFromAsync = Async.StartAsTask result
-                      let serializedResult = builder.Json options unwrappedFromAsync
-                      headersOverride 
-                        |> Option.iter(fun m -> 
+                      let serializedResult = RemoteBuilderBase<HttpContext,HttpHandler>.Json options unwrappedFromAsync
+                      headersOverride
+                        |> Option.iter(fun m ->
                             Option.iter (fun logf -> logf "Fable.Remoting: Setting headers") options.Logger
                             m |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v)))
                       ctx.Response.StatusCode <- statusCodeOverride |> Option.defaultValue 200
@@ -98,20 +95,20 @@ module FableGiraffeAdapter =
                          Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
                          match options.ErrorHandler with
                          | Some handler ->
-                            let routeInfo : RouteInfo<HttpContext> = 
+                            let routeInfo : RouteInfo<HttpContext> =
                               { path = routePath
                                 methodName = methodName
                                 httpContext = ctx }
                             match handler ex routeInfo with
                             | Ignore ->
                                 let result = { error = "Server error: ignored"; ignored = true; handled = true }
-                                return! text (builder.Json options result) next ctx
+                                return! text (RemoteBuilderBase<HttpContext,HttpHandler>.Json options result) next ctx
                             | Propagate value ->
                                 let result = { error = value; ignored = false; handled = true }
-                                return! text (builder.Json options result) next ctx
+                                return! text (RemoteBuilderBase<HttpContext,HttpHandler>.Json options result) next ctx
                          | None ->
                             let result = { error = "Server error: not handled"; ignored = false; handled = false }
-                            return! text (builder.Json options result) next ctx
+                            return! text (RemoteBuilderBase<HttpContext,HttpHandler>.Json options result) next ctx
                 }
 
     let sb = StringBuilder()
@@ -135,6 +132,10 @@ module FableGiraffeAdapter =
     |> fun routes ->
         options.Logger |> Option.iter (fun logf -> string sb |> logf)
         choose routes
+
+  type RemoteBuilder(implementation)=
+   inherit RemoteBuilderBase<HttpContext,HttpHandler>(impl implementation)
+
 
   /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
   /// Usage:

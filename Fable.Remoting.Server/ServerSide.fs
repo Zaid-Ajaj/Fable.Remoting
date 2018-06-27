@@ -120,20 +120,20 @@ module SharedCE =
     with
         static member Empty : BuilderOptions<'ctx> =
             {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
-    [<AbstractClass>]
-    type RemoteBuilderBase<'ctx,'handler>() =
-        let fableConverter = FableJsonConverter()
-        let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
-        let toLogger logf = string >> logf
-        let rec typePrinter (valueType: System.Type) = 
-            let simplifyGeneric = function 
+
+    type RemoteBuilderBase<'ctx,'handler>(implementation : BuilderOptions<'ctx> -> 'handler) =
+        static let fableConverter = FableJsonConverter()
+        static let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
+        static let toLogger logf = string >> logf
+        static let rec typePrinter (valueType: System.Type) =
+            let simplifyGeneric = function
                 | "Microsoft.FSharp.Core.FSharpOption" -> "Option"
                 | "Microsoft.FSharp.Collections.FSharpList" -> "FSharpList"
                 | "Microsoft.FSharp.Core.FSharpResult" -> "Result"
                 | "Microsoft.FSharp.Collections.FSharpMap" -> "Map"
                 | otherwise -> otherwise
 
-            match valueType.FullName.Replace("+", ".") with 
+            match valueType.FullName.Replace("+", ".") with
             | "System.String" -> "string"
             | "System.Boolean" -> "bool"
             | "System.Int32" -> "int"
@@ -142,18 +142,18 @@ module SharedCE =
             | "Microsoft.FSharp.Core.Unit" -> "unit"
             | "Suave.Http.HttpContext" -> "HttpContext"
             | "Microsoft.AspNetCore.Http.HttpContext" -> "HttpContext"
-            | other -> 
-                match valueType.GetGenericArguments() with 
-                | [|  |] -> other 
-                | genericTypeArguments -> 
+            | other ->
+                match valueType.GetGenericArguments() with
+                | [|  |] -> other
+                | genericTypeArguments ->
                     let typeParts = other.Split('`')
                     let typeName = typeParts.[0]
                     Array.map typePrinter genericTypeArguments
                     |> String.concat ", "
-                    |> sprintf "%s<%s>" (simplifyGeneric typeName) 
+                    |> sprintf "%s<%s>" (simplifyGeneric typeName)
 
 
-        let logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
+        static let logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
             logger |> Option.iter(fun logf ->
                 StringBuilder()
                 |> writeLn "Fable.Remoting:"
@@ -165,15 +165,15 @@ module SharedCE =
                 |> toLogger logf)
 
         /// Deserialize a json string using FableConverter
-        member __.Deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
+        static member Deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
-            // ignore the extra null arguments sent by client 
+            // ignore the extra null arguments sent by client
             let args = Seq.zip (JArray.Parse json) inputTypes
-            // Delayed logging: only log serialized data when a logger is configured 
+            // Delayed logging: only log serialized data when a logger is configured
             logDeserializationTypes logger (fun () -> JsonConvert.SerializeObject(Seq.map fst args, fableConverter)) inputTypes
-            // create a converter function that converts an array 
-            // of JSON arguments into a list of concrete .NET types 
+            // create a converter function that converts an array
+            // of JSON arguments into a list of concrete .NET types
             let converter =
                 match genericTypes with
                 |[|a|] -> fun (o:JToken,t:System.Type) ->
@@ -181,13 +181,13 @@ module SharedCE =
                        box context
                     else o.ToObject(t,serializer)
                 |_  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)
-            
+
             args
-            |> Seq.toArray 
+            |> Seq.toArray
             |> Array.map converter
 
         /// Serialize the value into a json string using FableConverter
-        member __.Json {Logger=logger} value =
+        static member Json {Logger=logger} value =
           let result = JsonConvert.SerializeObject(value, fableConverter)
           logger |> Option.iter(fun logf ->
               StringBuilder()
@@ -196,7 +196,8 @@ module SharedCE =
               |> toLogger logf)
           result
 
-        abstract member Run : BuilderOptions<'ctx> -> 'handler
+        member __.Run(state) =
+            implementation state
         member __.Zero() =
             BuilderOptions<'ctx>.Empty
         member __.Yield(_) =
@@ -212,11 +213,11 @@ module SharedCE =
         /// Defines a `logger : (string -> unit)`
         [<CustomOperation("use_logger")>]
         member __.UseLogger(state,logger)=
-            {state with Logger=Some logger}        
+            {state with Logger=Some logger}
         /// Defines an error `handler : ErrorHandler`
         [<CustomOperation("use_error_handler")>]
         member __.UseErrorHandler(state,errorHandler)=
-            {state with ErrorHandler=Some errorHandler}        
+            {state with ErrorHandler=Some errorHandler}
         [<CustomOperation("use_custom_handler_for")>]
         /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
         member __.UseCustomHandler(state,method,handler) =

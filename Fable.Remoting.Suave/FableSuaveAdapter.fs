@@ -19,13 +19,12 @@ module FableSuaveAdapter =
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
   let onError (handler: ErrorHandler<HttpContext>) =
         onErrorHandler <- Some handler
-  type RemoteBuilder(implementation) =
-   inherit RemoteBuilderBase<HttpContext,WebPart<HttpContext>>()
-   
-   override builder.Run(options:SharedCE.BuilderOptions<HttpContext>) =
+
+  let impl implementation =
+   fun (options:SharedCE.BuilderOptions<HttpContext>) ->
     let getResourceFromReq (req : HttpRequest) (ctx : HttpContext) (inputType: System.Type[]) (genericTypes: System.Type[])  =
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
-        builder.Deserialize options json inputType ctx genericTypes
+        RemoteBuilderBase<HttpContext,WebPart<HttpContext>>.Deserialize options json inputType ctx genericTypes
 
     let handleRequest methodName serverImplementation genericTypes routePath =
         let inputType = ServerSide.getInputType methodName serverImplementation
@@ -61,11 +60,11 @@ module FableSuaveAdapter =
                     |None -> Writers.setStatus code
             match bodyOverride with
             |Some b -> (setHeaders >=> setStatus HTTP_200 >=> (fun ctx -> async {return Some {ctx with response = {ctx.response with content = HttpContent.Bytes (System.Text.Encoding.UTF8.GetBytes b)}}})) ctx
-            |None ->    
-                let flow code response  = 
+            |None ->
+                let flow code response  =
                     setHeaders
                     >=>
-                    OK response                     
+                    OK response
                     >=> setStatus code
                     >=> Writers.setMimeType "application/json; charset=utf-8"
                 Option.iter (fun logf -> logf (sprintf "Fable.Remoting: Invoking method %s" methodName)) options.Logger
@@ -76,16 +75,16 @@ module FableSuaveAdapter =
                     | true  -> getResourceFromReq req ctx inputType genericTypes
                     | false -> [|null|]
                 let result = ServerSide.dynamicallyInvoke methodName serverImplementation requestBodyData
-                let onSuccess = flow HttpCode.HTTP_200 
+                let onSuccess = flow HttpCode.HTTP_200
                 let onFailure = flow HttpCode.HTTP_500
                 async {
                     try
                       let! dynamicResult = result
-                      return! builder.Json options dynamicResult |> fun a -> onSuccess a ctx
+                      return! RemoteBuilderBase<HttpContext,WebPart<HttpContext>>.Json options dynamicResult |> fun a -> onSuccess a ctx
                     with
                       | ex ->
                          Option.iter (fun logf -> logf (sprintf "Server error at %s" routePath)) options.Logger
-                         let routeInfo : RouteInfo<HttpContext> = 
+                         let routeInfo : RouteInfo<HttpContext> =
                            {  path = routePath
                               methodName = methodName
                               httpContext = ctx  }
@@ -96,17 +95,17 @@ module FableSuaveAdapter =
                             // Server error ignored by error handler
                             | Ignore ->
                                 let result = { error = "Server error: ignored"; ignored = true; handled = true }
-                                return! builder.Json options result |> fun a -> onFailure a ctx
+                                return! RemoteBuilderBase<HttpContext,WebPart<HttpContext>>.Json options result |> fun a -> onFailure a ctx
                             // Server error mapped into some other `value` by error handler
                             | Propagate value ->
                                 let result = { error = value; ignored = false; handled = true }
-                                return! builder.Json options result |> fun a -> onFailure a ctx
+                                return! RemoteBuilderBase<HttpContext,WebPart<HttpContext>>.Json options result |> fun a -> onFailure a ctx
                          // There no server handler
                          | None ->
                             let result = { error = "Server error: not handled"; ignored = true; handled = false }
-                            return! builder.Json options result |> fun a -> onFailure a ctx
+                            return! RemoteBuilderBase<HttpContext,WebPart<HttpContext>>.Json options result |> fun a -> onFailure a ctx
                     }
-                
+
 
     let sb = StringBuilder()
     let t = implementation.GetType()
@@ -114,7 +113,7 @@ module FableSuaveAdapter =
         match t.GenericTypeArguments with
         |[||] -> t.Name
         |[|_|] -> t.Name.[0..t.Name.Length-3]
-        |_ -> failwith "Only one generic type can be injected"    
+        |_ -> failwith "Only one generic type can be injected"
     sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
     implementation.GetType()
         |> FSharpType.GetRecordFields
@@ -128,6 +127,10 @@ module FableSuaveAdapter =
         |> fun routes ->
             options.Logger |> Option.iter (fun logf -> string sb |> logf)
             choose routes
+
+  type RemoteBuilder(implementation) =
+   inherit RemoteBuilderBase<HttpContext,WebPart<HttpContext>>(impl implementation)
+
   /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
   /// Usage:
   /// `let server = remoting implementation {()}` for default options at /typeName/methodName
