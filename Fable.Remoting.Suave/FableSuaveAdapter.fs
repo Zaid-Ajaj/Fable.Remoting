@@ -23,14 +23,23 @@ module FableSuaveAdapter =
   let handleRequest routePath creator =
     POST >=> path routePath >=> request (
       fun (req: HttpRequest) (ctx:HttpContext) ->
-        let onSuccess result = OK result >=> Writers.setMimeType "application/json; charset=utf-8"
-        let onFailure result = onSuccess result >=> Writers.setStatus HttpCode.HTTP_500
+        let setHeaders headers =
+          headers |> Map.fold (fun ctx k v -> ctx >=> Writers.addHeader k v) (fun ctx -> async {return Some ctx})
+        let setStatus code =
+          fun ctx -> async {return Some {ctx with response = {ctx.response with status = {ctx.response.status with code = code}}}}
+        let flow headers code response  =
+          setHeaders headers
+          >=>
+          OK response
+          >=> setStatus code
+          >=> Writers.setMimeType "application/json; charset=utf-8"
         let json = System.Text.Encoding.UTF8.GetString req.rawForm
         async {
-            let! result = creator ctx json
-            match result with
-            | Choice1Of2 res -> return! onSuccess res ctx
-            | Choice2Of2 res -> return! onFailure res ctx })
+            match creator ctx json with
+            | None -> return None
+            | Some res ->
+              let! { Response.StatusCode = sc; Headers = headers; Body = body } = res
+              return! flow headers sc body ctx })
 
 
   type RemoteBuilder(implementation) =

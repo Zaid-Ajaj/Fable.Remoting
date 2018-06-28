@@ -88,16 +88,46 @@ module SharedCE =
           ignored: bool;
           handled: bool; }
 
+    ///Settings for overriding the response
+    type ResponseOverride = {
+        StatusCode : int option
+        Headers: Map<string,string> option
+        Body: string option
+        Abort: bool
+    } with
+        static member Default = {
+            StatusCode = None
+            Headers = None
+            Body = None
+            Abort = false
+        }
+        ///Don't handle the request
+        static member Ignore = Some {ResponseOverride.Default with Abort=true}
+        ///Defines the status code
+        member this.withStatusCode(status) =
+            {this with StatusCode=Some status}
+        ///Defines the response headers
+        member this.withHeaders(headers) =
+            {this with Headers = Some headers}
+        ///Defines the response body (prevents calling the original async workflow)
+        member this.withBody(body) =
+            {this with Body = Some body}
+    type Response = {
+        StatusCode : int
+        Headers: Map<string,string>
+        Body: string
+    }
     type BuilderOptions<'ctx> = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler<'ctx> option
         Builder: string -> string -> string
+        CustomHandlers : Map<string, 'ctx -> ResponseOverride option>
     }
     with
         static member Empty : BuilderOptions<'ctx> =
-            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"}
+            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
 
-    type RemoteBuilderBase<'ctx,'endpoint,'handler>(implementation, endpoints : (string -> ('ctx -> string -> Async<Choice<string,string>>) -> 'endpoint), joiner : 'endpoint list -> 'handler) =
+    type RemoteBuilderBase<'ctx,'endpoint,'handler>(implementation, endpoints : (string -> ('ctx -> string -> Async<Response> option) -> 'endpoint), joiner : 'endpoint list -> 'handler) =
         let fableConverter = FableJsonConverter()
         let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
         let toLogger logf = string >> logf
@@ -194,33 +224,43 @@ module SharedCE =
                     let result =
                         let n args = ServerSide.dynamicallyInvoke methodName implementation args |> Async.Catch
                         fun ctx s ->
-                            async {
-                                let! r = n (if hasArg then deserialize state s inputType ctx t.GenericTypeArguments else [|null|])
-                                match r with
-                                | Choice1Of2 r -> return Choice1Of2 (serialize state r)
-                                | Choice2Of2 ex ->
-                                    Option.iter (fun logf -> logf (sprintf "Server error at %s" fullPath)) state.Logger
-                                    let routeInfo : RouteInfo<'ctx> =
-                                       {  path = fullPath
-                                          methodName = methodName
-                                          httpContext = ctx  }
-                                    match state.ErrorHandler with
-                                    | Some handler ->
-                                       let result = handler ex routeInfo
-                                       match result with
-                                       // Server error ignored by error handler
-                                       | Ignore ->
-                                           let result = { error = "Server error: ignored"; ignored = true; handled = true }
-                                           return Choice2Of2(serialize state result)
-                                       // Server error mapped into some other `value` by error handler
-                                       | Propagate value ->
-                                           let result = { error = value; ignored = false; handled = true }
-                                           return Choice2Of2(serialize state result)
-                                    // There no server handler
-                                    | None ->
-                                       let result = { error = "Server error: not handled"; ignored = true; handled = false }
-                                       return Choice2Of2(serialize state result)}
-
+                            let {Abort = abort; Headers = headers ; StatusCode = sc ; Body = body } =
+                                state.CustomHandlers |> Map.tryFind methodName
+                                |> Option.map (fun ch -> ch ctx) |> Option.flatten
+                                |> Option.defaultValue ResponseOverride.Default
+                            if abort then None
+                            else
+                             Some <|
+                              async {
+                                match body with
+                                |Some body ->
+                                    return { StatusCode = sc |> Option.defaultValue 200; Body = body; Headers = headers |> Option.defaultValue Map.empty}
+                                |None ->
+                                    let! r = n (if hasArg then deserialize state s inputType ctx t.GenericTypeArguments else [|null|])
+                                    match r with
+                                    | Choice1Of2 r -> return {StatusCode = sc |> Option.defaultValue 200; Body = (serialize state r); Headers = headers |> Option.defaultValue Map.empty}
+                                    | Choice2Of2 ex ->
+                                        Option.iter (fun logf -> logf (sprintf "Server error at %s" fullPath)) state.Logger
+                                        let routeInfo : RouteInfo<'ctx> =
+                                           {  path = fullPath
+                                              methodName = methodName
+                                              httpContext = ctx  }
+                                        match state.ErrorHandler with
+                                        | Some handler ->
+                                           let result = handler ex routeInfo
+                                           match result with
+                                           // Server error ignored by error handler
+                                           | Ignore ->
+                                               let result = { error = "Server error: ignored"; ignored = true; handled = true }
+                                               return { StatusCode = sc |> Option.defaultValue 500; Body = serialize state result; Headers = headers |> Option.defaultValue Map.empty}
+                                           // Server error mapped into some other `value` by error handler
+                                           | Propagate value ->
+                                               let result = { error = value; ignored = false; handled = true }
+                                               return {StatusCode = sc |> Option.defaultValue 500; Body = serialize state result; Headers = headers |> Option.defaultValue Map.empty}
+                                        // There no server handler
+                                        | None ->
+                                           let result = { error = "Server error: not handled"; ignored = true; handled = false }
+                                           return {StatusCode = sc |> Option.defaultValue 500; Body = serialize state result; Headers = headers |> Option.defaultValue Map.empty}}
                     sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
                     endpoints fullPath result)
                 |> List.ofSeq
@@ -247,4 +287,8 @@ module SharedCE =
         [<CustomOperation("use_error_handler")>]
         member __.UseErrorHandler(state,errorHandler)=
             {state with ErrorHandler=Some errorHandler}
+        /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
+        [<CustomOperation("use_custom_handler_for")>]
+        member __.UseCustomHandler(state,method,handler) =
+            {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
 

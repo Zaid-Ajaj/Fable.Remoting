@@ -1,14 +1,11 @@
 namespace Fable.Remoting.Giraffe
 
-open FSharp.Reflection
 open Microsoft.AspNetCore.Http
 
 open Giraffe
 open System.IO
-open System.Text
-
-open Fable.Remoting.Server
 open Fable.Remoting.Server.SharedCE
+open Fable.Remoting.Server
 
 [<AutoOpen>]
 module FableGiraffeAdapter =
@@ -30,14 +27,13 @@ module FableGiraffeAdapter =
             use streamReader = new StreamReader(requestBodyStream)
             let json = streamReader.ReadToEnd()
             task {
-                let! result = Async.StartAsTask (creator ctx json)
-                match result with
-                | Choice1Of2 res ->
-                  ctx.Response.StatusCode <- 200
-                  return! text res next ctx
-                | Choice2Of2 res ->
-                  ctx.Response.StatusCode <- 500
-                  return! text res next ctx })
+                match (creator ctx json) with
+                | None -> return None
+                | Some res ->
+                    let! { Response.StatusCode = sc; Headers = headers; Body = body } = Async.StartAsTask res
+                    headers |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v))
+                    ctx.Response.StatusCode <- sc
+                    return! text body next ctx})
 
   type RemoteBuilder(implementation)=
    inherit RemoteBuilderBase<HttpContext,(HttpFunc -> HttpContext -> HttpFuncResult),HttpHandler>(implementation, handleRequest, choose)
