@@ -384,12 +384,12 @@
 <p>You start off using the <a href="https://github.com/SAFE-Stack/SAFE-template" target="_blank">SAFE template</a> where Fable.Remoting is one of the scaffolding options:</p>
 <pre><code class="lang-bash"><span class="hljs-comment"># install the template</span>
 dotnet new -i SAFE.Template
-<span class="hljs-comment"># scaffold a new Fable/Suave project with Fable.Remoting</span>
+<span class="hljs-comment"># scaffold a new Fable/Saturn project with Fable.Remoting</span>
 dotnet new SAFE --Remoting
 <span class="hljs-comment"># Giraffe as your server</span>
 dotnet new SAFE --Server giraffe --Remoting
-<span class="hljs-comment"># Saturn on the server</span>
-dotnet new SAFE --Server saturn --Remoting
+<span class="hljs-comment"># Suave on the server</span>
+dotnet new SAFE --Server suave --Remoting
 </code></pre>
 <p>See <code>Fable.Remoting</code> in action demonstrated in the awesome talk at <a href="https://www.youtube.com/watch?v=LBekZt8QB4w" target="_blank">Lambda Days 2018</a> by <a href="https://github.com/theimowski" target="_blank">Tomasz Heimowski</a></p>
 <h2 id="scaffold-from-scratch">Scaffold from scratch</h2>
@@ -433,7 +433,7 @@ dotnet new SAFE --Server saturn --Remoting
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-05-14T19:13:06.792Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-14T19:31:55.226Z"},"basePath":".","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-06-28T08:13:35.870Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-28T08:46:21.170Z"},"basePath":".","book":{"language":""}});
         });
     </script>
 </div>

@@ -380,60 +380,72 @@
                                 <section class="normal markdown-section">
                                 
                                 <h1 id="accessing-request-context">Accessing Request Context</h1>
-<p>Sometimes you might need to read data from the incoming request, Maybe to validate a request header or to do some kind of logging. We will demonstrate this with Suave, the same logic follows for the other web frameworks. We also want to be able to do this without sacrificing the shape the shared interface. </p>
-<p>The idea is to make the remoting handler <em>dependent</em> on the incoming request context. We do this by parameterizing the definition of the shared interface with a generic context type</p>
-<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span>&lt;<span class="hljs-title">&apos;Context</span>&gt; </span>= {
-    <span class="hljs-comment">/// return favorite albums of current logged in user</span>
-    favoriteAlbums : &apos;Context -&gt; Async&lt;Album list&gt;
-}
-</code></pre>
-<p>Notice the <code>&apos;Context</code> generic parameter in the definition, this type is going to be of type <code>HttpContext</code>  from Suave when we provide an implementation but we don&apos;t hardcode that fact to make the definition applicable to the different web frameworks but also to make the interface callable from a proxy on client, more on this later.  </p>
-<p>Now, here is an implementation of the interface:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicStore : IMusicStore&lt;HttpContext&gt; = {
-    <span class="hljs-comment">// return favorite albums of current logged-in user</span>
-    favoriteAlbums = <span class="hljs-keyword">fun</span> ctx -&gt; async {
-        <span class="hljs-comment">// get the authorization header, if any</span>
-        <span class="hljs-keyword">let</span> authHeader = 
-            ctx.request.headers
-            |&gt; List.tryFind (<span class="hljs-keyword">fun</span> (key, _) -&gt; key = <span class="hljs-string">&quot;authorization&quot;</span>)
-            |&gt; Option.map snd 
+<p>Sometimes you might need to read data from the incoming request, Maybe to validate a request header or to do some kind of logging. In This section, we will demonstrate the techniques of building an implementation from protocol specs that has both per-request and static dependencies where the following holds:</p>
+<ul>
+<li>No change of the protocol specification is required</li>
+<li>The implementation of the protocol specification is fully unit-testable without involving the Http pipeline </li>
+</ul>
+<p>For the following example, assume that we will be needing the values of the headers as key-value pair (i.e. of type <code>Map&lt;string, string&gt;</code>) this will our per-request dependency, as a static dependency we will be needing a database that our implementation can call to get the actual album data.</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicDb</span> </span>= 
+    <span class="hljs-keyword">abstract</span> getAwesomeAlbums : unit -&gt; Album list 
+    <span class="hljs-keyword">abstract</span> getBoringAlbums : unit -&gt; Album list 
 
-        <span class="hljs-keyword">match</span> Security.extractUser authHeader <span class="hljs-keyword">with</span>
-        | None -&gt; <span class="hljs-keyword">return</span> [] <span class="hljs-comment">// no albums </span>
-        | Some user -&gt; 
-            <span class="hljs-keyword">let!</span> favoriteAlbums = Database.favoriteAlbums user
-            <span class="hljs-keyword">return</span> favoriteAlbums
+<span class="hljs-comment">// shared protocol specification</span>
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span> </span>= {
+    bestAlbums : Async&lt;Album list&gt;
+}
+
+<span class="hljs-comment">// factory function that creates protocol implementation, </span>
+<span class="hljs-comment">// it depeneds on incoming headers from request and on a static database implementation </span>
+<span class="hljs-keyword">let</span> createMusicStore (db: IMusicDb) (headers: Map&lt;string, string&gt;) : IMusicStore = 
+    <span class="hljs-keyword">let</span> musicStore = {
+        bestAlbums = async {
+            <span class="hljs-keyword">match</span> Map.tryFind <span class="hljs-string">&quot;Special-Header&quot;</span> headers <span class="hljs-keyword">with</span> 
+            | Some <span class="hljs-string">&quot;Special-Value&quot;</span> -&gt; <span class="hljs-keyword">return</span> db.getAwesomeAlbums()
+            | None -&gt; <span class="hljs-keyword">return</span> db.getBoringAlbums()
+        }
     }
-}
+
+    musicStore
 </code></pre>
-<p>Now that you an implementation, you can just create the <code>WebPart</code> like you would usually do in Suave:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> fableWebPart = remoting musicStore {()}
-
-<span class="hljs-keyword">let</span> webApp = 
-    choose [ 
-        GET &gt;=&gt; path <span class="hljs-string">&quot;/&quot;</span> &gt;=&gt; OK <span class="hljs-string">&quot;Hello from root&quot;</span>
-        fableWebPart
-    ]
-
-startWebServer defaultConfig webApp
+<p>So far, as you can see, the code doesn&apos;t do anything with the <code>HttpContext</code> and it is unit-testable. Now we need to actually read the headers from the request and pass them to the factory, we do this by using the <code>context</code> handler from Suave that gives us access to the context of the incoming request:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> createWebApp (db: IMusicDb) : WebPart = context &lt;| <span class="hljs-keyword">fun</span> ctx -&gt;
+    <span class="hljs-comment">// Here is where we access the context to extract the headers</span>
+    <span class="hljs-keyword">let</span> headers = Map.ofList ctx.request.headers
+    <span class="hljs-comment">// construct the music store </span>
+    <span class="hljs-keyword">let</span> musicStore = createMusicStore db headers 
+    <span class="hljs-comment">// expose the music store as a WebPart</span>
+    remoting musicStore {()}
 </code></pre>
-<p>But now there is a little problem: How do you call the server from the client if the functions require a <code>&apos;Context</code> as an input? Well you simply provide a <code>unit</code> as the generic parameter and everything just works out:</p>
-<pre><code class="lang-fs"><span class="hljs-comment">// Client</span>
-
-<span class="hljs-comment">// doesn&apos;t send authorization header value</span>
-<span class="hljs-keyword">let</span> musicStore =  Proxy.remoting&lt;IMusicStore&lt;unit&gt;&gt; {()}
-
-<span class="hljs-comment">// sends an authorization header with every request</span>
-<span class="hljs-keyword">let</span> secureMusicStore = Proxy.remoting&lt;IMusicStore&lt;unit&gt;&gt; {
-    with_token <span class="hljs-string">&quot;Bearer &lt;authorization value here&gt;&quot;</span>
-} 
-
-async {
-    <span class="hljs-keyword">let!</span> favoriteAlbums = secureMusicStore.favoriteAlbums() 
-    <span class="hljs-keyword">for</span> album <span class="hljs-keyword">in</span> favoriteAlbums <span class="hljs-keyword">do</span>
-        printfn <span class="hljs-string">&quot;%s&quot;</span> album.Title
+<p>Finally to actually build the final <code>WebPart</code>, you will need to provide the actual <code>IMusicDb</code> database implementation:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicDb : IMusicDb = { 
+    <span class="hljs-keyword">new</span> IMusicDb <span class="hljs-keyword">with</span> 
+       <span class="hljs-keyword">member</span> self.getAwesomeAlbums() = <span class="hljs-comment">(* ... *)</span> 
+       <span class="hljs-keyword">member</span> self.getBoringAlbums() = <span class="hljs-comment">(* ... *)</span> 
 }
-|&gt; Async.StartImmediate
+
+<span class="hljs-comment">// webApp : WebPart</span>
+<span class="hljs-keyword">let</span> webApp = createWebApp musicDb
+
+<span class="hljs-comment">// start the Suave server</span>
+startWebServer defaulConfig webApp
+</code></pre>
+<p>That is it, we have now exposed our <code>musicStore</code> implementation to the world as an Http web service. 
+We can now also write some unit tests for the implementation:</p>
+<pre><code class="lang-fs">testCase <span class="hljs-string">&quot;Boring albums are returned when there is no special header&quot;</span> &lt;| <span class="hljs-keyword">fun</span> () -&gt;
+    <span class="hljs-keyword">let</span> musicDbMock : IMusicDb = {
+        <span class="hljs-keyword">new</span> IMusicDb <span class="hljs-keyword">with</span> 
+          <span class="hljs-keyword">member</span> self.getAwesomeAlbums() = [ { Id = <span class="hljs-number">1</span>; Name = <span class="hljs-string">&quot;Metallica&quot;</span> } ]
+          <span class="hljs-keyword">member</span> self.getBoringAlbums() = [ ] 
+    }  
+
+    <span class="hljs-keyword">let</span> headers = Map.ofList [ <span class="hljs-string">&quot;Content-Length&quot;</span>, <span class="hljs-string">&quot;70&quot;</span> ]
+    <span class="hljs-keyword">let</span> musicStore = createMusicStore musicDbMock headers
+
+    musicStore.bestAlbums
+    |&gt; Async.RunSynchronously 
+    |&gt; List.length 
+    |&gt; <span class="hljs-keyword">fun</span> n -&gt; Expect.equal <span class="hljs-number">0</span> n <span class="hljs-string">&quot;List should be empty&quot;</span>
 </code></pre>
 
                                 
@@ -478,7 +490,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-05-14T19:13:06.792Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-05-14T19:31:55.226Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-06-28T08:46:07.627Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-28T08:46:21.170Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
