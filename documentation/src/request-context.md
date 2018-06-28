@@ -30,7 +30,9 @@ let createMusicStore (db: IMusicDb) (headers: Map<string, string>) : IMusicStore
 
     musicStore
 ```
-So far, as you can see, the code doesn't do anything with the `HttpContext` and it is unit-testable. Now we need to actually read the headers from the request and pass them to the factory, we do this by using the `context` handler from Suave that gives us access to the context of the incoming request:
+So far, as you can see, the code doesn't do anything with the `HttpContext` and it is unit-testable. Infact, this implementation doesn't care in what type of server it will be hosted in. 
+
+Now we need to read the headers from the request and pass them to the factory, we do this by using the `context` handler that gives us access to the context of the incoming request, in Suave this `context` combinator is built-in so that you can use it as follows: 
 ```fs
 let createWebApp (db: IMusicDb) : WebPart = context <| fun ctx ->
     // Here is where we access the context to extract the headers
@@ -40,7 +42,31 @@ let createWebApp (db: IMusicDb) : WebPart = context <| fun ctx ->
     // expose the music store as a WebPart
     remoting musicStore {()} 
 ```
-Finally to actually build the final `WebPart`, you will need to provide the actual `IMusicDb` database implementation:
+In Giraffe/Saturn, the `context` combinator isn't built-in but it is easy to define it:
+```fs
+let context (f: HttpContext -> HttpHandler) : HttpHandler =
+    fun (next: HttpFunc) (ctx : HttpContext) -> 
+        task {
+            let handler = f ctx
+            return! handler next ctx 
+        }
+
+let createWebApp (db: IMusicDb) : HttpHandler = context <| fun ctx ->
+    // Here is where we access the context to extract the headers
+    let headers = 
+        [ for pair in ctx.Request.Headers do 
+            let key = pair.Key 
+            let value = pair.Value.[0] 
+            yield key, value ]
+        |> Map.ofList 
+    
+    // construct the music store 
+    let musicStore = createMusicStore db headers 
+
+    // expose the music store as a HttpHandler
+    remoting musicStore {()}
+``` 
+Finally, in order to build the `WebPart` or `HttpHandler`, you will need to provide database implementation for `IMusicDb` :
 ```fs
 let musicDb : IMusicDb = { 
     new IMusicDb with 
@@ -48,11 +74,8 @@ let musicDb : IMusicDb = {
        member self.getBoringAlbums() = (* ... *) 
 }
 
-// webApp : WebPart
+// webApp : WebPart / HttpHandler 
 let webApp = createWebApp musicDb
-
-// start the Suave server
-startWebServer defaulConfig webApp
 ```
 That is it, we have now exposed our `musicStore` implementation to the world as an Http web service. 
 We can now also write some unit tests for the implementation:
