@@ -4,14 +4,21 @@ When constructing the proxy, you can provide your own `HttpClient` that the prox
 
 ```fs
 // using ASP.NET Core's test server
-let server = new TestServer(WebHostBuilder().UseStartup<Startup>()
+let server = new TestServer(WebHostBuilder().UseStartup<Startup>())
 
 // the test server gives you a specialized HttpClient for testing
 let client = server.CreateClient()
 
 // route builder that specifies how the routes are built
-let builder = ...
+let builder = (*  *)
 
 // construct the proxy using the test HttpClient
-let proxy = Proxy.custom<'T> builder client
+let proxy = Proxy.custom<IMusicStore> builder client
+
+// write tests
+testCase "favoriteAlbums returns empty when database is empty" <| fun () -> 
+    proxy.call <@ fun server -> server.favoriteAlbums()  @>
+    |> Async.RunSyncronously 
+    |> List.length 
+    |> fun n -> Expect 0 n "List should be empty" 
 ``` 

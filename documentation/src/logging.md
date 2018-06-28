@@ -79,8 +79,7 @@ let webApp = context <| fun httpContext ->
         albums = async {
             logger.Information("Retrieving albums from database")
             let! albums = Database.getAllAlbums()
-            logger.Information("Read {AlbumCount} albums from database",
-            List.length albums)
+            logger.Information("Read {AlbumCount} albums from database", List.length albums)
             return albums
         }
     }
