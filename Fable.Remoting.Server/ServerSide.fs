@@ -70,6 +70,7 @@ module ServerSide =
          }
 [<AutoOpen>]
 module SharedCE =
+    open FSharp.Reflection
     type RouteInfo<'ctx> = {
         path: string
         methodName: string
@@ -86,46 +87,21 @@ module SharedCE =
         { error: 'a;
           ignored: bool;
           handled: bool; }
-    ///Settings for overriding the response
-    type ResponseOverride = {
-        StatusCode : int option
-        Headers: Map<string,string> option
-        Body: string option
-        Abort: bool
-    } with
-        static member Default = {
-            StatusCode = None
-            Headers = None
-            Body = None
-            Abort = false
-        }
-        ///Don't handle the request
-        static member Ignore = Some {ResponseOverride.Default with Abort=true}
-        ///Defines the status code
-        member this.withStatusCode(status) =
-            {this with StatusCode=Some status}
-        ///Defines the response headers
-        member this.withHeaders(headers) =
-            {this with Headers = Some headers}
-        ///Defines the response body (prevents calling the original async workflow)
-        member this.withBody(body) =
-            {this with Body = Some body}
 
     type BuilderOptions<'ctx> = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler<'ctx> option
         Builder: string -> string -> string
-        CustomHandlers : Map<string, 'ctx -> ResponseOverride option>
     }
     with
         static member Empty : BuilderOptions<'ctx> =
-            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
+            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"}
 
-    type RemoteBuilderBase<'ctx,'handler>(implementation : BuilderOptions<'ctx> -> 'handler) =
-        static let fableConverter = FableJsonConverter()
-        static let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
-        static let toLogger logf = string >> logf
-        static let rec typePrinter (valueType: System.Type) =
+    type RemoteBuilderBase<'ctx,'endpoint,'handler>(implementation, endpoints : (string -> ('ctx -> string -> Async<Choice<string,string>>) -> 'endpoint), joiner : 'endpoint list -> 'handler) =
+        let fableConverter = FableJsonConverter()
+        let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
+        let toLogger logf = string >> logf
+        let rec typePrinter (valueType: System.Type) =
             let simplifyGeneric = function
                 | "Microsoft.FSharp.Core.FSharpOption" -> "Option"
                 | "Microsoft.FSharp.Collections.FSharpList" -> "FSharpList"
@@ -153,7 +129,7 @@ module SharedCE =
                     |> sprintf "%s<%s>" (simplifyGeneric typeName)
 
 
-        static let logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
+        let logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
             logger |> Option.iter(fun logf ->
                 StringBuilder()
                 |> writeLn "Fable.Remoting:"
@@ -165,7 +141,7 @@ module SharedCE =
                 |> toLogger logf)
 
         /// Deserialize a json string using FableConverter
-        static member Deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
+        let deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
             // ignore the extra null arguments sent by client
@@ -187,7 +163,7 @@ module SharedCE =
             |> Array.map converter
 
         /// Serialize the value into a json string using FableConverter
-        static member Json {Logger=logger} value =
+        let serialize {Logger=logger} value =
           let result = JsonConvert.SerializeObject(value, fableConverter)
           logger |> Option.iter(fun logf ->
               StringBuilder()
@@ -197,7 +173,60 @@ module SharedCE =
           result
 
         member __.Run(state) =
-            implementation state
+            let sb = StringBuilder()
+            let t = implementation.GetType()
+            let typeName =
+                match t.GenericTypeArguments with
+                |[||] -> t.Name
+                |[|_|] -> t.Name.[0..t.Name.Length-3]
+                |_ -> failwith "Only one generic type can be injected"
+            sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
+            implementation.GetType()
+                |> FSharpType.GetRecordFields
+                |> Seq.map (fun propInfo ->
+                    let methodName = propInfo.Name
+                    let fullPath = state.Builder typeName methodName
+                    let inputType = ServerSide.getInputType methodName implementation
+                    let hasArg =
+                        match inputType with
+                        |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
+                        |_ -> true
+                    let result =
+                        let n args = ServerSide.dynamicallyInvoke methodName implementation args |> Async.Catch
+                        fun ctx s ->
+                            async {
+                                let! r = n (if hasArg then deserialize state s inputType ctx t.GenericTypeArguments else [|null|])
+                                match r with
+                                | Choice1Of2 r -> return Choice1Of2 (serialize state r)
+                                | Choice2Of2 ex ->
+                                    Option.iter (fun logf -> logf (sprintf "Server error at %s" fullPath)) state.Logger
+                                    let routeInfo : RouteInfo<'ctx> =
+                                       {  path = fullPath
+                                          methodName = methodName
+                                          httpContext = ctx  }
+                                    match state.ErrorHandler with
+                                    | Some handler ->
+                                       let result = handler ex routeInfo
+                                       match result with
+                                       // Server error ignored by error handler
+                                       | Ignore ->
+                                           let result = { error = "Server error: ignored"; ignored = true; handled = true }
+                                           return Choice2Of2(serialize state result)
+                                       // Server error mapped into some other `value` by error handler
+                                       | Propagate value ->
+                                           let result = { error = value; ignored = false; handled = true }
+                                           return Choice2Of2(serialize state result)
+                                    // There no server handler
+                                    | None ->
+                                       let result = { error = "Server error: not handled"; ignored = true; handled = false }
+                                       return Choice2Of2(serialize state result)}
+
+                    sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
+                    endpoints fullPath result)
+                |> List.ofSeq
+                |> fun routes ->
+                    state.Logger |> Option.iter (fun logf -> string sb |> logf)
+                    joiner routes
         member __.Zero() =
             BuilderOptions<'ctx>.Empty
         member __.Yield(_) =
@@ -218,8 +247,4 @@ module SharedCE =
         [<CustomOperation("use_error_handler")>]
         member __.UseErrorHandler(state,errorHandler)=
             {state with ErrorHandler=Some errorHandler}
-        [<CustomOperation("use_custom_handler_for")>]
-        /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
-        member __.UseCustomHandler(state,method,handler) =
-            {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
 
