@@ -408,7 +408,8 @@
 
     musicStore
 </code></pre>
-<p>So far, as you can see, the code doesn&apos;t do anything with the <code>HttpContext</code> and it is unit-testable. Now we need to actually read the headers from the request and pass them to the factory, we do this by using the <code>context</code> handler from Suave that gives us access to the context of the incoming request:</p>
+<p>So far, as you can see, the code doesn&apos;t do anything with the <code>HttpContext</code> and it is unit-testable. Infact, this implementation doesn&apos;t care in what type of server it will be hosted in. </p>
+<p>Now we need to read the headers from the request and pass them to the factory, we do this by using the <code>context</code> handler that gives us access to the context of the incoming request, in Suave this <code>context</code> combinator is built-in so that you can use it as follows: </p>
 <pre><code class="lang-fs"><span class="hljs-keyword">let</span> createWebApp (db: IMusicDb) : WebPart = context &lt;| <span class="hljs-keyword">fun</span> ctx -&gt;
     <span class="hljs-comment">// Here is where we access the context to extract the headers</span>
     <span class="hljs-keyword">let</span> headers = Map.ofList ctx.request.headers
@@ -417,18 +418,38 @@
     <span class="hljs-comment">// expose the music store as a WebPart</span>
     remoting musicStore {()}
 </code></pre>
-<p>Finally to actually build the final <code>WebPart</code>, you will need to provide the actual <code>IMusicDb</code> database implementation:</p>
+<p>In Giraffe/Saturn, the <code>context</code> combinator isn&apos;t built-in but it is easy to define it:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> context (f: HttpContext -&gt; HttpHandler) : HttpHandler =
+    <span class="hljs-keyword">fun</span> (next: HttpFunc) (ctx : HttpContext) -&gt; 
+        task {
+            <span class="hljs-keyword">let</span> handler = f ctx
+            <span class="hljs-keyword">return!</span> handler next ctx 
+        }
+
+<span class="hljs-keyword">let</span> createWebApp (db: IMusicDb) : HttpHandler = context &lt;| <span class="hljs-keyword">fun</span> ctx -&gt;
+    <span class="hljs-comment">// Here is where we access the context to extract the headers</span>
+    <span class="hljs-keyword">let</span> headers = 
+        [ <span class="hljs-keyword">for</span> pair <span class="hljs-keyword">in</span> ctx.Request.Headers <span class="hljs-keyword">do</span> 
+            <span class="hljs-keyword">let</span> key = pair.Key 
+            <span class="hljs-keyword">let</span> value = pair.Value.[<span class="hljs-number">0</span>] 
+            <span class="hljs-keyword">yield</span> key, value ]
+        |&gt; Map.ofList 
+
+    <span class="hljs-comment">// construct the music store </span>
+    <span class="hljs-keyword">let</span> musicStore = createMusicStore db headers 
+
+    <span class="hljs-comment">// expose the music store as a HttpHandler</span>
+    remoting musicStore {()}
+</code></pre>
+<p>Finally, in order to build the <code>WebPart</code> or <code>HttpHandler</code>, you will need to provide database implementation for <code>IMusicDb</code> :</p>
 <pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicDb : IMusicDb = { 
     <span class="hljs-keyword">new</span> IMusicDb <span class="hljs-keyword">with</span> 
        <span class="hljs-keyword">member</span> self.getAwesomeAlbums() = <span class="hljs-comment">(* ... *)</span> 
        <span class="hljs-keyword">member</span> self.getBoringAlbums() = <span class="hljs-comment">(* ... *)</span> 
 }
 
-<span class="hljs-comment">// webApp : WebPart</span>
+<span class="hljs-comment">// webApp : WebPart / HttpHandler </span>
 <span class="hljs-keyword">let</span> webApp = createWebApp musicDb
-
-<span class="hljs-comment">// start the Suave server</span>
-startWebServer defaulConfig webApp
 </code></pre>
 <p>That is it, we have now exposed our <code>musicStore</code> implementation to the world as an Http web service. 
 We can now also write some unit tests for the implementation:</p>
@@ -490,7 +511,7 @@ We can now also write some unit tests for the implementation:</p>
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-06-28T08:46:07.627Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-28T08:46:21.170Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-06-28T16:53:36.645Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-28T16:54:48.367Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

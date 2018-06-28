@@ -443,29 +443,11 @@ Log.Logger &lt;-
     albums : Async&lt;list&lt;Album&gt;&gt;
 }
 </code></pre>
-<p>then you need to extend the definition to be able to read from the HttpContext, see <a href="request-context.html">Accessing Request Context</a>:</p>
-<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IMusicStore</span>&lt;<span class="hljs-title">&apos;context</span>&gt; {</span>
-    albums : &apos;context -&gt; Async&lt;list&lt;Albums&gt;&gt;
-}
-</code></pre>
-<p>with implementation:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicStore : IMusicStore&lt;HttpContext&gt; { 
-    albums : httpContext -&gt; async {
-        <span class="hljs-comment">// get the contexual logger</span>
-        <span class="hljs-keyword">let</span> logger = httpContext.Logger()
-        logger.Information(<span class="hljs-string">&quot;Retrieving albums from database&quot;</span>)
-        <span class="hljs-keyword">let!</span> albums = Database.getAllAlbums()
-        logger.Information(<span class="hljs-string">&quot;Read {AlbumCount} albums from database&quot;</span>, List.length albums)
-        <span class="hljs-keyword">return</span> albums
-    }
-}
-</code></pre>
-<h1 id="without-extending-protocol-definition">Without extending protocol definition</h1>
 <p>You can also gain access to the HttpContext from &quot;outside&quot; the remoting handler using the <code>context</code> helper function from Suave:</p>
 <pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = context &lt;| <span class="hljs-keyword">fun</span> httpContext -&gt;
+    <span class="hljs-keyword">let</span> logger = httpContext.Logger()
     <span class="hljs-keyword">let</span> musicStore : IMusicStore = {
         albums = async {
-            <span class="hljs-keyword">let</span> logger = httpContext.Logger()
             logger.Information(<span class="hljs-string">&quot;Retrieving albums from database&quot;</span>)
             <span class="hljs-keyword">let!</span> albums = Database.getAllAlbums()
             logger.Information(<span class="hljs-string">&quot;Read {AlbumCount} albums from database&quot;</span>,
@@ -483,7 +465,7 @@ Log.Logger &lt;-
 <span class="hljs-comment">// Wrap with Serilog adapter</span>
 <span class="hljs-keyword">let</span> webAppWithLogging = SerilogAdapter.Enable(webApp)
 
-<span class="hljs-comment">// etc...</span>
+startWebServer webAppWithLogging
 </code></pre>
 
                                 
@@ -528,7 +510,7 @@ Log.Logger &lt;-
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Logging","level":"4.6","depth":1,"next":{"title":"Troubleshooting","level":"5.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"4.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-05-14T19:13:06.792Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-28T08:46:21.170Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Logging","level":"4.6","depth":1,"next":{"title":"Troubleshooting","level":"5.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"4.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-06-28T16:46:46.019Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-28T16:54:48.367Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

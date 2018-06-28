@@ -71,33 +71,12 @@ type IMusicStore = {
     albums : Async<list<Album>>
 }
 ```
-then you need to extend the definition to be able to read from the HttpContext, see [Accessing Request Context](request-context.md):
-```fs
-type IMusicStore<'context> {
-    albums : 'context -> Async<list<Albums>>
-}
-```
-with implementation:
-```fs
-let musicStore : IMusicStore<HttpContext> { 
-    albums : httpContext -> async {
-        // get the contexual logger
-        let logger = httpContext.Logger()
-        logger.Information("Retrieving albums from database")
-        let! albums = Database.getAllAlbums()
-        logger.Information("Read {AlbumCount} albums from database", List.length albums)
-        return albums
-    }
-}
-```
-
-# Without extending protocol definition
 You can also gain access to the HttpContext from "outside" the remoting handler using the `context` helper function from Suave:
 ```fs
 let webApp = context <| fun httpContext ->
+    let logger = httpContext.Logger()
     let musicStore : IMusicStore = {
         albums = async {
-            let logger = httpContext.Logger()
             logger.Information("Retrieving albums from database")
             let! albums = Database.getAllAlbums()
             logger.Information("Read {AlbumCount} albums from database",
@@ -115,5 +94,5 @@ let webApp = context <| fun httpContext ->
 // Wrap with Serilog adapter
 let webAppWithLogging = SerilogAdapter.Enable(webApp)
 
-// etc...
+startWebServer webAppWithLogging
 ```
