@@ -9,12 +9,12 @@ You start off using the [SAFE template](https://github.com/SAFE-Stack/SAFE-templ
 ```bash
 # install the template
 dotnet new -i SAFE.Template
-# scaffold a new Fable/Suave project with Fable.Remoting
+# scaffold a new Fable/Saturn project with Fable.Remoting
 dotnet new SAFE --Remoting
 # Giraffe as your server
 dotnet new SAFE --Server giraffe --Remoting
-# Saturn on the server
-dotnet new SAFE --Server saturn --Remoting
+# Suave on the server
+dotnet new SAFE --Server suave --Remoting
 ``` 
 
 See `Fable.Remoting` in action demonstrated in the awesome talk at [Lambda Days 2018](https://www.youtube.com/watch?v=LBekZt8QB4w) by [Tomasz Heimowski](https://github.com/theimowski)
