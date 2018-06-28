@@ -36,7 +36,7 @@ module FableGiraffeAdapter =
                   ctx.Response.StatusCode <- 200
                   return! text res next ctx
                 | Choice2Of2 res ->
-                  ctx.Response.StatusCode <- 200
+                  ctx.Response.StatusCode <- 500
                   return! text res next ctx })
 
   type RemoteBuilder(implementation)=
