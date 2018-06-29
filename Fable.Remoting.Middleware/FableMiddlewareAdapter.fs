@@ -48,5 +48,5 @@ module FableMiddlewareAdapter =
         | None -> next.Invoke ctx
 
   type IApplicationBuilder with
-    member this.UseRemoting(impl,options) : IApplicationBuilder =
+    member this.UseRemoting(impl:#obj,options:RemotingOptions) : IApplicationBuilder =
         this.UseMiddleware<FableRemotingMiddleware>(impl, options)
