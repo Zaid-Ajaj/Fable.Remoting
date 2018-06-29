@@ -30,8 +30,5 @@ let app = application {
     router webApp
 }
 
-[<EntryPoint>]
-let main _ =
-    run app
-    0
+run app
 ```

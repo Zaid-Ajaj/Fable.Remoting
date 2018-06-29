@@ -12,7 +12,7 @@ type ErrorResult =
     | Ignore
     | Propagate of obj
 ```
-With `ErrorResult` you choose either to propagate a custom message back to the client or just ignore the error. You don't want the exception data (message or stacktrace) to be returned to the client. Either way, an exception will be thrown on the call-site from the client with a generic error message. If you chose to propagate a custom error message, it will be passed off to a global handler on the client, here is a full example on the server:
+With `ErrorResult` you choose either to propagate a custom message back to the client or just ignore the error. You don't want the exception data (message or stacktrace) to be returned to the client. Either way, an exception will be thrown on the call-site from the client with a generic error message. If you chose to propagate a custom error message, it will be passed off to a global handler on the client, here is a full example:
 ```fs
 open System
 
@@ -38,7 +38,7 @@ let webApp = remoting musicStore {
     use_error_handler errorHandler
 }
 ```
-On the client, you can intercept the propagated custom error messages, also using a global handler:
+On the client, you can intercept the propagated custom error messages, also using a global handler (in either ways, whether you chose to ignore or propage a custom error, an exception is thrown on the local call-site):
 ```fs
 // Assuming the type CustomError is shared with the client too
 

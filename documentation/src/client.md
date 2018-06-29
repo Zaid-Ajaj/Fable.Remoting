@@ -26,7 +26,7 @@ async {
 |> Async.StartImmediate
 ```
 ## Webpack dev server configuration
-When you are working with `webpack-dev-server` you want to use re-route the HTTP requests from your from the developement server to ypur actual backend, for that you use the following configuration, assuming you are running `webpack-dev-server` on port 8080 and your backend is running on port 8083. You would change this block:
+When you are working with `webpack-dev-server` in developement mode, you want to re-route the HTTP requests from your developement server to ypur actual backend, for that you must use the following configuration for webpack, assuming you are running `webpack-dev-server` on port 8080 and your backend is running on port 8083. You would change this block:
 
 ```js
 devServer: {
