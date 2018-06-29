@@ -3,7 +3,6 @@ namespace Fable.Remoting.Middleware
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
 
-open System
 open System.IO
 open Fable.Remoting.Server.SharedCE
 open FSharp.Control.Tasks
