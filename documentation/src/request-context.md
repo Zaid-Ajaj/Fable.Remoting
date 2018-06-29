@@ -113,4 +113,4 @@ Now send a request that includes the special header with special value. The requ
 
 No special header in the request? You will get the boring albums:
 
-![img](imgs/with-special-header.png)
+![img](imgs/without-special-header.png)
