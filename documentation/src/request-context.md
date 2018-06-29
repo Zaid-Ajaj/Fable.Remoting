@@ -22,9 +22,10 @@ type IMusicStore = {
 let createMusicStore (db: IMusicDb) (headers: Map<string, string>) : IMusicStore = 
     let musicStore = {
         bestAlbums = async {
-            match Map.tryFind "Special-Header" headers with 
+            // assuming lower case header keys
+            match Map.tryFind "special-header" headers with 
             | Some "Special-Value" -> return db.getAwesomeAlbums()
-            | None -> return db.getBoringAlbums()
+            | _ -> return db.getBoringAlbums()
         }
     }
 
@@ -40,7 +41,7 @@ let createWebApp (db: IMusicDb) : WebPart = context <| fun ctx ->
     // construct the music store 
     let musicStore = createMusicStore db headers 
     // expose the music store as a WebPart
-    remoting musicStore {()} 
+    remoting musicStore { use_route_builder (sprintf "/api/%s/%s") } 
 ```
 In Giraffe/Saturn, the `context` combinator isn't built-in but it is easy to define it:
 ```fs
@@ -55,7 +56,7 @@ let createWebApp (db: IMusicDb) : HttpHandler = context <| fun ctx ->
     // Here is where we access the context to extract the headers
     let headers = 
         [ for pair in ctx.Request.Headers do 
-            let key = pair.Key 
+            let key = pair.Key.ToLower() 
             let value = pair.Value.[0] 
             yield key, value ]
         |> Map.ofList 
@@ -80,18 +81,36 @@ let webApp = createWebApp musicDb
 That is it, we have now exposed our `musicStore` implementation to the world as an Http web service. 
 We can now also write some unit tests for the implementation:
 ```fs
-testCase "Boring albums are returned when there is no special header" <| fun () ->
+testCaseAsync "Boring albums are returned when there is no special header" <| async {
     let musicDbMock : IMusicDb = {
         new IMusicDb with 
           member self.getAwesomeAlbums() = [ { Id = 1; Name = "Metallica" } ]
           member self.getBoringAlbums() = [ ] 
     }  
 
-    let headers = Map.ofList [ "Content-Length", "70" ]
+    let headers = Map.ofList [ "content-length", "70" ]
     let musicStore = createMusicStore musicDbMock headers
     
-    musicStore.bestAlbums
-    |> Async.RunSynchronously 
+    let! albums = musicStore.bestAlbums
+    
+    albums
     |> List.length 
     |> fun n -> Expect.equal 0 n "List should be empty" 
+}
 ```
+### Take it for a spin
+First of all, implement an `IMusicDb` like this:
+```fs
+let musicDb : IMusicDb = { 
+    new IMusicDb with 
+       member self.getAwesomeAlbums() = [ { Id = 1; Name = "Awesome album" } ]
+       member self.getBoringAlbums() = [ { Id = 1; Name = "Boring album" } ] 
+}
+```
+Now send a request that includes the special header with special value. The request body is just `[]` because `bestAlbums` doesn't have any parameters:
+
+![img](imgs/with-special-header.png)
+
+No special header in the request? You will get the boring albums:
+
+![img](imgs/with-special-header.png)
