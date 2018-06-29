@@ -12,9 +12,10 @@ open FSharp.Control.Tasks
 module FableMiddlewareAdapter =
 
   type BuilderOptions<'ctx> with
-    member this.WithBuilder(b) = { this with Builder = b }
-    member this.WithLogger(l) = { this with Logger = Some l }
-    member this.WithErrorHandler(eh) = {this with ErrorHandler = Some eh}
+    member this.WithBuilder b = { this with Builder = b }
+    member this.WithLogger l = { this with Logger = Some l }
+    member this.WithErrorHandler eh = { this with ErrorHandler = Some eh }
+    member this.AddCustomHandler meth ch = { this with CustomHandlers = this.CustomHandlers |> Map.add meth ch }
 
   type RemotingOptions = BuilderOptions<HttpContext>
 
@@ -22,11 +23,13 @@ module FableMiddlewareAdapter =
                                implementation: obj,
                                options       : RemotingOptions) =
 
-      do if isNull next then raise (ArgumentNullException("next"))
+      do if isNull next then nullArg "next"
       let handleRequest routePath creator =
         routePath,
-        fun (ctx : HttpContext) (next:RequestDelegate) ->
-            if HttpMethods.IsPost ctx.Request.Method && ctx.Request.Path.Value = routePath then
+        fun (next:RequestDelegate) (ctx : HttpContext)  ->
+            if not (HttpMethods.IsPost ctx.Request.Method) || ctx.Request.Path.Value <> routePath then
+                next.Invoke ctx
+            else
                 let requestBodyStream = ctx.Request.Body
                 use streamReader = new StreamReader(requestBodyStream)
                 let json = streamReader.ReadToEnd()
@@ -38,14 +41,13 @@ module FableMiddlewareAdapter =
                           let! { Response.StatusCode = sc; Headers = headers; Body = body } = Async.StartAsTask res
                           headers |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v))
                           ctx.Response.StatusCode <- sc
-                          return! ctx.Response.WriteAsync(body)} :> Threading.Tasks.Task
-            else
-                next.Invoke ctx
-      let map = RemoteBuilderBase(implementation,handleRequest,Map.ofList).Run(options)
+                          return! ctx.Response.WriteAsync(body)} :> _
+      let map = RemoteBuilderBase(implementation, handleRequest, Map.ofList).Run(options)
       member __.Invoke (ctx : HttpContext) =
         match map |> Map.tryFind (ctx.Request.Path.Value) with
-        | Some func -> func ctx next
+        | Some func -> func next ctx
         | None -> next.Invoke ctx
+
 
   type IApplicationBuilder with
     member this.UseRemoting(impl:#obj,options:RemotingOptions) : IApplicationBuilder =
