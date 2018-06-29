@@ -400,9 +400,10 @@
 <span class="hljs-keyword">let</span> createMusicStore (db: IMusicDb) (headers: Map&lt;string, string&gt;) : IMusicStore = 
     <span class="hljs-keyword">let</span> musicStore = {
         bestAlbums = async {
-            <span class="hljs-keyword">match</span> Map.tryFind <span class="hljs-string">&quot;Special-Header&quot;</span> headers <span class="hljs-keyword">with</span> 
+            <span class="hljs-comment">// assuming lower case header keys</span>
+            <span class="hljs-keyword">match</span> Map.tryFind <span class="hljs-string">&quot;special-header&quot;</span> headers <span class="hljs-keyword">with</span> 
             | Some <span class="hljs-string">&quot;Special-Value&quot;</span> -&gt; <span class="hljs-keyword">return</span> db.getAwesomeAlbums()
-            | None -&gt; <span class="hljs-keyword">return</span> db.getBoringAlbums()
+            | _ -&gt; <span class="hljs-keyword">return</span> db.getBoringAlbums()
         }
     }
 
@@ -416,7 +417,7 @@
     <span class="hljs-comment">// construct the music store </span>
     <span class="hljs-keyword">let</span> musicStore = createMusicStore db headers 
     <span class="hljs-comment">// expose the music store as a WebPart</span>
-    remoting musicStore {()}
+    remoting musicStore { use_route_builder (sprintf <span class="hljs-string">&quot;/api/%s/%s&quot;</span>) }
 </code></pre>
 <p>In Giraffe/Saturn, the <code>context</code> combinator isn&apos;t built-in but it is easy to define it:</p>
 <pre><code class="lang-fs"><span class="hljs-keyword">let</span> context (f: HttpContext -&gt; HttpHandler) : HttpHandler =
@@ -430,7 +431,7 @@
     <span class="hljs-comment">// Here is where we access the context to extract the headers</span>
     <span class="hljs-keyword">let</span> headers = 
         [ <span class="hljs-keyword">for</span> pair <span class="hljs-keyword">in</span> ctx.Request.Headers <span class="hljs-keyword">do</span> 
-            <span class="hljs-keyword">let</span> key = pair.Key 
+            <span class="hljs-keyword">let</span> key = pair.Key.ToLower() 
             <span class="hljs-keyword">let</span> value = pair.Value.[<span class="hljs-number">0</span>] 
             <span class="hljs-keyword">yield</span> key, value ]
         |&gt; Map.ofList 
@@ -453,21 +454,35 @@
 </code></pre>
 <p>That is it, we have now exposed our <code>musicStore</code> implementation to the world as an Http web service. 
 We can now also write some unit tests for the implementation:</p>
-<pre><code class="lang-fs">testCase <span class="hljs-string">&quot;Boring albums are returned when there is no special header&quot;</span> &lt;| <span class="hljs-keyword">fun</span> () -&gt;
+<pre><code class="lang-fs">testCaseAsync <span class="hljs-string">&quot;Boring albums are returned when there is no special header&quot;</span> &lt;| async {
     <span class="hljs-keyword">let</span> musicDbMock : IMusicDb = {
         <span class="hljs-keyword">new</span> IMusicDb <span class="hljs-keyword">with</span> 
           <span class="hljs-keyword">member</span> self.getAwesomeAlbums() = [ { Id = <span class="hljs-number">1</span>; Name = <span class="hljs-string">&quot;Metallica&quot;</span> } ]
           <span class="hljs-keyword">member</span> self.getBoringAlbums() = [ ] 
     }  
 
-    <span class="hljs-keyword">let</span> headers = Map.ofList [ <span class="hljs-string">&quot;Content-Length&quot;</span>, <span class="hljs-string">&quot;70&quot;</span> ]
+    <span class="hljs-keyword">let</span> headers = Map.ofList [ <span class="hljs-string">&quot;content-length&quot;</span>, <span class="hljs-string">&quot;70&quot;</span> ]
     <span class="hljs-keyword">let</span> musicStore = createMusicStore musicDbMock headers
 
-    musicStore.bestAlbums
-    |&gt; Async.RunSynchronously 
+    <span class="hljs-keyword">let!</span> albums = musicStore.bestAlbums
+
+    albums
     |&gt; List.length 
-    |&gt; <span class="hljs-keyword">fun</span> n -&gt; Expect.equal <span class="hljs-number">0</span> n <span class="hljs-string">&quot;List should be empty&quot;</span>
+    |&gt; <span class="hljs-keyword">fun</span> n -&gt; Expect.equal <span class="hljs-number">0</span> n <span class="hljs-string">&quot;List should be empty&quot;</span> 
+}
 </code></pre>
+<h3 id="take-it-for-a-spin">Take it for a spin</h3>
+<p>First of all, implement an <code>IMusicDb</code> like this:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicDb : IMusicDb = { 
+    <span class="hljs-keyword">new</span> IMusicDb <span class="hljs-keyword">with</span> 
+       <span class="hljs-keyword">member</span> self.getAwesomeAlbums() = [ { Id = <span class="hljs-number">1</span>; Name = <span class="hljs-string">&quot;Awesome album&quot;</span> } ]
+       <span class="hljs-keyword">member</span> self.getBoringAlbums() = [ { Id = <span class="hljs-number">1</span>; Name = <span class="hljs-string">&quot;Boring album&quot;</span> } ] 
+}
+</code></pre>
+<p>Now send a request that includes the special header with special value. The request body is just <code>[]</code> because <code>bestAlbums</code> doesn&apos;t have any parameters:</p>
+<p><img src="imgs/with-special-header.png" alt="img"></p>
+<p>No special header in the request? You will get the boring albums:</p>
+<p><img src="imgs/with-special-header.png" alt="img"></p>
 
                                 
                                 </section>
@@ -511,7 +526,7 @@ We can now also write some unit tests for the implementation:</p>
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-06-28T16:53:36.645Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-28T17:24:04.675Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-06-29T04:00:26.297Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:01:25.107Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
