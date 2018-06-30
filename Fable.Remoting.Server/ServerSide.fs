@@ -70,6 +70,7 @@ module ServerSide =
          }
 [<AutoOpen>]
 module SharedCE =
+    open FSharp.Reflection
     type RouteInfo<'ctx> = {
         path: string
         methodName: string
@@ -86,6 +87,7 @@ module SharedCE =
         { error: 'a;
           ignored: bool;
           handled: bool; }
+
     ///Settings for overriding the response
     type ResponseOverride = {
         StatusCode : int option
@@ -110,7 +112,11 @@ module SharedCE =
         ///Defines the response body (prevents calling the original async workflow)
         member this.withBody(body) =
             {this with Body = Some body}
-
+    type Response = {
+        StatusCode : int
+        Headers: Map<string,string>
+        Body: string
+    }
     type BuilderOptions<'ctx> = {
         Logger : (string -> unit) option
         ErrorHandler: ErrorHandler<'ctx> option
@@ -120,20 +126,20 @@ module SharedCE =
     with
         static member Empty : BuilderOptions<'ctx> =
             {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
-    [<AbstractClass>]
-    type RemoteBuilderBase<'ctx,'handler>() =
+
+    type RemoteBuilderBase<'ctx,'endpoint,'handler>(implementation, endpoints : (string -> ('ctx -> string -> Async<Response> option) -> 'endpoint), joiner : 'endpoint list -> 'handler) =
         let fableConverter = FableJsonConverter()
         let writeLn text (sb: StringBuilder)  = sb.AppendLine(text)
         let toLogger logf = string >> logf
-        let rec typePrinter (valueType: System.Type) = 
-            let simplifyGeneric = function 
+        let rec typePrinter (valueType: System.Type) =
+            let simplifyGeneric = function
                 | "Microsoft.FSharp.Core.FSharpOption" -> "Option"
                 | "Microsoft.FSharp.Collections.FSharpList" -> "FSharpList"
                 | "Microsoft.FSharp.Core.FSharpResult" -> "Result"
                 | "Microsoft.FSharp.Collections.FSharpMap" -> "Map"
                 | otherwise -> otherwise
 
-            match valueType.FullName.Replace("+", ".") with 
+            match valueType.FullName.Replace("+", ".") with
             | "System.String" -> "string"
             | "System.Boolean" -> "bool"
             | "System.Int32" -> "int"
@@ -142,15 +148,15 @@ module SharedCE =
             | "Microsoft.FSharp.Core.Unit" -> "unit"
             | "Suave.Http.HttpContext" -> "HttpContext"
             | "Microsoft.AspNetCore.Http.HttpContext" -> "HttpContext"
-            | other -> 
-                match valueType.GetGenericArguments() with 
-                | [|  |] -> other 
-                | genericTypeArguments -> 
+            | other ->
+                match valueType.GetGenericArguments() with
+                | [|  |] -> other
+                | genericTypeArguments ->
                     let typeParts = other.Split('`')
                     let typeName = typeParts.[0]
                     Array.map typePrinter genericTypeArguments
                     |> String.concat ", "
-                    |> sprintf "%s<%s>" (simplifyGeneric typeName) 
+                    |> sprintf "%s<%s>" (simplifyGeneric typeName)
 
 
         let logDeserializationTypes logger (text: unit -> string) (inputTypes: System.Type[]) =
@@ -165,15 +171,15 @@ module SharedCE =
                 |> toLogger logf)
 
         /// Deserialize a json string using FableConverter
-        member __.Deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
+        let deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
-            // ignore the extra null arguments sent by client 
+            // ignore the extra null arguments sent by client
             let args = Seq.zip (JArray.Parse json) inputTypes
-            // Delayed logging: only log serialized data when a logger is configured 
+            // Delayed logging: only log serialized data when a logger is configured
             logDeserializationTypes logger (fun () -> JsonConvert.SerializeObject(Seq.map fst args, fableConverter)) inputTypes
-            // create a converter function that converts an array 
-            // of JSON arguments into a list of concrete .NET types 
+            // create a converter function that converts an array
+            // of JSON arguments into a list of concrete .NET types
             let converter =
                 match genericTypes with
                 |[|a|] -> fun (o:JToken,t:System.Type) ->
@@ -181,13 +187,13 @@ module SharedCE =
                        box context
                     else o.ToObject(t,serializer)
                 |_  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)
-            
+
             args
-            |> Seq.toArray 
+            |> Seq.toArray
             |> Array.map converter
 
         /// Serialize the value into a json string using FableConverter
-        member __.Json {Logger=logger} value =
+        let serialize {Logger=logger} value =
           let result = JsonConvert.SerializeObject(value, fableConverter)
           logger |> Option.iter(fun logf ->
               StringBuilder()
@@ -196,7 +202,71 @@ module SharedCE =
               |> toLogger logf)
           result
 
-        abstract member Run : BuilderOptions<'ctx> -> 'handler
+        member __.Run(state) =
+            let sb = StringBuilder()
+            let t = implementation.GetType()
+            let typeName =
+                match t.GenericTypeArguments with
+                |[||] -> t.Name
+                |[|_|] -> t.Name.[0..t.Name.Length-3]
+                |_ -> failwith "Only one generic type can be injected"
+            sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
+            implementation.GetType()
+                |> FSharpType.GetRecordFields
+                |> Seq.map (fun propInfo ->
+                    let methodName = propInfo.Name
+                    let fullPath = state.Builder typeName methodName
+                    let inputType = ServerSide.getInputType methodName implementation
+                    let hasArg =
+                        match inputType with
+                        |[|inputType;_|] when inputType.FullName = "Microsoft.FSharp.Core.Unit" -> false
+                        |_ -> true
+                    let result =
+                        let n args = ServerSide.dynamicallyInvoke methodName implementation args |> Async.Catch
+                        fun ctx s ->
+                            let {Abort = abort; Headers = headers ; StatusCode = sc ; Body = body } =
+                                state.CustomHandlers |> Map.tryFind methodName
+                                |> Option.map (fun ch -> ch ctx) |> Option.flatten
+                                |> Option.defaultValue ResponseOverride.Default
+                            if abort then None
+                            else
+                             Some <|
+                              async {
+                                match body with
+                                |Some body ->
+                                    return { StatusCode = sc |> Option.defaultValue 200; Body = body; Headers = headers |> Option.defaultValue Map.empty}
+                                |None ->
+                                    let! r = n (if hasArg then deserialize state s inputType ctx t.GenericTypeArguments else [|null|])
+                                    match r with
+                                    | Choice1Of2 r -> return {StatusCode = sc |> Option.defaultValue 200; Body = (serialize state r); Headers = headers |> Option.defaultValue Map.empty}
+                                    | Choice2Of2 ex ->
+                                        Option.iter (fun logf -> logf (sprintf "Server error at %s" fullPath)) state.Logger
+                                        let routeInfo : RouteInfo<'ctx> =
+                                           {  path = fullPath
+                                              methodName = methodName
+                                              httpContext = ctx  }
+                                        match state.ErrorHandler with
+                                        | Some handler ->
+                                           let result = handler ex routeInfo
+                                           match result with
+                                           // Server error ignored by error handler
+                                           | Ignore ->
+                                               let result = { error = "Server error: ignored"; ignored = true; handled = true }
+                                               return { StatusCode = sc |> Option.defaultValue 500; Body = serialize state result; Headers = headers |> Option.defaultValue Map.empty}
+                                           // Server error mapped into some other `value` by error handler
+                                           | Propagate value ->
+                                               let result = { error = value; ignored = false; handled = true }
+                                               return {StatusCode = sc |> Option.defaultValue 500; Body = serialize state result; Headers = headers |> Option.defaultValue Map.empty}
+                                        // There no server handler
+                                        | None ->
+                                           let result = { error = "Server error: not handled"; ignored = true; handled = false }
+                                           return {StatusCode = sc |> Option.defaultValue 500; Body = serialize state result; Headers = headers |> Option.defaultValue Map.empty}}
+                    sb.AppendLine(sprintf "Record field %s maps to route %s" methodName fullPath) |> ignore
+                    endpoints fullPath result)
+                |> List.ofSeq
+                |> fun routes ->
+                    state.Logger |> Option.iter (fun logf -> string sb |> logf)
+                    joiner routes
         member __.Zero() =
             BuilderOptions<'ctx>.Empty
         member __.Yield(_) =
@@ -212,13 +282,13 @@ module SharedCE =
         /// Defines a `logger : (string -> unit)`
         [<CustomOperation("use_logger")>]
         member __.UseLogger(state,logger)=
-            {state with Logger=Some logger}        
+            {state with Logger=Some logger}
         /// Defines an error `handler : ErrorHandler`
         [<CustomOperation("use_error_handler")>]
         member __.UseErrorHandler(state,errorHandler)=
-            {state with ErrorHandler=Some errorHandler}        
-        [<CustomOperation("use_custom_handler_for")>]
+            {state with ErrorHandler=Some errorHandler}
         /// Defines a custom handler for a method that can override the response returning some `ResponseOverride`
+        [<CustomOperation("use_custom_handler_for")>]
         member __.UseCustomHandler(state,method,handler) =
             {state with CustomHandlers = state.CustomHandlers |> Map.add method handler }
 
