@@ -26,7 +26,7 @@ module FableMiddlewareAdapter =
       let handleRequest routePath creator =
         routePath,
         fun (next:RequestDelegate) (ctx : HttpContext)  ->
-            if not (HttpMethods.IsPost ctx.Request.Method) || ctx.Request.Path.Value <> routePath then
+            if not (HttpMethods.IsPost ctx.Request.Method) then
                 next.Invoke ctx
             else
                 let requestBodyStream = ctx.Request.Body
