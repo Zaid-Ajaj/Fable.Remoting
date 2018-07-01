@@ -122,10 +122,11 @@ module SharedCE =
         ErrorHandler: ErrorHandler<'ctx> option
         Builder: string -> string -> string
         CustomHandlers : Map<string, 'ctx -> ResponseOverride option>
+        DependencyInjector : ('ctx -> System.Type -> obj) option
     }
     with
         static member Empty : BuilderOptions<'ctx> =
-            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty}
+            {Logger = None; ErrorHandler = None; Builder = sprintf "/%s/%s"; CustomHandlers = Map.empty; DependencyInjector = None}
 
     type RemoteBuilderBase<'ctx,'endpoint,'handler>(implementation, endpoints : (string -> ('ctx -> string -> Async<Response> option) -> 'endpoint), joiner : 'endpoint list -> 'handler) =
         let fableConverter = FableJsonConverter()
@@ -171,7 +172,7 @@ module SharedCE =
                 |> toLogger logf)
 
         /// Deserialize a json string using FableConverter
-        let deserialize { Logger = logger } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
+        let deserialize { Logger = logger; DependencyInjector = di } (json: string) (inputTypes: System.Type[]) (context:'ctx) (genericTypes:System.Type[]) =
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
             // ignore the extra null arguments sent by client
@@ -182,12 +183,17 @@ module SharedCE =
             // of JSON arguments into a list of concrete .NET types
             let converter =
                 match genericTypes with
-                |[|a|] -> fun (o:JToken,t:System.Type) ->
-                    if a.GUID = t.GUID && a.GUID = typeof<'ctx>.GUID then
+                | [||]  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)
+                | injected -> fun (o:JToken,t:System.Type) ->
+                    if t.GUID = typeof<'ctx>.GUID then
                        box context
+                    elif injected |> Array.exists ((=) t) then
+                       match di with
+                        | Some injector ->
+                            injector context t
+                        | None ->
+                            o.ToObject(t,serializer)
                     else o.ToObject(t,serializer)
-                |_  -> fun (o:JToken,t:System.Type) -> o.ToObject(t,serializer)
-
             args
             |> Seq.toArray
             |> Array.map converter
@@ -208,8 +214,7 @@ module SharedCE =
             let typeName =
                 match t.GenericTypeArguments with
                 |[||] -> t.Name
-                |[|_|] -> t.Name.[0..t.Name.Length-3]
-                |_ -> failwith "Only one generic type can be injected"
+                |_ -> t.Name.[0..t.Name.LastIndexOf("`")-1]
             sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
             implementation.GetType()
                 |> FSharpType.GetRecordFields

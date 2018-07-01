@@ -41,7 +41,7 @@ module FableMiddlewareAdapter =
                           headers |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v))
                           ctx.Response.StatusCode <- sc
                           return! ctx.Response.WriteAsync(body)} :> _
-      let map = RemoteBuilderBase(implementation, handleRequest, Map.ofList).Run(options)
+      let map = RemoteBuilderBase(implementation, handleRequest, Map.ofList).Run({options with DependencyInjector = Some (fun ctx t -> ctx.RequestServices.GetService(t))})
       member __.Invoke (ctx : HttpContext) =
         match map |> Map.tryFind (ctx.Request.Path.Value) with
         | Some func -> func next ctx
