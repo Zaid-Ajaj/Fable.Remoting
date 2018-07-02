@@ -214,7 +214,7 @@ module SharedCE =
             let typeName =
                 match t.GenericTypeArguments with
                 |[||] -> t.Name
-                |_ -> t.Name.[0..t.Name.LastIndexOf("`")-1]
+                |_ -> t.Name.[0..t.Name.LastIndexOf("`")-2]
             sb.AppendLine(sprintf "Building Routes for %s" typeName) |> ignore
             implementation.GetType()
                 |> FSharpType.GetRecordFields
