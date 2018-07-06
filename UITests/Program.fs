@@ -15,6 +15,7 @@ open Suave.Filters
 open SharedTypes
 open ServerImpl
 open OpenQA.Selenium
+open OpenQA.Selenium.Chrome
 
 let fableWebPart = remoting server {
     use_route_builder routeBuilder
@@ -59,12 +60,13 @@ let rec findRoot dir =
 let main argv =
     let cwd = Directory.GetCurrentDirectory()
     let root = findRoot cwd 
-
+    let rnd = new Random()
+    let port = rnd.Next(5000, 9000) 
     let cts = new CancellationTokenSource() 
     let suaveConfig = 
         { defaultConfig with
             homeFolder = Some (root </> "Fable.Remoting.IntegrationTests" </> "client-dist")
-            bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" 8080 ]
+            bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" port ]
             bufferSize = 2048
             cancellationToken = cts.Token }
 
@@ -92,11 +94,16 @@ let main argv =
 
     let driversDir = root </> "UITests" </> "drivers"
     let options = FirefoxOptions()
-    options.AddArgument("--headless")
-    
+    match argv with 
+    | [| "--headless" |] -> options.AddArgument("--headless")
+    | _ -> () 
+
+
     printfn "Starting FireFox Driver"
     use driver = new FirefoxDriver(driversDir, options)
-    driver.Url <- "http://localhost:8080/index.html"
+    
+
+    driver.Url <- sprintf "http://localhost:%d/index.html" port
     
     let mutable testsFinishedRunning = false
 

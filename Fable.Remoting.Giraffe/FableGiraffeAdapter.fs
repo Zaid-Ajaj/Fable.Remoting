@@ -5,7 +5,11 @@ open Microsoft.AspNetCore.Http
 open Giraffe
 open System.IO
 open Fable.Remoting.Server.SharedCE
-open Fable.Remoting.Server
+
+[<AutoOpen>]
+module Extensions = 
+    type HttpContext with 
+        member self.GetService<'t>() = self.RequestServices.GetService(typeof<'t>) :?> 't 
 
 [<AutoOpen>]
 module FableGiraffeAdapter =
@@ -13,10 +17,10 @@ module FableGiraffeAdapter =
   let mutable logger : (string -> unit) option = None
   /// Legacy ErrorHandler for backward compatibility
 
-  let mutable private onErrorHandler : ErrorHandler<HttpContext> option = None
+  let mutable private onErrorHandler : Fable.Remoting.Server.ErrorHandler<HttpContext> option = None
 
   /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
-  let onError (handler: ErrorHandler<HttpContext>) =
+  let onError (handler: Fable.Remoting.Server.ErrorHandler<HttpContext>) =
         onErrorHandler <- Some handler
 
   let handleRequest routePath creator =

@@ -178,6 +178,20 @@ Target "IntegrationTests" <| fun _ ->
     run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
     run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
     run "UITests" "dotnet" "restore --no-cache"
+    run "UITests" "dotnet" "run --headless"
+
+Target "IntegrationTestsLive" <| fun _ ->
+    clean (getPath "Server")
+    clean (getPath "Json")
+    clean (getPath "Suave")
+    clean (getPath "UITests")
+    clean (getPath "IntegrationTests" </> "Server.Suave")
+    clean (getPath "IntegrationTests" </> "Client")
+
+    run (getPath "IntegrationTests") "npm" "install"
+    run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
+    run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
+    run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run"
 
 RunTargetOrDefault "BuildRunAllTests"

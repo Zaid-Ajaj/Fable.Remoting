@@ -14,8 +14,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Reflection.fs" />
-    <Compile Include="ServerSide.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="DynamicRecord.fs" />
+    <Compile Include="Remoting.fs" />
   </ItemGroup>
 
   <ItemGroup>    

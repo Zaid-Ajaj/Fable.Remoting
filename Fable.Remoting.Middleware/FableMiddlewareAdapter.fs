@@ -4,7 +4,7 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
 
 open System.IO
-open Fable.Remoting.Server.SharedCE
+open Fable.Remoting.Server
 open FSharp.Control.Tasks
 
 [<AutoOpen>]
