@@ -1,23 +1,41 @@
-namespace Fable.Remoting.Giraffe
+namespace Fable.Remoting.Middleware
 
+open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
 
-open Giraffe
 open System.IO
-open System.Threading.Tasks
+open System.Threading.Tasks 
 open Fable.Remoting.Server
+open FSharp.Control.Tasks
 
-[<AutoOpen>]
-module Extensions = 
-    type HttpContext with 
-        member self.GetService<'t>() = self.RequestServices.GetService(typeof<'t>) :?> 't 
+type HttpFuncResult = Task<HttpContext option>
+type HttpFunc = HttpContext -> HttpFuncResult
+type HttpHandler = HttpFunc -> HttpFunc
 
-module GiraffeUtil = 
+
+/// The parts from Giraffe needed to simplify the middleware implementation 
+module FromGiraffe = 
+    let writeStringAsync (input: string) (ctx: HttpContext) = 
+        task {
+            let bytes = System.Text.Encoding.UTF8.GetBytes(input)
+            do! ctx.Response.Body.WriteAsync(bytes, 0, bytes.Length)
+            return Some ctx
+        }
+
+    let compose (handler1 : HttpHandler) (handler2 : HttpHandler) : HttpHandler =
+        fun (final : HttpFunc) ->
+            let func = final |> handler2 |> handler1
+            fun (ctx : HttpContext) ->
+                match ctx.Response.HasStarted with
+                | true  -> final ctx
+                | false -> func ctx
+
+    let (>=>) = compose
     let setResponseBody (response: obj) : HttpHandler = 
         fun (next : HttpFunc) (ctx : HttpContext) -> 
             task {
                 let responseBody = DynamicRecord.serialize response 
-                return! text responseBody next ctx 
+                return! writeStringAsync responseBody ctx
             }
 
     let setStatusCode (code: int) : HttpHandler = 
@@ -44,7 +62,7 @@ module GiraffeUtil =
        >=> setStatusCode 500 
        >=> setContentType "application/json; charset=utf-8"
     
-    /// Used to halt the forwarding of the Http context
+    /// Used to forward of the Http context
     let halt : HttpHandler = 
       fun (next : HttpFunc) (ctx : HttpContext) ->
         task { return None }
@@ -99,20 +117,35 @@ module GiraffeUtil =
                 return! halt next ctx
       }
 
-module Remoting =
 
-  /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
-  let fromContext (f: HttpContext -> 't) options = 
-    { options with Implementation = FromContext f } 
 
-  /// Builds a WebPart from the given implementation and options 
-  let buildHttpHanlder (options: RemotingOptions<HttpContext, 't>) = 
-    match options.Implementation with 
-    | Empty -> GiraffeUtil.halt
-    | StaticValue impl -> GiraffeUtil.buildFromImplementation impl options 
-    | FromContext createImplementationFrom -> 
-        fun (next : HttpFunc) (ctx : HttpContext) -> 
-            task {
-              let impl = createImplementationFrom ctx
-              return! GiraffeUtil.buildFromImplementation impl options next ctx
-            } 
+
+[<AutoOpen>]
+module FableMiddlewareAdapter =
+
+
+  type FableRemotingMiddleware(next          : RequestDelegate,
+                               options       : RemotingOptions<HttpContext, 't>) =
+      
+
+      do if isNull next then nullArg "next"
+
+      member __.Invoke (ctx : HttpContext) =
+        let handler = 
+            match options.Implementation with 
+            | Empty -> FromGiraffe.halt  
+            | StaticValue impl -> FromGiraffe.buildFromImplementation impl options  
+            | FromContext createImplementation -> 
+                let impl = createImplementation ctx 
+                FromGiraffe.buildFromImplementation impl options
+
+        let func : HttpFunc = handler (Some >> Task.FromResult)
+
+        task {
+            let! result = func ctx
+            if (result.IsNone) then return! next.Invoke ctx
+        }
+
+  type IApplicationBuilder with
+    member this.UseRemoting(options:RemotingOptions<HttpContext, 't>) : IApplicationBuilder =
+        this.UseMiddleware<FableRemotingMiddleware>(options)
