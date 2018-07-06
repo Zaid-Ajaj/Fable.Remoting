@@ -7,7 +7,7 @@
 
 Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable and .NET Client Apps. This is a library that abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
 
-The library everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.net core middleware. On the client you can Fable or .NET.
+The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.net core middleware. On the client you can Fable or .NET.
 
 ## Quick Start
 Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
