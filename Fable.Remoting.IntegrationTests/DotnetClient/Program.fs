@@ -14,38 +14,16 @@ open Suave.Filters
 open ServerImpl
 open System.Threading
 
-let fableWebPart = remoting server {
-    use_route_builder routeBuilder
-    use_error_handler (fun ex routeInfo ->
-      printfn "Error at: %A" routeInfo
-      Propagate ex.Message)
-    use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
-    use_custom_handler_for "customStatusCode" (fun _ -> ResponseOverride.Default.withStatusCode 204 |> Some)
-}
-
-let isVersion v (ctx:HttpContext) =
-  if ctx.request.headers |> List.contains ("version",v) then
-    None
-  else
-    Some {ResponseOverride.Default with Abort = true}
-let versionTestWebPart =
-  remoting versionTestServer {
-    use_route_builder versionTestBuilder
-    use_custom_handler_for "v4" (isVersion "4")
-    use_custom_handler_for "v3" (isVersion "3")
-    use_custom_handler_for "v2" (isVersion "2")
-  }
-
-let contextTestWebApp =
-    remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
-        use_route_builder routeBuilder
-    }
+let fableWebPart = 
+    Remoting.createApi()
+    |> Remoting.fromValue server
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
+    |> Remoting.buildWebPart
 
 let webApp = 
   choose [ GET >=> browseHome
-           fableWebPart 
-           versionTestWebPart
-           contextTestWebApp  ]
+           fableWebPart ]
 
 let cts = new CancellationTokenSource() 
 let suaveConfig = 
@@ -277,11 +255,6 @@ let dotnetClientTests =
             Expect.equal 12 sndResult "Result is correct"
         }
 
-        testCaseAsync "IServer.overriddenFunction" <| async {
-            let! result = proxy.call <@ fun server -> server.overriddenFunction "hello" @>
-            Expect.equal 42 result "Overridden functions returns correctly"
-        }
-
         testCaseAsync "IServer.pureAsync" <| async {
             let! result = proxy.call <@ fun server -> server.pureAsync @>
             Expect.equal 42 result "Pure async without parameters works"
@@ -304,13 +277,6 @@ let dotnetClientTests =
             let! output = proxy.call <@ fun server -> server.tuplesAndLists (inputDict, inputStrings) @>
             let expected = Map.ofList [ "hello", 5; "there!", 6 ] 
             Expect.equal output expected "Echoed map is correct"
-        }
-
-        testCaseAsync "IContextTest.test" <| async {
-            let routes = sprintf "http://localhost:9090/api/%s/%s" 
-            let contextProxy = Proxy.create<IContextTest<unit>> routes
-            let! result = contextProxy.call <@ fun server -> server.callWithCtx() @>
-            Expect.equal result "/api/IContextTest/callWithCtx" "Result from contextual proxy is correct"
         }
     ]
 
