@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="FableGiraffeAdapterTests.fs" />
+    <Compile Include="MiddlewareTests.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
   
@@ -15,6 +16,8 @@
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Giraffe\Fable.Remoting.Giraffe.fsproj" />
+    <ProjectReference Include="..\Fable.Remoting.AspNetCore\Fable.Remoting.AspNetCore.fsproj" />
+    <ProjectReference Include="..\Fable.Remoting.DotnetClient\Fable.Remoting.DotnetClient.fsproj" />
   </ItemGroup>
   
   <Import Project="..\.paket\Paket.Restore.targets" />

@@ -36,6 +36,7 @@ let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 let DotnetClient = getPath "DotnetClient"
+let AspNetCore = getPath "AspNetCore"
 let clean projectPath =
     [ projectPath </> "bin"
       projectPath </> "obj" ] |> CleanDirs
@@ -61,6 +62,7 @@ Target "PublishReflection" (publish Reflection)
 Target "PublishDotnetClient" (publish DotnetClient)
 Target "PublishSuave" (publish Suave)
 Target "PublishGiraffe" (publish Giraffe)
+Target "PublishAspnetCore" (publish AspNetCore)
 
 Target "CleanGiraffe" <| fun _ ->
     clean (getPath "Giraffe")

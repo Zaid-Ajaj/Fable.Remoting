@@ -1,4 +1,4 @@
-namespace Fable.Remoting.Middleware
+namespace Fable.Remoting.AspNetCore
 
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
@@ -14,14 +14,13 @@ type HttpHandler = HttpFunc -> HttpFunc
 
 
 /// The parts from Giraffe needed to simplify the middleware implementation 
-module FromGiraffe = 
+module internal FromGiraffe = 
     let writeStringAsync (input: string) (ctx: HttpContext) = 
         task {
             let bytes = System.Text.Encoding.UTF8.GetBytes(input)
             do! ctx.Response.Body.WriteAsync(bytes, 0, bytes.Length)
             return Some ctx
         }
-
     let compose (handler1 : HttpHandler) (handler2 : HttpHandler) : HttpHandler =
         fun (final : HttpFunc) ->
             let func = final |> handler2 |> handler1
@@ -29,7 +28,6 @@ module FromGiraffe =
                 match ctx.Response.HasStarted with
                 | true  -> final ctx
                 | false -> func ctx
-
     let (>=>) = compose
     let setResponseBody (response: obj) : HttpHandler = 
         fun (next : HttpFunc) (ctx : HttpContext) -> 
@@ -37,14 +35,8 @@ module FromGiraffe =
                 let responseBody = DynamicRecord.serialize response 
                 return! writeStringAsync responseBody ctx
             }
-
-    let setStatusCode (code: int) : HttpHandler = 
-        fun (next : HttpFunc) (ctx : HttpContext) -> 
-            task {
-                ctx.Response.StatusCode <- code 
-                return Some ctx 
-            }
-
+    
+    /// Sets the content type of the Http response
     let setContentType (contentType: string) : HttpHandler = 
         fun (next : HttpFunc) (ctx : HttpContext) -> 
             task {
@@ -52,15 +44,10 @@ module FromGiraffe =
                 return Some ctx 
             }
 
-    let success value : HttpHandler = 
+    /// Sets the body of the response to type of JSON
+    let setBody value : HttpHandler = 
         setResponseBody value 
-        >=> setStatusCode 200 
         >=> setContentType "application/json; charset=utf-8"
-
-    let failure error = 
-       setResponseBody error
-       >=> setStatusCode 500 
-       >=> setContentType "application/json; charset=utf-8"
     
     /// Used to forward of the Http context
     let halt : HttpHandler = 
@@ -71,11 +58,11 @@ module FromGiraffe =
       fun (next : HttpFunc) (ctx : HttpContext) -> 
         task {
             match options.ErrorHandler with 
-            | None -> return! failure (Errors.unhandled routeInfo.methodName) next ctx 
+            | None -> return! setBody (Errors.unhandled routeInfo.methodName) next ctx 
             | Some errorHandler -> 
                 match errorHandler ex routeInfo with 
-                | Ignore -> return! failure (Errors.ignored routeInfo.methodName) next ctx  
-                | Propagate error -> return! failure (Errors.propagated error) next ctx  
+                | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) next ctx  
+                | Propagate error -> return! setBody (Errors.propagated error) next ctx  
         }
 
     let runFunction func impl options args : HttpHandler = 
@@ -83,10 +70,13 @@ module FromGiraffe =
         task {
             let! functionResult = Async.StartAsTask (Async.Catch (DynamicRecord.invokeAsync func impl args)) 
             match functionResult with
-            | Choice.Choice1Of2 output -> return! success output next ctx 
+            | Choice.Choice1Of2 output -> 
+                ctx.Response.StatusCode <- 200
+                return! setBody output next ctx 
             | Choice.Choice2Of2 ex -> 
-              let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
-              return! fail ex routeInfo options next ctx 
+               ctx.Response.StatusCode <- 500
+               let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
+               return! fail ex routeInfo options next ctx 
         }
 
     let buildFromImplementation impl options = 
@@ -105,7 +95,7 @@ module FromGiraffe =
                 return! runFunction func impl options [|  |] next ctx  
             | "GET", SingleArgument(input, _) when input = typeof<unit> ->
                 return! runFunction func impl options [|  |] next ctx    
-            | "GET", SingleArgument(input, _) when input = typeof<unit> -> 
+            | "POST", SingleArgument(input, _) when input = typeof<unit> -> 
                 return! runFunction func impl options [|  |] next ctx  
             | "POST", _ ->      
                 let requestBodyStream = ctx.Request.Body
@@ -117,35 +107,32 @@ module FromGiraffe =
                 return! halt next ctx
       }
 
+module Remoting = 
+  /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
+  let fromContext (f: HttpContext -> 't) options = 
+    { options with Implementation = FromContext f } 
 
-
+type RemotingMiddleware<'t>(next          : RequestDelegate,
+                            options       : RemotingOptions<HttpContext, 't>) =
+    
+    do if isNull next then nullArg "next"
+    member __.Invoke (ctx : HttpContext) =
+      let handler = 
+          match options.Implementation with 
+          | Empty -> FromGiraffe.halt  
+          | StaticValue impl -> FromGiraffe.buildFromImplementation impl options  
+          | FromContext createImplementation -> 
+              let impl = createImplementation ctx 
+              FromGiraffe.buildFromImplementation impl options
+      let func : HttpFunc = handler (Some >> Task.FromResult)
+      task {
+          let! result = func ctx
+          if (result.IsNone) then return! next.Invoke ctx
+      }
 
 [<AutoOpen>]
-module FableMiddlewareAdapter =
+module Extensions = 
 
-
-  type FableRemotingMiddleware(next          : RequestDelegate,
-                               options       : RemotingOptions<HttpContext, 't>) =
-      
-
-      do if isNull next then nullArg "next"
-
-      member __.Invoke (ctx : HttpContext) =
-        let handler = 
-            match options.Implementation with 
-            | Empty -> FromGiraffe.halt  
-            | StaticValue impl -> FromGiraffe.buildFromImplementation impl options  
-            | FromContext createImplementation -> 
-                let impl = createImplementation ctx 
-                FromGiraffe.buildFromImplementation impl options
-
-        let func : HttpFunc = handler (Some >> Task.FromResult)
-
-        task {
-            let! result = func ctx
-            if (result.IsNone) then return! next.Invoke ctx
-        }
-
-  type IApplicationBuilder with
-    member this.UseRemoting(options:RemotingOptions<HttpContext, 't>) : IApplicationBuilder =
-        this.UseMiddleware<FableRemotingMiddleware>(options)
+    type IApplicationBuilder with
+      member this.UseRemoting(options:RemotingOptions<HttpContext, 't>) =
+          this.UseMiddleware<RemotingMiddleware<'t>> options |> ignore

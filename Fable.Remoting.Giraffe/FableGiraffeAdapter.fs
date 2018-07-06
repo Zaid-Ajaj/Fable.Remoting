@@ -87,7 +87,7 @@ module GiraffeUtil =
                 return! runFunction func impl options [|  |] next ctx  
             | "GET", SingleArgument(input, _) when input = typeof<unit> ->
                 return! runFunction func impl options [|  |] next ctx    
-            | "GET", SingleArgument(input, _) when input = typeof<unit> -> 
+            | "POST", SingleArgument(input, _) when input = typeof<unit> -> 
                 return! runFunction func impl options [|  |] next ctx  
             | "POST", _ ->      
                 let requestBodyStream = ctx.Request.Body
