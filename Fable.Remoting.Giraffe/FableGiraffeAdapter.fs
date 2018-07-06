@@ -20,13 +20,6 @@ module GiraffeUtil =
                 return! text responseBody next ctx 
             }
 
-    let setStatusCode (code: int) : HttpHandler = 
-        fun (next : HttpFunc) (ctx : HttpContext) -> 
-            task {
-                ctx.Response.StatusCode <- code 
-                return Some ctx 
-            }
-
     let setContentType (contentType: string) : HttpHandler = 
         fun (next : HttpFunc) (ctx : HttpContext) -> 
             task {
@@ -36,12 +29,10 @@ module GiraffeUtil =
 
     let success value : HttpHandler = 
         setResponseBody value 
-        >=> setStatusCode 200 
         >=> setContentType "application/json; charset=utf-8"
 
     let failure error = 
        setResponseBody error
-       >=> setStatusCode 500 
        >=> setContentType "application/json; charset=utf-8"
     
     /// Used to halt the forwarding of the Http context
