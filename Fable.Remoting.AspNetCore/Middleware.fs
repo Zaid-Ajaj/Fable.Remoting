@@ -12,15 +12,22 @@ type HttpFuncResult = Task<HttpContext option>
 type HttpFunc = HttpContext -> HttpFuncResult
 type HttpHandler = HttpFunc -> HttpFunc
 
+[<AutoOpen>]
+module Extensions = 
+    type HttpContext with 
+        member self.GetService<'t>() = self.RequestServices.GetService(typeof<'t>) :?> 't 
+
 
 /// The parts from Giraffe needed to simplify the middleware implementation 
 module internal FromGiraffe = 
-    let writeStringAsync (input: string) (ctx: HttpContext) = 
+    let writeStringAsync (input: string) (ctx: HttpContext) (logger: Option<string -> unit>) = 
         task {
+            Diagnostics.outputPhase logger input
             let bytes = System.Text.Encoding.UTF8.GetBytes(input)
             do! ctx.Response.Body.WriteAsync(bytes, 0, bytes.Length)
             return Some ctx
         }
+
     let compose (handler1 : HttpHandler) (handler2 : HttpHandler) : HttpHandler =
         fun (final : HttpFunc) ->
             let func = final |> handler2 |> handler1
@@ -29,11 +36,11 @@ module internal FromGiraffe =
                 | true  -> final ctx
                 | false -> func ctx
     let (>=>) = compose
-    let setResponseBody (response: obj) : HttpHandler = 
+    let setResponseBody (response: obj) logger : HttpHandler = 
         fun (next : HttpFunc) (ctx : HttpContext) -> 
             task {
                 let responseBody = DynamicRecord.serialize response 
-                return! writeStringAsync responseBody ctx
+                return! writeStringAsync responseBody ctx logger
             }
     
     /// Sets the content type of the Http response
@@ -45,8 +52,8 @@ module internal FromGiraffe =
             }
 
     /// Sets the body of the response to type of JSON
-    let setBody value : HttpHandler = 
-        setResponseBody value 
+    let setBody value logger : HttpHandler = 
+        setResponseBody value logger
         >=> setContentType "application/json; charset=utf-8"
     
     /// Used to forward of the Http context
@@ -55,24 +62,27 @@ module internal FromGiraffe =
         task { return None }
 
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler = 
+      let logger = options.DiagnosticsLogger
       fun (next : HttpFunc) (ctx : HttpContext) -> 
         task {
             match options.ErrorHandler with 
-            | None -> return! setBody (Errors.unhandled routeInfo.methodName) next ctx 
+            | None -> return! setBody (Errors.unhandled routeInfo.methodName) logger next ctx 
             | Some errorHandler -> 
                 match errorHandler ex routeInfo with 
-                | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) next ctx  
-                | Propagate error -> return! setBody (Errors.propagated error) next ctx  
+                | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) logger next ctx  
+                | Propagate error -> return! setBody (Errors.propagated error) logger next ctx  
         }
 
     let runFunction func impl options args : HttpHandler = 
+      let logger = options.DiagnosticsLogger
       fun (next : HttpFunc) (ctx : HttpContext) -> 
         task {
+            Diagnostics.runPhase logger func.FunctionName
             let! functionResult = Async.StartAsTask (Async.Catch (DynamicRecord.invokeAsync func impl args)) 
             match functionResult with
             | Choice.Choice1Of2 output -> 
                 ctx.Response.StatusCode <- 200
-                return! setBody output next ctx 
+                return! setBody output logger next ctx 
             | Choice.Choice2Of2 ex -> 
                ctx.Response.StatusCode <- 500
                let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
@@ -95,13 +105,15 @@ module internal FromGiraffe =
                 return! runFunction func impl options [|  |] next ctx  
             | "GET", SingleArgument(input, _) when input = typeof<unit> ->
                 return! runFunction func impl options [|  |] next ctx    
+            | "POST", NoArguments _ ->
+                return! runFunction func impl options [|  |] next ctx 
             | "POST", SingleArgument(input, _) when input = typeof<unit> -> 
                 return! runFunction func impl options [|  |] next ctx  
             | "POST", _ ->      
                 let requestBodyStream = ctx.Request.Body
                 use streamReader = new StreamReader(requestBodyStream)
                 let! inputJson = streamReader.ReadToEndAsync()
-                let inputArgs = DynamicRecord.createArgsFromJson func inputJson 
+                let inputArgs = DynamicRecord.createArgsFromJson func inputJson options.DiagnosticsLogger 
                 return! runFunction func impl options inputArgs next ctx
             | _ -> 
                 return! halt next ctx
@@ -131,8 +143,7 @@ type RemotingMiddleware<'t>(next          : RequestDelegate,
       }
 
 [<AutoOpen>]
-module Extensions = 
-
+module AppBuilderExtensions = 
     type IApplicationBuilder with
       member this.UseRemoting(options:RemotingOptions<HttpContext, 't>) =
           this.UseMiddleware<RemotingMiddleware<'t>> options |> ignore

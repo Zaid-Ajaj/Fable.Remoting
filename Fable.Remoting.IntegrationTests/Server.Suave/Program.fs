@@ -7,17 +7,22 @@ open System.IO
 open Suave.Files
 open Suave.Operators
 open Suave.Filters
+
 let fableWebPart = 
   Remoting.createApi()
   |> Remoting.fromValue server
   |> Remoting.withRouteBuilder routeBuilder 
   |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message) 
+  |> Remoting.withDiagnosticsLogger (printfn "%s")
   |> Remoting.buildWebPart 
+
 let simpleServerWebPart =   
   Remoting.createApi()
   |> Remoting.fromValue simpleServer 
   |> Remoting.withRouteBuilder routeBuilder
+  |> Remoting.withDiagnosticsLogger (printfn "%s")
   |> Remoting.buildWebPart 
+
 let webApp = 
   choose [ GET >=> browseHome
            fableWebPart  

@@ -13,10 +13,11 @@ module Extensions =
         member self.GetService<'t>() = self.RequestServices.GetService(typeof<'t>) :?> 't 
 
 module GiraffeUtil = 
-    let setResponseBody (response: obj) : HttpHandler = 
+    let setResponseBody (response: obj) (logger: Option<string -> unit>) : HttpHandler = 
         fun (next : HttpFunc) (ctx : HttpContext) -> 
             task {
                 let responseBody = DynamicRecord.serialize response 
+                Diagnostics.outputPhase logger responseBody
                 return! text responseBody next ctx 
             }
 
@@ -27,12 +28,8 @@ module GiraffeUtil =
                 return Some ctx 
             }
 
-    let success value : HttpHandler = 
-        setResponseBody value 
-        >=> setContentType "application/json; charset=utf-8"
-
-    let failure error = 
-       setResponseBody error
+    let setJsonBody error logger = 
+       setResponseBody error logger 
        >=> setContentType "application/json; charset=utf-8"
     
     /// Used to halt the forwarding of the Http context
@@ -40,31 +37,37 @@ module GiraffeUtil =
       fun (next : HttpFunc) (ctx : HttpContext) ->
         task { return None }
 
+    /// Handles thrown exceptions
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler = 
+      let logger = options.DiagnosticsLogger
       fun (next : HttpFunc) (ctx : HttpContext) -> 
         task {
             match options.ErrorHandler with 
-            | None -> return! failure (Errors.unhandled routeInfo.methodName) next ctx 
+            | None -> return! setJsonBody (Errors.unhandled routeInfo.methodName) logger next ctx 
             | Some errorHandler -> 
                 match errorHandler ex routeInfo with 
-                | Ignore -> return! failure (Errors.ignored routeInfo.methodName) next ctx  
-                | Propagate error -> return! failure (Errors.propagated error) next ctx  
+                | Ignore -> return! setJsonBody (Errors.ignored routeInfo.methodName) logger next ctx  
+                | Propagate error -> return! setJsonBody (Errors.propagated error) logger next ctx  
         }
 
+    /// Runs the given dynamic function and catches unhandled exceptions, sending them off to the configured error handler, if any. Returns 200 (OK) status code for successful runs and 500  (Internal Server Error) when an exception is thrown 
     let runFunction func impl options args : HttpHandler = 
+      let logger = options.DiagnosticsLogger
       fun (next : HttpFunc) (ctx : HttpContext) -> 
         task {
+            Diagnostics.runPhase logger func.FunctionName
             let! functionResult = Async.StartAsTask (Async.Catch (DynamicRecord.invokeAsync func impl args)) 
             match functionResult with
             | Choice.Choice1Of2 output -> 
                 ctx.Response.StatusCode <- 200
-                return! success output next ctx 
+                return! setJsonBody output logger next ctx 
             | Choice.Choice2Of2 ex -> 
                 ctx.Response.StatusCode <- 500
                 let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
                 return! fail ex routeInfo options next ctx 
         }
 
+    /// Builds the entire HttpHandler from implementation record, handles routing and dynamic running of record functions
     let buildFromImplementation impl options = 
       let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
       let typeName = impl.GetType().Name   
@@ -81,13 +84,15 @@ module GiraffeUtil =
                 return! runFunction func impl options [|  |] next ctx  
             | "GET", SingleArgument(input, _) when input = typeof<unit> ->
                 return! runFunction func impl options [|  |] next ctx    
+            | "POST", NoArguments _ ->
+                return! runFunction func impl options [|  |] next ctx
             | "POST", SingleArgument(input, _) when input = typeof<unit> -> 
                 return! runFunction func impl options [|  |] next ctx  
             | "POST", _ ->      
                 let requestBodyStream = ctx.Request.Body
                 use streamReader = new StreamReader(requestBodyStream)
                 let! inputJson = streamReader.ReadToEndAsync()
-                let inputArgs = DynamicRecord.createArgsFromJson func inputJson 
+                let inputArgs = DynamicRecord.createArgsFromJson func inputJson options.DiagnosticsLogger
                 return! runFunction func impl options inputArgs next ctx
             | _ -> 
                 return! halt next ctx

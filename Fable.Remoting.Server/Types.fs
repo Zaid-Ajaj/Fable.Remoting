@@ -29,8 +29,7 @@ type RecordFunctionInfo = {
     FunctionName: string 
     Type: RecordFunctionType
     PropertyInfo: PropertyInfo 
-    ActualFunctionOrValue: obj
-    InvokeMethodInfo: Option<MethodInfo> 
+    Implementation: obj
 }
 
 type ProtocolImplementationMetadata = Type * RecordFunctionInfo list
@@ -69,18 +68,4 @@ type RemotingOptions<'context, 'serverImpl> = {
     ErrorHandler : ErrorHandler<'context> option 
     DiagnosticsLogger : (string -> unit) option 
     IoCContainer : IoCContainer option 
-}
-
-type RequestMethod = GET | POST 
-
-type InternalRequest = {
-    Method : RequestMethod
-    InputBody   : string 
-    Route  : string 
-}
-
-type InternalResponse = {
-    OutputBody : string
-    StatusCode : int 
-    NoCache : bool 
 }

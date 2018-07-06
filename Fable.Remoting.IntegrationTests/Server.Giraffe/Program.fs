@@ -18,6 +18,7 @@ let webApp =
     Remoting.createApi() 
     |> Remoting.fromValue server 
     |> Remoting.withRouteBuilder routeBuilder 
+    |> Remoting.withDiagnosticsLogger (printfn "%s")
     |> Remoting.buildHttpHanlder
 
 let configureApp (app : IApplicationBuilder) =

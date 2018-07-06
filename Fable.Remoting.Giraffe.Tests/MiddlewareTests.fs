@@ -12,7 +12,6 @@ open Fable.Remoting.AspNetCore
 open Fable.Remoting.DotnetClient
 open Expecto
 open Types
-open Newtonsoft.Json
 
 let builder = sprintf "/api/%s/%s"
 

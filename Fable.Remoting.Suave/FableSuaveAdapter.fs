@@ -9,9 +9,10 @@ module SuaveUtil =
   let outputContent (json: string) = 
     HttpContent.Bytes (System.Text.Encoding.UTF8.GetBytes(json))  
 
-  let setResponseBody (asyncResult: obj) =
+  let setResponseBody (asyncResult: obj) (logger: Option<string -> unit>) =
     fun (ctx: HttpContext) -> async {
       let json = DynamicRecord.serialize asyncResult 
+      Diagnostics.outputPhase logger json  
       return Some { ctx with response = { ctx.response with content = outputContent json  } } 
     }
 
@@ -24,41 +25,49 @@ module SuaveUtil =
     } 
 
   /// Returns output from dynamic functions as JSON
-  let success value = 
-    setResponseBody value 
+  let success value (logger: Option<string -> unit>) = 
+    setResponseBody value logger 
     >=> setStatusCode 200
     >=> Writers.setMimeType "application/json; charset=utf-8"
   
   /// Used to halt the forwarding of the Http context
   let halt : WebPart = 
-    fun (context: HttpContext) -> 
+    fun (_: HttpContext) -> 
       async { return None }
 
-  let sendError error = 
-    setResponseBody error
+  /// Sets the error object in the response and makes the status code 500 (Internal Server Error)
+  let sendError error logger = 
+    setResponseBody error logger
     >=> setStatusCode 500 
     >=> Writers.setMimeType "application/json; charset=utf-8"
 
+  /// Handles thrown exceptions
   let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : WebPart = 
+    let logger = options.DiagnosticsLogger
     fun (context: HttpContext) -> async {
       match options.ErrorHandler with 
-      | None -> return! sendError (Errors.unhandled routeInfo.methodName) context 
+      | None -> return! sendError (Errors.unhandled routeInfo.methodName) logger context 
       | Some errorHandler -> 
           match errorHandler ex routeInfo with 
-          | Ignore -> return! sendError (Errors.ignored routeInfo.methodName) context 
-          | Propagate error -> return! sendError (Errors.propagated error) context 
+          | Ignore -> return! sendError (Errors.ignored routeInfo.methodName) logger context 
+          | Propagate error -> return! sendError (Errors.propagated error) logger context 
     }
 
+  /// Runs the given dynamic function and catches unhandled exceptions, sending them off to the configured error handler, if any. Returns 200 (OK) status code for successful runs and 500  (Internal Server Error) when an exception is thrown 
   let runFunction func impl options args : WebPart = 
+    let logger = options.DiagnosticsLogger
     fun context -> async {
+      Diagnostics.runPhase logger func.FunctionName
       let! functionResult = Async.Catch (DynamicRecord.invokeAsync func impl args) 
       match functionResult with
-      | Choice.Choice1Of2 output -> return! success output context 
+      | Choice.Choice1Of2 output -> 
+          return! success output logger context 
       | Choice.Choice2Of2 ex -> 
-        let routeInfo = { methodName = func.FunctionName; path = context.request.path; httpContext = context }
-        return! fail ex routeInfo options context
+          let routeInfo = { methodName = func.FunctionName; path = context.request.path; httpContext = context }
+          return! fail ex routeInfo options context
     }
 
+  /// Builds the entire WebPart from implementation record, handles routing and dynamic running of record functions
   let buildFromImplementation impl options = 
     let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
     let typeName = impl.GetType().Name   
@@ -75,11 +84,13 @@ module SuaveUtil =
               return! runFunction func impl options [|  |] context  
           | HttpMethod.GET, SingleArgument(input, _) when input = typeof<unit> ->
               return! runFunction func impl options [|  |] context    
+          | HttpMethod.POST, NoArguments _ ->
+              return! runFunction func impl options [|  |] context
           | HttpMethod.POST, SingleArgument(input, _) when input = typeof<unit> -> 
               return! runFunction func impl options [|  |] context  
           | HttpMethod.POST, _ ->      
               let inputJson = System.Text.Encoding.UTF8.GetString(context.request.rawForm)
-              let inputArgs = DynamicRecord.createArgsFromJson func inputJson 
+              let inputArgs = DynamicRecord.createArgsFromJson func inputJson options.DiagnosticsLogger
               return! runFunction func impl options inputArgs context
           | _ -> 
               return! halt context

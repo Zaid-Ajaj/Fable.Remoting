@@ -33,6 +33,13 @@ module Diagnostics =
                 |> String.concat ", "
                 |> sprintf "%s<%s>" (simplifyGeneric typeName)
 
+    let runPhase logger text = 
+        logger |> Option.iter (fun logf ->
+            StringBuilder()
+            |> writeLn (sprintf "Fable.Remoting: invoking function %s" text)
+            |> toLogger logf 
+        )
+
     /// Logs the JSON input and the corresponding types that the JSON will be converter into. 
     let deserializationPhase logger (text: unit -> string) (inputTypes: System.Type[]) =
         logger |> Option.iter(fun logf ->

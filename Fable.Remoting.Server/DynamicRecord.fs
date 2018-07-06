@@ -9,12 +9,14 @@ open Newtonsoft.Json.Linq
 
 /// Provides utilities to run functions dynamically from record fields
 module DynamicRecord = 
-    
+   
     /// Invokes a function of a record field given the name of the method, the record itself, and an array of arguments for that function
     let invoke (func: RecordFunctionInfo) args =
         let args = if Array.isEmpty args then [| null |] else args
-        match func.InvokeMethodInfo with 
-        | Some methodInfo -> methodInfo.Invoke(func.ActualFunctionOrValue, args)
+        let propValue = func.PropertyInfo.GetValue(func.Implementation, null) 
+        let invokeMethod =  propValue.GetType().GetMethods() |> Array.tryFind (fun m -> m.Name = "Invoke") 
+        match invokeMethod with 
+        | Some methodInfo -> methodInfo.Invoke(propValue, args)
         | None -> failwithf "Record field '%s' is not a function and cannot be invoked" func.FunctionName
 
     /// Reads the type of a F# function (a -> b) and turns that into a list of types [a; b]
@@ -71,13 +73,6 @@ module DynamicRecord =
         then failwithf "Protocol definition must be encoded as a record type. The input type '%s' was not a record." protocolType.Name
         else () (* TODO: verify the record fields and supported serializable types *)
 
-    /// Every F# function has a member called "Invoke" that can be used to run/invoke the function dynamically at runtime
-    let getInvokeInfo (propInfo: PropertyInfo) (implementation: 't)  =
-        let propValue = propInfo.GetValue(implementation, null) 
-        propValue.GetType().GetMethods()
-        |> Array.tryFind (fun m -> m.Name = "Invoke")
-
-
     /// Reads the metadata from protocol definition, assumes the shape is checked and is correct
     let createRecordFuncInfo (implementation: 't) =
         let protocolType = implementation.GetType()
@@ -89,10 +84,9 @@ module DynamicRecord =
                 FunctionName = propertyInfo.Name
                 PropertyInfo = propertyInfo 
                 Type = makeRecordFuncType propertyInfo.PropertyType 
-                ActualFunctionOrValue = propertyInfo.GetValue(implementation) 
-                InvokeMethodInfo = getInvokeInfo propertyInfo implementation
+                Implementation = implementation
             }) 
-        |> Map.ofList          
+        |> Map.ofList    
 
     let private fableConverter = new FableJsonConverter() :> JsonConverter
 
@@ -100,7 +94,7 @@ module DynamicRecord =
     let serialize result = JsonConvert.SerializeObject(result, [| fableConverter |])
 
     /// Based of function metadata, convert the input JSON into an appropriate array of typed arguments. 
-    let createArgsFromJson (func: RecordFunctionInfo) (inputJson: string) = 
+    let createArgsFromJson (func: RecordFunctionInfo) (inputJson: string) (logger: Option<string -> unit>) = 
         match func.Type with 
         | NoArguments _ -> [|  |] 
         | SingleArgument (input, _) when input = typeof<unit> -> [| box () |]
@@ -117,9 +111,11 @@ module DynamicRecord =
                     then [| box () |]
                     else failwithf "Input JSON array of the arguments for function '%s' was empty while the function expected a value of type '%s'" func.FunctionName (input.FullName)
                 | [ singleJsonObject ] -> 
+                    Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
                     // JSON input array is a single object and function is of single argument then it works fine
                     [| singleJsonObject.ToObject(input, serializer) |]  
                 | singleJsonObject :: moreValues -> 
+                    Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
                     // JSON input array has many values, just take the first one and ignore the rest
                     [| singleJsonObject.ToObject(input, serializer) |]  
             elif parsedJson.Type = JTokenType.Array && (input.IsArray || FSharpType.IsTuple input || input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpList`1")) then
@@ -128,19 +124,21 @@ module DynamicRecord =
                 Array.zip [| input |] jsonValues 
                 |> Array.map (fun (jsonType, json) -> json.ToObject(jsonType, serializer))
             else
+                Diagnostics.deserializationPhase logger (fun () -> inputJson.ToString()) [| input |]
                  // then the input json is a single object (not an array) and can be deserialized directly
                 [| JsonConvert.DeserializeObject(inputJson, input, [| fableConverter |]) |]
-        | ManyArguments (inputArgs, _) -> 
+        | ManyArguments (inputArgTypes, _) -> 
             let parsedJson = JToken.Parse(inputJson) 
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
             if parsedJson.Type <> JTokenType.Array
-            then failwithf "The record function '%s' expected %d arguments to be recieved in the form of a JSON array but the input JSON was not an array" func.FunctionName (List.length inputArgs)
+            then failwithf "The record function '%s' expected %d arguments to be recieved in the form of a JSON array but the input JSON was not an array" func.FunctionName (List.length inputArgTypes)
             else 
                 let jsonValues = List.ofArray (parsedJson.ToObject<JToken[]>()) 
-                if (List.length jsonValues <> List.length inputArgs) 
-                then failwithf "The record function '%s' expected %d arguments but got %d arguments in the JSON array" func.FunctionName (List.length inputArgs) (List.length jsonValues) 
+                if (List.length jsonValues <> List.length inputArgTypes) 
+                then failwithf "The record function '%s' expected %d arguments but got %d arguments in the JSON array" func.FunctionName (List.length inputArgTypes) (List.length jsonValues) 
                 else 
-                    List.zip inputArgs jsonValues 
+                    Diagnostics.deserializationPhase logger (fun () -> inputJson.ToString()) (Array.ofList inputArgTypes)
+                    List.zip inputArgTypes jsonValues 
                     |> List.map (fun (jsonType, json) -> json.ToObject(jsonType, serializer))
                     |> Array.ofList 
