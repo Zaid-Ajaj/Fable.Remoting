@@ -7,7 +7,7 @@
 
 Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable and .NET Client Apps. This is a library that abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
 
-The library supports Suave, Giraffe or Saturn on the server and Fable/.NET on the client.
+The library everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.net core middleware. On the client you can Fable or .NET.
 
 ## Quick Start
 Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
@@ -16,11 +16,14 @@ Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable
 # install the template
 dotnet new -i SAFE.Template
 
-# scaffold a new Fable/Suave project with Fable.Remoting
-dotnet new SAFE --Remoting
+# scaffold a new Fable/Saturn project with Fable.Remoting
+dotnet new SAFE --remoting
 
 # Or use Giraffe as your server
-dotnet new SAFE --Server giraffe --Remoting
+dotnet new SAFE --server giraffe --remoting
+
+# Or use Suave as your server
+dotnet new SAFE --server suave --remoting
 ```
 
 
@@ -33,6 +36,7 @@ Feedback and suggestions are very much welcome.
 | Fable.Remoting.Client  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client) |
 | Fable.Remoting.Suave  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)  |
 | Fable.Remoting.Giraffe  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)  |
+| Fable.Remoting.AspNetCore  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AspNetCore.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AspNetCore)  |
 | Fable.Remoting.DotnetClient  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.DotnetClient.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.DotnetClient)  |
 
 ## Scaffold from scratch - Suave
@@ -104,12 +108,13 @@ open Fable.Remoting.Suave
 [<EntryPoint>]
 let main argv =
     // create the WebPart
-    let webApp = remoting server {()}
+    let webApp : WebPart = 
+        Remoting.createApi()
+        |> Remoting.fromValue server
+        |> Remoting.buildWebPart 
+
     // start the web server
     startWebServer defaultConfig webApp
-    // wait for a key press to exit
-    Console.ReadKey() |> ignore
-    0
 ```
 Yes. it is that simple.
 You can think of the `webApp` value as if it was the following in pseudo-code:
@@ -125,11 +130,13 @@ let webApp =
  // other routes
  ]
 ```
-You can enable logging from Fable.Remoting.Server (recommended) to see how the library is doing it's magic behind the scenes :)
+You can enable diagnostic logging from Fable.Remoting.Server (recommended) to see how the library is doing it's magic behind the scenes :)
 ```fs
-let webApp = remoting server {
-    use_logger (printfn "%s")
-}
+let webApp = 
+    Remoting.createApi()
+    |> Remoting.fromValue server
+    |> Remoting.withDiagnosticsLogger (printfn "%s")
+    |> Remoting.buildWebPart 
 ```
 ### Giraffe
 
@@ -144,7 +151,10 @@ open Giraffe
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 
-let webApp = remoting server {()}
+let webApp : HttpHandler = 
+    Remoting.createApi()
+    |> Remoting.fromValue server
+    |> Remoting.buildHttpHandler 
 
 let configureApp (app : IApplicationBuilder) =
     // Add Giraffe to the ASP.NET Core pipeline
@@ -174,17 +184,17 @@ open Saturn
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 
-let webApp = remoting server {()}
+let webApp : HttpHandler = 
+    Remoting.createApi()
+    |> Remoting.fromValue server
+    |> Remoting.buildHttpHandler 
 
 let app = application {
     url "http://127.0.0.1:8083/"
     router webApp
 }
 
-[<EntryPoint>]
-let main _ =
-    run app
-    0
+run app
 ```
 
 ## Fable Client

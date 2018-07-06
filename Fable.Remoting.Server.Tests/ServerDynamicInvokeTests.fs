@@ -157,7 +157,7 @@ let serverTests =
         testCaseAsync "Json: Invoking when input is option some" <| async {
             let input = "5"
             let func = getFunc "echoOption"
-            let args = DynamicRecord.createArgsFromJson func input  
+            let args = DynamicRecord.createArgsFromJson func input None 
             let! result = DynamicRecord.invokeAsync func implementation args 
             equal 10 (unbox<int> result)
         }
@@ -165,8 +165,8 @@ let serverTests =
         testCaseAsync "Json array: Invoking when input is option some" <| async {
             let input = "[5]"
             let func = getFunc "echoOption"
-            let args = DynamicRecord.createArgsFromJson func input  
-            let! result = DynamicRecord.invokeAsync func implementation args 
+            let args = DynamicRecord.createArgsFromJson func input None
+            let! result = DynamicRecord.invokeAsync func implementation args
             equal 10 (unbox<int> result)
         }
 
@@ -191,7 +191,7 @@ let serverTests =
         testCaseAsync "Json: Invoking when input is simple union: B" <| async {
             let input = "\"B\""
             let func = getFunc "simpleUnionInputOutput" 
-            let args = DynamicRecord.createArgsFromJson func input 
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output =  DynamicRecord.invokeAsync func implementation args 
             equal A (unbox<AB> output)
         }
@@ -205,7 +205,7 @@ let serverTests =
         testCaseAsync "JSON: Generic union input: Maybe<int>" <| async {
             let input = "{ \"Just\": 5 }"
             let func = getFunc "genericUnionInput" 
-            let args = DynamicRecord.createArgsFromJson func input 
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output =  DynamicRecord.invokeAsync func implementation args 
             equal 5 (unbox<int> output)
         }
@@ -213,7 +213,7 @@ let serverTests =
         testCaseAsync "JSON: Generic union input array Maybe<int>" <| async {
             let input = "[{ \"Just\": 5 }]"
             let func = getFunc "genericUnionInput" 
-            let args = DynamicRecord.createArgsFromJson func input 
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output =  DynamicRecord.invokeAsync func implementation args 
             equal 5 (unbox<int> output)
         }
@@ -221,7 +221,7 @@ let serverTests =
         testCaseAsync "JSON: invoking when input is an array and function has single input" <| async {
             let input = "[[1.0, 2.0, 3.0, 4.0, 5.0]]"
             let func = getFunc "floatList" 
-            let args = DynamicRecord.createArgsFromJson func input 
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal 15.0 (unbox<float> output)
         }
@@ -229,7 +229,7 @@ let serverTests =
         testCaseAsync "JSON: invoke multiArg function" <| async {
             let input = "[[false, true, false], 5]"
             let func = getFunc "multiArg"
-            let args = DynamicRecord.createArgsFromJson func input 
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal 6 (unbox<int> output)
         }
@@ -237,7 +237,7 @@ let serverTests =
         testCaseAsync "JSON: invoke single record" <| async {
             let input = "{ \"name\":\"john\", \"age\": 21 }"
             let func = getFunc "simpleRec"
-            let args = DynamicRecord.createArgsFromJson func input 
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal true (unbox<bool> output) 
         }
@@ -245,7 +245,7 @@ let serverTests =
         testCaseAsync "JSON: invoke single record as array" <| async {
             let input = "[{ \"name\":\"john\", \"age\": 21 }]"
             let func = getFunc "simpleRec"
-            let args = DynamicRecord.createArgsFromJson func input 
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal true (unbox<bool> output) 
         }
@@ -253,7 +253,7 @@ let serverTests =
         testCaseAsync "No JSON is needed for input parameter of unit" <| async {
             let input = "" // or any thing
             let func = getFunc "unitToInts" 
-            let args = DynamicRecord.createArgsFromJson func input  
+            let args = DynamicRecord.createArgsFromJson func input  None
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal 55 (unbox<int> output) 
         }
@@ -261,7 +261,7 @@ let serverTests =
         testCaseAsync "Invoking list of records" <| async {
             let input = "[[{\"Prop1\":\"\",\"Prop2\":15,\"Prop3\":null}, {\"Prop1\":\"\",\"Prop2\":10,\"Prop3\":null}]]"
             let func = getFunc "recordListToInt"
-            let args = DynamicRecord.createArgsFromJson func input
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal 25 (unbox<int> output)
         }
@@ -269,7 +269,7 @@ let serverTests =
         testCaseAsync "Invoking list of integers" <| async {
             let input = "[[1,2,3,4,5]]"
             let func = getFunc "listIntegers"
-            let args = DynamicRecord.createArgsFromJson func input
+            let args = DynamicRecord.createArgsFromJson func input None
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal 15 (unbox<int> output)
         }    
