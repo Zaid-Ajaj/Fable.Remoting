@@ -65,10 +65,13 @@ module GiraffeUtil =
         task {
             let! functionResult = Async.StartAsTask (Async.Catch (DynamicRecord.invokeAsync func impl args)) 
             match functionResult with
-            | Choice.Choice1Of2 output -> return! success output next ctx 
+            | Choice.Choice1Of2 output -> 
+                ctx.Response.StatusCode <- 200
+                return! success output next ctx 
             | Choice.Choice2Of2 ex -> 
-              let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
-              return! fail ex routeInfo options next ctx 
+                ctx.Response.StatusCode <- 500
+                let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
+                return! fail ex routeInfo options next ctx 
         }
 
     let buildFromImplementation impl options = 
