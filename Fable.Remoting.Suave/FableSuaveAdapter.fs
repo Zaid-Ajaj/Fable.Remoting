@@ -1,30 +1,11 @@
 ﻿namespace Fable.Remoting.Suave
 
 open Suave
-open Suave.Filters
 open Suave.Operators
-open Suave.Successful
-open Suave.ServerErrors
-open FSharp.Reflection
 open Fable.Remoting.Server
-open System.Text
-open System.Net.Http
-open Suave.Http
 
 module SuaveUtil = 
   
-  /// Compute and cache dynamic record function information  
-  let cachedDynamicFunctions implementation = 
-    let mutable cache = None 
-    fun () -> 
-      match cache with 
-      | Some value -> value 
-      | None ->   
-          let typeName = implementation.GetType().Name
-          let functions = DynamicRecord.createRecordFuncInfo implementation 
-          cache <- Some (functions, typeName)  
-          functions, typeName
-
   let outputContent (json: string) = 
     HttpContent.Bytes (System.Text.Encoding.UTF8.GetBytes(json))  
 
@@ -53,34 +34,19 @@ module SuaveUtil =
     fun (context: HttpContext) -> 
       async { return None }
 
-  let createUnhandledError (funcName: string) = 
-    { error = sprintf "Error occured while running the function %s" funcName
-      ignored = true 
-      handled = false } 
-
-  let createIgnoredError (funcName: string) = 
-    { error = sprintf "Error occured while running the function %s" funcName
-      ignored = true 
-      handled = true } 
-
-  let createPropagetedError (value: obj) = 
-    { error = value
-      ignored = false 
-      handled = true } 
-
   let sendError error = 
     setResponseBody error
     >=> setStatusCode 500 
-    >=>  Writers.setMimeType "application/json; charset=utf-8"
+    >=> Writers.setMimeType "application/json; charset=utf-8"
 
   let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : WebPart = 
     fun (context: HttpContext) -> async {
       match options.ErrorHandler with 
-      | None -> return! sendError (createUnhandledError routeInfo.methodName) context 
+      | None -> return! sendError (Errors.unhandled routeInfo.methodName) context 
       | Some errorHandler -> 
           match errorHandler ex routeInfo with 
-          | Ignore -> return! sendError (createIgnoredError routeInfo.methodName) context 
-          | Propagate error -> return! sendError (createPropagetedError error) context 
+          | Ignore -> return! sendError (Errors.ignored routeInfo.methodName) context 
+          | Propagate error -> return! sendError (Errors.propagated error) context 
     }
 
   let runFunction func impl options args : WebPart = 
@@ -94,8 +60,8 @@ module SuaveUtil =
     }
 
   let buildFromImplementation impl options = 
-    let getDynamicFunctions = cachedDynamicFunctions impl 
-    let (dynamicFunctions, typeName) = getDynamicFunctions() 
+    let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
+    let typeName = impl.GetType().Name   
     fun (context: HttpContext) -> async {
       let foundFunction = 
         dynamicFunctions 
