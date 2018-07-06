@@ -7,46 +7,20 @@ open System.IO
 open Suave.Files
 open Suave.Operators
 open Suave.Filters
-let fableWebPart = remoting server {
-    use_route_builder routeBuilder
-    use_logger (printfn "%s")
-    use_error_handler (fun ex routeInfo ->
-      printfn "Error at: %A" routeInfo
-      Propagate ex.Message)
-    use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
-    use_custom_handler_for "customStatusCode" (fun _ -> ResponseOverride.Default.withStatusCode 204 |> Some)
-}
-
-let isVersion v (ctx:HttpContext) =
-  if ctx.request.headers |> List.contains ("version",v) then
-    None
-  else
-    Some {ResponseOverride.Default with Abort = true}
-let versionTestWebPart =
-  remoting versionTestServer {
-    use_logger (printfn "%s")
-    use_route_builder versionTestBuilder
-    use_custom_handler_for "v4" (isVersion "4")
-    use_custom_handler_for "v3" (isVersion "3")
-    use_custom_handler_for "v2" (isVersion "2")
-  }
-
-let simpleServerWebPart = remoting simpleServer {
-  use_logger (printfn "%s")
-  use_route_builder routeBuilder
-}
-
-let contextTestWebApp =
-    remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
-        use_logger (printfn "%s")
-        use_route_builder routeBuilder
-    }
-
+let fableWebPart = 
+  Remoting.createApi()
+  |> Remoting.fromValue server
+  |> Remoting.withRouteBuilder routeBuilder 
+  |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message) 
+  |> Remoting.buildWebPart 
+let simpleServerWebPart =   
+  Remoting.createApi()
+  |> Remoting.fromValue simpleServer 
+  |> Remoting.withRouteBuilder routeBuilder
+  |> Remoting.buildWebPart 
 let webApp = 
   choose [ GET >=> browseHome
-           fableWebPart 
-           versionTestWebPart
-           contextTestWebApp 
+           fableWebPart  
            simpleServerWebPart ]
 
 let rec findRoot dir =

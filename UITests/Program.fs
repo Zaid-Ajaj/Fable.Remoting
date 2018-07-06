@@ -17,34 +17,13 @@ open ServerImpl
 open OpenQA.Selenium
 open OpenQA.Selenium.Chrome
 
-let fableWebPart = remoting server {
-    use_route_builder routeBuilder
-    use_error_handler (fun ex routeInfo ->
-      Propagate ex.Message)
-    use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
-    use_custom_handler_for "customStatusCode" (fun _ -> ResponseOverride.Default.withStatusCode 204 |> Some)
-}
-
-let isVersion v (ctx:HttpContext) =
-  if ctx.request.headers |> List.contains ("version",v) then
-    None
-  else
-    Some {ResponseOverride.Default with Abort = true}
-
-let versionTestWebPart =
-  remoting versionTestServer {
-    use_route_builder versionTestBuilder
-    use_custom_handler_for "v4" (isVersion "4")
-    use_custom_handler_for "v3" (isVersion "3")
-    use_custom_handler_for "v2" (isVersion "2")
-  }
-
-let contextTestWebApp =
-    remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
-        use_route_builder routeBuilder
-    }
-
-
+let fableWebPart = 
+    Remoting.createApi()
+    |> Remoting.fromValue server
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message) 
+    |> Remoting.buildWebPart
+    
 let (</>) x y = Path.Combine(x, y)
 
 let rec findRoot dir =
@@ -74,8 +53,6 @@ let main argv =
         choose [ 
             GET >=> Files.browseHome
             fableWebPart 
-            versionTestWebPart
-            contextTestWebApp 
             OK "Not Found"
         ]
 

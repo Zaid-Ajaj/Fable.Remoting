@@ -89,16 +89,3 @@ type IServer = {
 
 let routeBuilder typeName methodName =
     sprintf "/api/%s/%s" typeName methodName
-
-type IVersionTestServer = {
-    v4 : unit -> Async<string>
-    v3 : unit -> Async<string>
-    v2 : unit -> Async<string>
-    v1 : unit -> Async<string>
-}
-
-let versionTestBuilder _ _ = "/api/version/data"
-
-type IContextTest<'ctx> = {
-    callWithCtx : 'ctx -> Async<string>
-}

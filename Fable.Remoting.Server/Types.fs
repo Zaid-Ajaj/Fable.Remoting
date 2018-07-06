@@ -37,9 +37,9 @@ type ProtocolImplementationMetadata = Type * RecordFunctionInfo list
 
 /// Route information that is propagated to error handler when exceptions are thrown
 type RouteInfo<'ctx> = {
-    Path: string
-    MethodName: string
-    HttpContext: 'ctx
+    path: string
+    methodName: string
+    httpContext: 'ctx
 }
 
 type CustomErrorResult<'a> =
@@ -69,4 +69,18 @@ type RemotingOptions<'context, 'serverImpl> = {
     ErrorHandler : ErrorHandler<'context> option 
     DiagnosticsLogger : (string -> unit) option 
     IoCContainer : IoCContainer option 
+}
+
+type RequestMethod = GET | POST 
+
+type InternalRequest = {
+    Method : RequestMethod
+    InputBody   : string 
+    Route  : string 
+}
+
+type InternalResponse = {
+    OutputBody : string
+    StatusCode : int 
+    NoCache : bool 
 }

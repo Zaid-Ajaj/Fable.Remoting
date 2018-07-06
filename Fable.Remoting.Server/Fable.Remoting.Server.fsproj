@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="DynamicRecord.fs" />
+    <Compile Include="Diagnostics.fs" />
     <Compile Include="Remoting.fs" />
   </ItemGroup>
 

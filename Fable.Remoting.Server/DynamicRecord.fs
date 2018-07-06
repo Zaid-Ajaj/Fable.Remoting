@@ -96,6 +96,9 @@ module DynamicRecord =
 
     let private fableConverter = new FableJsonConverter() :> JsonConverter
 
+    /// Serializes the input value into JSON using Fable converter
+    let serialize result = JsonConvert.SerializeObject(result, [| fableConverter |])
+
     /// Based of function metadata, convert the input JSON into an appropriate array of typed arguments. 
     let createArgsFromJson (func: RecordFunctionInfo) (inputJson: string) = 
         match func.Type with 
@@ -105,8 +108,7 @@ module DynamicRecord =
             let parsedJson = JToken.Parse(inputJson) 
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
-            if parsedJson.Type = JTokenType.Array && not (input.IsArray || FSharpType.IsTuple input)
-            then
+            if parsedJson.Type = JTokenType.Array && not (input.IsArray || FSharpType.IsTuple input || input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpList`1")) then
                 let jsonValues = List.ofArray (parsedJson.ToObject<JToken[]>()) 
                 match jsonValues with 
                 | [ ] -> 
@@ -120,9 +122,14 @@ module DynamicRecord =
                 | singleJsonObject :: moreValues -> 
                     // JSON input array has many values, just take the first one and ignore the rest
                     [| singleJsonObject.ToObject(input, serializer) |]  
-            else 
-                // then the input json is a single object (not an array) and can be deserialized directly
-                [| parsedJson.ToObject(input, serializer) |]
+            elif parsedJson.Type = JTokenType.Array && (input.IsArray || FSharpType.IsTuple input || input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpList`1")) then
+                // expected type is list-like and the Json is list like
+                let jsonValues = parsedJson.ToObject<JToken[]>()
+                Array.zip [| input |] jsonValues 
+                |> Array.map (fun (jsonType, json) -> json.ToObject(jsonType, serializer))
+            else
+                 // then the input json is a single object (not an array) and can be deserialized directly
+                [| JsonConvert.DeserializeObject(inputJson, input, [| fableConverter |]) |]
         | ManyArguments (inputArgs, _) -> 
             let parsedJson = JToken.Parse(inputJson) 
             let serializer = JsonSerializer()

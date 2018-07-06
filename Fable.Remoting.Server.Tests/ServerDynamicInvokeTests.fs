@@ -219,7 +219,7 @@ let serverTests =
         }
 
         testCaseAsync "JSON: invoking when input is an array and function has single input" <| async {
-            let input = "[1.0, 2.0, 3.0, 4.0, 5.0]"
+            let input = "[[1.0, 2.0, 3.0, 4.0, 5.0]]"
             let func = getFunc "floatList" 
             let args = DynamicRecord.createArgsFromJson func input 
             let! output = DynamicRecord.invokeAsync func implementation args 
@@ -257,6 +257,22 @@ let serverTests =
             let! output = DynamicRecord.invokeAsync func implementation args 
             equal 55 (unbox<int> output) 
         }
+
+        testCaseAsync "Invoking list of records" <| async {
+            let input = "[[{\"Prop1\":\"\",\"Prop2\":15,\"Prop3\":null}, {\"Prop1\":\"\",\"Prop2\":10,\"Prop3\":null}]]"
+            let func = getFunc "recordListToInt"
+            let args = DynamicRecord.createArgsFromJson func input
+            let! output = DynamicRecord.invokeAsync func implementation args 
+            equal 25 (unbox<int> output)
+        }
+
+        testCaseAsync "Invoking list of integers" <| async {
+            let input = "[[1,2,3,4,5]]"
+            let func = getFunc "listIntegers"
+            let args = DynamicRecord.createArgsFromJson func input
+            let! output = DynamicRecord.invokeAsync func implementation args 
+            equal 15 (unbox<int> output)
+        }    
     ]
 
 let allTests = 

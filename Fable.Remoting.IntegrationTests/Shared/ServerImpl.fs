@@ -66,10 +66,3 @@ let server : IServer  = {
     echoSingleDULong = Async.result
     echoLongInGenericUnion = Async.result
 }
-
-let versionTestServer : IVersionTestServer = {
-    v4 = fun () -> async {return "v4"}
-    v3 = fun () -> async {return "v3"}
-    v2 = fun () -> async {return "v2"}
-    v1 = fun () -> async {return "v1"}
-}
