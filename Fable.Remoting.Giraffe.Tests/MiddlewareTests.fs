@@ -1,28 +1,31 @@
 module MiddlewareTests 
 
 open System
-open System.Net.Http
 open System.IO
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open Fable.Remoting.Server
-open Fable.Remoting.Json
 open Fable.Remoting.AspNetCore
 open Fable.Remoting.DotnetClient
 open Expecto
 open Types
+open System.Net
+open Expecto.Logging
+open Newtonsoft.Json.Linq
 
 let builder = sprintf "/api/%s/%s"
 
 let webApp = 
     Remoting.createApi()
     |> Remoting.withRouteBuilder builder
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
     |> Remoting.fromValue server
 
 let otherWebApp = 
     Remoting.createApi()
     |> Remoting.withRouteBuilder builder 
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
     |> Remoting.fromContext (fun ctx -> implementation) 
 
 let configureApp (app : IApplicationBuilder) =
@@ -246,13 +249,28 @@ let middlewareTests =
             Expect.equal input output "Map is echoed correctly"
         }
 
+        (*
+            calling the function:
+            throwError = fun () -> async { 
+                return! failwith "Generating custom server error" 
+            }
+
+            with error handler: (fun ex routeInfo -> Propagate ex.Message)
+        *)
         testCaseAsync "IServer.throwError using callSafely" <| async {
             let! result = proxy.callSafely <@ fun server -> server.throwError() @> 
             match result with 
             | Ok value -> failwithf "Got value %A where an error was expected" value
             | Result.Error ex -> 
                 match ex with 
-                | :? Http.ProxyRequestException -> Expect.isTrue true "Works"
+                | :? Http.ProxyRequestException as reqEx ->
+                    let statusCode = reqEx.StatusCode 
+                    Expect.equal HttpStatusCode.InternalServerError statusCode "The status code is 500"
+                    let! responseText = reqEx.ReadResponseContent() 
+                    let json = JToken.Parse(responseText) 
+                    Expect.isFalse (json.["ignored"].ToObject<bool>()) "Error was not ignore"
+                    Expect.isTrue (json.["handled"].ToObject<bool>()) "Error was handled" 
+                    Expect.equal (json.["error"].ToString()) "Generating custom server error" "The error was propagated"
                 | other -> Expect.isTrue false "Should not happen"
         }
 
