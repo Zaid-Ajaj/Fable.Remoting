@@ -264,13 +264,10 @@ let middlewareTests =
             | Result.Error ex -> 
                 match ex with 
                 | :? Http.ProxyRequestException as reqEx ->
-                    let statusCode = reqEx.StatusCode 
-                    Expect.equal HttpStatusCode.InternalServerError statusCode "The status code is 500"
-                    let! responseText = reqEx.ReadResponseContent() 
-                    let json = JToken.Parse(responseText) 
-                    Expect.isFalse (json.["ignored"].ToObject<bool>()) "Error was not ignore"
-                    Expect.isTrue (json.["handled"].ToObject<bool>()) "Error was handled" 
-                    Expect.equal (json.["error"].ToString()) "Generating custom server error" "The error was propagated"
+                    Expect.equal HttpStatusCode.InternalServerError reqEx.StatusCode "The status code is 500"
+                    Expect.isFalse reqEx.Ignored "Error was not ignore"
+                    Expect.isTrue reqEx.Handled "Error was handled" 
+                    Expect.equal (reqEx.ParseErrorAs<string>()) "Generating custom server error" "The error was propagated"
                 | other -> Expect.isTrue false "Should not happen"
         }
 
