@@ -119,11 +119,6 @@ module internal FromGiraffe =
                 return! halt next ctx
       }
 
-module Remoting = 
-  /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
-  let fromContext (f: HttpContext -> 't) (options: RemotingOptions<HttpContext, 't>) = 
-    { options with Implementation = FromContext f } 
-
 type RemotingMiddleware<'t>(next          : RequestDelegate,
                             options       : RemotingOptions<HttpContext, 't>) =
     

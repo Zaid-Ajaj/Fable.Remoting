@@ -5,6 +5,7 @@ open System.IO
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
+open Microsoft.AspNetCore.Http
 open Fable.Remoting.Server
 open Fable.Remoting.AspNetCore
 open Fable.Remoting.DotnetClient
@@ -13,6 +14,11 @@ open Types
 open System.Net
 open Expecto.Logging
 open Newtonsoft.Json.Linq
+
+let readerTest = reader {
+    let! context = resolve<HttpContext>()
+    return { getPath = async { return context.Request.Path.Value } }
+}
 
 let builder = sprintf "/api/%s/%s"
 
@@ -28,9 +34,15 @@ let otherWebApp =
     |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
     |> Remoting.fromContext (fun ctx -> implementation) 
 
+let readerApp = 
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder builder 
+    |> Remoting.fromReader readerTest
+
 let configureApp (app : IApplicationBuilder) =
     app.UseRemoting(webApp)
     app.UseRemoting(otherWebApp)    
+    app.UseRemoting(readerApp)
 
 let createHost() =
     WebHostBuilder()
@@ -43,10 +55,16 @@ let client = testServer.CreateClient()
 // proxies to different API's
 let proxy = Proxy.custom<IServer> builder client
 let protocolProxy = Proxy.custom<IProtocol> builder client 
+let readerProxy = Proxy.custom<IReaderTest> builder client 
 
 
 let middlewareTests = 
     testList "Middleware tests" [
+
+        testCaseAsync "Reader monad works as a remoting handler" <| async {
+            let! path = readerProxy.call <@ fun server -> server.getPath @>
+            Expect.equal "/api/IReaderTest/getPath" path "The path returned is correct"
+        }
 
         testCaseAsync "IProtocol.echoGenericUnionInt" <| async {
             let! result = protocolProxy.call <@ fun server -> server.echoGenericUnionInt (Just 5) @>

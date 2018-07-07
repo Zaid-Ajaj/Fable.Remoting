@@ -7,10 +7,6 @@ open System.IO
 open System.Threading.Tasks
 open Fable.Remoting.Server
 
-[<AutoOpen>]
-module Extensions = 
-    type HttpContext with 
-        member self.GetService<'t>() = self.RequestServices.GetService(typeof<'t>) :?> 't 
 
 module GiraffeUtil = 
     let setResponseBody (response: obj) (logger: Option<string -> unit>) : HttpHandler = 

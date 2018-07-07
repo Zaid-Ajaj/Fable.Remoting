@@ -89,27 +89,29 @@ module Proxy =
 
     [<Emit("$0[$1]")>]
     let private getAs<'a> (x: obj) (key: string) : 'a = jsNative
+    
     [<Emit("JSON.parse($0)")>]
     let private jsonParse (content: string) : obj = jsNative
+    
     [<Emit("JSON.stringify($0)")>]
     let private stringify (x: obj) : string = jsNative
+    
     [<PassGenerics>]
     let private fields<'t> =
-                FSharpType.GetRecordFields typeof<'t>
-                |> Seq.choose
-                    (fun propInfo ->
-                        match propInfo.PropertyType with
-                        |t when FSharpType.IsFunction t ->
-                            let funcName = propInfo.Name
-                            let funcParamterTypes =
-                                FSharpType.GetFunctionElements (propInfo.PropertyType)
-                                |> typed<System.Type []>
-                            Some (funcName, funcParamterTypes)
-                        |t when box (t?definition?name) = box (typeof<Async<_>>?definition?name) ->
-                            Some(propInfo.Name, [|t|])
-                        |_ -> None
-                )
-                |> List.ofSeq
+        FSharpType.GetRecordFields typeof<'t>
+        |> Seq.choose (fun propInfo ->
+            match propInfo.PropertyType with
+            | field when FSharpType.IsFunction field ->
+                let funcName = propInfo.Name
+                let funcParamterTypes =
+                    FSharpType.GetFunctionElements (propInfo.PropertyType)
+                    |> typed<System.Type []>
+                Some (funcName, funcParamterTypes)
+            | field when box (field?definition?name) = box (typeof<Async<_>>?definition?name) ->
+                Some(propInfo.Name, [| field |])
+            |_ -> None
+        )
+        |> List.ofSeq
 
     let private proxyFetch options typeName methodName returnType typeCount =
         let route = options.Builder typeName methodName

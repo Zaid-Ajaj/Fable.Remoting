@@ -19,6 +19,7 @@
     <Compile Include="Diagnostics.fs" />
     <Compile Include="DynamicRecord.fs" />
     <Compile Include="Remoting.fs" />
+    <Compile Include="Reader.fs" />
   </ItemGroup>
 
   <ItemGroup>    

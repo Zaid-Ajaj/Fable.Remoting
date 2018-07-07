@@ -201,3 +201,7 @@ let server : IServer  = {
     echoSingleDULong = Async.result
     echoLongInGenericUnion = Async.result
 }
+
+
+type IReaderTest = { getPath: Async<string> }
+
