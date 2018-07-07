@@ -28,6 +28,7 @@ module DynamicRecord =
           else 
             yield propType ] 
 
+    /// Turns a function type ('a -> 'b) into a RecordFuncType that is easier to work with when parsing parameters from JSON and when doing the matching of routes to record functions
     let makeRecordFuncType (propType: Type) =
         let flattenedTypes = flattenLambdaType propType
         match flattenedTypes with  

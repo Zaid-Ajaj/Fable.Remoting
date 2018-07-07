@@ -96,11 +96,7 @@ module GiraffeUtil =
 
 module Remoting =
 
-  /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
-  let fromContext (f: HttpContext -> 't) (options: RemotingOptions<HttpContext, 't>) = 
-    { options with Implementation = FromContext f } 
-
-  /// Builds a WebPart from the given implementation and options 
+  /// Builds a HttpHandler from the given implementation and options 
   let buildHttpHanlder (options: RemotingOptions<HttpContext, 't>) = 
     match options.Implementation with 
     | Empty -> GiraffeUtil.halt
