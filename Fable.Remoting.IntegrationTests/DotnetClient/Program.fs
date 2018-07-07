@@ -243,7 +243,7 @@ let dotnetClientTests =
             | Ok value -> failwithf "Got value %A where an error was expected" value
             | Result.Error ex -> 
                 match ex with 
-                | :? Http.InternalServerErrorException -> Expect.isTrue true "Works"
+                | :? Http.ProxyRequestException -> Expect.isTrue true "Works"
                 | other -> Expect.isTrue false "Should not happen"
         }
 

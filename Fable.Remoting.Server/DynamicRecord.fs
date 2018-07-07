@@ -81,6 +81,10 @@ module DynamicRecord =
             }) 
         |> Map.ofList    
 
+    
+    let isAsync (inputType: Type) = 
+        inputType.FullName.StartsWith("Microsoft.FSharp.Control.FSharpAsync`1") 
+
     /// Verifies whether the input type is valid as a protocol definition of an API. 
     let checkProtocolDefinition (implementation: 't) = 
         let protocolType = implementation.GetType()
@@ -91,11 +95,11 @@ module DynamicRecord =
           let functions = Map.toList functionInfo
           for (funcName, info) in functions do
             match info.Type with  
-            | NoArguments outputType when outputType <> typeof<Async<_>> -> 
+            | NoArguments outputType when not (isAsync outputType) -> 
                 failwithf "The type '%s' of the record field '%s' for record type '%s' is not valid. It must either be Async<'t> or a function that returns Async<'t> (i.e. 'u -> Async<'t>)" outputType.Name funcName protocolType.Name
-            | SingleArgument (inputType, outputType) when outputType <> typeof<Async<_>> ->  
+            | SingleArgument (inputType, outputType) when not (isAsync outputType) ->  
                 failwithf "The output type '%s' of the record field '%s' for record type '%s' is not valid. The function must return Async<'t> (i.e. 'u -> Async<'t>)" outputType.Name funcName protocolType.Name
-            | ManyArguments (inputTypes, outputType) when outputType <> typeof<Async<_>> ->  
+            | ManyArguments (inputTypes, outputType) when not (isAsync outputType) ->  
                 failwithf "The output type '%s' of the record field '%s' for record type '%s' is not valid. The function must return Async<'t> (i.e. 'u -> Async<'t>)" outputType.Name funcName protocolType.Name    
             | _ -> ()
 
