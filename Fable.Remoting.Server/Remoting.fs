@@ -23,6 +23,6 @@ module Remoting =
         { options with ErrorHandler = Some handler }
 
     /// Builds the API using the provided static protocol implementation 
-    let fromValue (serverImpl: 'implementation) options = 
-        DynamicRecord.checkProtocolDefinition (serverImpl.GetType())
+    let fromValue (serverImpl: 'implementation) (options: RemotingOptions<'t, 'implementation>)  = 
+        DynamicRecord.checkProtocolDefinition serverImpl
         { options with Implementation = StaticValue serverImpl }

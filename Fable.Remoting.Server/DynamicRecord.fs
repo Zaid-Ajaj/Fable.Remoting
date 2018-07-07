@@ -65,14 +65,7 @@ module DynamicRecord =
                 let asyncValue = invoke func methodArgs
                 return! boxer.BoxAsyncResult asyncValue
         } 
-
-
-    /// Verifies whether the input type is valid as a protocol definition of an API. 
-    let checkProtocolDefinition (protocolType: Type) = 
-        if not (FSharpType.IsRecord protocolType) 
-        then failwithf "Protocol definition must be encoded as a record type. The input type '%s' was not a record." protocolType.Name
-        else () (* TODO: verify the record fields and supported serializable types *)
-
+        
     /// Reads the metadata from protocol definition, assumes the shape is checked and is correct
     let createRecordFuncInfo (implementation: 't) =
         let protocolType = implementation.GetType()
@@ -87,6 +80,24 @@ module DynamicRecord =
                 Implementation = implementation
             }) 
         |> Map.ofList    
+
+    /// Verifies whether the input type is valid as a protocol definition of an API. 
+    let checkProtocolDefinition (implementation: 't) = 
+        let protocolType = implementation.GetType()
+        if not (FSharpType.IsRecord protocolType) 
+        then failwithf "Protocol definition must be encoded as a record type. The input type '%s' was not a record." protocolType.Name
+        else 
+          let functionInfo = createRecordFuncInfo implementation 
+          let functions = Map.toList functionInfo
+          for (funcName, info) in functions do
+            match info.Type with  
+            | NoArguments outputType when outputType <> typeof<Async<_>> -> 
+                failwithf "The type '%s' of the record field '%s' for record type '%s' is not valid. It must either be Async<'t> or a function that returns Async<'t> (i.e. 'u -> Async<'t>)" outputType.Name funcName protocolType.Name
+            | SingleArgument (inputType, outputType) when outputType <> typeof<Async<_>> ->  
+                failwithf "The output type '%s' of the record field '%s' for record type '%s' is not valid. The function must return Async<'t> (i.e. 'u -> Async<'t>)" outputType.Name funcName protocolType.Name
+            | ManyArguments (inputTypes, outputType) when outputType <> typeof<Async<_>> ->  
+                failwithf "The output type '%s' of the record field '%s' for record type '%s' is not valid. The function must return Async<'t> (i.e. 'u -> Async<'t>)" outputType.Name funcName protocolType.Name    
+            | _ -> ()
 
     let private fableConverter = new FableJsonConverter() :> JsonConverter
 

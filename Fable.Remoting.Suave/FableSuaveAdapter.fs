@@ -3,6 +3,7 @@
 open Suave
 open Suave.Operators
 open Fable.Remoting.Server
+open Suave.State.CookieStateStore
 
 module SuaveUtil = 
   
@@ -99,7 +100,7 @@ module SuaveUtil =
 module Remoting = 
   
   /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
-  let fromContext (f: HttpContext -> 't) options = 
+  let fromContext (f: HttpContext -> 't) (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
     { options with Implementation = FromContext f } 
 
   /// Builds a WebPart from the given implementation and options  

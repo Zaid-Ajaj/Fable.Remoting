@@ -26,6 +26,8 @@ type TestRec = {
     multiArgFunc : string -> int -> bool -> int
 }
 
+type InValidRecord = { someFunc: int -> string } 
+let invalidRecInstance = { someFunc = fun n -> "" }
 let fsharpRecordTests = 
 
     let invoke (funcName: string) (record: 't) (input: obj[]) (_: bool) =
@@ -48,6 +50,12 @@ let fsharpRecordTests =
     }
 
     testList "FSharpRecord tests" [
+
+        testCase "Exception is thrown when invalid records types are used" <| fun () ->
+            try 
+                DynamicRecord.checkProtocolDefinition invalidRecInstance 
+                fail() 
+            with | _ -> pass()
 
         testCase "Invoking listsMethod" <| fun () ->
             let input = [1 .. 10]

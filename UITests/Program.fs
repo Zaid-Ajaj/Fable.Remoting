@@ -19,7 +19,7 @@ open OpenQA.Selenium.Chrome
 
 let fableWebPart = 
     Remoting.createApi()
-    |> Remoting.fromValue server
+    |> Remoting.fromContext (fun ctx -> server)
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message) 
     |> Remoting.buildWebPart
@@ -87,8 +87,8 @@ let main argv =
     while not testsFinishedRunning do
       // give tests time to run
       printfn "Tests have not finished running yet"
-      printfn "Waiting for another 10 seconds"
-      Threading.Thread.Sleep(10 * 1000)
+      printfn "Waiting for another 5 seconds"
+      Threading.Thread.Sleep(5 * 1000)
       try 
         driver.FindElementByClassName("failed") |> ignore
         testsFinishedRunning <- true
