@@ -74,21 +74,18 @@ type IMusicStore = {
     albums : Async<list<Album>>
 }
 ```
-You can also gain access to the HttpContext from "outside" the remoting handler using the `context` helper function from Suave:
+To gain access to the `HttpContext`, use it as a parameter to end up with `HttpContext -> IMusicStore`:
 ```fs
 // The musicStore value is dependent on the context
-let musicStore (httpContext: HttpContext) =
-    let logger = httpContext.Logger()
-    let musicStore : IMusicStore = {
-        albums = async {
-            logger.Information("Retrieving albums from database")
-            let! albums = Database.getAllAlbums()
-            logger.Information("Read {AlbumCount} albums from database", List.length albums)
-            return albums
-        }
-    } 
-
-    musicStore 
+let musicStore (httpContext: HttpContext) : IMusicStore = {
+    albums = async {
+        let logger = httpContext.Logger()
+        logger.Information("Retrieving albums from database")
+        let! albums = Database.getAllAlbums()
+        logger.Information("Read {AlbumCount} albums from database", List.length albums)
+        return albums
+    }
+} 
 
 // create the WebPart using 'fromContext' instead of 'fromValue' to gain access to the context
 let webApp : WebPart = 
