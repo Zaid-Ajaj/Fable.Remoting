@@ -53,7 +53,7 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="dotnet-http-client.html" />
+    <link rel="next" href="dotnet-integration-tests.html" />
     
     
     <link rel="prev" href="client.html" />
@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -380,9 +393,8 @@
                                 <section class="normal markdown-section">
                                 
                                 <h1 id="fableremoting-for-net-clients">Fable.Remoting for .NET Clients</h1>
-<p>Although Fable.Remoting is initially implemented for communication between a .NET backend and a Fable frontend, it will become a slight inconvenience when you start building a Xamarin or WPF application that needs to talk to the same backend because you need to use raw http for communication. </p>
-<p>However, this is not case anymore because as of now, we implemented a dotnet client that is compatible with web servers that are using Fable.Remoting. This library allows you to re-use the shared protocols/contracts for type-safe communication with your backend the same you did from your Fable frontend.</p>
-<p>In fact, you can use the dotnet client with a dotnet server without a Fable project involved, think client-server interactions purely in F#.</p>
+<p>Although Fable.Remoting is initially implemented for communication between a .NET backend and a Fable frontend, the RPC story wouldn&apos;t be complete with a strongly typed dotnet client that can talk to the same backend using the protocol definition, that why we have built one.  </p>
+<p>In fact, you can use the dotnet client with a dotnet server without a Fable project involved, think client-server interactions purely in F#. This has proven to make <a href="dotnet-integration-tests.html">integration testing</a> extremely simple through this client.</p>
 <h3 id="installation">Installation</h3>
 <p>Install the library from <a href="https://www.nuget.org/packages/Fable.Remoting.DotnetClient/" target="_blank">Nuget</a>: </p>
 <pre><code class="lang-bash">paket add Fable.Remoting.DotnetClient --project /path/to/App.fsproj
@@ -403,9 +415,6 @@ dotnet add package Fable.Remoting.DotnetClient
 <span class="hljs-comment">// proxy: Proxy&lt;IServer&gt; </span>
 <span class="hljs-keyword">let</span> proxy = Proxy.create&lt;IServer&gt; routes 
 
-<span class="hljs-comment">// optionally add an authorization header</span>
-proxy.authorisationHeader <span class="hljs-string">&quot;Bearer ...&quot;</span> 
-
 async { 
     <span class="hljs-comment">// length : int</span>
     <span class="hljs-keyword">let!</span> length = proxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.getLength <span class="hljs-string">&quot;hello&quot;</span> @&gt;
@@ -414,22 +423,21 @@ async {
 }
 </code></pre>
 <p>The major difference is the use of quotations, which simplified and implementation process greatly and keeps the solution entirely type-safe without <a href="https://stackoverflow.com/questions/50131906/f-how-to-create-an-async-function-dynamically-based-on-return-type/50135445" target="_blank">fighting with the run-time</a> with boxing/unboxing hacks to get types right. </p>
-<p>The <code>proxy.call</code> approach allows for more control around the call to the server and can be easily extended, for example, you can <em>safely</em> call the server using a different proxy method <code>proxy.callSafely</code> which will catch exceptions thrown by the web request at call-site instead of using global handlers like with Fable client:</p>
+<h3 id="proxycallsafely">Proxy.callSafely</h3>
+<p>Alongside the <code>proxy.call</code> approach, there is also <code>proxy.callSafely</code> which is the same but will return <code>Async&lt;Result&lt;&apos;t, Exception&gt;&gt;</code> to catch any exception that occurs along the request:</p>
 <pre><code class="lang-fs">async {
     <span class="hljs-keyword">let!</span> result = proxy.callSafely &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.throwError() @&gt; 
     <span class="hljs-keyword">match</span> result <span class="hljs-keyword">with</span> 
     | Ok value -&gt; <span class="hljs-comment">(* will not match *)</span> 
     | Error ex -&gt; 
         | <span class="hljs-keyword">match</span> ex <span class="hljs-keyword">with</span> 
-        | :? Http.InternalServerErrorException -&gt; 
-            Expect.isTrue <span class="hljs-keyword">true</span> <span class="hljs-string">&quot;This is the correct exception&quot;</span> 
-        | :? Http.UnauthorisedException -&gt; <span class="hljs-comment">(* handle authorization *)</span>
-        | :? Http.ForbiddenException -&gt; <span class="hljs-comment">(* handle forbidded *)</span>
-        | :? Http.NotOkException <span class="hljs-keyword">as</span> notOk -&gt; 
-            <span class="hljs-comment">// generic http exception for any other status code </span>
-            <span class="hljs-comment">// that is not 200 (OK) </span>
-            <span class="hljs-keyword">let</span> response = notOk.Response
-            <span class="hljs-comment">(* handle response your self *)</span> 
+        | :? Http.ProxyRequestException <span class="hljs-keyword">as</span> requestException -&gt; 
+            <span class="hljs-keyword">let</span> statusCode = requestException.StatusCode 
+            <span class="hljs-keyword">let</span> response = requestException.Response
+            <span class="hljs-keyword">let</span> responseText = requestException.ResponseText
+            <span class="hljs-comment">(* do stuff with the exception information *)</span>
+        | otherException -&gt; 
+            <span class="hljs-comment">(* Usually network errors happen here *)</span>
 }
 </code></pre>
 
@@ -464,7 +472,7 @@ async {
                 </a>
                 
                 
-                <a href="dotnet-http-client.html" class="navigation navigation-next " aria-label="Next page: Custom Http Client">
+                <a href="dotnet-integration-tests.html" class="navigation navigation-next " aria-label="Next page: Asp.NET Core Integration Testing">
                     <i class="fa fa-angle-right"></i>
                 </a>
                 
@@ -475,7 +483,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"3.1","depth":1,"next":{"title":"Custom Http Client","level":"3.2","depth":1,"path":"src/dotnet-http-client.md","ref":"src/dotnet-http-client.md","articles":[]},"previous":{"title":"Setup Client","level":"2.4","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2018-06-28T08:08:53.570Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"3.1","depth":1,"next":{"title":"Asp.NET Core Integration Testing","level":"3.2","depth":1,"path":"src/dotnet-integration-tests.md","ref":"src/dotnet-integration-tests.md","articles":[]},"previous":{"title":"Setup Client","level":"2.5","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2018-07-08T14:16:06.678Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

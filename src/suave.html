@@ -53,7 +53,7 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="giraffe.html" />
+    <link rel="next" href="aspnet-core.html" />
     
     
     <link rel="prev" href="basics.html" />
@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -401,8 +414,11 @@
     <span class="hljs-comment">(* Your implementation here *)</span>
 } 
 
-<span class="hljs-comment">// create the web part using the remoting CE </span>
-<span class="hljs-keyword">let</span> fableWebApp : WebPart = remoting musicStore {()} 
+<span class="hljs-comment">// Create the WebPart from the musicStore value</span>
+<span class="hljs-keyword">let</span> fableWebApp : WebPart = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue musicStore
+    |&gt; Remoting.buildWebPart
 
 <span class="hljs-keyword">let</span> webApp = 
   choose [ fableWebApp
@@ -444,7 +460,7 @@ startWebServer defaultConfig webApp
                 </a>
                 
                 
-                <a href="giraffe.html" class="navigation navigation-next " aria-label="Next page: Setup Giraffe">
+                <a href="aspnet-core.html" class="navigation navigation-next " aria-label="Next page: Setup Asp.NET Core">
                     <i class="fa fa-angle-right"></i>
                 </a>
                 
@@ -455,7 +471,7 @@ startWebServer defaultConfig webApp
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Setup Suave","level":"2.1","depth":1,"next":{"title":"Setup Giraffe","level":"2.2","depth":1,"path":"src/giraffe.md","ref":"src/giraffe.md","articles":[]},"previous":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/suave.md","mtime":"2018-05-14T19:13:06.809Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Setup Suave","level":"2.1","depth":1,"next":{"title":"Setup Asp.NET Core","level":"2.2","depth":1,"path":"src/aspnet-core.md","ref":"src/aspnet-core.md","articles":[]},"previous":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/suave.md","mtime":"2018-07-08T14:29:15.065Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

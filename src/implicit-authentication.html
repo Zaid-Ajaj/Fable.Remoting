@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -394,7 +407,10 @@
 </code></pre>
 <p>Where we are assuming that <code>requiresAuthenticated</code> checks whether or not a user is logged in by checking the Authorization header of the incoming request. Everytime the client sends a secure request, the client also provides a valid authentication header, so far so good. </p>
 <p>Ideally, we want to integrate the remoting handler as follows:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> fableWebPart : WebPart = remoting musicStore {()}
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> fableWebPart : WebPart = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue musicStore
+    |&gt; Remoting.buildWebPart
 
 <span class="hljs-keyword">let</span> webApp = 
     choose [ 
@@ -413,8 +429,10 @@
 <span class="hljs-comment">// value of authorization header</span>
 <span class="hljs-keyword">let</span> authorizationToken = <span class="hljs-string">&quot;Bearer &lt;rest of token value&gt;&quot;</span>
 
-<span class="hljs-keyword">let</span> musicStore = Proxy.remoting&lt;IMusicStore&gt; {
-    use_auth_token authorizationToken
+<span class="hljs-keyword">let</span> musicStore : IMusicStore = 
+    Remoting.createApi()
+    |&gt; Remoting.withAuthorizationHeader authorizationToken
+    |&gt; Remoting.buildProxy&lt;IMusicStore&gt;() 
 }
 </code></pre>
 <p>Now you can use <code>musicStore</code> like you would usually do. </p>
@@ -463,7 +481,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Implicit Authentication","level":"4.4","depth":1,"next":{"title":"Accessing Request Context","level":"4.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"previous":{"title":"Modeling Authentication","level":"4.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/implicit-authentication.md","mtime":"2018-06-28T16:04:47.785Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Implicit Authentication","level":"4.4","depth":1,"next":{"title":"Accessing Request Context","level":"4.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"previous":{"title":"Modeling Authentication","level":"4.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/implicit-authentication.md","mtime":"2018-07-08T15:06:29.807Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

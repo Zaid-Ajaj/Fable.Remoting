@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -409,25 +422,32 @@
 
     musicStore
 </code></pre>
-<p>So far, as you can see, the code doesn&apos;t do anything with the <code>HttpContext</code> and it is unit-testable. Infact, this implementation doesn&apos;t care in what type of server it will be hosted in. </p>
-<p>Now we need to read the headers from the request and pass them to the factory, we do this by using the <code>context</code> handler that gives us access to the context of the incoming request, in Suave this <code>context</code> combinator is built-in so that you can use it as follows: </p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> createWebApp (db: IMusicDb) : WebPart = context &lt;| <span class="hljs-keyword">fun</span> ctx -&gt;
+<p>So far, as you can see, the code doesn&apos;t do anything with the <code>HttpContext</code> and it is unit-testable. Infact, this implementation doesn&apos;t care in what type of server it will be hosted in. Now we need a <code>HttpContext</code> to read the headers from:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicStore (db: IMusicDb) (context: HttpContext) : IMusicStore  = 
     <span class="hljs-comment">// Here is where we access the context to extract the headers</span>
-    <span class="hljs-keyword">let</span> headers = Map.ofList ctx.request.headers
+    <span class="hljs-keyword">let</span> headers = Map.ofList context.request.headers
     <span class="hljs-comment">// construct the music store </span>
-    <span class="hljs-keyword">let</span> musicStore = createMusicStore db headers 
-    <span class="hljs-comment">// expose the music store as a WebPart</span>
-    remoting musicStore { use_route_builder (sprintf <span class="hljs-string">&quot;/api/%s/%s&quot;</span>) }
+    createMusicStore db headers
 </code></pre>
-<p>In Giraffe/Saturn, the <code>context</code> combinator isn&apos;t built-in but it is easy to define it:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> context (f: HttpContext -&gt; HttpHandler) : HttpHandler =
-    <span class="hljs-keyword">fun</span> (next: HttpFunc) (ctx : HttpContext) -&gt; 
-        task {
-            <span class="hljs-keyword">let</span> handler = f ctx
-            <span class="hljs-keyword">return!</span> handler next ctx 
-        }
+<p>As you can see, the <code>musicStore</code> function takes in a dependency of <code>IMusicDb</code> and <code>HttpContext</code>. You will have to provide the <code>IMusicDb</code> yourself (for now) and you will end up with a function of type <code>HttpContext -&gt; IMusicStore</code>. This signature is exactly what <code>Remoting.fromContext</code> is expecting and can used like this:</p>
+<pre><code class="lang-fs"><span class="hljs-comment">// first, create your musicDb</span>
+<span class="hljs-keyword">let</span> musicDb : IMusicDb = { 
+    <span class="hljs-keyword">new</span> IMusicDb <span class="hljs-keyword">with</span> 
+       <span class="hljs-keyword">member</span> self.getAwesomeAlbums() = <span class="hljs-comment">(* ... *)</span> 
+       <span class="hljs-keyword">member</span> self.getBoringAlbums() = <span class="hljs-comment">(* ... *)</span> 
+}
 
-<span class="hljs-keyword">let</span> createWebApp (db: IMusicDb) : HttpHandler = context &lt;| <span class="hljs-keyword">fun</span> ctx -&gt;
+<span class="hljs-comment">// now build the WebPart</span>
+<span class="hljs-keyword">let</span> webApp : WebPart = 
+    Remoting.createApi()
+    |&gt; Remoting.withRouteBuilder (sprintf <span class="hljs-string">&quot;/api/%s/%s)&quot;</span>)
+    |&gt; Remoting.fromContext (musicStore musicDb) 
+    |&gt; Remoting.buildWebPart
+
+startWebServer defaultConfig webApp
+</code></pre>
+<p>In Giraffe/Saturn, the story is the same</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicStore (db: IMusicDb) (ctx: HttpContext) : IMusicStore =  
     <span class="hljs-comment">// Here is where we access the context to extract the headers</span>
     <span class="hljs-keyword">let</span> headers = 
         [ <span class="hljs-keyword">for</span> pair <span class="hljs-keyword">in</span> ctx.Request.Headers <span class="hljs-keyword">do</span> 
@@ -437,20 +457,13 @@
         |&gt; Map.ofList 
 
     <span class="hljs-comment">// construct the music store </span>
-    <span class="hljs-keyword">let</span> musicStore = createMusicStore db headers 
+    createMusicStore db headers 
 
-    <span class="hljs-comment">// expose the music store as a HttpHandler</span>
-    remoting musicStore {()}
-</code></pre>
-<p>Finally, in order to build the <code>WebPart</code> or <code>HttpHandler</code>, you will need to provide database implementation for <code>IMusicDb</code> :</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> musicDb : IMusicDb = { 
-    <span class="hljs-keyword">new</span> IMusicDb <span class="hljs-keyword">with</span> 
-       <span class="hljs-keyword">member</span> self.getAwesomeAlbums() = <span class="hljs-comment">(* ... *)</span> 
-       <span class="hljs-keyword">member</span> self.getBoringAlbums() = <span class="hljs-comment">(* ... *)</span> 
-}
-
-<span class="hljs-comment">// webApp : WebPart / HttpHandler </span>
-<span class="hljs-keyword">let</span> webApp = createWebApp musicDb
+<span class="hljs-keyword">let</span> webApp : HttpHandler = 
+    Remoting.createApi()
+    |&gt; Remoting.withRouteBuilder (sprintf <span class="hljs-string">&quot;/api/%s/%s)&quot;</span>)
+    |&gt; Remoting.fromContext (musicStore musicDb) 
+    |&gt; Remoting.buildHttpHandler
 </code></pre>
 <p>That is it, we have now exposed our <code>musicStore</code> implementation to the world as an Http web service. 
 We can now also write some unit tests for the implementation:</p>
@@ -526,7 +539,7 @@ We can now also write some unit tests for the implementation:</p>
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-06-29T04:03:14.044Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Accessing Request Context","level":"4.5","depth":1,"next":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"previous":{"title":"Implicit Authentication","level":"4.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/request-context.md","mtime":"2018-07-08T14:26:41.077Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

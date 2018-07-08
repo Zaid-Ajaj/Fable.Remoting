@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -395,10 +408,10 @@ mono .paket/paket.exe add Suave.SerilogExtensions
 <pre><code class="lang-fs"><span class="hljs-keyword">open</span> System
 <span class="hljs-comment">// ...</span>
 <span class="hljs-keyword">open</span> Suave.SerilogExtensions
-<span class="hljs-keyword">open</span> Suave 
+<span class="hljs-keyword">open</span> Suave  
 
 <span class="hljs-comment">// Log unhandled exceptions </span>
-<span class="hljs-keyword">let</span> errorHandler (ex: Exception) 
+<span class="hljs-keyword">let</span> errorHandler (ex: Exception)  
                  (routeInfo: RouteInfo&lt;HttpContext&gt;) =
     <span class="hljs-comment">// get a contextual logger with RequestId attached to it</span>
     <span class="hljs-keyword">let</span> contextLogger = routeInfo.httpContext.Logger()
@@ -406,13 +419,16 @@ mono .paket/paket.exe add Suave.SerilogExtensions
     <span class="hljs-keyword">let</span> errorMsgTemplate = <span class="hljs-string">&quot;Error occured while invoking {MethodName} at {RoutePath}&quot;</span>
     contextLogger.Error(ex, errorMsgTemplate, routeInfo.methodName, routeInfo.path)
     <span class="hljs-comment">// No need to propagate custom errors back to client</span>
-    Ignore
+    Ignore 
 
-<span class="hljs-comment">// create the remoting WebPart</span>
-<span class="hljs-keyword">let</span> webApp : WebPart = remoting musicStore {
-    use_route_builder (sprintfn <span class="hljs-string">&quot;/api/%s/%s&quot;</span>)
-    use_error_handler errorHandler 
-}
+
+<span class="hljs-comment">// create the WebPart</span>
+<span class="hljs-keyword">let</span> webApp : WebPart = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue musicStore
+    |&gt; Remoting.withRouteBuilder (sprintfn <span class="hljs-string">&quot;/api/%s/%s&quot;</span>) 
+    |&gt; Remoting.withErrorHandler errorHandler 
+    |&gt; Remoting.buildWebPart
 
 <span class="hljs-comment">// Enable logging</span>
 <span class="hljs-keyword">let</span> webAppWithLogging : WebPart = SerilogAdapter.Enable(webApp)
@@ -444,7 +460,8 @@ Log.Logger &lt;-
 }
 </code></pre>
 <p>You can also gain access to the HttpContext from &quot;outside&quot; the remoting handler using the <code>context</code> helper function from Suave:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = context &lt;| <span class="hljs-keyword">fun</span> httpContext -&gt;
+<pre><code class="lang-fs"><span class="hljs-comment">// The musicStore value is dependent on the context</span>
+<span class="hljs-keyword">let</span> musicStore (httpContext: HttpContext) =
     <span class="hljs-keyword">let</span> logger = httpContext.Logger()
     <span class="hljs-keyword">let</span> musicStore : IMusicStore = {
         albums = async {
@@ -453,18 +470,22 @@ Log.Logger &lt;-
             logger.Information(<span class="hljs-string">&quot;Read {AlbumCount} albums from database&quot;</span>, List.length albums)
             <span class="hljs-keyword">return</span> albums
         }
-    }
+    } 
 
-    <span class="hljs-comment">// create and return the remoting WebPart</span>
-    remoting musicStore {
-        use_route_builder (sprintfn <span class="hljs-string">&quot;/api/%s/%s&quot;</span>)
-        use_error_handler errorHandler 
-    }
+    musicStore 
+
+<span class="hljs-comment">// create the WebPart using &apos;fromContext&apos; instead of &apos;fromValue&apos; to gain access to the context</span>
+<span class="hljs-keyword">let</span> webApp : WebPart = 
+    Remoting.createApi()
+    |&gt; Remoting.fromContext musicStore
+    |&gt; Remoting.withRouteBuilder (sprintfn <span class="hljs-string">&quot;/api/%s/%s&quot;</span>) 
+    |&gt; Remoting.withErrorHandler errorHandler 
+    |&gt; Remoting.buildWebPart
 
 <span class="hljs-comment">// Wrap with Serilog adapter</span>
 <span class="hljs-keyword">let</span> webAppWithLogging = SerilogAdapter.Enable(webApp)
 
-startWebServer webAppWithLogging
+startWebServer defaultConfig webAppWithLogging
 </code></pre>
 
                                 
@@ -509,7 +530,7 @@ startWebServer webAppWithLogging
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Logging","level":"4.6","depth":1,"next":{"title":"Troubleshooting","level":"5.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"4.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-06-28T17:17:43.954Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Logging","level":"4.6","depth":1,"next":{"title":"Troubleshooting","level":"5.1","depth":1,"path":"src/troubleshoot.md","ref":"src/troubleshoot.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"4.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-07-08T14:42:47.192Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

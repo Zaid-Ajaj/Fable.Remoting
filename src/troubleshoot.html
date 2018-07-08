@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -381,12 +394,14 @@
                                 
                                 <h1 id="troubleshooting">Troubleshooting</h1>
 <p>The library tries to make the data exchange between the client and server as seemless as possible. We have many unit and integration tests to make sure the data types are well serialized and deserialized both on client and server. </p>
-<p>In the rare case that you encounter a type that doesn&apos;t seem to be serialized correctly, you can enable the <em>internal</em> logger of <code>Fable.Remoting</code> to see what is happening under the hood. You will see what the library is trying to deserialize and which method it will try to invoke. It is simple as adding <code>use_logger (printfn &quot;%s&quot;)</code> to the remoting builder:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = remoting musicStore {
-    use_logger (printfn <span class="hljs-string">&quot;%s&quot;</span>)
+<p>In the rare case that you encounter a type that doesn&apos;t seem to be serialized correctly, you can enable the <em>internal</em> logger of <code>Fable.Remoting</code> to see what is happening under the hood. You will see what the library is trying to deserialize and which method it will try to invoke.</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue musicStore
+    |&gt; Remoting.withDiagnosticsLogger (printfn <span class="hljs-string">&quot;%s&quot;</span>)
+    |&gt; Remoting.buildWebPart
 }
 </code></pre>
-<p>The logs, however helpfull, are not very <em>pretty</em>, simplifying the output is work in progress.</p>
 
                                 
                                 </section>
@@ -430,7 +445,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Troubleshooting","level":"5.1","depth":1,"next":{"title":"Credits","level":"5.2","depth":1,"path":"src/credits.md","ref":"src/credits.md","articles":[]},"previous":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/troubleshoot.md","mtime":"2018-05-14T19:13:06.809Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Troubleshooting","level":"5.1","depth":1,"next":{"title":"Credits","level":"5.2","depth":1,"path":"src/credits.md","ref":"src/credits.md","articles":[]},"previous":{"title":"Logging","level":"4.6","depth":1,"path":"src/logging.md","ref":"src/logging.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/troubleshoot.md","mtime":"2018-07-08T15:08:28.075Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

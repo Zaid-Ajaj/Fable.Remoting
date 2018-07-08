@@ -19,10 +19,10 @@ type Album = {
 // The shared interface representing your client-server interaction
 type IMusicStore = {
     popularAlbums : Async<list<Album>> 
-    allAlbums : unit -> Async<list<Album>> 
+    allAlbums : Async<list<Album>> 
     albumById : int -> Async<Option<Album>>
     createAlbum : string -> string -> DateTime -> Async<Option<Album>>
- }
+}
 ```
 As you can see, our interface is the `IMusicStore` record the fields of such record are functions of the shape:
 ```fs
@@ -40,14 +40,11 @@ let musicStore : IMusicStore = {
     popularAlbums = async {
         // getAllAlbums : unit -> Async<list<Album>>
         let! albums =  Database.getAllAlbums() 
-        
-        let popularAlbums = 
-            List.filter (fun album -> album.Popular) albums
-
+        let popularAlbums = List.filter (fun album -> album.Popular) albums
         return popularAlbums 
     }
     
-    allAlbums = fun () -> Database.getAllAlbums() 
+    allAlbums = Database.getAllAlbums() 
    
     albumById = fun id -> async {
         // findAlbumById : int -> Async<Option<Album>>
@@ -63,5 +60,6 @@ Now you are almost ready to expose the API to your client and have these functio
 - [Setup Suave](suave.md)
 - [Setup Giraffe](giraffe.md)
 - [Setup Saturn](saturn.md)
+- [Setup Asp.Net Core](aspnet-core.md)
 
 Afterwards you can [setup Fable Client](client.md) 

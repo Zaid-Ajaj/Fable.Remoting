@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Custom Http Client · GitBook</title>
+        <title>Asp.NET Core Integration Testing · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter active" data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter active" data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -364,7 +377,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Custom Http Client</a>
+        <a href=".." >Asp.NET Core Integration Testing</a>
     </h1>
 </div>
 
@@ -379,26 +392,73 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="use-a-custom-httpclient">Use a custom HttpClient</h1>
-<p>When constructing the proxy, you can provide your own <code>HttpClient</code> that the proxy uses under the hood to communicate with the server. This has many use cases, for example, when you want to use a secure client certificate, configure the headers of the requests or when you want to test the Giraffe/Saturn pipeline directly from the client using Kestrel&apos;s test <code>HttpClient</code></p>
-<pre><code class="lang-fs"><span class="hljs-comment">// using ASP.NET Core&apos;s test server</span>
-<span class="hljs-keyword">let</span> server = <span class="hljs-keyword">new</span> TestServer(WebHostBuilder().UseStartup&lt;Startup&gt;())
+                                <h1 id="aspnet-core-integration-testing">Asp.NET Core Integration Testing</h1>
+<p>The following example demonstrates how the <a href="">Dotnet client</a> can be used for integration testing of your Asp.Net core app whether it is Giraffe, Saturn or simple Asp.net core middleware. It uses the <a href="https://www.nuget.org/packages/Microsoft.AspNetCore.TestHost" target="_blank">Microsoft.AspNetCore.TestHost</a> package to give us a custom <code>HttpClient</code> for testing. Then, we give this <code>HttpClient</code> to our dotnet client proxy: </p>
+<pre><code class="lang-fs"><span class="hljs-keyword">open</span> System
+<span class="hljs-keyword">open</span> System.IO
+<span class="hljs-keyword">open</span> Microsoft.AspNetCore.Builder
+<span class="hljs-keyword">open</span> Microsoft.AspNetCore.Hosting
+<span class="hljs-keyword">open</span> Microsoft.AspNetCore.TestHost
+<span class="hljs-keyword">open</span> Microsoft.AspNetCore.Http
+<span class="hljs-keyword">open</span> Fable.Remoting.Server
+<span class="hljs-keyword">open</span> Fable.Remoting.AspNetCore
+<span class="hljs-keyword">open</span> Fable.Remoting.DotnetClient
+<span class="hljs-keyword">open</span> Expecto
+<span class="hljs-keyword">open</span> Types
+<span class="hljs-keyword">open</span> System.Net
+<span class="hljs-keyword">open</span> Expecto.Logging
+<span class="hljs-keyword">open</span> Newtonsoft.Json.Linq
 
-<span class="hljs-comment">// the test server gives you a specialized HttpClient for testing</span>
-<span class="hljs-keyword">let</span> client = server.CreateClient()
 
-<span class="hljs-comment">// route builder that specifies how the routes are built</span>
-<span class="hljs-keyword">let</span> builder = <span class="hljs-comment">(*  *)</span>
+<span class="hljs-comment">// the route builder </span>
+<span class="hljs-keyword">let</span> builder = sprintf <span class="hljs-string">&quot;/api/%s/%s&quot;</span>
 
-<span class="hljs-comment">// construct the proxy using the test HttpClient</span>
-<span class="hljs-keyword">let</span> proxy = Proxy.custom&lt;IMusicStore&gt; builder client
+<span class="hljs-comment">// protocol implementations </span>
+<span class="hljs-keyword">let</span> server : IServer = <span class="hljs-comment">(* *)</span>
+<span class="hljs-keyword">let</span> otherProtocol : IProcotol = <span class="hljs-comment">(*  *)</span>
 
-<span class="hljs-comment">// write tests</span>
-testCase <span class="hljs-string">&quot;favoriteAlbums returns empty when database is empty&quot;</span> &lt;| <span class="hljs-keyword">fun</span> () -&gt; 
-    proxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.favoriteAlbums()  @&gt;
-    |&gt; Async.RunSyncronously 
-    |&gt; List.length 
-    |&gt; <span class="hljs-keyword">fun</span> n -&gt; Expect <span class="hljs-number">0</span> n <span class="hljs-string">&quot;List should be empty&quot;</span>
+<span class="hljs-keyword">let</span> webApp = 
+    Remoting.createApi()
+    |&gt; Remoting.withRouteBuilder builder
+    |&gt; Remoting.withErrorHandler (<span class="hljs-keyword">fun</span> ex routeInfo -&gt; Propagate ex.Message)
+    |&gt; Remoting.fromValue server
+
+<span class="hljs-keyword">let</span> otherWebApp = 
+    Remoting.createApi()
+    |&gt; Remoting.withRouteBuilder builder 
+    |&gt; Remoting.withErrorHandler (<span class="hljs-keyword">fun</span> ex routeInfo -&gt; Propagate ex.Message)
+    |&gt; Remoting.fromValue otherProtocol 
+
+<span class="hljs-comment">// configure asp.net core middleware</span>
+<span class="hljs-keyword">let</span> configureApp (app : IApplicationBuilder) =
+    app.UseRemoting(webApp)
+    app.UseRemoting(otherWebApp)  
+
+<span class="hljs-comment">// Creates a Host</span>
+<span class="hljs-keyword">let</span> createHost() =
+    WebHostBuilder()
+        .UseContentRoot(Directory.GetCurrentDirectory())
+        .Configure(Action&lt;IApplicationBuilder&gt; configureApp)
+
+<span class="hljs-keyword">let</span> testServer = <span class="hljs-keyword">new</span> TestServer(createHost())
+
+<span class="hljs-comment">// custom HttpClient for testing</span>
+<span class="hljs-keyword">let</span> client : HttClient = testServer.CreateClient()
+
+<span class="hljs-comment">// Create different proxies to different API&apos;s</span>
+<span class="hljs-keyword">let</span> serverProxy : Proxy&lt;IServer&gt; = Proxy.custom&lt;IServer&gt; builder client
+<span class="hljs-keyword">let</span> protocolProxy : Proxy&lt;IProtocol&gt; = Proxy.custom&lt;IProtocol&gt; builder client 
+
+<span class="hljs-comment">// Now write your tests</span>
+
+<span class="hljs-keyword">let</span> tests = 
+    testList <span class="hljs-string">&quot;IServer tests&quot;</span> [
+        testCaseAsync <span class="hljs-string">&quot;IServer.echoResult works&quot;</span> &lt;| async {
+            <span class="hljs-keyword">let</span> input = Ok <span class="hljs-number">42</span> 
+            <span class="hljs-keyword">let!</span> output = serverProxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.echoResult input @&gt;
+            Expect.equal input output <span class="hljs-string">&quot;The results are the same&quot;</span> 
+        }
+    ]
 </code></pre>
 
                                 
@@ -443,7 +503,7 @@ testCase <span class="hljs-string">&quot;favoriteAlbums returns empty when datab
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Custom Http Client","level":"3.2","depth":1,"next":{"title":"Limitations and Workaround","level":"3.3","depth":1,"path":"src/dotnet-client-limitations.md","ref":"src/dotnet-client-limitations.md","articles":[]},"previous":{"title":"Getting Started from .NET","level":"3.1","depth":1,"path":"src/dotnet-client.md","ref":"src/dotnet-client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-http-client.md","mtime":"2018-06-28T17:20:10.785Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Asp.NET Core Integration Testing","level":"3.2","depth":1,"next":{"title":"Limitations and Workaround","level":"3.3","depth":1,"path":"src/dotnet-client-limitations.md","ref":"src/dotnet-client-limitations.md","articles":[]},"previous":{"title":"Getting Started from .NET","level":"3.1","depth":1,"path":"src/dotnet-client.md","ref":"src/dotnet-client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-integration-tests.md","mtime":"2018-07-08T14:12:21.337Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

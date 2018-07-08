@@ -131,7 +131,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -144,7 +157,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="saturn.html">
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
             
                 <a href="saturn.html">
             
@@ -157,7 +170,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="client.html">
+        <li class="chapter " data-level="2.5" data-path="client.html">
             
                 <a href="client.html">
             
@@ -190,12 +203,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="dotnet-integration-tests.html">
             
-                <a href="dotnet-http-client.html">
+                <a href="dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -409,21 +422,56 @@
         Ignore
 </code></pre>
 <p>Use the error handler using the <code>remoting</code> builder:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = remoting musicStore {
-    use_error_handler errorHandler
-}
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = 
+    Remoting.createApi()
+    |&gt; Remoting.withErrorHandler errorHandler
+    |&gt; Remoting.fromValue musicStore
 </code></pre>
-<p>On the client, you can intercept the propagated custom error messages, also using a global handler (in either ways, whether you chose to ignore or propage a custom error, an exception is thrown on the local call-site):</p>
+<p>On the client, you can intercept both propagated custom error messages or ignored ones. Either way, an exception is thrown on call-site: if the exception is ignored (or unhandled when there isn&apos;t an error handler) you will get a generic error message along with other information. If an error is propagated, it is serialized:</p>
 <pre><code class="lang-fs"><span class="hljs-comment">// Assuming the type CustomError is shared with the client too</span>
+<span class="hljs-keyword">let</span> musicStore = 
+    Remoting.createApi()
+    |&gt; Remoting.buildproxy&lt;IMusicStore&gt;()
 
-<span class="hljs-keyword">let</span> errorHandler (info: ErrorInfo) = 
-    <span class="hljs-keyword">let</span> customError = ofJson&lt;CustomError&gt; errorInfo.error
-    printfn <span class="hljs-string">&quot;Oh noo: %s&quot;</span> custromError.errorMsg)
-
-<span class="hljs-keyword">let</span> musicStore = Proxy.remoting&lt;IMusicStore&gt; {
-    use_error_handler errorHandler
+async {
+    <span class="hljs-keyword">try</span> 
+      <span class="hljs-keyword">let!</span> result = musicStore.throwError() 
+    <span class="hljs-keyword">with</span> 
+     | :? ProxyRequestException <span class="hljs-keyword">as</span> ex -&gt; <span class="hljs-comment">(* do stuff *)</span> 
+     | otherException -&gt; <span class="hljs-comment">(* do stuff *)</span> 
 }
 </code></pre>
+<p>The <code>ProxyRequestException</code> is special, it has all information about the response:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ProxyRequestException</span></span>(response: Response, errorMsg, reponseText: string) = 
+    <span class="hljs-keyword">inherit</span> System.Exception(errorMsg)
+    <span class="hljs-keyword">member</span> this.Response = response 
+    <span class="hljs-keyword">member</span> this.StatusCode = response.Status
+    <span class="hljs-keyword">member</span> this.ResponseText = reponseText
+</code></pre>
+<p>When an error is unhanlded (i.e. there was no error handler on the server) the <code>ResponseText</code> becomes:</p>
+<pre><code class="lang-json">{ 
+    <span class="hljs-string">&quot;error&quot;</span>: <span class="hljs-string">&quot;Error occured while running the function &apos;throwError&apos;&quot;</span>, 
+    <span class="hljs-string">&quot;ignored&quot;</span>: <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">&quot;handled&quot;</span>: <span class="hljs-literal">false</span> 
+}
+</code></pre>
+<p>When there is an error handler but the exception got ignored:</p>
+<pre><code class="lang-json">{ 
+    <span class="hljs-string">&quot;error&quot;</span>: <span class="hljs-string">&quot;Error occured while running the function &apos;throwError&apos;&quot;</span>, 
+    <span class="hljs-string">&quot;ignored&quot;</span>: <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">&quot;handled&quot;</span>: <span class="hljs-literal">true</span>
+}
+</code></pre>
+<p>Finally when a custom error like the <code>CustomError</code> shown above gets propagated, the result becomes:</p>
+<pre><code class="lang-json">{ 
+    <span class="hljs-string">&quot;error&quot;</span>:  {
+        <span class="hljs-string">&quot;errorMsg&quot;</span>: <span class="hljs-string">&quot;Something terrible happend&quot;</span>
+    },
+    <span class="hljs-string">&quot;ignored&quot;</span>: <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">&quot;handled&quot;</span>: <span class="hljs-literal">true</span> 
+}
+</code></pre>
+<p>Parsing the response text if needed becomes the responsibility of the consuming application </p>
 
                                 
                                 </section>
@@ -467,7 +515,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Error Handling","level":"4.2","depth":1,"next":{"title":"Modeling Authentication","level":"4.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"previous":{"title":"Custom Route Paths","level":"4.1","depth":1,"path":"src/route-builder.md","ref":"src/route-builder.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/error-handling.md","mtime":"2018-06-28T17:22:26.921Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Error Handling","level":"4.2","depth":1,"next":{"title":"Modeling Authentication","level":"4.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"previous":{"title":"Custom Route Paths","level":"4.1","depth":1,"path":"src/route-builder.md","ref":"src/route-builder.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/error-handling.md","mtime":"2018-07-08T15:04:24.114Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

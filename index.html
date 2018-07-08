@@ -129,7 +129,20 @@
             
         </li>
     
-        <li class="chapter " data-level="2.2" data-path="src/giraffe.html">
+        <li class="chapter " data-level="2.2" data-path="src/aspnet-core.html">
+            
+                <a href="src/aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="src/giraffe.html">
             
                 <a href="src/giraffe.html">
             
@@ -142,7 +155,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.3" data-path="src/saturn.html">
+        <li class="chapter " data-level="2.4" data-path="src/saturn.html">
             
                 <a href="src/saturn.html">
             
@@ -155,7 +168,7 @@
             
         </li>
     
-        <li class="chapter " data-level="2.4" data-path="src/client.html">
+        <li class="chapter " data-level="2.5" data-path="src/client.html">
             
                 <a href="src/client.html">
             
@@ -188,12 +201,12 @@
             
         </li>
     
-        <li class="chapter " data-level="3.2" data-path="src/dotnet-http-client.html">
+        <li class="chapter " data-level="3.2" data-path="src/dotnet-integration-tests.html">
             
-                <a href="src/dotnet-http-client.html">
+                <a href="src/dotnet-integration-tests.html">
             
                     
-                    Custom Http Client
+                    Asp.NET Core Integration Testing
             
                 </a>
             
@@ -378,22 +391,20 @@
                                 <section class="normal markdown-section">
                                 
                                 <h1 id="fableremoting">Fable.Remoting</h1>
-<p>Fable.Remoting is a library that enables type-safe client-server communication for F# featuring <a href="https://github.com/SuaveIO/suave" target="_blank">Suave</a>, <a href="https://github.com/giraffe-fsharp/Giraffe" target="_blank">Giraffe</a> or <a href="https://github.com/SaturnFramework/Saturn" target="_blank">Saturn</a> on the server. On the client you can have either a <a href="http://fable.io/" target="_blank">Fable</a> project or any <a href="src/dotnet-client.html">.NET App</a> like Xamarin or WPF.This library lets you think about your client-server interactions in terms of pure stateless functions by defining a shared interface (see <a href="src/basics.html">Getting started</a>) that is used by both the client and server.</p>
+<p>Fable.Remoting is a library that enables type-safe client-server communication for F# featuring <a href="https://github.com/SuaveIO/suave" target="_blank">Suave</a>, <a href="https://github.com/giraffe-fsharp/Giraffe" target="_blank">Giraffe</a> or <a href="https://github.com/SaturnFramework/Saturn" target="_blank">Saturn</a> or any <a href="https://docs.microsoft.com/en-us/aspnet/core/?view=aspnetcore-2.1" target="_blank">Asp.net core</a> application on the server. On the client you can have either a <a href="http://fable.io/" target="_blank">Fable</a> project or <a href="src/dotnet-client.html">.NET Apps</a> like Xamarin or WPF. This library lets you think about your client-server interactions in terms of pure stateless functions by defining a shared interface (see <a href="src/basics.html">Getting started</a>) that is used by both the client and server.</p>
 <p>As the name suggests, it is inspired by <a href="https://developers.websharper.com/docs/v4.x/fs/remoting" target="_blank">Websharper&apos;s Remoting</a> feature but it uses different mechanism to achieve the same goal. </p>
 <h2 id="quick-start">Quick Start</h2>
 <p>You start off using the <a href="https://github.com/SAFE-Stack/SAFE-template" target="_blank">SAFE template</a> where Fable.Remoting is one of the scaffolding options:</p>
 <pre><code class="lang-bash"><span class="hljs-comment"># install the template</span>
 dotnet new -i SAFE.Template
 <span class="hljs-comment"># scaffold a new Fable/Saturn project with Fable.Remoting</span>
-dotnet new SAFE --Remoting
+dotnet new SAFE --remoting
 <span class="hljs-comment"># Giraffe as your server</span>
-dotnet new SAFE --Server giraffe --Remoting
+dotnet new SAFE --server giraffe --remoting
 <span class="hljs-comment"># Suave on the server</span>
-dotnet new SAFE --Server suave --Remoting
+dotnet new SAFE --server suave --remoting
 </code></pre>
-<p>See <code>Fable.Remoting</code> in action demonstrated in the awesome talk at <a href="https://www.youtube.com/watch?v=LBekZt8QB4w" target="_blank">Lambda Days 2018</a> by <a href="https://github.com/theimowski" target="_blank">Tomasz Heimowski</a></p>
-<h2 id="scaffold-from-scratch">Scaffold from scratch</h2>
-<p>You can also create a project from scratch and add Fable.Remoting yourself, start off by <a href="src/modeling-api.md">modeling the shared API</a>.</p>
+<p>See <code>Fable.Remoting</code> in action demonstrated in the awesome talk at <a href="https://skillsmatter.com/skillscasts/11308-safe-apps-with-f-web-stack" target="_blank">FSharp eXchange 2018</a> by <a href="https://github.com/theimowski" target="_blank">Tomasz Heimowski</a></p>
 
                                 
                                 </section>
@@ -433,7 +444,7 @@ dotnet new SAFE --Server suave --Remoting
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-06-28T08:13:35.870Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-06-29T04:03:47.315Z"},"basePath":".","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-07-08T14:50:27.302Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T15:09:48.536Z"},"basePath":".","book":{"language":""}});
         });
     </script>
 </div>

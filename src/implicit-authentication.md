@@ -13,13 +13,16 @@ let webApp =
         POST >=> path "/secure"
              >=> requiresAuthenticated
              >=> OK "User Logged in"  
-    ]
+    ] 
 ```
 Where we are assuming that `requiresAuthenticated` checks whether or not a user is logged in by checking the Authorization header of the incoming request. Everytime the client sends a secure request, the client also provides a valid authentication header, so far so good. 
 
 Ideally, we want to integrate the remoting handler as follows:
 ```fs
-let fableWebPart : WebPart = remoting musicStore {()}
+let fableWebPart : WebPart = 
+    Remoting.createApi()
+    |> Remoting.fromValue musicStore
+    |> Remoting.buildWebPart
 
 let webApp = 
     choose [ 
@@ -39,8 +42,10 @@ This means, that requests coming from the client proxy cannot reach the `fableWe
 // value of authorization header
 let authorizationToken = "Bearer <rest of token value>"
 
-let musicStore = Proxy.remoting<IMusicStore> {
-    use_auth_token authorizationToken
+let musicStore : IMusicStore = 
+    Remoting.createApi()
+    |> Remoting.withAuthorizationHeader authorizationToken
+    |> Remoting.buildProxy<IMusicStore>() 
 }
 ```
 Now you can use `musicStore` like you would usually do. 
