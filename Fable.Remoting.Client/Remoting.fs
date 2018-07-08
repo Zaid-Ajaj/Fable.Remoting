@@ -7,7 +7,7 @@ module Remoting =
     let createApi() = {
         CustomHeaders = [ ]
         BaseUrl = None
-        Authorization = ref None
+        Authorization = None
         RouteBuilder = sprintf ("/%s/%s") 
     }
     
@@ -25,7 +25,7 @@ module Remoting =
 
     /// Sets the authorization header of every request from the proxy
     let withAuthorizationHeader token (options: RemoteBuilderOptions) = 
-        { options with Authorization = ref (Some token) }
+        { options with Authorization = Some token }
 
  
     [<PassGenerics>]

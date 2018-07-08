@@ -46,7 +46,6 @@ let musicStore : IMusicStore =
     Remoting.createApi()
     |> Remoting.withAuthorizationHeader authorizationToken
     |> Remoting.buildProxy<IMusicStore>() 
-}
 ```
 Now you can use `musicStore` like you would usually do. 
 

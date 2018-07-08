@@ -23,7 +23,7 @@ type RecordFuncInfo = {
 type RemoteBuilderOptions = {
        CustomHeaders : HttpRequestHeaders list
        BaseUrl  : string option
-       Authorization : string option ref
+       Authorization : string option
        RouteBuilder : (string -> string -> string)
 }
 

@@ -10,5 +10,4 @@ let webApp =
     |> Remoting.fromValue musicStore
     |> Remoting.withDiagnosticsLogger (printfn "%s")
     |> Remoting.buildWebPart
-}
 ```
