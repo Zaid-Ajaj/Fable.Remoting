@@ -99,7 +99,7 @@ module Proxy =
                        Cookie Fable.Import.Browser.document.cookie ]
 
                 let headers =
-                  [ match !options.Authorization with 
+                  [ match options.Authorization with 
                     | Some authToken -> 
                       yield Authorization authToken 
                       yield! defaultHeaders
