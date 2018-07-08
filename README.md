@@ -92,7 +92,6 @@ let server : IServer = {
 
     allStudents = async { return getStudents() } 
 }
-
 ```
 Install the library from Nuget using Paket:
 
@@ -138,6 +137,31 @@ let webApp =
     |> Remoting.withDiagnosticsLogger (printfn "%s")
     |> Remoting.buildWebPart 
 ```
+### AspNetCore Middleware 
+Install the package from Nuget using paket
+```
+paket add Fable.Remoting.AspNetCore --project /path/to/Project.fsproj
+```
+Now you can configure your remote handler as AspNetCore middleware 
+```fs
+let webApp = 
+    Remoting.createApi()
+    |> Remoting.fromValue server
+
+let configureApp (app : IApplicationBuilder) =
+    // Add Remoting handler to the ASP.NET Core pipeline
+    app.UseRemoting webApp
+
+[<EntryPoint>]
+let main _ =
+    WebHostBuilder()
+        .UseKestrel()
+        .Configure(Action<IApplicationBuilder> configureApp)
+        .Build()
+        .Run()
+    0
+```
+
 ### Giraffe
 
 You can follow the Suave part up to the library installation, where it will become:
@@ -212,7 +236,9 @@ open Fable.Remoting.Client
 open SharedTypes
 
 // server : IServer
-let server = Proxy.remoting<IServer> {()}
+let server =
+    Remoting.createApi()
+    |> Remoting.buildProxy<IServer>()
 
 async {
   // students : Student[]
@@ -243,40 +269,7 @@ devServer: {
 }
 ```
 That's it!
-## Error handling
-What happens when an error is thrown by one of the RPC methods?
 
-Well, good question! Fable.Remoting will catch unhandled exceptions on the server and the sends them off to a handler. This handler can choose to `Ignore` or `Propagate msg` back to the client:
-
-```fs
-/// === Propagating custom errors or ignoring them on the server ======
-type CustomError = { errorMsg: string }
-
-let webApp = remoting server {
-    use_error_handler
-        (fun ex routeInfo ->
-            // do some logging
-            printfn "Error at: %A" routeInfo
-            logException ex
-            match ex with
-            | :? System.IOException as x ->
-                // propagate custom error, this is intercepted by the client
-                let customError = { errorMsg = "Something terrible happend" }
-                Propagate customError
-            | :? System.Exception as x ->
-                // ignore error
-                Ignore)
-    }
-```
-On the client side, an exception is thrown locally on the call site. However, when a message is propagated from the server, is it also intercepted by the  handler on the client side using this configured error handler:
-```fs
-Proxy.remoting {
-    use_error_handler
-        (fun errorInfo ->
-            let customError = ofJson<CustomError> errorInfo.error
-            printfn "Oh noo: %s" custromError.errorMsg)
-    }
-```
 
 ## Adding a new route
  - Add another record field function to `IServer`
@@ -285,54 +278,6 @@ Proxy.remoting {
 
 Done! You can now use that function from the client too.
 
-## Authorization
 
-You can define a string to be passed to the server into the `Authorization` header, so you can also use the server generated endpoint inside a protected flow. You can set handlers to take action in case of `Unauthorized` or `Forbidden` errors, having access to the used string.
-
-```fs
-Proxy.remoting {
-    with_token "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ(...)N_h82PHVTCMA9vdoHrcZxH-x5mb11y1537t3rGzcM"
-    use_auth_error_handler
-        (function
-         |Some token -> printfn "%s was not a valid auth" token
-         |None -> printfn "No credentials on request")
-    use_forbidden_error_handler
-        (function
-         |Some token -> printfn "No access to resource; Token used: %s" token
-         |None -> printfn "No credentials on request")
-    }
-```
-## Testing
-
-This library is very well tested and includes unit tests for each server type and their internal components using Expecto. Moreover, the repo includes an integration-tests projects where the client uses the awesome QUnit testing framework to make server calls on many different types to check that serialization and deserialization work as expected.
-
-Server side unit-tests look like this
-```fs
-testCase "Map<string, int> roundtrip" <| fun () ->
-    ["one",1; "two",2]
-    |> Map.ofList
-    |> toJson
-    |> request "/IProtocol/echoMap"
-    |> ofJson<Map<string, int>>
-    |> Map.toList
-    |> function
-        | ["one",1; "two",2] -> pass()
-        | otherwise -> fail()
-```
-Client-side integration tests
-```fs
-QUnit.testCaseAsync "IServer.echoResult for Result<int, string>" <| fun test ->
-    async {
-        let! outputOk = server.echoResult (Ok 15)
-        match outputOk with
-        | Ok 15 -> test.pass()
-        | otherwise -> test.fail()
-
-        let! outputError = server.echoResult (Error "hello")
-        match outputError with
-        | Error "hello" -> test.pass()
-        | otherwise -> test.fail()
-    }
-```
 See the following article if you are interested in how this library is implemented (a bit outdated but gives you an overview of the mechanism)
 [Statically Typed Client-Server Communication with F#: Proof of Concept](https://medium.com/@zaid.naom/statically-typed-client-server-communication-with-f-proof-of-concept-7e52cff4a625#.2ltqlajm4)

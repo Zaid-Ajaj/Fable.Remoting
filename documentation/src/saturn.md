@@ -22,8 +22,11 @@ let musicStore : IMusicStore = {
     (* Your implementation here *)
 } 
 
-// create the remoting handler using the remoting CE 
-let fableWebApp = remoting musicStore {()} 
+// create the HttpHandler from the musicStore value
+let webApp : HttpHandler = 
+    Remoting.createApi()
+    |> Remoting.fromValue musicStore
+    |> Remoting.buildHttpHandler
 
 let app = application {
     url "http://127.0.0.1:8083/"

@@ -31,28 +31,36 @@ let createMusicStore (db: IMusicDb) (headers: Map<string, string>) : IMusicStore
 
     musicStore
 ```
-So far, as you can see, the code doesn't do anything with the `HttpContext` and it is unit-testable. Infact, this implementation doesn't care in what type of server it will be hosted in. 
+So far, as you can see, the code doesn't do anything with the `HttpContext` and it is unit-testable. Infact, this implementation doesn't care in what type of server it will be hosted in. Now we need a `HttpContext` to read the headers from:
 
-Now we need to read the headers from the request and pass them to the factory, we do this by using the `context` handler that gives us access to the context of the incoming request, in Suave this `context` combinator is built-in so that you can use it as follows: 
 ```fs
-let createWebApp (db: IMusicDb) : WebPart = context <| fun ctx ->
+let musicStore (db: IMusicDb) (context: HttpContext) : IMusicStore  = 
     // Here is where we access the context to extract the headers
-    let headers = Map.ofList ctx.request.headers
+    let headers = Map.ofList context.request.headers
     // construct the music store 
-    let musicStore = createMusicStore db headers 
-    // expose the music store as a WebPart
-    remoting musicStore { use_route_builder (sprintf "/api/%s/%s") } 
+    createMusicStore db headers 
 ```
-In Giraffe/Saturn, the `context` combinator isn't built-in but it is easy to define it:
+As you can see, the `musicStore` function takes in a dependency of `IMusicDb` and `HttpContext`. You will have to provide the `IMusicDb` yourself (for now) and you will end up with a function of type `HttpContext -> IMusicStore`. This signature is exactly what `Remoting.fromContext` is expecting and can used like this:
 ```fs
-let context (f: HttpContext -> HttpHandler) : HttpHandler =
-    fun (next: HttpFunc) (ctx : HttpContext) -> 
-        task {
-            let handler = f ctx
-            return! handler next ctx 
-        }
+// first, create your musicDb
+let musicDb : IMusicDb = { 
+    new IMusicDb with 
+       member self.getAwesomeAlbums() = (* ... *) 
+       member self.getBoringAlbums() = (* ... *) 
+}
 
-let createWebApp (db: IMusicDb) : HttpHandler = context <| fun ctx ->
+// now build the WebPart
+let webApp : WebPart = 
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder (sprintf "/api/%s/%s)")
+    |> Remoting.fromContext (musicStore musicDb) 
+    |> Remoting.buildWebPart
+
+startWebServer defaultConfig webApp 
+```
+In Giraffe/Saturn, the story is the same
+```fs
+let musicStore (db: IMusicDb) (ctx: HttpContext) : IMusicStore =  
     // Here is where we access the context to extract the headers
     let headers = 
         [ for pair in ctx.Request.Headers do 
@@ -62,22 +70,14 @@ let createWebApp (db: IMusicDb) : HttpHandler = context <| fun ctx ->
         |> Map.ofList 
     
     // construct the music store 
-    let musicStore = createMusicStore db headers 
+    createMusicStore db headers 
 
-    // expose the music store as a HttpHandler
-    remoting musicStore {()}
+let webApp : HttpHandler = 
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder (sprintf "/api/%s/%s)")
+    |> Remoting.fromContext (musicStore musicDb) 
+    |> Remoting.buildHttpHandler 
 ``` 
-Finally, in order to build the `WebPart` or `HttpHandler`, you will need to provide database implementation for `IMusicDb` :
-```fs
-let musicDb : IMusicDb = { 
-    new IMusicDb with 
-       member self.getAwesomeAlbums() = (* ... *) 
-       member self.getBoringAlbums() = (* ... *) 
-}
-
-// webApp : WebPart / HttpHandler 
-let webApp = createWebApp musicDb
-```
 That is it, we have now exposed our `musicStore` implementation to the world as an Http web service. 
 We can now also write some unit tests for the implementation:
 ```fs
