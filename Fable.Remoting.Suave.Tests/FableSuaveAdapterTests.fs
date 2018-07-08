@@ -23,10 +23,11 @@ let errorHandler (ex: exn) (_: RouteInfo<_>) =
     printfn "Propagating exception message back to client: %s" ex.Message
     Propagate (ex.Message)
 
-let app = remoting implementation { 
-    use_error_handler errorHandler
-    use_logger (printfn "%s") 
-}
+let app = 
+  Remoting.createApi()
+  |> Remoting.fromValue implementation  
+  |> Remoting.withErrorHandler errorHandler 
+  |> Remoting.buildWebPart
 
 let postContent (input: string) =  new StringContent(sprintf "[%s]" input, System.Text.Encoding.UTF8)
 let postRaw (input: string) =  new StringContent(input, System.Text.Encoding.UTF8)
@@ -110,7 +111,7 @@ let fableSuaveAdapterTests =
         
         testCase "Thrown error is catched and returned" <| fun _ -> 
             let defaultConfig = getConfig ()
-            let input = postContent ""
+            let input = postContent "\"\""
             runWith defaultConfig app
             |> req POST "/IProtocol/throwError" (Some input)
             |> ofJson<CustomErrorResult<string>>

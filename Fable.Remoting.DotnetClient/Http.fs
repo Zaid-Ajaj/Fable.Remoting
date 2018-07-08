@@ -2,28 +2,23 @@ namespace Fable.Remoting.DotnetClient
 
 open System.Net.Http
 open System.Text
+open Newtonsoft.Json.Linq
+open Fable.Remoting.Json
+open Newtonsoft.Json
 
 [<RequireQualifiedAccess>]
 module Http = 
-
 
     type Authorisation = 
         | Token of string
         | NoToken 
 
-    type UnauthorisedException(content) = 
-        inherit System.Exception(content)
+    type ProxyRequestException(response: HttpResponseMessage, errorMsg, reponseText: string) = 
+        inherit System.Exception(errorMsg)
+        member this.Response = response 
+        member this.StatusCode = response.StatusCode
+        member this.ResponseText = reponseText 
 
-    type InternalServerErrorException(content) = 
-        inherit System.Exception(content)
-
-    type ForbiddenException(content) = 
-        inherit System.Exception(content)
-
-    type NotOkException(response: HttpResponseMessage, content) = 
-        inherit System.Exception(content)
-        member this.Response = response
-        
     let makePostRequest (client: HttpClient) (url : string) (requestBody : string) auth : Async<string> = 
         let contentType = "application/json"
         match auth with 
@@ -39,10 +34,10 @@ module Http =
             if response.IsSuccessStatusCode 
             then return responseText
             elif response.StatusCode = System.Net.HttpStatusCode.InternalServerError 
-            then return raise (new InternalServerErrorException(sprintf "Internal server error (500) while making request to %s" url))
+            then return raise (new ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, responseText))
             elif response.StatusCode = System.Net.HttpStatusCode.Unauthorized 
-            then return raise (new UnauthorisedException(sprintf "Unauthorized error from the server (401) while making request to %s" url))          
+            then return raise (new ProxyRequestException(response, sprintf "Unauthorized error from the server (401) while making request to %s" url, responseText))          
             elif response.StatusCode = System.Net.HttpStatusCode.Forbidden
-            then return raise (new ForbiddenException(sprintf "Forbidden error from the server (403) while making request to %s" url))
-            else return raise (new NotOkException(response, sprintf "Http error from server with unknown code white making request to %s" url))
+            then return raise (new ProxyRequestException(response, sprintf "Forbidden error from the server (403) while making request to %s" url, responseText))
+            else return raise (new ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, responseText))
         }

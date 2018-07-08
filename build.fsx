@@ -36,6 +36,7 @@ let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 let DotnetClient = getPath "DotnetClient"
+let AspNetCore = getPath "AspNetCore"
 let clean projectPath =
     [ projectPath </> "bin"
       projectPath </> "obj" ] |> CleanDirs
@@ -61,6 +62,7 @@ Target "PublishReflection" (publish Reflection)
 Target "PublishDotnetClient" (publish DotnetClient)
 Target "PublishSuave" (publish Suave)
 Target "PublishGiraffe" (publish Giraffe)
+Target "PublishAspnetCore" (publish AspNetCore)
 
 Target "CleanGiraffe" <| fun _ ->
     clean (getPath "Giraffe")
@@ -167,6 +169,20 @@ Target "BuildRunAllTests" <| fun _ ->
     run "." "dotnet" GiraffeTestDll
 
 Target "IntegrationTests" <| fun _ ->
+    clean (getPath "Server")
+    clean (getPath "Json")
+    clean (getPath "Suave")
+    clean (getPath "UITests")
+    clean (getPath "IntegrationTests" </> "Server.Suave")
+    clean (getPath "IntegrationTests" </> "Client")
+
+    run (getPath "IntegrationTests") "npm" "install"
+    run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
+    run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
+    run "UITests" "dotnet" "restore --no-cache"
+    run "UITests" "dotnet" "run --headless"
+
+Target "IntegrationTestsLive" <| fun _ ->
     clean (getPath "Server")
     clean (getPath "Json")
     clean (getPath "Suave")

@@ -8,14 +8,18 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>3.6.0</Version>
+    <Version>4.1.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Reflection.fs" />
-    <Compile Include="ServerSide.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Errors.fs" />
+    <Compile Include="Diagnostics.fs" />
+    <Compile Include="DynamicRecord.fs" />
+    <Compile Include="Remoting.fs" />
+    <Compile Include="Reader.fs" />
   </ItemGroup>
 
   <ItemGroup>    

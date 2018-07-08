@@ -15,35 +15,15 @@ open Suave.Filters
 open SharedTypes
 open ServerImpl
 open OpenQA.Selenium
+open OpenQA.Selenium.Chrome
 
-let fableWebPart = remoting server {
-    use_route_builder routeBuilder
-    use_error_handler (fun ex routeInfo ->
-      Propagate ex.Message)
-    use_custom_handler_for "overriddenFunction" (fun _ -> ResponseOverride.Default.withBody "42" |> Some)
-    use_custom_handler_for "customStatusCode" (fun _ -> ResponseOverride.Default.withStatusCode 204 |> Some)
-}
-
-let isVersion v (ctx:HttpContext) =
-  if ctx.request.headers |> List.contains ("version",v) then
-    None
-  else
-    Some {ResponseOverride.Default with Abort = true}
-
-let versionTestWebPart =
-  remoting versionTestServer {
-    use_route_builder versionTestBuilder
-    use_custom_handler_for "v4" (isVersion "4")
-    use_custom_handler_for "v3" (isVersion "3")
-    use_custom_handler_for "v2" (isVersion "2")
-  }
-
-let contextTestWebApp =
-    remoting {callWithCtx = fun (ctx:HttpContext) -> async{return ctx.request.path}} {
-        use_route_builder routeBuilder
-    }
-
-
+let fableWebPart = 
+    Remoting.createApi()
+    |> Remoting.fromContext (fun ctx -> server)
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message) 
+    |> Remoting.buildWebPart
+    
 let (</>) x y = Path.Combine(x, y)
 
 let rec findRoot dir =
@@ -59,12 +39,13 @@ let rec findRoot dir =
 let main argv =
     let cwd = Directory.GetCurrentDirectory()
     let root = findRoot cwd 
-
+    let rnd = new Random()
+    let port = rnd.Next(5000, 9000) 
     let cts = new CancellationTokenSource() 
     let suaveConfig = 
         { defaultConfig with
             homeFolder = Some (root </> "Fable.Remoting.IntegrationTests" </> "client-dist")
-            bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" 8080 ]
+            bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" port ]
             bufferSize = 2048
             cancellationToken = cts.Token }
 
@@ -72,8 +53,6 @@ let main argv =
         choose [ 
             GET >=> Files.browseHome
             fableWebPart 
-            versionTestWebPart
-            contextTestWebApp 
             OK "Not Found"
         ]
 
@@ -92,19 +71,24 @@ let main argv =
 
     let driversDir = root </> "UITests" </> "drivers"
     let options = FirefoxOptions()
-    options.AddArgument("--headless")
-    
+    match argv with 
+    | [| "--headless" |] -> options.AddArgument("--headless")
+    | _ -> () 
+
+
     printfn "Starting FireFox Driver"
     use driver = new FirefoxDriver(driversDir, options)
-    driver.Url <- "http://localhost:8080/index.html"
+    
+
+    driver.Url <- sprintf "http://localhost:%d/index.html" port
     
     let mutable testsFinishedRunning = false
 
     while not testsFinishedRunning do
       // give tests time to run
       printfn "Tests have not finished running yet"
-      printfn "Waiting for another 10 seconds"
-      Threading.Thread.Sleep(10 * 1000)
+      printfn "Waiting for another 5 seconds"
+      Threading.Thread.Sleep(5 * 1000)
       try 
         driver.FindElementByClassName("failed") |> ignore
         testsFinishedRunning <- true

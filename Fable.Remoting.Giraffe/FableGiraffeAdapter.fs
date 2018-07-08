@@ -4,56 +4,110 @@ open Microsoft.AspNetCore.Http
 
 open Giraffe
 open System.IO
-open Fable.Remoting.Server.SharedCE
+open System.Threading.Tasks
 open Fable.Remoting.Server
 
-[<AutoOpen>]
-module FableGiraffeAdapter =
-  /// Legacy logger for backward compatibility
-  let mutable logger : (string -> unit) option = None
-  /// Legacy ErrorHandler for backward compatibility
 
-  let mutable private onErrorHandler : ErrorHandler<HttpContext> option = None
-
-  /// Global error handler that intercepts server errors and decides whether or not to propagate a message back to the client for backward compatibility
-  let onError (handler: ErrorHandler<HttpContext>) =
-        onErrorHandler <- Some handler
-
-  let handleRequest routePath creator =
-        POST >=> route routePath
-             >=> warbler ( fun _ ->
-        fun (next : HttpFunc) (ctx : HttpContext) ->
-            let requestBodyStream = ctx.Request.Body
-            use streamReader = new StreamReader(requestBodyStream)
-            let json = streamReader.ReadToEnd()
+module GiraffeUtil = 
+    let setResponseBody (response: obj) (logger: Option<string -> unit>) : HttpHandler = 
+        fun (next : HttpFunc) (ctx : HttpContext) -> 
             task {
-                match (creator ctx json) with
-                | None -> return None
-                | Some res ->
-                    let! { Response.StatusCode = sc; Headers = headers; Body = body } = Async.StartAsTask res
-                    headers |> Map.iter (fun k v -> ctx.Response.Headers.AppendCommaSeparatedValues(k,v))
-                    ctx.Response.StatusCode <- sc
-                    return! text body next ctx})
+                let responseBody = DynamicRecord.serialize response 
+                Diagnostics.outputPhase logger responseBody
+                return! text responseBody next ctx 
+            }
 
-  type RemoteBuilder(implementation)=
-   inherit RemoteBuilderBase<HttpContext,(HttpFunc -> HttpContext -> HttpFuncResult),HttpHandler>(implementation, handleRequest, choose)
+    let setContentType (contentType: string) : HttpHandler = 
+        fun (next : HttpFunc) (ctx : HttpContext) -> 
+            task {
+                ctx.Response.ContentType <- contentType
+                return Some ctx 
+            }
 
-  /// Computation expression to create a remoting server. Needs to open Fable.Remoting.Suave or Fable.Remoting.Giraffe for actual implementation
-  /// Usage:
-  /// `let server = remoting implementation {()}` for default options at /typeName/methodName
-  /// `let server = remoting implementation = remoting {`
-  /// `    with_builder builder` to set a `builder : (string -> string -> string)`
-  /// `    use_logger logger` to set a `logger : (string -> unit)`
-  /// `    use_error_handler handler` to set a `handler : (System.Exception -> RouteInfo -> ErrorResult)` in case of a server error
-  /// `}`
-  let remoting = RemoteBuilder
-  let httpHandlerWithBuilderFor implementation builder =
-    let r = remoting implementation
-    let zero = r.Zero()
-    let withBuilder = r.WithBuilder(zero,builder)
-    let useLogger = logger |> Option.fold (fun s e -> r.UseLogger(s,e)) withBuilder
-    let useErrorHandler = onErrorHandler |> Option.fold (fun s e -> r.UseErrorHandler(s,e)) useLogger
-    r.Run(useErrorHandler)
+    let setJsonBody error logger = 
+       setResponseBody error logger 
+       >=> setContentType "application/json; charset=utf-8"
+    
+    /// Used to halt the forwarding of the Http context
+    let halt : HttpHandler = 
+      fun (next : HttpFunc) (ctx : HttpContext) ->
+        task { return None }
 
-  let httpHandlerFor implementation : HttpHandler =
-        httpHandlerWithBuilderFor implementation (sprintf "/%s/%s")
+    /// Handles thrown exceptions
+    let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler = 
+      let logger = options.DiagnosticsLogger
+      fun (next : HttpFunc) (ctx : HttpContext) -> 
+        task {
+            match options.ErrorHandler with 
+            | None -> return! setJsonBody (Errors.unhandled routeInfo.methodName) logger next ctx 
+            | Some errorHandler -> 
+                match errorHandler ex routeInfo with 
+                | Ignore -> return! setJsonBody (Errors.ignored routeInfo.methodName) logger next ctx  
+                | Propagate error -> return! setJsonBody (Errors.propagated error) logger next ctx  
+        }
+
+    /// Runs the given dynamic function and catches unhandled exceptions, sending them off to the configured error handler, if any. Returns 200 (OK) status code for successful runs and 500  (Internal Server Error) when an exception is thrown 
+    let runFunction func impl options args : HttpHandler = 
+      let logger = options.DiagnosticsLogger
+      fun (next : HttpFunc) (ctx : HttpContext) -> 
+        task {
+            Diagnostics.runPhase logger func.FunctionName
+            let! functionResult = Async.StartAsTask (Async.Catch (DynamicRecord.invokeAsync func impl args)) 
+            match functionResult with
+            | Choice.Choice1Of2 output -> 
+                ctx.Response.StatusCode <- 200
+                return! setJsonBody output logger next ctx 
+            | Choice.Choice2Of2 ex -> 
+                ctx.Response.StatusCode <- 500
+                let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
+                return! fail ex routeInfo options next ctx 
+        }
+
+    /// Builds the entire HttpHandler from implementation record, handles routing and dynamic running of record functions
+    let buildFromImplementation impl options = 
+      let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
+      let typeName = impl.GetType().Name   
+      fun (next : HttpFunc) (ctx : HttpContext) -> task {
+        let foundFunction = 
+          dynamicFunctions 
+          |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typeName funcName) 
+        match foundFunction with 
+        | None -> return! halt next ctx   
+        | Some funcName -> 
+            let func = Map.find funcName dynamicFunctions
+            match ctx.Request.Method.ToUpper(), func.Type with  
+            | "GET", NoArguments _ ->  
+                return! runFunction func impl options [|  |] next ctx  
+            | "GET", SingleArgument(input, _) when input = typeof<unit> ->
+                return! runFunction func impl options [|  |] next ctx    
+            | "POST", NoArguments _ ->
+                return! runFunction func impl options [|  |] next ctx
+            | "POST", SingleArgument(input, _) when input = typeof<unit> -> 
+                return! runFunction func impl options [|  |] next ctx  
+            | "POST", _ ->      
+                let requestBodyStream = ctx.Request.Body
+                use streamReader = new StreamReader(requestBodyStream)
+                let! inputJson = streamReader.ReadToEndAsync()
+                let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger
+                match inputArgs with 
+                | Ok inputArgs -> return! runFunction func impl options inputArgs next ctx
+                | Error error -> 
+                    ctx.Response.StatusCode <- 500
+                    return! setJsonBody error options.DiagnosticsLogger next ctx
+            | _ -> 
+                return! halt next ctx
+      }
+
+module Remoting =
+
+  /// Builds a HttpHandler from the given implementation and options 
+  let buildHttpHanlder (options: RemotingOptions<HttpContext, 't>) = 
+    match options.Implementation with 
+    | Empty -> GiraffeUtil.halt
+    | StaticValue impl -> GiraffeUtil.buildFromImplementation impl options 
+    | FromContext createImplementationFrom -> 
+        fun (next : HttpFunc) (ctx : HttpContext) -> 
+            task {
+              let impl = createImplementationFrom ctx
+              return! GiraffeUtil.buildFromImplementation impl options next ctx
+            } 

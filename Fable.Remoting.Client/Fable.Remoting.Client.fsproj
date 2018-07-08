@@ -7,14 +7,15 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>2.5.1</Version>
+    <Version>3.1.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Types.fs" />
     <Compile Include="Proxy.fs" />
+    <Compile Include="Remoting.fs" />
   </ItemGroup>
-  <!-- Add source files to "fable" folder in Nuget package -->
   <ItemGroup>
     <Content Include="*.fsproj; *.fs" PackagePath="fable\" />
   </ItemGroup>

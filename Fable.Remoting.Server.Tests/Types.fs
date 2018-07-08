@@ -8,6 +8,8 @@ type Record = {
     Prop3 : int option
 }
 
+type SimpleRec = { name: string; age: int }
+
 type Maybe<'t> = 
     | Just of 't
     | Nothing
@@ -29,6 +31,8 @@ type IProtocol = {
     unitToInts : unit -> Async<int>
     recordListToInt : Record[] -> Async<int>
     floatList : float [] -> Async<float>
+    multiArg: bool[] -> int -> Async<int> 
+    simpleRec: SimpleRec -> Async<bool>
 }
 
 
@@ -56,4 +60,9 @@ module TestImplementation =
         unitToInts = fun () -> async { return Seq.sum [1..10] }
         recordListToInt = fun records -> records |> Seq.map (fun r -> r.Prop2) |> Seq.sum |> fun res -> async { return res }
         floatList = fun xs -> Seq.sum xs |> fun result -> async {return Math.Round(result, 2) }
+        multiArg = fun bools n -> async {
+            let m = Array.map (function | true -> 1 | false -> 0) bools |> Array.sum
+            return n + m 
+        }
+        simpleRec = fun record -> async { return record.age > 18 }
     }

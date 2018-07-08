@@ -16,7 +16,9 @@ open ShareModels
 open Fable.Remoting.Client
 
 // musicStore : IMusicStore
-let musicStore = Proxy.remoting<IMusicStore> {()}
+let musicStore : IMusicStore = 
+  Remoting.createApi()
+  |> Remoting.buildProxy<IMusicStore>() 
 
 async {
     let! albums = musicStore.allAlbums() 
@@ -26,7 +28,7 @@ async {
 |> Async.StartImmediate
 ```
 ## Webpack dev server configuration
-When you are working with `webpack-dev-server` in developement mode, you want to re-route the HTTP requests from your developement server to ypur actual backend, for that you must use the following configuration for webpack, assuming you are running `webpack-dev-server` on port 8080 and your backend is running on port 8083. You would change this block:
+When you are working with `webpack-dev-server` in developement mode, you want to re-route the HTTP requests from your developement server to your backend, for that you must use the following configuration for webpack, assuming you are running `webpack-dev-server` on port 8080 and your backend is running on port 8083. You would change the `devServer` block:
 
 ```js
 devServer: {

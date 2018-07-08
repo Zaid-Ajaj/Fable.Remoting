@@ -34,19 +34,58 @@ let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
 ```
 Use the error handler using the `remoting` builder:
 ```fs
-let webApp = remoting musicStore {
-    use_error_handler errorHandler
-}
+let webApp = 
+    Remoting.createApi()
+    |> Remoting.withErrorHandler errorHandler
+    |> Remoting.fromValue musicStore   
 ```
-On the client, you can intercept the propagated custom error messages, also using a global handler (in either ways, whether you chose to ignore or propage a custom error, an exception is thrown on the local call-site):
+On the client, you can intercept both propagated custom error messages or ignored ones. Either way, an exception is thrown on call-site: if the exception is ignored (or unhandled when there isn't an error handler) you will get a generic error message along with other information. If an error is propagated, it is serialized:
 ```fs
 // Assuming the type CustomError is shared with the client too
+let musicStore = 
+    Remoting.createApi()
+    |> Remoting.buildproxy<IMusicStore>()
 
-let errorHandler (info: ErrorInfo) = 
-    let customError = ofJson<CustomError> errorInfo.error
-    printfn "Oh noo: %s" custromError.errorMsg)
-
-let musicStore = Proxy.remoting<IMusicStore> {
-    use_error_handler errorHandler
+async {
+    try 
+      let! result = musicStore.throwError() 
+    with 
+     | :? ProxyRequestException as ex -> (* do stuff *) 
+     | otherException -> (* do stuff *) 
 }
 ```
+The `ProxyRequestException` is special, it has all information about the response:
+```fs
+type ProxyRequestException(response: Response, errorMsg, reponseText: string) = 
+    inherit System.Exception(errorMsg)
+    member this.Response = response 
+    member this.StatusCode = response.Status
+    member this.ResponseText = reponseText 
+```
+When an error is unhanlded by the application (i.e. there was no error handler on the server) the `ResponseText` gives a generic error message to the client:
+```json
+{ 
+    "error": "Error occured while running the function 'throwError'", 
+    "ignored": true, 
+    "handled": false 
+}  
+```
+When there is an error handler but the exception got ignored:
+```json
+{ 
+    "error": "Error occured while running the function 'throwError'", 
+    "ignored": true, 
+    "handled": true
+}     
+```
+Finally when a custom error like the `CustomError` shown above gets propagated, the result becomes:
+```json
+{ 
+    "error":  {
+        "errorMsg": "Something terrible happend"
+    },
+    "ignored": false, 
+    "handled": true 
+}  
+```
+Parsing the response text if needed becomes the responsibility of the consuming application 

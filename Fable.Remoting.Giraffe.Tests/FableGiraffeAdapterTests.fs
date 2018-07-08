@@ -7,21 +7,23 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open Giraffe
+open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Expecto
 open Types
-open Mono.Cecil
-open Newtonsoft.Json
 open Newtonsoft.Json
 open Fable.Remoting.Json
 
-// Test helpers
-FableGiraffeAdapter.logger <- Some (eprintfn "%s")
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""   
 let fail () = Expect.equal false true ""
 let failUnexpect (x: obj) = Expect.equal false true (sprintf "%A was not expected" x) 
-let giraffeApp = FableGiraffeAdapter.httpHandlerFor implementation
+
+let giraffeApp = 
+    Remoting.createApi()
+    |> Remoting.fromValue implementation 
+    |> Remoting.buildHttpHanlder 
+
 let postContent (input: string) =  new StringContent(input, Text.Encoding.UTF8)
 let configureApp (app : IApplicationBuilder) =
     app.UseGiraffe giraffeApp

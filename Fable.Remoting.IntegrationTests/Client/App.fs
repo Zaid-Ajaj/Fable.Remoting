@@ -1,28 +1,37 @@
 module App
 
+open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Remoting.Client
 open SharedTypes
+let server = 
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.buildProxy<IServer>()
 
+QUnit.registerModule "Internal functionality" 
 
-Proxy.onError <| fun errorInfo ->
-    printfn "Handling server error in the client"
-    printfn "Recieved %A" errorInfo.error
+[<PassGenerics>]
+let makeFuncType<'t>() = Proxy.makeRecordFuncType (typeof<'t>)
 
-let server = Proxy.remoting<IServer> {
-    use_route_builder routeBuilder
-    use_custom_handler_for "customStatusCode" 204 (fun _ -> Ok (box "No content"))
-}
+QUnit.testCase "SingleArgument function can be converted" <| fun test ->
+    let funcType = makeFuncType<int -> int>() 
+    match funcType with 
+    | SingleArgument (input, output) -> 
+        match input.Name, output.Name with 
+        | "number", "number" -> test.pass() 
+        | _ -> test.fail()  
+    | _ -> test.fail()
 
-let versionTestServer = Proxy.remoting<IVersionTestServer> {
-    use_route_builder versionTestBuilder
-    add_custom_header_for "v2" ("version",2)
-    add_custom_header_for "v3" ("version",3)
-    add_custom_header_for "v4" ("version",4)
-}
+QUnit.testCase "ManyArguments function can be converted" <| fun test ->
+    let funcType = makeFuncType<int -> int -> int>() 
+    match funcType with 
+    | ManyArguments (inputTypes, output) -> 
+        match inputTypes |> List.map (fun input -> input.Name) , output.Name with 
+        | ["number"; "number"], "number" -> test.pass() 
+        | other -> test.failWith (toJson other)  
+    | other -> test.failWith (toJson other) 
 
-let contextTestServer = Proxy.remoting<IContextTest<unit>>{
-    with_builder routeBuilder
-}
 
 QUnit.registerModule "Fable.Remoting"
 
@@ -303,12 +312,13 @@ QUnit.testCaseAsync "IServer.echoBigInteger" <|
 QUnit.testCaseAsync "IServer.throwError" <| fun test ->
     async {
         try
-          test.expect 0
           let! output = server.throwError()
-          printfn "%s" output
+          test.fail()
         with
-         | ex ->
-            printfn "Qunit.testCase error handler %s" ex.Message
+         | :? ProxyRequestException as ex ->
+              if ex.ResponseText.Contains("Generating custom server error")
+              then test.pass()
+              else test.fail() 
     }
 
 QUnit.testCaseAsync "IServer.mutliArgFunc" <| fun test ->
@@ -329,12 +339,6 @@ QUnit.testCaseAsync "IServer.mutliArgFunc partially applied" <| fun test ->
         let otherPartialFunc = server.multiArgFunc "byebye"
         let! sndOutput = otherPartialFunc 5 true
         test.equal 12 sndOutput
-    }
-
-QUnit.testCaseAsync "IServer.overriddenFunction" <| fun test ->
-    async {
-        let! output = server.overriddenFunction "hello"
-        test.equal 42 output
     }
 
 QUnit.testCaseAsync "IServer.pureAsync" <| fun test ->
@@ -365,26 +369,4 @@ QUnit.testCaseAsync "IServer.tuplesAndLists" <| fun test ->
 
         let expected = Map.ofList [ "hello", 5; "there!", 6 ] 
         test.equal true (expected = outputDict)  
-    }
-
-QUnit.testCaseAsync "IServer.customStatusCode" <| fun test ->
-    async {
-        let! output = server.customStatusCode ()
-        test.equal "No content" output
-    }
-QUnit.testCaseAsync "IVersionTestServer.customVersions" <| fun test ->
-    async {
-        let! v1 = versionTestServer.v1 ()
-        test.equal "v1" v1
-        let! v2 = versionTestServer.v2 ()
-        test.equal "v2" v2
-        let! v3 = versionTestServer.v3 ()
-        test.equal "v3" v3
-        let! v4 = versionTestServer.v4 ()
-        test.equal "v4" v4
-    }
-QUnit.testCaseAsync "IContextTest.test" <| fun test ->
-    async {
-        let! ctxTest = contextTestServer.callWithCtx ()
-        test.equal ctxTest "/api/IContextTest/callWithCtx"
     }

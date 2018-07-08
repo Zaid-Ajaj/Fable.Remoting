@@ -24,8 +24,11 @@ let musicStore : IMusicStore = {
     (* Your implementation here *)
 } 
 
-// create the web part using the remoting CE 
-let fableWebApp : WebPart = remoting musicStore {()} 
+// Create the WebPart from the musicStore value
+let fableWebApp : WebPart = 
+    Remoting.createApi()
+    |> Remoting.fromValue musicStore
+    |> Remoting.buildWebPart
 
 let webApp = 
   choose [ fableWebApp

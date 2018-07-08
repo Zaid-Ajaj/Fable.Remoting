@@ -21,12 +21,15 @@ let musicStore : IMusicStore = {
     (* Your implementation here *)
 } 
 
-// create the HttpHandler using the remoting CE 
-let fableWebApp = remoting musicStore {()} 
+// create the HttpHandler from the musicStore value
+let webApp : HttpHandler = 
+    Remoting.createApi()
+    |> Remoting.fromValue musicStore
+    |> Remoting.buildHttpHandler
 
 let configureApp (app : IApplicationBuilder) =
     // Add Giraffe to the ASP.NET Core pipeline
-    app.UseGiraffe fableWebApp
+    app.UseGiraffe webApp
 
 let configureServices (services : IServiceCollection) =
     // Add Giraffe dependencies

@@ -3,15 +3,18 @@
 - [Introduction](README.md)
 - [Getting Started](src/basics.md)
 
-### Scaffold from scratch
+### Setup Server 
 - [Setup Suave](src/suave.md)
+- [Setup Asp.NET Core](src/aspnet-core.md)
 - [Setup Giraffe](src/giraffe.md)
 - [Setup Saturn](src/saturn.md)
-- [Setup Client](src/client.md)
+
+### Setup Client
+- [Setup Fable Client](src/client.md)
 
 ### Dotnet Client 
 - [Getting Started from .NET](src/dotnet-client.md)
-- [Custom Http Client](src/dotnet-http-client.md)
+- [Asp.NET Core Integration Testing](src/dotnet-integration-tests.md)
 - [Limitations and Workaround](src/dotnet-client-limitations.md)
 
 ### Advanced
@@ -23,5 +26,6 @@
 - [Logging](src/logging.md)
 
 ### Misc
+- [Changelog](src/change-log.md)
 - [Troubleshooting](src/troubleshoot.md)
 - [Credits](src/credits.md)
