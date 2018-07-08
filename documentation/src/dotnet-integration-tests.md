@@ -1,6 +1,6 @@
 # Asp.NET Core Integration Testing 
 
-The following example demonstrates how the [Dotnet client]() can be used for integration testing of your Asp.Net core app whether it is Giraffe, Saturn or simple Asp.net core middleware. It uses the [Microsoft.AspNetCore.TestHost](https://www.nuget.org/packages/Microsoft.AspNetCore.TestHost) package to give us a custom `HttpClient` for testing. Then, we give this `HttpClient` to our dotnet client proxy: 
+The following example demonstrates how the [Dotnet client](dotnet-client.md) can be used for integration testing of your Asp.Net core app whether it is Giraffe, Saturn or simple Asp.NET Core middleware. It uses the [Microsoft.AspNetCore.TestHost](https://www.nuget.org/packages/Microsoft.AspNetCore.TestHost) package to give us a custom `HttpClient` for testing. Then, we give this `HttpClient` to our dotnet client proxy: 
 
 ```fs
 open System
@@ -17,7 +17,6 @@ open Types
 open System.Net
 open Expecto.Logging
 open Newtonsoft.Json.Linq
-
 
 // the route builder 
 let builder = sprintf "/api/%s/%s"

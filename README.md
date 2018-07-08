@@ -112,8 +112,8 @@ let main argv =
         |> Remoting.fromValue server
         |> Remoting.buildWebPart 
 
-    // start the web server
-    startWebServer defaultConfig webApp
+// start the web server
+startWebServer defaultConfig webApp
 ```
 Yes. it is that simple.
 You can think of the `webApp` value as if it was the following in pseudo-code:
