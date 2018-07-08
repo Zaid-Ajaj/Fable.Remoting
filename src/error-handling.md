@@ -62,7 +62,7 @@ type ProxyRequestException(response: Response, errorMsg, reponseText: string) =
     member this.StatusCode = response.Status
     member this.ResponseText = reponseText 
 ```
-When an error is unhanlded (i.e. there was no error handler on the server) the `ResponseText` becomes:
+When an error is unhanlded by the application (i.e. there was no error handler on the server) the `ResponseText` gives a generic error message to the client:
 ```json
 { 
     "error": "Error occured while running the function 'throwError'", 
@@ -84,7 +84,7 @@ Finally when a custom error like the `CustomError` shown above gets propagated, 
     "error":  {
         "errorMsg": "Something terrible happend"
     },
-    "ignored": true, 
+    "ignored": false, 
     "handled": true 
 }  
 ```
