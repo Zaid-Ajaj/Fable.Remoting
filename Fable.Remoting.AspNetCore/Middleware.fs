@@ -113,8 +113,12 @@ module internal FromGiraffe =
                 let requestBodyStream = ctx.Request.Body
                 use streamReader = new StreamReader(requestBodyStream)
                 let! inputJson = streamReader.ReadToEndAsync()
-                let inputArgs = DynamicRecord.createArgsFromJson func inputJson options.DiagnosticsLogger 
-                return! runFunction func impl options inputArgs next ctx
+                let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger 
+                match inputArgs with 
+                | Ok inputArgs -> return! runFunction func impl options inputArgs next ctx
+                | Error error -> 
+                    ctx.Response.StatusCode <- 500
+                    return! setBody error options.DiagnosticsLogger next ctx
             | _ -> 
                 return! halt next ctx
       }

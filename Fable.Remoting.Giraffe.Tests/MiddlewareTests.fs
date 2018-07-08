@@ -281,11 +281,8 @@ let middlewareTests =
             | Ok value -> failwithf "Got value %A where an error was expected" value
             | Result.Error ex -> 
                 match ex with 
-                | :? Http.ProxyRequestException as reqEx ->
-                    Expect.equal HttpStatusCode.InternalServerError reqEx.StatusCode "The status code is 500"
-                    Expect.isFalse reqEx.Ignored "Error was not ignore"
-                    Expect.isTrue reqEx.Handled "Error was handled" 
-                    Expect.equal (reqEx.ParseErrorAs<string>()) "Generating custom server error" "The error was propagated"
+                | :? Http.ProxyRequestException as reqEx -> 
+                    Expect.isTrue (reqEx.ResponseText.Contains("Generating custom server error")) "Works"
                 | other -> Expect.isTrue false "Should not happen"
         }
 

@@ -109,6 +109,12 @@ module DynamicRecord =
     /// Serializes the input value into JSON using Fable converter
     let serialize result = JsonConvert.SerializeObject(result, [| fableConverter |])
 
+    let typeNames inputTypes = 
+        inputTypes
+        |> List.map Diagnostics.typePrinter 
+        |> String.concat ", "
+        |> sprintf "[%s]"
+
     /// Based of function metadata, convert the input JSON into an appropriate array of typed arguments. 
     let createArgsFromJson (func: RecordFunctionInfo) (inputJson: string) (logger: Option<string -> unit>) = 
         match func.Type with 
@@ -125,7 +131,7 @@ module DynamicRecord =
                     // JSON input array is empty -> fine only if input is unit
                     if input = typeof<unit> 
                     then [| box () |]
-                    else failwithf "Input JSON array of the arguments for function '%s' was empty while the function expected a value of type '%s'" func.FunctionName (input.FullName)
+                    else failwithf "Input JSON array of the arguments for function '%s' was empty while the function expected a value of type '%s'" func.FunctionName (Diagnostics.typePrinter input)
                 | [ singleJsonObject ] -> 
                     Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
                     // JSON input array is a single object and function is of single argument then it works fine
@@ -148,13 +154,24 @@ module DynamicRecord =
             let serializer = JsonSerializer()
             serializer.Converters.Add fableConverter
             if parsedJson.Type <> JTokenType.Array
-            then failwithf "The record function '%s' expected %d arguments to be recieved in the form of a JSON array but the input JSON was not an array" func.FunctionName (List.length inputArgTypes)
+            then 
+                let typeInfo = typeNames inputArgTypes
+                failwithf "The record function '%s' expected %d argument(s) of the types %s to be recieved in the form of a JSON array but the input JSON was not an array" func.FunctionName (List.length inputArgTypes) typeInfo
             else 
                 let jsonValues = List.ofArray (parsedJson.ToObject<JToken[]>()) 
                 if (List.length jsonValues <> List.length inputArgTypes) 
-                then failwithf "The record function '%s' expected %d arguments but got %d arguments in the JSON array" func.FunctionName (List.length inputArgTypes) (List.length jsonValues) 
+                then 
+                    let typeInfo = typeNames inputArgTypes
+                    failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" func.FunctionName (List.length inputArgTypes) typeInfo (List.length jsonValues) 
                 else 
                     Diagnostics.deserializationPhase logger (fun () -> inputJson.ToString()) (Array.ofList inputArgTypes)
                     List.zip inputArgTypes jsonValues 
                     |> List.map (fun (jsonType, json) -> json.ToObject(jsonType, serializer))
                     |> Array.ofList 
+    
+    /// Based of function metadata, tries to convert the input JSON into an appropriate array of typed arguments.  
+    let tryCreateArgsFromJson (func: RecordFunctionInfo) (inputJson: string) (logger: Option<string -> unit>) = 
+        try Ok (createArgsFromJson func inputJson logger)
+        with | ex -> 
+            let error = { ParsingArgumentsError = ex.Message }
+            Error error

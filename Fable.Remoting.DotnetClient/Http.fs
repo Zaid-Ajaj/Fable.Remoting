@@ -15,18 +15,9 @@ module Http =
 
     type ProxyRequestException(response: HttpResponseMessage, errorMsg, reponseText: string) = 
         inherit System.Exception(errorMsg)
-        let errorJson = JToken.Parse(reponseText) 
-        let serializer = JsonSerializer()
-        do serializer.Converters.Add(FableJsonConverter())
         member this.Response = response 
         member this.StatusCode = response.StatusCode
         member this.ResponseText = reponseText 
-        /// Returns whether the error originating from the server was handled but got ignored
-        member this.Ignored = errorJson.["ignored"].ToObject<bool>() 
-        /// Returns whether the error originating from the server was handled by an error handler
-        member this.Handled = errorJson.["handled"].ToObject<bool>()
-        /// Parses the custom error as the specified type
-        member this.ParseErrorAs<'t>() : 't = errorJson.["error"].ToObject(typeof<'t>, serializer) :?> 't 
 
     let makePostRequest (client: HttpClient) (url : string) (requestBody : string) auth : Async<string> = 
         let contentType = "application/json"

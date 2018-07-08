@@ -18,6 +18,9 @@ type AsyncBoxer<'T>() =
                 }
             | otherValue -> failwithf "Invalid boxed value of type '%s'" (otherValue.GetType().FullName) 
 
+
+type ParsingArgumentsError = { ParsingArgumentsError: string }
+
 /// Distinguish between records fields that are simple async values and fields that are functions with input and output
 type RecordFunctionType = 
     | NoArguments of output: Type

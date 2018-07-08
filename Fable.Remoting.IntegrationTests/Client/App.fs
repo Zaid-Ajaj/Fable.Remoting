@@ -1,16 +1,36 @@
 module App
 
+open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Remoting.Client
 open SharedTypes
+let server = 
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.buildProxy<IServer>()
 
+QUnit.registerModule "Internal functionality" 
 
-Proxy.onError <| fun errorInfo ->
-    printfn "Handling server error in the client"
-    printfn "Recieved %A" errorInfo.error
+[<PassGenerics>]
+let makeFuncType<'t>() = Proxy.makeRecordFuncType (typeof<'t>)
 
-let server = Proxy.remoting<IServer> {
-    use_route_builder routeBuilder
-}
+QUnit.testCase "SingleArgument function can be converted" <| fun test ->
+    let funcType = makeFuncType<int -> int>() 
+    match funcType with 
+    | SingleArgument (input, output) -> 
+        match input.Name, output.Name with 
+        | "number", "number" -> test.pass() 
+        | _ -> test.fail()  
+    | _ -> test.fail()
+
+QUnit.testCase "ManyArguments function can be converted" <| fun test ->
+    let funcType = makeFuncType<int -> int -> int>() 
+    match funcType with 
+    | ManyArguments (inputTypes, output) -> 
+        match inputTypes |> List.map (fun input -> input.Name) , output.Name with 
+        | ["number"; "number"], "number" -> test.pass() 
+        | other -> test.failWith (toJson other)  
+    | other -> test.failWith (toJson other) 
 
 
 QUnit.registerModule "Fable.Remoting"
@@ -292,12 +312,13 @@ QUnit.testCaseAsync "IServer.echoBigInteger" <|
 QUnit.testCaseAsync "IServer.throwError" <| fun test ->
     async {
         try
-          test.expect 0
           let! output = server.throwError()
-          printfn "%s" output
+          test.fail()
         with
-         | ex ->
-            printfn "Qunit.testCase error handler %s" ex.Message
+         | :? ProxyRequestException as ex ->
+              if ex.ResponseText.Contains("Generating custom server error")
+              then test.pass()
+              else test.fail() 
     }
 
 QUnit.testCaseAsync "IServer.mutliArgFunc" <| fun test ->

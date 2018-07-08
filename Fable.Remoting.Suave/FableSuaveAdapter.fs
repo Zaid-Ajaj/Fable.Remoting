@@ -3,7 +3,6 @@
 open Suave
 open Suave.Operators
 open Fable.Remoting.Server
-open Suave.State.CookieStateStore
 
 module SuaveUtil = 
   
@@ -91,8 +90,10 @@ module SuaveUtil =
               return! runFunction func impl options [|  |] context  
           | HttpMethod.POST, _ ->      
               let inputJson = System.Text.Encoding.UTF8.GetString(context.request.rawForm)
-              let inputArgs = DynamicRecord.createArgsFromJson func inputJson options.DiagnosticsLogger
-              return! runFunction func impl options inputArgs context
+              let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger
+              match inputArgs with 
+              | Ok inputArgs -> return! runFunction func impl options inputArgs context
+              | Error error -> return! sendError error options.DiagnosticsLogger context  
           | _ -> 
               return! halt context
     }
