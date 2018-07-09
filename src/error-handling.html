@@ -414,7 +414,7 @@
                                 
                                 <h1 id="error-handling">Error Handling</h1>
 <p>You might ask: What happens when an exception is thrown on the server by one of the RPC methods? </p>
-<p>Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to a global exception handler of the type </p>
+<p>Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to the exception handler on the server of the type </p>
 <pre><code class="lang-fs">Exception -&gt; RouteInfo&lt;HttpContext&gt; -&gt; ErrorResult
 </code></pre>
 <p>where <code>ErrorResult</code> is defined as:</p>
@@ -422,7 +422,7 @@
     | Ignore
     | Propagate <span class="hljs-keyword">of</span> obj
 </code></pre>
-<p>With <code>ErrorResult</code> you choose either to propagate a custom message back to the client or just ignore the error. You don&apos;t want the exception data (message or stacktrace) to be returned to the client. Either way, an exception will be thrown on the call-site from the client with a generic error message. If you chose to propagate a custom error message, it will be passed off to a global handler on the client, here is a full example:</p>
+<p>With <code>ErrorResult</code> you choose either to propagate a custom message back to the client or just ignore the error. You don&apos;t want the exception data (message or stacktrace) to be returned to the client. When an error object is propagated, the exception of type <code>ProxyRequestException</code> (see below) will contain the error object serialized to JSON in the <code>ResponseText</code> field</p>
 <pre><code class="lang-fs"><span class="hljs-keyword">open</span> System
 
 <span class="hljs-comment">// Custom error will be propagated back to client</span>
@@ -434,14 +434,13 @@
     <span class="hljs-comment">// decide whether or not you want to propagate the error to the client</span>
     <span class="hljs-keyword">match</span> ex <span class="hljs-keyword">with</span>
     | :? System.IOException <span class="hljs-keyword">as</span> x -&gt;
-        <span class="hljs-comment">// propagate custom error, this is intercepted by the client</span>
         <span class="hljs-keyword">let</span> customError = { errorMsg = <span class="hljs-string">&quot;Something terrible happend&quot;</span> }
         Propagate customError
     | :? System.Exception <span class="hljs-keyword">as</span> x -&gt;
         <span class="hljs-comment">// ignore error</span>
         Ignore
 </code></pre>
-<p>Use the error handler using the <code>remoting</code> builder:</p>
+<p>Use the error handler as follows:</p>
 <pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = 
     Remoting.createApi()
     |&gt; Remoting.withErrorHandler errorHandler
@@ -454,11 +453,18 @@
     |&gt; Remoting.buildproxy&lt;IMusicStore&gt;()
 
 async {
-    <span class="hljs-keyword">try</span> 
-      <span class="hljs-keyword">let!</span> result = musicStore.throwError() 
-    <span class="hljs-keyword">with</span> 
-     | :? ProxyRequestException <span class="hljs-keyword">as</span> ex -&gt; <span class="hljs-comment">(* do stuff *)</span> 
-     | otherException -&gt; <span class="hljs-comment">(* do stuff *)</span> 
+    <span class="hljs-keyword">let!</span> result = Async.Catch (musicStore.throwError()) 
+    <span class="hljs-keyword">match</span> result <span class="hljs-keyword">with</span> 
+    | Choice1Of2 output -&gt; <span class="hljs-comment">(* won&apos;t happen *)</span>
+    | Choice2Of2 ex -&gt;
+        <span class="hljs-keyword">match</span> ex <span class="hljs-keyword">with</span>  
+        | :? ProxyRequestException <span class="hljs-keyword">as</span> ex -&gt; 
+            <span class="hljs-keyword">let</span> response : Response = ex.Response 
+            <span class="hljs-keyword">let</span> responseText : string = ex.ResponseText
+            <span class="hljs-keyword">let</span> statusCode : int = ex.StatusCode 
+            <span class="hljs-comment">(* do stuff with error information*)</span> 
+
+        | otherException -&gt; <span class="hljs-comment">(* do other stuff *)</span>    
 }
 </code></pre>
 <p>The <code>ProxyRequestException</code> is special, it has all information about the response:</p>
@@ -535,7 +541,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Error Handling","level":"5.2","depth":1,"next":{"title":"Modeling Authentication","level":"5.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"previous":{"title":"Custom Route Paths","level":"5.1","depth":1,"path":"src/route-builder.md","ref":"src/route-builder.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/error-handling.md","mtime":"2018-07-08T16:40:05.752Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-08T16:42:39.829Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Error Handling","level":"5.2","depth":1,"next":{"title":"Modeling Authentication","level":"5.3","depth":1,"path":"src/modeling-authentication.md","ref":"src/modeling-authentication.md","articles":[]},"previous":{"title":"Custom Route Paths","level":"5.1","depth":1,"path":"src/route-builder.md","ref":"src/route-builder.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/error-handling.md","mtime":"2018-07-09T17:14:48.314Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-09T17:20:17.794Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
