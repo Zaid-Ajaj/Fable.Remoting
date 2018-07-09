@@ -2,10 +2,10 @@
 
 [![Build Status](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting.svg?branch=master)](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting)
 
-### [Documentation](https://zaid-ajaj.github.io/Fable.Remoting/)
+### [Full Documentation](https://zaid-ajaj.github.io/Fable.Remoting/)
 ### [In-depth Introduction (Blog)](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
 
-Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable and .NET Client Apps. This is a library that abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
+Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable and .NET Apps. It abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
 
 The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.net core middleware. On the client you can Fable or .NET.
 
@@ -25,10 +25,6 @@ dotnet new SAFE --server giraffe --remoting
 # Or use Suave as your server
 dotnet new SAFE --server suave --remoting
 ```
-
-
-Feedback and suggestions are very much welcome.
-
 ## Available Packages:
 
 | Library  | Version |
@@ -55,7 +51,7 @@ type Student = {
 }
 
 // Shared specs between Server and Client
-type IServer = {
+type IStudentApi = {
     studentByName : string -> Async<Student option>
     allStudents : Async<list<Student>>
 }
@@ -80,7 +76,7 @@ let getStudents() = [
     ]
 
 // An implementation of the `IServer` protocol
-let server : IServer = {
+let studentApi : IStudentApi = {
 
     studentByName = fun name -> async {
         let student = 
@@ -104,26 +100,23 @@ open Suave
 open Fable.Remotion.Server
 open Fable.Remoting.Suave
 
-[<EntryPoint>]
-let main argv =
-    // create the WebPart
-    let webApp : WebPart = 
-        Remoting.createApi()
-        |> Remoting.fromValue server
-        |> Remoting.buildWebPart 
+let webApp : WebPart = 
+    Remoting.createApi()
+    |> Remoting.fromValue studentApi
+    |> Remoting.buildWebPart 
 
 // start the web server
 startWebServer defaultConfig webApp
 ```
-Yes. it is that simple.
+Yes, it is that simple.
 You can think of the `webApp` value as if it was the following in pseudo-code:
 ```fs
 let webApp =
  choose [
   POST
-   >=> path "/IServer/studentByName"
+   >=> path "/IStudentApi/studentByName"
    >=> (* deserialize request body (from json) *)
-   >=> (* invoke server.getStudentByName with the deserialized input *)
+   >=> (* invoke studentApi.getStudentByName with the deserialized input *)
    >=> (* give client the output back serialized (to json) *)
 
  // other routes
@@ -133,7 +126,7 @@ You can enable diagnostic logging from Fable.Remoting.Server (recommended) to se
 ```fs
 let webApp = 
     Remoting.createApi()
-    |> Remoting.fromValue server
+    |> Remoting.fromValue studentApi
     |> Remoting.withDiagnosticsLogger (printfn "%s")
     |> Remoting.buildWebPart 
 ```
@@ -146,7 +139,7 @@ Now you can configure your remote handler as AspNetCore middleware
 ```fs
 let webApp = 
     Remoting.createApi()
-    |> Remoting.fromValue server
+    |> Remoting.fromValue studentApi
 
 let configureApp (app : IApplicationBuilder) =
     // Add Remoting handler to the ASP.NET Core pipeline
@@ -177,7 +170,7 @@ open Fable.Remoting.Giraffe
 
 let webApp : HttpHandler = 
     Remoting.createApi()
-    |> Remoting.fromValue server
+    |> Remoting.fromValue studentApi
     |> Remoting.buildHttpHandler 
 
 let configureApp (app : IApplicationBuilder) =
@@ -210,7 +203,7 @@ open Fable.Remoting.Giraffe
 
 let webApp : HttpHandler = 
     Remoting.createApi()
-    |> Remoting.fromValue server
+    |> Remoting.fromValue studentApi
     |> Remoting.buildHttpHandler 
 
 let app = application {
@@ -235,14 +228,14 @@ Start using the library:
 open Fable.Remoting.Client
 open SharedTypes
 
-// server : IServer
-let server =
+// studentApi : IStudentApi
+let studentApi =
     Remoting.createApi()
-    |> Remoting.buildProxy<IServer>()
+    |> Remoting.buildProxy<IStudentApi>()
 
 async {
   // students : Student[]
-  let! students = server.allStudents()
+  let! students = studentApi.allStudents()
   for student in students do
     // student : Student
     printfn "Student %s is %d years old" student.Name student.Age
@@ -272,7 +265,7 @@ That's it!
 
 
 ## Adding a new route
- - Add another record field function to `IServer`
+ - Add another record field function to `IStudentApi`
  - Implement that function
  - Restart server
 
