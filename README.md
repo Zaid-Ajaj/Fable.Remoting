@@ -7,7 +7,7 @@
 
 Fable.Remoting is a library that enables type-safe client-server communication (RPC) for Fable and .NET Apps. It abstracts away http and lets you think of your client-server interactions only in terms of pure functions and being only a part of the webserver. 
 
-The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.net core middleware. On the client you can Fable or .NET.
+The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.net core middleware. On the client you can use Fable or .NET.
 
 ## Quick Start
 Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
@@ -56,7 +56,7 @@ type IStudentApi = {
     allStudents : Async<list<Student>>
 }
 ```
-The type `IServer` is very important, this is the specification of what your server shares with the client. `Fable.Remoting` expects such type to only have functions returning `Async` on the final result:
+The type `IStudentApi` is very important, this is the specification of the protocol between your server and client. `Fable.Remoting` expects such type to only have functions returning `Async` on the final result:
 ```fs
 Async<A>
 A -> Async<B>
@@ -65,36 +65,38 @@ A -> B -> Async<C>
 ```
 Try to put such types in seperate files to reference these files later from the Client
 
-Then provide an implementation for `IServer` on the server:
+Then provide an implementation for `IStudentApi` on the server:
 ```fs
 open SharedTypes
 
-let getStudents() = [
+let getStudents() = async {
+    return [
         { Name = "Mike";  Age = 23; }
         { Name = "John";  Age = 22; }
         { Name = "Diana"; Age = 22; }
     ]
+}
 
-// An implementation of the `IServer` protocol
+let findStudentByName name = async {
+    let! students = getStudents() 
+    let student = List.tryFind (fun student -> student.Name = name) students
+    return student 
+}
+
 let studentApi : IStudentApi = {
-
-    studentByName = fun name -> async {
-        let student = 
-            getStudents()
-            |> List.tryFind (fun student -> student.Name = name)
-
-        return student
-    }
-
-    allStudents = async { return getStudents() } 
+    studentByName = findStudentByName
+    allStudents = getStudents() 
 }
 ```
+Now that we have the implementation `studentApi`, you can expose it as a web service from different web frameworks. We start with [Suave](https://github.com/SuaveIO/suave)  
+
+
 Install the library from Nuget using Paket:
 
 ```
 paket add Fable.Remoting.Suave --project /path/to/Project.fsproj
 ```
-Create a [WebPart](https://suave.io/composing.html) from the value `server` using `remoting server {()}` and start your Suave server:
+Create a [WebPart](https://suave.io/composing.html) from the value `studentApi`
 ```fs
 open Suave
 open Fable.Remotion.Server
