@@ -22,7 +22,7 @@ let failUnexpect (x: obj) = Expect.equal false true (sprintf "%A was not expecte
 let giraffeApp = 
     Remoting.createApi()
     |> Remoting.fromValue implementation 
-    |> Remoting.buildHttpHanlder 
+    |> Remoting.buildHttpHandler 
 
 let postContent (input: string) =  new StringContent(input, Text.Encoding.UTF8)
 let configureApp (app : IApplicationBuilder) =

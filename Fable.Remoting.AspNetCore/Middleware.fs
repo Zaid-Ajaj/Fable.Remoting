@@ -19,7 +19,7 @@ module Extensions =
 
 
 /// The parts from Giraffe needed to simplify the middleware implementation 
-module internal FromGiraffe = 
+module internal Middleware = 
     let writeStringAsync (input: string) (ctx: HttpContext) (logger: Option<string -> unit>) = 
         task {
             Diagnostics.outputPhase logger input
@@ -130,11 +130,11 @@ type RemotingMiddleware<'t>(next          : RequestDelegate,
     member __.Invoke (ctx : HttpContext) =
       let handler = 
           match options.Implementation with 
-          | Empty -> FromGiraffe.halt  
-          | StaticValue impl -> FromGiraffe.buildFromImplementation impl options  
+          | Empty -> Middleware.halt  
+          | StaticValue impl -> Middleware.buildFromImplementation impl options  
           | FromContext createImplementation -> 
               let impl = createImplementation ctx 
-              FromGiraffe.buildFromImplementation impl options
+              Middleware.buildFromImplementation impl options
       let func : HttpFunc = handler (Some >> Task.FromResult)
       task {
           let! result = func ctx

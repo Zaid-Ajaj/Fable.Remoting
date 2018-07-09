@@ -101,7 +101,7 @@ module GiraffeUtil =
 module Remoting =
 
   /// Builds a HttpHandler from the given implementation and options 
-  let buildHttpHanlder (options: RemotingOptions<HttpContext, 't>) = 
+  let buildHttpHandler (options: RemotingOptions<HttpContext, 't>) = 
     match options.Implementation with 
     | Empty -> GiraffeUtil.halt
     | StaticValue impl -> GiraffeUtil.buildFromImplementation impl options 
