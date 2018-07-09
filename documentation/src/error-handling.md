@@ -2,7 +2,7 @@
 
 You might ask: What happens when an exception is thrown on the server by one of the RPC methods? 
 
-Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to a global exception handler of the type 
+Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to the exception handler on the server of the type 
 ```fs
 Exception -> RouteInfo<HttpContext> -> ErrorResult
 ``` 
@@ -12,7 +12,7 @@ type ErrorResult =
     | Ignore
     | Propagate of obj
 ```
-With `ErrorResult` you choose either to propagate a custom message back to the client or just ignore the error. You don't want the exception data (message or stacktrace) to be returned to the client. Either way, an exception will be thrown on the call-site from the client with a generic error message. If you chose to propagate a custom error message, it will be passed off to a global handler on the client, here is a full example:
+With `ErrorResult` you choose either to propagate a custom message back to the client or just ignore the error. You don't want the exception data (message or stacktrace) to be returned to the client. When an error object is propagated, the exception of type `ProxyRequestException` (see below) will contain the error object serialized to JSON in the `ResponseText` field
 ```fs
 open System
 
@@ -25,14 +25,13 @@ let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
     // decide whether or not you want to propagate the error to the client
     match ex with
     | :? System.IOException as x ->
-        // propagate custom error, this is intercepted by the client
         let customError = { errorMsg = "Something terrible happend" }
         Propagate customError
     | :? System.Exception as x ->
         // ignore error
         Ignore
 ```
-Use the error handler using the `remoting` builder:
+Use the error handler as follows:
 ```fs
 let webApp = 
     Remoting.createApi()
@@ -47,11 +46,18 @@ let musicStore =
     |> Remoting.buildproxy<IMusicStore>()
 
 async {
-    try 
-      let! result = musicStore.throwError() 
-    with 
-     | :? ProxyRequestException as ex -> (* do stuff *) 
-     | otherException -> (* do stuff *) 
+    let! result = Async.Catch (musicStore.throwError()) 
+    match result with 
+    | Choice1Of2 output -> (* won't happen *)
+    | Choice2Of2 ex ->
+        match ex with  
+        | :? ProxyRequestException as ex -> 
+            let response : Response = ex.Response 
+            let responseText : string = ex.ResponseText
+            let statusCode : int = ex.StatusCode 
+            (* do stuff with error information*) 
+        
+        | otherException -> (* do other stuff *)    
 }
 ```
 The `ProxyRequestException` is special, it has all information about the response:

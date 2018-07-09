@@ -311,14 +311,16 @@ QUnit.testCaseAsync "IServer.echoBigInteger" <|
 
 QUnit.testCaseAsync "IServer.throwError" <| fun test ->
     async {
-        try
-          let! output = server.throwError()
-          test.fail()
-        with
-         | :? ProxyRequestException as ex ->
-              if ex.ResponseText.Contains("Generating custom server error")
-              then test.pass()
-              else test.fail() 
+        let! result = Async.Catch (server.throwError())
+        match result with
+        | Choice1Of2 output -> test.fail()
+        | Choice2Of2 error ->
+            match error with 
+            | :? ProxyRequestException as ex ->
+                if ex.ResponseText.Contains("Generating custom server error")
+                then test.pass()
+                else test.fail() 
+            | otherwise -> test.fail()
     }
 
 QUnit.testCaseAsync "IServer.mutliArgFunc" <| fun test ->
