@@ -23,9 +23,11 @@
 - [Modeling Authentication](src/modeling-authentication.md)
 - [Implicit Authentication](src/implicit-authentication.md)
 - [Accessing Request Context](src/request-context.md)
+- [Raw Http Communication](src/raw-http.md)
 - [Logging](src/logging.md)
 
 ### Misc
 - [Changelog](src/change-log.md)
+- [Migratiion 2.x to 3.x](src/migrate.md)
 - [Troubleshooting](src/troubleshoot.md)
 - [Credits](src/credits.md)

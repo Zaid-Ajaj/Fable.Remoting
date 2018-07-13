@@ -15,8 +15,7 @@ let webApp =
 ```
 Ofcourse, the routes must match both on client and server, so we override the behaviour on the client too:
 ```fs
-// Assuming the function routeBuilder is shared 
-// between the client and server
+// Assuming the function routeBuilder is shared between the client and server
 // musicStore : IMusicStore
 let musicStore : IMusicStore = 
   Remoting.createApi()

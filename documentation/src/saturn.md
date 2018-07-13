@@ -9,7 +9,7 @@ For Saturn, you actually don't need a seperate package other than the Giraffe pa
 paket add Fable.Remoting.Giraffe --project path/to/Server.fsproj
 ```
 ## Expose the API
-You can now expose the API implementation into the `application` pipeline of Saturn
+You can now plug the API implementation into the `application` pipeline of Saturn
 ```fs
 // Program.fs
 
