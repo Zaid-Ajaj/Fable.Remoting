@@ -63,7 +63,7 @@ startWebServer defaultConfig webAppWithLogging
 [Suave.SerilogExtensions](https://github.com/Zaid-Ajaj/Suave.SerilogExtensions) contains many configuration options that you might want to check out. 
 
 ## Using logger from remoting functions
-Ofcourse, we don't want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remoting functions, you need to access to `HttpContext` and call `httpContext.Logger()` to get a contexual logger you can log events from. 
+Ofcourse, we don't want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remote functions, you need to access to `HttpContext` and call `httpContext.Logger()` to get a contexual logger you can log events from. 
 
 > Logger() is an extension method provided from Suave.SerilogExtensions
 

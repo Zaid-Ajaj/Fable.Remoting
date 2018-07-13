@@ -308,7 +308,20 @@
             
         </li>
     
-        <li class="chapter " data-level="5.6" data-path="logging.html">
+        <li class="chapter " data-level="5.6" data-path="raw-http.html">
+            
+                <a href="raw-http.html">
+            
+                    
+                    Raw Http Communication
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="logging.html">
             
                 <a href="logging.html">
             
@@ -341,7 +354,20 @@
             
         </li>
     
-        <li class="chapter " data-level="6.2" data-path="troubleshoot.html">
+        <li class="chapter " data-level="6.2" data-path="migrate.html">
+            
+                <a href="migrate.html">
+            
+                    
+                    Migratiion 2.x to 3.x
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="troubleshoot.html">
             
                 <a href="troubleshoot.html">
             
@@ -354,7 +380,7 @@
             
         </li>
     
-        <li class="chapter " data-level="6.3" data-path="credits.html">
+        <li class="chapter " data-level="6.4" data-path="credits.html">
             
                 <a href="credits.html">
             
@@ -420,7 +446,7 @@
 <p>The following API models a book store interface with some of the functions requiring the user to be logged in and other functions to publicly available. We use stateless tokens that we pass around to authenticate or authorize the users:</p>
 <pre><code class="lang-fs"><span class="hljs-comment">// Shared.fs</span>
 
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthToken</span> </span>= AuthToken <span class="hljs-keyword">of</span> string
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">SecurityToken</span> </span>= SecurityToken <span class="hljs-keyword">of</span> string
 <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">LoginInfo</span> </span>= { Username: string; Password: string }
 
 <span class="hljs-comment">// possible errors when logging in</span>
@@ -430,10 +456,10 @@
     | AccountBanned
 
 <span class="hljs-comment">// a request with a token</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">SecureRequest</span>&lt;<span class="hljs-title">&apos;t</span>&gt; </span>= { Token : AuthToken; Content : <span class="hljs-symbol">&apos;t</span> }
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">SecureRequest</span>&lt;<span class="hljs-title">&apos;t</span>&gt; </span>= { Token : SecurityToken; Content : <span class="hljs-symbol">&apos;t</span> }
 
 <span class="hljs-comment">// possible authentication/authorization errors     </span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthError</span> </span>= 
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthenticationError</span> </span>= 
    | UserTokenExpired
    | TokenInvalid
    | UserDoesNotHaveAccess
@@ -455,9 +481,9 @@
     <span class="hljs-comment">// &quot;public&quot; function: no auth needed</span>
     searchBooksByTitle : string -&gt; Async&lt;list&lt;Book&gt;&gt; 
     <span class="hljs-comment">// secure function, requires a token</span>
-    booksOnWishlist : AuthToken -&gt; Async&lt;Result&lt;list&lt;Book&gt;, AuthError&gt;&gt;, 
+    booksOnWishlist : SecurityToken -&gt; Async&lt;Result&lt;list&lt;Book&gt;, AuthenticationError&gt;&gt;, 
     <span class="hljs-comment">// secure function, requires a token and a book id</span>
-    removeBookFromWishlist : SecureRequest&lt;BookId&gt; -&gt; Async&lt;Result&lt;BookRemovalFromWishlist, AuthError&gt;&gt;
+    removeBookFromWishlist : SecureRequest&lt;BookId&gt; -&gt; Async&lt;Result&lt;BookRemovalFromWishlist, AuthenticationError&gt;&gt;
     <span class="hljs-comment">// etc . . . </span>
 }
 </code></pre>
@@ -506,7 +532,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Modeling Authentication","level":"5.3","depth":1,"next":{"title":"Implicit Authentication","level":"5.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"previous":{"title":"Error Handling","level":"5.2","depth":1,"path":"src/error-handling.md","ref":"src/error-handling.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/modeling-authentication.md","mtime":"2018-05-14T19:13:06.792Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-09T17:20:17.794Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Modeling Authentication","level":"5.3","depth":1,"next":{"title":"Implicit Authentication","level":"5.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"previous":{"title":"Error Handling","level":"5.2","depth":1,"path":"src/error-handling.md","ref":"src/error-handling.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/modeling-authentication.md","mtime":"2018-07-13T11:17:31.485Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-13T12:29:15.633Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

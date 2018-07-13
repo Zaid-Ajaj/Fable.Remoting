@@ -9,7 +9,7 @@ The following API models a book store interface with some of the functions requi
 ```fs
 // Shared.fs
 
-type AuthToken = AuthToken of string
+type SecurityToken = SecurityToken of string
 type LoginInfo = { Username: string; Password: string }
 
 // possible errors when logging in
@@ -19,10 +19,10 @@ type LoginError =
     | AccountBanned
 
 // a request with a token
-type SecureRequest<'t> = { Token : AuthToken; Content : 't }
+type SecureRequest<'t> = { Token : SecurityToken; Content : 't }
 
 // possible authentication/authorization errors     
-type AuthError = 
+type AuthenticationError = 
    | UserTokenExpired
    | TokenInvalid
    | UserDoesNotHaveAccess
@@ -44,9 +44,9 @@ type IBookStoreApi = {
     // "public" function: no auth needed
     searchBooksByTitle : string -> Async<list<Book>> 
     // secure function, requires a token
-    booksOnWishlist : AuthToken -> Async<Result<list<Book>, AuthError>>, 
+    booksOnWishlist : SecurityToken -> Async<Result<list<Book>, AuthenticationError>>, 
     // secure function, requires a token and a book id
-    removeBookFromWishlist : SecureRequest<BookId> -> Async<Result<BookRemovalFromWishlist, AuthError>>
+    removeBookFromWishlist : SecureRequest<BookId> -> Async<Result<BookRemovalFromWishlist, AuthenticationError>>
     // etc . . . 
 }
 ```

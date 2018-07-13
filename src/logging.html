@@ -56,7 +56,7 @@
     <link rel="next" href="change-log.html" />
     
     
-    <link rel="prev" href="request-context.html" />
+    <link rel="prev" href="raw-http.html" />
     
 
     </head>
@@ -308,7 +308,20 @@
             
         </li>
     
-        <li class="chapter active" data-level="5.6" data-path="logging.html">
+        <li class="chapter " data-level="5.6" data-path="raw-http.html">
+            
+                <a href="raw-http.html">
+            
+                    
+                    Raw Http Communication
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="5.7" data-path="logging.html">
             
                 <a href="logging.html">
             
@@ -341,7 +354,20 @@
             
         </li>
     
-        <li class="chapter " data-level="6.2" data-path="troubleshoot.html">
+        <li class="chapter " data-level="6.2" data-path="migrate.html">
+            
+                <a href="migrate.html">
+            
+                    
+                    Migratiion 2.x to 3.x
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="troubleshoot.html">
             
                 <a href="troubleshoot.html">
             
@@ -354,7 +380,7 @@
             
         </li>
     
-        <li class="chapter " data-level="6.3" data-path="credits.html">
+        <li class="chapter " data-level="6.4" data-path="credits.html">
             
                 <a href="credits.html">
             
@@ -470,7 +496,7 @@ Log.Logger &lt;-
 <pre><code>startWebServer defaultConfig webAppWithLogging
 </code></pre><p><a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Suave.SerilogExtensions</a> contains many configuration options that you might want to check out. </p>
 <h2 id="using-logger-from-remoting-functions">Using logger from remoting functions</h2>
-<p>Ofcourse, we don&apos;t want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remoting functions, you need to access to <code>HttpContext</code> and call <code>httpContext.Logger()</code> to get a contexual logger you can log events from. </p>
+<p>Ofcourse, we don&apos;t want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remote functions, you need to access to <code>HttpContext</code> and call <code>httpContext.Logger()</code> to get a contexual logger you can log events from. </p>
 <blockquote>
 <p>Logger() is an extension method provided from Suave.SerilogExtensions</p>
 </blockquote>
@@ -531,7 +557,7 @@ startWebServer defaultConfig webAppWithLogging
 
             
                 
-                <a href="request-context.html" class="navigation navigation-prev " aria-label="Previous page: Accessing Request Context">
+                <a href="raw-http.html" class="navigation navigation-prev " aria-label="Previous page: Raw Http Communication">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
@@ -547,7 +573,7 @@ startWebServer defaultConfig webAppWithLogging
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Logging","level":"5.6","depth":1,"next":{"title":"Changelog","level":"6.1","depth":1,"path":"src/change-log.md","ref":"src/change-log.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"5.5","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-07-09T09:26:54.164Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-09T17:20:17.794Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Logging","level":"5.7","depth":1,"next":{"title":"Changelog","level":"6.1","depth":1,"path":"src/change-log.md","ref":"src/change-log.md","articles":[]},"previous":{"title":"Raw Http Communication","level":"5.6","depth":1,"path":"src/raw-http.md","ref":"src/raw-http.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-07-13T11:18:25.597Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-13T12:29:15.633Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
