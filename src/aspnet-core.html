@@ -446,11 +446,19 @@
 <p>Now you need to install the Suave-specific package: <a href="https://www.nuget.org/packages/Fable.Remoting.AspNetCore/" target="_blank">Fable.Remoting.AspNetCore</a>:</p>
 <pre><code>paket add Fable.Remoting.AspNetCore --project path/to/Server.fsproj
 </code></pre><h2 id="expose-the-api-as-aspnet-core-middleware">Expose the API as Asp.NET Core middleware:</h2>
+<p>Besides <code>Fable.Remoting.AspNetCore</code>, this snippet is using the following packages to run the server: </p>
+<ul>
+<li><code>Microsoft.AspNetCore.Hosting</code></li>
+<li><code>Microsoft.AspNetCore.Server.Kestrel</code> </li>
+</ul>
+<p>See this <a href="https://github.com/Zaid-Ajaj/remoting-pure-kestrel" target="_blank">pure kestrel sample</a> for reference</p>
 <pre><code class="lang-fs"><span class="hljs-comment">// Program.fs</span>
-
 <span class="hljs-keyword">open</span> SharedModels
 <span class="hljs-keyword">open</span> Fable.Remoting.Server
 <span class="hljs-keyword">open</span> Fable.Remoting.AspNetCore
+<span class="hljs-comment">// server stuff</span>
+<span class="hljs-keyword">open</span> Microsoft.AspNetCore.Builder
+<span class="hljs-keyword">open</span> Microsoft.AspNetCore.Hosting
 
 <span class="hljs-keyword">let</span> musicStore : IMusicStore = {
     <span class="hljs-comment">(* Your implementation here *)</span>
@@ -480,6 +488,17 @@
         .Build()
         .Run()
     <span class="hljs-number">0</span>
+</code></pre>
+<h2 id="explicit-signature">Explicit Signature</h2>
+<p>Sometimes, the F# compiler can&apos;t infer the type of your created remoting api from how it is used, for example, the snippet:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue musicStore
+</code></pre>
+<p>Will give you an error if used on it&apos;s own before using it inside the <code>configureApp</code> function because it is inferred to be of type <code>RemotingOptions&lt;&apos;t, IMusicStore&gt;</code> where we actually want it to be of type <code>RemotingOptions&lt;HttpContext, IMusicStore&gt;</code>. The workaround is to simply write the signature explicitly like this:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApp : RemotingOptions&lt;HttpContext, IMusicStore&gt; = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue musicStore
 </code></pre>
 
                                 
@@ -524,7 +543,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Setup Asp.NET Core","level":"2.2","depth":1,"next":{"title":"Setup Giraffe","level":"2.3","depth":1,"path":"src/giraffe.md","ref":"src/giraffe.md","articles":[]},"previous":{"title":"Setup Suave","level":"2.1","depth":1,"path":"src/suave.md","ref":"src/suave.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/aspnet-core.md","mtime":"2018-07-09T09:26:54.125Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-16T01:06:43.112Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Setup Asp.NET Core","level":"2.2","depth":1,"next":{"title":"Setup Giraffe","level":"2.3","depth":1,"path":"src/giraffe.md","ref":"src/giraffe.md","articles":[]},"previous":{"title":"Setup Suave","level":"2.1","depth":1,"path":"src/suave.md","ref":"src/suave.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/aspnet-core.md","mtime":"2018-07-16T22:51:28.161Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-16T22:54:12.500Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
