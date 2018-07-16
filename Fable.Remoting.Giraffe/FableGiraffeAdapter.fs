@@ -65,9 +65,10 @@ module GiraffeUtil =
 
     /// Builds the entire HttpHandler from implementation record, handles routing and dynamic running of record functions
     let buildFromImplementation impl options = 
-      let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
+      let computeDynamicFunctions = ThreadSafeCell.computeOnce (fun () -> DynamicRecord.createRecordFuncInfo impl)
       let typeName = impl.GetType().Name   
       fun (next : HttpFunc) (ctx : HttpContext) -> task {
+        let! dynamicFunctions = Async.StartAsTask(computeDynamicFunctions())
         let foundFunction = 
           dynamicFunctions 
           |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typeName funcName) 

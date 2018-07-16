@@ -10,6 +10,7 @@ The following API models a book store interface with some of the functions requi
 // Shared.fs
 
 type SecurityToken = SecurityToken of string
+
 type LoginInfo = { Username: string; Password: string }
 
 // possible errors when logging in
@@ -31,22 +32,21 @@ type BookId = BookId of int
 // domain model
 type Book = { Id: BookId; Title: string; (* other propeties *) }
 
-// things that could go wrong 
-// when removing a book from a users wishlist
-type BookRemovalFromWishlist = 
+// things that could happen when requesting to remove a book
+type BookRemovalResult = 
     | BookSuccessfullyRemoved
     | BookDoesNotExist
 
 // the book store protocol
 type IBookStoreApi = {
     // login to acquire an auth token   
-    login : LoginInfo -> Async<Result<AuthToken, LoginError>>
+    login : LoginInfo -> Async<Result<SecurityToken, LoginError>>
     // "public" function: no auth needed
     searchBooksByTitle : string -> Async<list<Book>> 
     // secure function, requires a token
     booksOnWishlist : SecurityToken -> Async<Result<list<Book>, AuthenticationError>>, 
     // secure function, requires a token and a book id
-    removeBookFromWishlist : SecureRequest<BookId> -> Async<Result<BookRemovalFromWishlist, AuthenticationError>>
+    removeBookFromWishlist : SecureRequest<BookId> -> Async<Result<BookRemovalResult, AuthenticationError>>
     // etc . . . 
 }
 ```

@@ -18,8 +18,7 @@ let webApp =
     Remoting.createApi() 
     |> Remoting.fromValue server 
     |> Remoting.withRouteBuilder routeBuilder 
-    |> Remoting.withDiagnosticsLogger (printfn "%s")
-    |> Remoting.buildHttpHanlder
+    |> Remoting.buildHttpHandler
 
 let configureApp (app : IApplicationBuilder) =
     app.UseGiraffeErrorHandler(errorHandler)

@@ -20,6 +20,7 @@
     <Compile Include="DynamicRecord.fs" />
     <Compile Include="Remoting.fs" />
     <Compile Include="Reader.fs" />
+    <Compile Include="ThreadSafeCell.fs" />
   </ItemGroup>
 
   <ItemGroup>    

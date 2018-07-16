@@ -283,8 +283,24 @@ let serverTests =
         }    
     ]
 
+let threadSafeCell = 
+    testList "Thread safe cell tests" [
+        testCaseAsync "computeOnce works" <| async {
+            let magicNumbers = new ResizeArray<int>() 
+            let expensiveFunction() = 
+                System.Threading.Thread.Sleep(2000)
+                magicNumbers.Add(42) 
+                42 
+            let getExpensiveResult = ThreadSafeCell.computeOnce expensiveFunction 
+            let getManyTimes = Async.Parallel [for _ in 1 .. 1000 -> async { return! getExpensiveResult() }]
+            let! values = getManyTimes
+            Expect.equal (42 * 1000) (Seq.sum values) "Expensive result was retrieved 100 times"
+            Expect.equal 1 magicNumbers.Count "Adding numbers was called once"
+        }
+    ]
 let allTests = 
     testList "All Tests " [
         fsharpRecordTests
         serverTests
+        threadSafeCell
     ]
