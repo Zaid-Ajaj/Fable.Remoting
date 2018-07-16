@@ -101,14 +101,10 @@ module internal Middleware =
         | Some funcName -> 
             let func = Map.find funcName dynamicFunctions
             match ctx.Request.Method.ToUpper(), func.Type with  
-            | "GET", NoArguments _ ->  
+            | ("GET" | "POST"), NoArguments _ ->  
                 return! runFunction func impl options [|  |] next ctx  
-            | "GET", SingleArgument(input, _) when input = typeof<unit> ->
+            | ("GET" | "POST"), SingleArgument(input, _) when input = typeof<unit> ->
                 return! runFunction func impl options [|  |] next ctx    
-            | "POST", NoArguments _ ->
-                return! runFunction func impl options [|  |] next ctx 
-            | "POST", SingleArgument(input, _) when input = typeof<unit> -> 
-                return! runFunction func impl options [|  |] next ctx  
             | "POST", _ ->      
                 let requestBodyStream = ctx.Request.Body
                 use streamReader = new StreamReader(requestBodyStream)

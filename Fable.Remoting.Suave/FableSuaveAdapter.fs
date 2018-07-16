@@ -80,14 +80,10 @@ module SuaveUtil =
       | Some funcName -> 
           let func = Map.find funcName dynamicFunctions
           match context.request.method, func.Type with  
-          | HttpMethod.GET, NoArguments _ ->  
+          | (HttpMethod.GET | HttpMethod.POST), NoArguments _ ->  
               return! runFunction func impl options [|  |] context  
-          | HttpMethod.GET, SingleArgument(input, _) when input = typeof<unit> ->
-              return! runFunction func impl options [|  |] context    
-          | HttpMethod.POST, NoArguments _ ->
-              return! runFunction func impl options [|  |] context
-          | HttpMethod.POST, SingleArgument(input, _) when input = typeof<unit> -> 
-              return! runFunction func impl options [|  |] context  
+          | (HttpMethod.GET | HttpMethod.POST), SingleArgument(input, _) when input = typeof<unit> ->
+              return! runFunction func impl options [|  |] context     
           | HttpMethod.POST, _ ->      
               let inputJson = System.Text.Encoding.UTF8.GetString(context.request.rawForm)
               let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger

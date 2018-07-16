@@ -65,10 +65,9 @@ module GiraffeUtil =
 
     /// Builds the entire HttpHandler from implementation record, handles routing and dynamic running of record functions
     let buildFromImplementation impl options = 
-      let computeDynamicFunctions = ThreadSafeCell.computeOnce (fun () -> DynamicRecord.createRecordFuncInfo impl)
+      let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
       let typeName = impl.GetType().Name   
       fun (next : HttpFunc) (ctx : HttpContext) -> task {
-        let! dynamicFunctions = Async.StartAsTask(computeDynamicFunctions())
         let foundFunction = 
           dynamicFunctions 
           |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typeName funcName) 
@@ -77,14 +76,10 @@ module GiraffeUtil =
         | Some funcName -> 
             let func = Map.find funcName dynamicFunctions
             match ctx.Request.Method.ToUpper(), func.Type with  
-            | "GET", NoArguments _ ->  
+            | ("GET" | "POST"), NoArguments _ ->  
                 return! runFunction func impl options [|  |] next ctx  
-            | "GET", SingleArgument(input, _) when input = typeof<unit> ->
+            | ("GET" | "POST"), SingleArgument(input, _) when input = typeof<unit> ->
                 return! runFunction func impl options [|  |] next ctx    
-            | "POST", NoArguments _ ->
-                return! runFunction func impl options [|  |] next ctx
-            | "POST", SingleArgument(input, _) when input = typeof<unit> -> 
-                return! runFunction func impl options [|  |] next ctx  
             | "POST", _ ->      
                 let requestBodyStream = ctx.Request.Body
                 use streamReader = new StreamReader(requestBodyStream)
