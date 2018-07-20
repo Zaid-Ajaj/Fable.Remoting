@@ -7,8 +7,7 @@ module Remoting =
         { Implementation = Empty 
           RouteBuilder = sprintf "/%s/%s" 
           ErrorHandler = None 
-          DiagnosticsLogger = None 
-          IoCContainer = None  }
+          DiagnosticsLogger = None }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
     let withRouteBuilder builder options = 

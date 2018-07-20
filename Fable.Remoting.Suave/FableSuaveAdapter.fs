@@ -106,8 +106,7 @@ module Remoting =
     | Empty -> SuaveUtil.halt
     | StaticValue impl -> SuaveUtil.buildFromImplementation impl options 
     | FromContext createImplementationFrom -> 
-        Writers.setUserData "Fable.Remoting.IoCContainer" options.IoCContainer 
-        >=> fun (context: HttpContext) -> async {
+        fun (context: HttpContext) -> async {
           let impl = createImplementationFrom context 
           return! SuaveUtil.buildFromImplementation impl options context
         }

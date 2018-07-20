@@ -70,5 +70,4 @@ type RemotingOptions<'context, 'serverImpl> = {
     RouteBuilder : string -> string -> string 
     ErrorHandler : ErrorHandler<'context> option 
     DiagnosticsLogger : (string -> unit) option 
-    IoCContainer : IoCContainer option 
 }
