@@ -115,6 +115,7 @@ module Proxy =
                         yield Method HttpMethod.POST
                     else 
                         yield Method HttpMethod.GET
+                    yield Credentials RequestCredentials.Sameorigin
                     yield requestHeaders headers
                 ]
 
