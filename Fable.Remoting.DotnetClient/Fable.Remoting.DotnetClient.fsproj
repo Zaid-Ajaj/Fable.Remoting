@@ -7,8 +7,8 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>2.1.0</Version>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <Version>2.2.0</Version>
+    <TargetFrameworks>net45; net461; netstandard2.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
@@ -16,8 +16,21 @@
     <Compile Include="Patterns.fs" />
     <Compile Include="Proxy.fs" />
   </ItemGroup>
+  
+  <!-- Need to conditionally bring in references for the .NET Framework 4.5 target -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Threading.Tasks" />
+  </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Threading.Tasks" />
+  </ItemGroup>
+
   <ItemGroup>    
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
   </ItemGroup>
+
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
