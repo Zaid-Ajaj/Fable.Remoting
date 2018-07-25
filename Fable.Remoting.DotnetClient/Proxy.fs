@@ -3,6 +3,9 @@ namespace Fable.Remoting.DotnetClient
 open Fable.Remoting.Json
 open Newtonsoft.Json
 open System.Net.Http
+open System.Threading.Tasks
+open System.Linq.Expressions
+open System
 
 [<RequireQualifiedAccess>]
 module Proxy =
@@ -43,6 +46,38 @@ module Proxy =
         /// Uses the specified string as the authorization header for the requests that the proxy makes to the server
         member this.authorisationHeader (header: string) =
             authHeader <- Http.Authorisation.Token header
+             
+        member this.Call<'a> (expr: Expression<Func<'t, Async<'a>>>) : Task<'a> =
+            let args = [  ]
+            let memberExpr = unbox<MemberExpression> expr.Body  
+            let functionName = memberExpr.Member.Name
+            let route = builder typeName functionName
+            let asyncPost = proxyPost<'a> args route client authHeader
+            Async.StartAsTask asyncPost 
+
+        member this.Call<'a, 'b> (expr: Expression<Func<'t, FSharpFunc<'a, Async<'b>>>>, input: 'a) : Task<'b> =
+            let args = [ box input ]
+            let memberExpr = unbox<MemberExpression> expr.Body  
+            let functionName = memberExpr.Member.Name
+            let route = builder typeName functionName
+            let asyncPost = proxyPost<'b> args route client authHeader
+            Async.StartAsTask asyncPost 
+
+        member this.Call<'a, 'b, 'c> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, Async<'c>>>>>, arg1: 'a, arg2: 'b) : Task<'c> = 
+            let args = [ box arg1; box arg2 ]
+            let memberExpr = unbox<MemberExpression> expr.Body  
+            let functionName = memberExpr.Member.Name
+            let route = builder typeName functionName
+            let asyncPost = proxyPost<'c> args route client authHeader
+            Async.StartAsTask asyncPost 
+
+        member this.Call<'a, 'b, 'c, 'd> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, FSharpFunc<'c, Async<'d>>>>>>, arg1: 'a, arg2: 'b, arg3: 'c) : Task<'d> = 
+            let args = [ box arg1; box arg2; box arg3 ]
+            let memberExpr = unbox<MemberExpression> expr.Body  
+            let functionName = memberExpr.Member.Name
+            let route = builder typeName functionName
+            let asyncPost = proxyPost<'d> args route client authHeader
+            Async.StartAsTask asyncPost 
 
         /// Call the proxy function by wrapping it inside a quotation expr:
         /// ```
@@ -79,3 +114,10 @@ module Proxy =
     let create<'t> builder = Proxy<'t>(builder, None)
     /// Creates a proxy with for a type using a route builder and a custom HttpClient that you provide
     let custom<'t> builder client = Proxy<'t>(builder, Some client)
+
+    let CreateFromBuilder<'t>(f: Func<string, string, string>) =
+        let builder = fun typeName funcName -> f.Invoke(typeName, funcName)
+        Proxy<'t>(builder, None)
+    let CreateFromBuilderAndClient<'t>(f: Func<string, string, string>, client: HttpClient) = 
+        let builder = fun typeName funcName -> f.Invoke(typeName, funcName)
+        Proxy<'t>(builder, Some client)
