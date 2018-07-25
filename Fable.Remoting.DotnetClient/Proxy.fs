@@ -46,7 +46,7 @@ module Proxy =
         /// Uses the specified string as the authorization header for the requests that the proxy makes to the server
         member this.authorisationHeader (header: string) =
             authHeader <- Http.Authorisation.Token header
-
+             
         member this.Call<'a> (expr: Expression<Func<'t, Async<'a>>>) : Task<'a> =
             let args = [  ]
             let memberExpr = unbox<MemberExpression> expr.Body  

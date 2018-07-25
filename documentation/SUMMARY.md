@@ -14,6 +14,7 @@
 
 ### Dotnet Client 
 - [Getting Started from .NET](src/dotnet-client.md)
+- [C# Support](src/dotnet-csharp.md)
 - [Asp.NET Core Integration Testing](src/dotnet-integration-tests.md)
 - [Limitations and Workaround](src/dotnet-client-limitations.md)
 
