@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Setup Giraffe · GitBook</title>
+        <title>C# Support · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,10 +53,10 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="saturn.html" />
+    <link rel="next" href="dotnet-integration-tests.html" />
     
     
-    <link rel="prev" href="aspnet-core.html" />
+    <link rel="prev" href="dotnet-client.html" />
     
 
     </head>
@@ -144,7 +144,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="2.3" data-path="giraffe.html">
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
             
                 <a href="giraffe.html">
             
@@ -210,7 +210,7 @@
             
         </li>
     
-        <li class="chapter " data-level="4.2" data-path="dotnet-csharp.html">
+        <li class="chapter active" data-level="4.2" data-path="dotnet-csharp.html">
             
                 <a href="dotnet-csharp.html">
             
@@ -436,7 +436,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Setup Giraffe</a>
+        <a href=".." >C# Support</a>
     </h1>
 </div>
 
@@ -451,48 +451,39 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="setup-giraffe">Setup Giraffe</h1>
-<p>On your Giraffe project, you reference the the shared API types:</p>
-<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;../Shared/SharedModels.fs&quot;</span> /&gt;</span>
-<span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;Program.fs&quot;</span> /&gt;</span>
-</code></pre>
-<p>Now you need to install the Suave-specific package: <a href="https://www.nuget.org/packages/Fable.Remoting.Giraffe/" target="_blank">Fable.Remoting.Giraffe</a>:</p>
-<pre><code>paket add Fable.Remoting.Giraffe --project path/to/Server.fsproj
-</code></pre><h2 id="expose-the-api-as-a-httphandler">Expose the API as a HttpHandler:</h2>
-<pre><code class="lang-fs"><span class="hljs-comment">// Program.fs</span>
+                                <h1 id="using-net-client-from-c">Using .NET client from C<em>#</em></h1>
+<p>The .NET client can also be used with C# in an idiomatic way. You will need to put the protocol definitions inside a F<em>#</em> project and reference the project in a C<em>#</em> project to have the types available from your C<em>#</em> application:</p>
+<pre><code class="lang-cs"><span class="hljs-keyword">using</span> System;
+<span class="hljs-keyword">using</span> System.Threading.Tasks;  
+<span class="hljs-keyword">using</span> Fable.Remoting.DotnetClient;
 
-<span class="hljs-keyword">open</span> Giraffe
-<span class="hljs-keyword">open</span> SharedModels
-<span class="hljs-keyword">open</span> Fable.Remoting.Server
-<span class="hljs-keyword">open</span> Fable.Remoting.Giraffe
+<span class="hljs-keyword">namespace</span> <span class="hljs-title">CSharpRemoting</span> 
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Program</span>
+    {
+        <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Main</span>(<span class="hljs-params"><span class="hljs-keyword">string</span>[] args</span>)
+        </span>{
+            Task.Run(MainAsync).Wait();
+        }
 
-<span class="hljs-keyword">let</span> musicStore : IMusicStore = {
-    <span class="hljs-comment">(* Your implementation here *)</span>
-} 
+        <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">MainAsync</span>(<span class="hljs-params"></span>)
+        </span>{
+            <span class="hljs-comment">// create the proxy with route builder</span>
+            <span class="hljs-keyword">var</span> proxy = Proxy.CreateFromBuilder&lt;IServer&gt;((typeName, funcName) =&gt; {
+                <span class="hljs-keyword">return</span> $<span class="hljs-string">&quot;http://localhost:8080/api/{typeName}/{funcName}&quot;</span>;
+            });
 
-<span class="hljs-comment">// create the HttpHandler from the musicStore value</span>
-<span class="hljs-keyword">let</span> webApp : HttpHandler = 
-    Remoting.createApi()
-    |&gt; Remoting.fromValue musicStore
-    |&gt; Remoting.buildHttpHandler
+            <span class="hljs-comment">// Select a remote function to call and provide the arguments</span>
+            <span class="hljs-keyword">int</span> output = <span class="hljs-keyword">await</span> proxy.Call(server =&gt; server.getLength, <span class="hljs-string">&quot;input string&quot;</span>);
 
-<span class="hljs-keyword">let</span> configureApp (app : IApplicationBuilder) =
-    <span class="hljs-comment">// Add Giraffe to the ASP.NET Core pipeline</span>
-    app.UseGiraffe webApp
+            <span class="hljs-comment">// call a simple async value</span>
+            <span class="hljs-keyword">var</span> result = <span class="hljs-keyword">await</span> proxy.Call(server =&gt; server.justAsyncValue); 
 
-<span class="hljs-keyword">let</span> configureServices (services : IServiceCollection) =
-    <span class="hljs-comment">// Add Giraffe dependencies</span>
-    services.AddGiraffe() |&gt; ignore
+            Console.WriteLine(result);
+        }
+    }
 
-<span class="hljs-meta">[&lt;EntryPoint&gt;]</span>
-<span class="hljs-keyword">let</span> main _ =
-    WebHostBuilder()
-        .UseKestrel()
-        .Configure(Action&lt;IApplicationBuilder&gt; configureApp)
-        .ConfigureServices(configureServices)
-        .Build()
-        .Run()
-    <span class="hljs-number">0</span>
+}
 </code></pre>
 
                                 
@@ -521,12 +512,12 @@
 
             
                 
-                <a href="aspnet-core.html" class="navigation navigation-prev " aria-label="Previous page: Setup Asp.NET Core">
+                <a href="dotnet-client.html" class="navigation navigation-prev " aria-label="Previous page: Getting Started from .NET">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
                 
-                <a href="saturn.html" class="navigation navigation-next " aria-label="Next page: Setup Saturn">
+                <a href="dotnet-integration-tests.html" class="navigation navigation-next " aria-label="Next page: Asp.NET Core Integration Testing">
                     <i class="fa fa-angle-right"></i>
                 </a>
                 
@@ -537,7 +528,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Setup Giraffe","level":"2.3","depth":1,"next":{"title":"Setup Saturn","level":"2.4","depth":1,"path":"src/saturn.md","ref":"src/saturn.md","articles":[]},"previous":{"title":"Setup Asp.NET Core","level":"2.2","depth":1,"path":"src/aspnet-core.md","ref":"src/aspnet-core.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/giraffe.md","mtime":"2018-07-09T09:26:54.160Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-25T20:04:49.386Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"C# Support","level":"4.2","depth":1,"next":{"title":"Asp.NET Core Integration Testing","level":"4.3","depth":1,"path":"src/dotnet-integration-tests.md","ref":"src/dotnet-integration-tests.md","articles":[]},"previous":{"title":"Getting Started from .NET","level":"4.1","depth":1,"path":"src/dotnet-client.md","ref":"src/dotnet-client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-csharp.md","mtime":"2018-07-25T20:01:27.578Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-07-25T20:04:49.386Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
