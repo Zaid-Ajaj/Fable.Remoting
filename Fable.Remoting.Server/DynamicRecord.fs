@@ -106,6 +106,11 @@ module DynamicRecord =
 
     let private fableConverter = new FableJsonConverter() :> JsonConverter
 
+    let private fableSeriazizer = 
+        let serializer = JsonSerializer() 
+        serializer.Converters.Add fableConverter
+        serializer  
+
     /// Serializes the input value into JSON using Fable converter
     let serialize result = JsonConvert.SerializeObject(result, [| fableConverter |])
 
@@ -122,8 +127,6 @@ module DynamicRecord =
         | SingleArgument (input, _) when input = typeof<unit> -> [| box () |]
         | SingleArgument (input, _) ->
             let parsedJson = JToken.Parse(inputJson) 
-            let serializer = JsonSerializer()
-            serializer.Converters.Add fableConverter
             if parsedJson.Type = JTokenType.Array && not (input.IsArray || FSharpType.IsTuple input || input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpList`1")) then
                 let jsonValues = List.ofArray (parsedJson.ToObject<JToken[]>()) 
                 match jsonValues with 
@@ -135,24 +138,22 @@ module DynamicRecord =
                 | [ singleJsonObject ] -> 
                     Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
                     // JSON input array is a single object and function is of single argument then it works fine
-                    [| singleJsonObject.ToObject(input, serializer) |]  
+                    [| singleJsonObject.ToObject(input, fableSeriazizer) |]  
                 | singleJsonObject :: moreValues -> 
                     Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
                     // JSON input array has many values, just take the first one and ignore the rest
-                    [| singleJsonObject.ToObject(input, serializer) |]  
+                    [| singleJsonObject.ToObject(input, fableSeriazizer) |]  
             elif parsedJson.Type = JTokenType.Array && (input.IsArray || FSharpType.IsTuple input || input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpList`1")) then
                 // expected type is list-like and the Json is list like
                 let jsonValues = parsedJson.ToObject<JToken[]>()
                 Array.zip [| input |] jsonValues 
-                |> Array.map (fun (jsonType, json) -> json.ToObject(jsonType, serializer))
+                |> Array.map (fun (jsonType, json) -> json.ToObject(jsonType, fableSeriazizer))
             else
                 Diagnostics.deserializationPhase logger (fun () -> inputJson.ToString()) [| input |]
                  // then the input json is a single object (not an array) and can be deserialized directly
                 [| JsonConvert.DeserializeObject(inputJson, input, [| fableConverter |]) |]
         | ManyArguments (inputArgTypes, _) -> 
             let parsedJson = JToken.Parse(inputJson) 
-            let serializer = JsonSerializer()
-            serializer.Converters.Add fableConverter
             if parsedJson.Type <> JTokenType.Array
             then 
                 let typeInfo = typeNames inputArgTypes
@@ -166,7 +167,7 @@ module DynamicRecord =
                 else 
                     Diagnostics.deserializationPhase logger (fun () -> inputJson.ToString()) (Array.ofList inputArgTypes)
                     List.zip inputArgTypes jsonValues 
-                    |> List.map (fun (jsonType, json) -> json.ToObject(jsonType, serializer))
+                    |> List.map (fun (jsonType, json) -> json.ToObject(jsonType, fableSeriazizer))
                     |> Array.ofList 
     
     /// Based of function metadata, tries to convert the input JSON into an appropriate array of typed arguments.  
@@ -175,3 +176,55 @@ module DynamicRecord =
         with | ex -> 
             let error = { ParsingArgumentsError = ex.Message }
             Error error
+
+    let routeMethod = function 
+        | NoArguments outputType when isAsync outputType -> "GET"
+        | SingleArgument (input, output) when input = typeof<unit> -> "GET"
+        | otherwise -> "POST"
+            
+    let makeDocsSchema record (Documentation(docsName, routesDefs)) (routeBuilder: string -> string -> string) = 
+        match record with 
+        | TypeInfo.RecordType fields  -> 
+            let typeName = record.Name
+            let schema = JObject()
+            let routes = JArray()
+            for fieldName, fieldType in fields do 
+                let routeDocs = List.tryFind (fun routeDocs -> routeDocs.Route = Some fieldName) routesDefs
+                let route = JObject() 
+                route.Add(JProperty("remoteFunction", fieldName))
+                route.Add(JProperty("httpMethod", routeMethod (makeRecordFuncType fieldType)))
+                route.Add(JProperty("route", routeBuilder typeName fieldName))
+                
+                let description = 
+                    routeDocs 
+                    |> Option.bind (fun route -> route.Description)
+                    |> Option.defaultValue ""
+                
+                let alias = 
+                    routeDocs 
+                    |> Option.bind (fun route -> route.Alias)
+                    |> Option.defaultValue fieldName
+
+                route.Add(JProperty("description", description))
+                route.Add(JProperty("alias", alias)) 
+
+                let examplesJson = JArray()
+                match routeDocs with 
+                | None -> () 
+                | Some routeDocs -> 
+                    for (exampleArgs, description) in routeDocs.Examples do
+                        let argsJson = JArray()
+                        for arg in exampleArgs do argsJson.Add(JToken.Parse(serialize arg))
+                        let exampleJson = JObject()
+                        exampleJson.Add(JProperty("description", description))
+                        exampleJson.Add(JProperty("arguments", argsJson))
+                        examplesJson.Add(exampleJson)
+                
+                route.Add(JProperty("examples", examplesJson))
+                routes.Add(route)
+
+            schema.Add(JProperty("name", docsName))
+            schema.Add(JProperty("routes", routes))
+            schema
+        | _ -> 
+            JObject()

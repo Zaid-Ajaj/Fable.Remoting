@@ -15,9 +15,13 @@
 
   <ItemGroup>
     <Compile Include="Types.fs" />
+    <Compile Include="TypeInfo.fs" />
     <Compile Include="Errors.fs" />
     <Compile Include="Diagnostics.fs" />
+    <Compile Include="Patterns.fs" />
+    <Compile Include="Documentation.fs" />
     <Compile Include="DynamicRecord.fs" />
+    <Compile Include="DocsApp.fs" />
     <Compile Include="Remoting.fs" />
     <Compile Include="Reader.fs" />
     <Compile Include="ThreadSafeCell.fs" />
