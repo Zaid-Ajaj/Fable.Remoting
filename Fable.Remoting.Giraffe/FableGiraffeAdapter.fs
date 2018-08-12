@@ -6,6 +6,7 @@ open Giraffe
 open System.IO
 open System.Threading.Tasks
 open Fable.Remoting.Server
+open Newtonsoft.Json
 
 
 module GiraffeUtil = 
@@ -14,7 +15,7 @@ module GiraffeUtil =
             task {
                 let responseBody = DynamicRecord.serialize response 
                 Diagnostics.outputPhase logger responseBody
-                return! text responseBody next ctx 
+                return! Giraffe.ResponseWriters.setBodyFromString responseBody next ctx
             }
 
     let setContentType (contentType: string) : HttpHandler = 
@@ -56,9 +57,11 @@ module GiraffeUtil =
             match functionResult with
             | Choice.Choice1Of2 output -> 
                 ctx.Response.StatusCode <- 200
+                ctx.Response.ContentType <- "application/json; charset=utf-8"
                 return! setJsonBody output logger next ctx 
             | Choice.Choice2Of2 ex -> 
                 ctx.Response.StatusCode <- 500
+                ctx.Response.ContentType <- "application/json; charset=utf-8"
                 let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
                 return! fail ex routeInfo options next ctx 
         }
@@ -72,7 +75,21 @@ module GiraffeUtil =
           dynamicFunctions 
           |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typeName funcName) 
         match foundFunction with 
-        | None -> return! halt next ctx   
+        | None ->
+            match ctx.Request.Method.ToUpper(), options.Docs with  
+            | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value -> 
+                let (Documentation(docsName, docsRoutes)) = docs
+                let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+                let docsApp = DocsApp.embedded docsName docsUrl schema
+                return! htmlString docsApp next ctx
+            | "OPTIONS", (Some docsUrl, Some docs) 
+                when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
+                  || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value -> 
+                let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+                let serializedSchema = schema.ToString(Formatting.None)
+                return! text serializedSchema next ctx   
+            | _ -> 
+                return! halt next ctx   
         | Some funcName -> 
             let func = Map.find funcName dynamicFunctions
             match ctx.Request.Method.ToUpper(), func.Type with  

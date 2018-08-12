@@ -65,9 +65,25 @@ type ProtocolImplementation<'context, 'serverImpl> =
     | StaticValue of 'serverImpl 
     | FromContext of ('context -> 'serverImpl)
 
+// an example is a list of arguments and the description of the example
+type Example = obj list * string
+
+type RouteDocs = 
+    { Route : string option
+      /// An alias for the method name
+      Alias : string option
+      /// The description of the method
+      Description : string option
+      /// Examples are objects and optionally, their description
+      Examples : Example list }
+
+/// Contains documented routes for an API
+type Documentation = Documentation of string * RouteDocs list
+
 type RemotingOptions<'context, 'serverImpl> = {
     Implementation: ProtocolImplementation<'context, 'serverImpl> 
     RouteBuilder : string -> string -> string 
     ErrorHandler : ErrorHandler<'context> option 
     DiagnosticsLogger : (string -> unit) option 
+    Docs : string option * Option<Documentation> 
 }

@@ -3,6 +3,7 @@
 open Suave
 open Suave.Operators
 open Fable.Remoting.Server
+open Newtonsoft.Json
 
 module SuaveUtil = 
   
@@ -30,6 +31,14 @@ module SuaveUtil =
     >=> setStatusCode 200
     >=> Writers.setMimeType "application/json; charset=utf-8"
   
+
+  let html content : WebPart = 
+    fun ctx -> async {
+      return Some { ctx with response = { ctx.response with content = outputContent content  } } 
+    } 
+    >=> setStatusCode 200
+    >=> Writers.setMimeType "text/html; charset=utf-8"
+
   /// Used to halt the forwarding of the Http context
   let halt : WebPart = 
     fun (_: HttpContext) -> 
@@ -76,7 +85,21 @@ module SuaveUtil =
         dynamicFunctions 
         |> Map.tryFindKey (fun funcName _ -> context.request.path = options.RouteBuilder typeName funcName) 
       match foundFunction with 
-      | None -> return! halt context   
+      | None -> 
+          match context.request.method, options.Docs with 
+          | HttpMethod.GET, (Some docsUrl, Some docs) when docsUrl = context.request.path -> 
+              let (Documentation(docsName, docsRoutes)) = docs
+              let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+              let docsApp = DocsApp.embedded docsName docsUrl schema
+              return! html docsApp context
+          | HttpMethod.OPTIONS, (Some docsUrl, Some docs) 
+                when sprintf "/%s/$schema" docsUrl = context.request.path
+                  || sprintf "%s/$schema" docsUrl = context.request.path ->
+              let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+              let serializedSchema =  schema.ToString(Formatting.None)
+              return! success serializedSchema None context   
+          | _ -> 
+              return! halt context     
       | Some funcName -> 
           let func = Map.find funcName dynamicFunctions
           match context.request.method, func.Type with  
