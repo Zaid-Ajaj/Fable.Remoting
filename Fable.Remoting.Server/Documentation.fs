@@ -43,13 +43,6 @@ type ApiDocs<'t>() =
             { route with Examples = List.append route.Examples [(args, "")] }
         | _ -> route 
 
-    /// Adds example and a description of the example to the route definition form the way you would use the remote function
-    member this.fullExample (desc: string) (expr: Expr<'t -> Async<'u>>) (route: RouteDocs) = 
-        match expr with 
-        | Patterns.ProxyLambda (name, args) when Some name = route.Route ->
-            { route with Examples = List.append route.Examples [(args, desc)] }
-        | _ -> route 
-
     /// Add human-friendly alias for the remote function name
     member this.alias (name: string) (route: RouteDocs) = 
         { route with Alias = Some name }
