@@ -32,32 +32,3 @@ module Remoting =
     let fromValue (serverImpl: 'implementation) (options: RemotingOptions<'t, 'implementation>)  = 
         DynamicRecord.checkProtocolDefinition serverImpl
         { options with Implementation = StaticValue serverImpl }
-
-
-
-module Other = 
-    type Number = { value: int; factor: int }
-    
-    type IServerApi = { 
-        getLength: string -> Async<int>
-        simpleAsync: Async<string> 
-        multiply: Number -> Async<int>
-    } 
-    let docs = Docs.createFor<IServerApi>()
-
-    let serverApiDocs = 
-        Remoting.documentation "Server Api" [
-            docs.route <@ fun api -> api.getLength @>
-            |> docs.alias "Get Length"
-            |> docs.description "Returns the length of the input string"
-
-            docs.route <@ fun api -> api.multiply @>
-            |> docs.alias "Multiply"
-            |> docs.description "Multiplyes the input value times the factor"
-            |> docs.example <@ fun api -> api.multiply { value = 10; factor = 2  } @>
-            |> docs.example <@ fun api -> api.multiply { value = 40; factor = -3 } @>
-
-            docs.route <@ fun api -> api.simpleAsync @>
-            |> docs.alias "Simple Async"
-            |> docs.description "Returns a static string value"
-        ]
