@@ -9,8 +9,10 @@ module DocsApp =
     let append (input: string) (builder: StringBuilder) = 
         builder.Append(input)
 
-    let documentedMethods (schema: JObject) = 
+    let documentedMethods (schema: JObject) name = 
         let builder = StringBuilder()
+        builder.Append("<div style='height:90%; overflow-y: auto; padding: 30px;position: fixed;'>") |> ignore
+        builder.Append("<h1 style='margin-bottom:20px;'>" + name  + "</h1>") |> ignore
         builder.Append("<ul class=\"list-group\">") |> ignore 
         for route in schema.["routes"] do
             let color = 
@@ -27,6 +29,7 @@ module DocsApp =
             |> append (routeName)
             |> append "</li>" |> ignore 
         builder.Append("</ul>") |> ignore
+        builder.Append("</div>") |> ignore
         builder.ToString()
 
 
@@ -42,6 +45,26 @@ module DocsApp =
                </head>
                <body style="width:95%">
                     <style>
+                        /* width */
+                        ::-webkit-scrollbar {
+                            width: 7px;
+                        }
+
+                        /* Track */
+                        ::-webkit-scrollbar-track {
+                            background: #f1f1f1; 
+                        }
+                         
+                        /* Handle */
+                        ::-webkit-scrollbar-thumb {
+                            background: #888; 
+                        }
+
+                        /* Handle on hover */
+                        ::-webkit-scrollbar-thumb:hover {
+                            background: #555; 
+                        }
+
                         .list-group-item:hover {
                             background-color: rgba(0,0,0, 0.03);
                             cursor: pointer;
@@ -51,11 +74,10 @@ module DocsApp =
                     <div class="row">
                         <div class="col-md-4">
                             <div style="padding: 40px;">
-                                <h1>{AppTitle}</h1>
                                 {DocumentedMethods}
                             </div>
                         </div>
-                        <div class="col-md-7">
+                        <div class="col-md-8">
                             <div class="card" style="padding:20px; margin-top:95px;">
                                <div class="card-body" id="content">
                                   
@@ -105,24 +127,84 @@ module DocsApp =
 
                                 var runBtn = $("<div class='btn btn-success'>Run</div>");
 
-                                
-
                                 if (routeInfo.httpMethod === "GET") {
                                     content.append(runBtn);
-                                    
+                                    content.append("<br />");
+
                                     runBtn.click(function() {
                                         $("#output").remove(); 
 
                                         $.ajax(routeInfo.route, {
                                             error: function(response) {
-                                                content.append("<div style='margin-top:20px;' id='output' class='alert alert-info' >" + JSON.stringify(response.responseJSON, null, 2) + "</div>");
+                                                var outputData = JSON.stringify(response.responseJSON, null, 2);
+                                                var textarea = $("<textarea id='output' class='form-control' style='margin-top:20px; font-size:20px' rows='5' ></textarea>");
+                                                textarea.val(outputData);
+                                                content.append(textarea);
                                             }, 
 
                                             success: function(data) {
-                                                content.append("<div style='margin-top:20px;' id='output' class='alert alert-info' >" + JSON.stringify(data, null, 2) + "</div>");
+                                                var outputData =  JSON.stringify(data, null, 2);
+                                                var textarea = $("<textarea id='output' class='form-control' style='margin-top:20px; font-size:20px' rows='5' ></textarea>");
+                                                textarea.val(outputData);
+                                                content.append(textarea);
                                             }
-                                        })
-                                    })
+                                        });
+                                    });
+                                } else {
+                                    content.append("<h5>Request Body (function arguments as JSON array)</h5>");
+
+                                    if (routeInfo.examples.length > 0) {
+                                        content.append("<hr />");
+                                        var group = $("<div class='button-group' role='group'></div>");
+                                        group.append($("<span style='font-size:18px;'>Examples: </span>"));
+                                        for(var i = 0; i < routeInfo.examples.length; i++) {
+                                            var exampleArguments = routeInfo.examples[i].arguments;
+                                            var example = $("<button data-example='" + (i+1) + "' data-func='" + routeInfo.remoteFunction +  "' class='btn btn-info' style='margin:5px'>" +  (i+1) + "</button>");
+                                            example.click(function() {
+                                                var currentExample = $(this);
+                                                var currentFunc = currentExample.attr("data-func");
+                                                var exampleIndex = parseInt(currentExample.attr("data-example"));
+                                                $("#inputJson").val(JSON.stringify(routeInfo.examples[exampleIndex - 1].arguments, null, 2));
+                                            });
+                                            
+                                            group.append(example);
+                                        }
+
+                                        content.append(group);
+                                    }
+
+                                    content.append("<textarea id='inputJson' class='form-control' style='margin-top:20px; font-size:20px;' rows='4' ></textarea>");
+                                    content.append("<br />");
+                                    content.append(runBtn);
+                                    content.append("<br />");
+                                    
+                                    runBtn.click(function() {
+                                        $("#output").remove(); 
+
+                                        $.ajax({
+                                            url: routeInfo.route,
+                                            method: 'POST',
+                                            data: $("#inputJson").val(),
+                                            error: function(response) {
+                                                var outputData = JSON.stringify(JSON.parse(response.responseText), null, 2);
+                                                console.log("error at", routeInfo.route, "\n", outputData, response);
+                                                var textarea = $("<textarea id='output' class='form-control' style='margin-top:20px; font-size:20px; color:red' rows='5' ></textarea>");
+                                                textarea.val(outputData);
+                                                content.append(textarea);
+                                            }, 
+
+                                            success: function(data) {
+                                                var outputData =  JSON.stringify(data, null, 2);
+                                                var textarea = $("<textarea id='output' class='form-control' style='margin-top:20px; color:green'font-size:20px;' rows='5' ></textarea>");
+                                                textarea.val(outputData);
+                                                content.append(textarea);
+                                            }
+                                        });
+                                    });
+
+                                    if (routeInfo.examples.length > 0) {
+                                        $("#inputJson").val(JSON.stringify(routeInfo.examples[0].arguments, null, 2));
+                                    }
                                 }                            
                             });
                         });
@@ -131,7 +213,7 @@ module DocsApp =
             </html>
             """
         // Poor man's view engine
-        app.Replace("\r\n", "")
+        app.Replace("\r\n", "\n")
            .Replace("{AppTitle}", name)
            .Replace("{SchemaUrl}", url)
-           .Replace("{DocumentedMethods}", documentedMethods schema)
+           .Replace("{DocumentedMethods}", documentedMethods schema name)

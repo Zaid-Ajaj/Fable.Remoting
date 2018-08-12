@@ -7,6 +7,7 @@ open System.IO
 open System.Threading.Tasks 
 open Fable.Remoting.Server
 open FSharp.Control.Tasks
+open Newtonsoft.Json
 
 type HttpFuncResult = Task<HttpContext option>
 type HttpFunc = HttpContext -> HttpFuncResult
@@ -27,6 +28,14 @@ module internal Middleware =
             do! ctx.Response.Body.WriteAsync(bytes, 0, bytes.Length)
             return Some ctx
         }
+
+    let text (input: string) = 
+        fun (next : HttpFunc) (ctx : HttpContext) ->
+            task {
+                let bytes = System.Text.Encoding.UTF8.GetBytes(input)
+                do! ctx.Response.Body.WriteAsync(bytes, 0, bytes.Length)
+                return Some ctx
+            }
 
     let compose (handler1 : HttpHandler) (handler2 : HttpHandler) : HttpHandler =
         fun (final : HttpFunc) ->
@@ -96,8 +105,25 @@ module internal Middleware =
         let foundFunction = 
           dynamicFunctions 
           |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typeName funcName) 
+        
         match foundFunction with 
-        | None -> return! halt next ctx   
+        | None -> 
+            // route didn't match with any of the functions
+            // try match route with docs application
+            match ctx.Request.Method.ToUpper(), options.Docs with  
+            | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value -> 
+                let (Documentation(docsName, docsRoutes)) = docs
+                let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+                let docsApp = DocsApp.embedded docsName docsUrl schema
+                return! (text docsApp >=> setContentType "text/html") next ctx
+            | "OPTIONS", (Some docsUrl, Some docs) 
+                when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
+                  || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value -> 
+                let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+                let serializedSchema = schema.ToString(Formatting.None)
+                return! (text serializedSchema >=> setContentType "application/json; charset=utf-8") next ctx   
+            | _ -> 
+                return! halt next ctx   
         | Some funcName -> 
             let func = Map.find funcName dynamicFunctions
             match ctx.Request.Method.ToUpper(), func.Type with  

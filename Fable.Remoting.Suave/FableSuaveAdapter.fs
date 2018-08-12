@@ -92,11 +92,9 @@ module SuaveUtil =
               let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
               let docsApp = DocsApp.embedded docsName docsUrl schema
               return! html docsApp context
-          | HttpMethod.OPTIONS, (Some docsUrl, Some docs) when sprintf "/%s/$schema" docsUrl = context.request.path ->
-              let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
-              let serializedSchema =  schema.ToString(Formatting.None)
-              return! success serializedSchema None context   
-          | HttpMethod.OPTIONS, (Some docsUrl, Some docs) when sprintf "%s/$schema" docsUrl = context.request.path ->
+          | HttpMethod.OPTIONS, (Some docsUrl, Some docs) 
+                when sprintf "/%s/$schema" docsUrl = context.request.path
+                  || sprintf "%s/$schema" docsUrl = context.request.path ->
               let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
               let serializedSchema =  schema.ToString(Formatting.None)
               return! success serializedSchema None context   
