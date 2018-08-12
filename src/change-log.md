@@ -2,6 +2,8 @@
 
 ### August 2018 
  - Added ability to automatically generate interactive documentation from protocol definition (see [PR](https://github.com/Zaid-Ajaj/Fable.Remoting/pull/68))
+
+
 ### July 2018 (See [PR](https://github.com/Zaid-Ajaj/Fable.Remoting/pull/58))
 
  - Major infrastructure rewrite and improvements to Reflection code [#55](https://github.com/Zaid-Ajaj/Fable.Remoting/issues/55)
