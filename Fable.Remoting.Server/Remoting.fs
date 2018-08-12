@@ -20,7 +20,7 @@ module Remoting =
     let withDiagnosticsLogger logger options = 
         { options with DiagnosticsLogger = Some logger }
 
-    /// Enables the automatic generation of API documentation based on type-metadata
+    /// Enables the automatic generation of API documentation based on type-metadata 
     let withDocs (url: string) (docs: Documentation) options = 
         { options with Docs = Some url, Some docs }
 

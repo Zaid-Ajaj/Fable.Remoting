@@ -91,9 +91,11 @@ module internal Middleware =
             match functionResult with
             | Choice.Choice1Of2 output -> 
                 ctx.Response.StatusCode <- 200
+                ctx.Response.ContentType <- "application/json; charset=utf-8"
                 return! setBody output logger next ctx 
             | Choice.Choice2Of2 ex -> 
                ctx.Response.StatusCode <- 500
+               ctx.Response.ContentType <- "application/json; charset=utf-8"
                let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
                return! fail ex routeInfo options next ctx 
         }
