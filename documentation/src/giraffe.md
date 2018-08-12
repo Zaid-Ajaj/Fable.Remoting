@@ -4,7 +4,7 @@ On your Giraffe project, you reference the the shared API types:
 <Compile Include="../Shared/SharedModels.fs" />
 <Compile Include="Program.fs" />
 ```
-Now you need to install the Suave-specific package: [Fable.Remoting.Giraffe](https://www.nuget.org/packages/Fable.Remoting.Giraffe/):
+Now you need to install the Giraffe-specific package: [Fable.Remoting.Giraffe](https://www.nuget.org/packages/Fable.Remoting.Giraffe/):
 ```
 paket add Fable.Remoting.Giraffe --project path/to/Server.fsproj
 ```
