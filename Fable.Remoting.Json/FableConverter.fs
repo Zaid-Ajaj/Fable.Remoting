@@ -76,6 +76,7 @@ module private Cache =
     let serializationBinderTypes = ConcurrentDictionary<string,Type>()
 
 open Cache
+open Newtonsoft.Json.Linq
 
  type InternalLong = { high : int; low: int; unsigned: bool }
 
@@ -319,7 +320,23 @@ type FableJsonConverter() =
                     advance reader
                     FSharpValue.MakeUnion(uci, [|value|])
             | JsonToken.Null -> null // for { "union": null }
-            | _ -> failwith "invalid token"
+            | JsonToken.StartArray -> 
+                let unionArray = serializer.Deserialize<JToken>(reader) :?> JArray
+                let name = unionArray.[0].Value<string>() 
+                let unionCaseInfo = getUci t name
+                let itemTypes = unionCaseInfo.GetFields() |> Array.map (fun pi -> pi.PropertyType)
+                let value = unionArray.[1].Value<JToken>()
+                let parsedValue = 
+                    if value.Type <> JTokenType.Array 
+                    then 
+                        FSharpValue.MakeUnion(unionCaseInfo, [| value.ToObject(itemTypes.[0], serializer) |])
+                    else  
+                        let jarray = value :?> JArray
+                        [| 0 .. (itemTypes.Length - 1) |]
+                        |> Array.map (fun index -> jarray.[index].ToObject(itemTypes.[index])) 
+                        |> fun unionCaseValues -> FSharpValue.MakeUnion(unionCaseInfo, unionCaseValues)
+                parsedValue
+            | _ -> failwithf "Invalid JSON token: %s" (reader.TokenType.ToString())
         | true, Kind.MapOrDictWithNonStringKey ->
             let mapTypes = t.GetGenericArguments()
             let mapSerializer = typedefof<MapSerializer<_,_>>.MakeGenericType mapTypes

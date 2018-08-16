@@ -6,6 +6,10 @@ open FSharp.Reflection
 open Fable.Remoting.Json
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
+open Newtonsoft.Json.Linq
+open Newtonsoft.Json.Linq
+open Newtonsoft.Json.Linq
+open Newtonsoft.Json.Linq
 
 /// Provides utilities to run functions dynamically from record fields
 module DynamicRecord = 
@@ -136,9 +140,22 @@ module DynamicRecord =
                     then [| box () |]
                     else failwithf "Input JSON array of the arguments for function '%s' was empty while the function expected a value of type '%s'" func.FunctionName (Diagnostics.typePrinter input)
                 | [ singleJsonObject ] -> 
-                    Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
+                    let singleJsonString = singleJsonObject.ToString()
+                    Diagnostics.deserializationPhase logger (fun () -> singleJsonString) [| input |]
+                    if input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpMap`2") && singleJsonObject.Type = JTokenType.Array
+                    then    
+                        // Fable 2 sends map as array of tuples: [ [key1, value1], [key2, value2] ]
+                        // we re-write the array as an object: { key1: value1, key2: value2 }
+                        // before actual deserialization to a map
+                        let mapAsObject = JObject() 
+                        let mapAsArray = singleJsonObject.Values<JArray>() 
+                        for tuple in mapAsArray do 
+                            let key = tuple.[0].Value<string>()
+                            let value = tuple.[1]
+                            mapAsObject.Add(JProperty(key, value))
+                        [| JsonConvert.DeserializeObject(mapAsObject.ToString(), input, [| fableConverter |]) |]
                     // JSON input array is a single object and function is of single argument then it works fine
-                    [| singleJsonObject.ToObject(input, fableSeriazizer) |]  
+                    else [| singleJsonObject.ToObject(input, fableSeriazizer) |]  
                 | singleJsonObject :: moreValues -> 
                     Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
                     // JSON input array has many values, just take the first one and ignore the rest
@@ -147,7 +164,9 @@ module DynamicRecord =
                 // expected type is list-like and the Json is list like
                 let jsonValues = parsedJson.ToObject<JToken[]>()
                 Array.zip [| input |] jsonValues 
-                |> Array.map (fun (jsonType, json) -> json.ToObject(jsonType, fableSeriazizer))
+                |> Array.map (fun (jsonType, json) -> 
+                    Diagnostics.deserializationPhase logger (fun () -> json.ToString()) [| jsonType |]
+                    json.ToObject(jsonType, fableSeriazizer))
             else
                 Diagnostics.deserializationPhase logger (fun () -> inputJson.ToString()) [| input |]
                  // then the input json is a single object (not an array) and can be deserialized directly
@@ -174,9 +193,10 @@ module DynamicRecord =
     let tryCreateArgsFromJson (func: RecordFunctionInfo) (inputJson: string) (logger: Option<string -> unit>) = 
         try Ok (createArgsFromJson func inputJson logger)
         with | ex -> 
+            printfn "%A" ex
             let error = { ParsingArgumentsError = ex.Message }
             Error error
-
+ 
     let routeMethod = function 
         | NoArguments outputType when isAsync outputType -> "GET"
         | SingleArgument (input, output) when input = typeof<unit> -> "GET"
