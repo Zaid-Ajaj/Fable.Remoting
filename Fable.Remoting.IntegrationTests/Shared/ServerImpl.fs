@@ -18,6 +18,7 @@ let server : IServer  = {
     // primitive types
     simpleUnit = fun () -> async { return 42 }
     getLength = fun input -> Async.result input.Length
+    getSeq = fun () -> async { return seq { yield (Just 5); yield Nothing }  }
     echoInteger = Async.result
     echoString = Async.result
     echoBool = Async.result
@@ -26,11 +27,12 @@ let server : IServer  = {
     echoGenericUnionInt = Async.result
     echoGenericUnionString = Async.result
     echoSimpleUnionType = Async.result
-
+    echoGenericMap = Async.result
     echoRecord = Async.result
+    echoTree = Async.result
     echoGenericRecordInt = Async.result
     echoNestedGeneric = Async.result
-
+    echoRecursiveRecord = Async.result
     echoIntList = Async.result
     echoStringList = Async.result
     echoBoolList = Async.result

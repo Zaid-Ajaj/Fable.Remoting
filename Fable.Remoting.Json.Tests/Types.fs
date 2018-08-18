@@ -8,6 +8,10 @@ type Record = {
     Prop3 : int option
 }
 
+type Tree<'t> = 
+    | Leaf of 't 
+    | Branch of Tree<'t> * Tree<'t> 
+
 type Maybe<'t> = 
     | Just of 't
     | Nothing

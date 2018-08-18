@@ -338,6 +338,43 @@ QUnit.testCaseAsync "IServer.multiArgComplex" <| fun test ->
         test.equal true (input = output)
     }
 
+QUnit.testCaseAsync "IServer.getSeq" <| fun test ->
+    async {
+        let! output = server.getSeq()
+        let maybes = List.ofSeq output
+        match maybes with 
+        | [ Just 5; Nothing ] -> test.equal true true 
+        | _ -> test.equal false true
+    }
+
+QUnit.testCaseAsync "IServer.echoGenericMap" <| fun test ->
+    async {
+        let input = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ]
+        let! output = server.echoGenericMap input 
+        test.equal true (input = output)
+    }
+
+QUnit.testCaseAsync "IServer.echoRecursiveRecord" <| fun test ->
+    async {
+        let input = {
+            Name = "root" 
+            Children = [ 
+                { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] } 
+                { Name = "Child 1"; Children = [ ] } 
+            ]
+        }
+
+        let! output = server.echoRecursiveRecord input 
+        test.equal true (output = input)
+    }
+
+QUnit.testCaseAsync "IServer.echoTree (recursive union)" <| fun test ->
+    async {
+        let input = Branch(Branch(Leaf 10, Leaf 5), Leaf 5)
+        let! output = server.echoTree input 
+        test.equal true (input = output)
+    }
+
 QUnit.testCaseAsync "IServer.multiArgComplex partially applied" <| fun test -> 
     async {
         let input = { OtherValue = 10; Value = Just (Some "value") }

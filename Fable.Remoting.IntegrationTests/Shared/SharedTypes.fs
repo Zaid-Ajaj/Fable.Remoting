@@ -27,21 +27,31 @@ type ISimpleServer = {
     getLength : string -> Async<int>
 }
 
+type RecursiveRecord = {
+    Name: string
+    Children : RecursiveRecord list
+}
+
+type Tree = 
+    | Leaf of int 
+    | Branch of Tree * Tree 
+
 type IServer = {
     // primitive types
     simpleUnit : unit -> Async<int>
     getLength : string -> Async<int>
+    getSeq : unit -> Async<seq<Maybe<int>>>
     echoInteger : int -> Async<int>
     echoString : string -> Async<string>
     echoBool : bool -> Async<bool>
     echoIntOption : int option -> Async<int option>
     echoStringOption : string option -> Async<string option>
-
+    echoRecursiveRecord : RecursiveRecord -> Async<RecursiveRecord>
     // Union types, simple and generic
     echoGenericUnionInt : Maybe<int> -> Async<Maybe<int>>
     echoGenericUnionString : Maybe<string> -> Async<Maybe<string>>
     echoSimpleUnionType : UnionType -> Async<UnionType>
-
+    echoTree : Tree -> Async<Tree>
     // Records, simple and generic
     echoRecord : Record -> Async<Record>
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
@@ -56,7 +66,7 @@ type IServer = {
 
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint -> Async<bigint>
-
+    echoGenericMap : Map<string, Maybe<int>> -> Async<Map<string, Maybe<int>>>
     // maps
     echoMap : Map<string, int> -> Async<Map<string, int>>
     // errors

@@ -206,7 +206,21 @@ let converterTest =
             |> function 
                 | [ "firstKey", Just 5; "secondKey", Nothing ] -> pass()
                 | otherwise -> fail()
-            
+
+        testCase "Deserializing recursive union works - part 1" <| fun () -> 
+            "[\"Leaf\", 5]"
+            |> deserialize<Tree<int>>
+            |> function 
+                | Leaf 5 -> pass() 
+                | otherwise -> fail() 
+
+        testCase "Deserializing recursive union works - part 2" <| fun () -> 
+            "[\"Branch\", [\"Leaf\", 5], [\"Leaf\", 10]]"
+            |> deserialize<Tree<int>>
+            |> function 
+                | Branch(Leaf 5, Leaf 10) -> pass() 
+                | otherwise -> fail() 
+
         testCase "Deserialization with provided type at runtime works" <| fun () -> 
             let inputType = typeof<Option<int>>
             let json = "5"
