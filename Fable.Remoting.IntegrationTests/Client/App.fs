@@ -7,7 +7,7 @@ open SharedTypes
 let server = 
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
-    |> Remoting.buildProxy<IServer>()
+    |> Remoting.buildProxy<IServer>
 
 QUnit.registerModule "Internal functionality" 
 
