@@ -43,7 +43,7 @@ On the client, you can intercept both propagated custom error messages or ignore
 // Assuming the type CustomError is shared with the client too
 let musicStore = 
     Remoting.createApi()
-    |> Remoting.buildproxy<IMusicStore>()
+    |> Remoting.buildproxy<IMusicStore>
 
 async {
     let! result = Async.Catch (musicStore.throwError()) 

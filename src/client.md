@@ -18,7 +18,7 @@ open Fable.Remoting.Client
 // musicStore : IMusicStore
 let musicStore : IMusicStore = 
   Remoting.createApi()
-  |> Remoting.buildProxy<IMusicStore>() 
+  |> Remoting.buildProxy<IMusicStore>
 
 async {
     let! albums = musicStore.allAlbums() 

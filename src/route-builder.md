@@ -20,7 +20,7 @@ Ofcourse, the routes must match both on client and server, so we override the be
 let musicStore : IMusicStore = 
   Remoting.createApi()
   |> Remoting.withRouteBuilder routeBuilder 
-  |> Remoting.buildProxy<IMusicStore>() 
+  |> Remoting.buildProxy<IMusicStore> 
 ```
 One last thing you need to consider if you are using `webpack-dev-server` is that you need to delegate the requests that start with `/api` from the developement server to the F# backend using the following configuration:
 ```js

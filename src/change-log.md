@@ -1,6 +1,10 @@
 # Change Log
 
-### August 2018 
+### 19 August 2018
+- Ported Fable client to Fable 2, using SimpleJson for JSON marshalling (see [PR](https://github.com/Zaid-Ajaj/Fable.Remoting/pull/71))
+- Breaking change on the client: `Remoting.buildProxy<'t>()` becomes  `Remoting.buildProxy<'t>` when used, see [Client](client.md) docs
+
+### 10th August 2018 
  - Added ability to automatically generate interactive documentation from protocol definition (see [PR](https://github.com/Zaid-Ajaj/Fable.Remoting/pull/68))
 
 
