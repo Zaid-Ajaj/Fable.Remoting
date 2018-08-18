@@ -1,6 +1,7 @@
 module App
 
 open Fable.Remoting.Client
+open Fable.Import.Browser
 open SharedTypes
 
 let server = 
@@ -333,9 +334,16 @@ QUnit.testCaseAsync "IServer.asyncNestedGeneric" <| fun test ->
 QUnit.testCaseAsync "IServer.multiArgComplex" <| fun test -> 
     async {
         let input = { OtherValue = 10; Value = Just (Some "value") }
-        let partialF = server.multiArgComplex false 
-        let! output = partialF input 
+        let! output = server.multiArgComplex false input
         test.equal true (input = output)
+    }
+
+QUnit.testCaseAsync "IServer.multiArgComplex partially applied" <| fun test -> 
+    async {
+        let input = { OtherValue = 10; Value = Just (Some "value") }
+        let partialF = fun x -> server.multiArgComplex false x
+        let! output = partialF input 
+        test.equal true (input = output) 
     }
 
 QUnit.testCaseAsync "IServer.tuplesAndLists" <| fun test ->

@@ -7,6 +7,7 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.PowerPack.Fetch
 open Fable.SimpleJson
+open Fable.Import.Browser
 
 module Proxy =
 
@@ -32,6 +33,9 @@ module Proxy =
             if url.EndsWith("/")
             then sprintf "%s%s" url route
             else sprintf "%s/%s" url route
+
+    [<Emit("arguments")>]
+    let arguments() : obj[] = jsNative
 
     /// Extracts the 'T from Async<'T>
     let extractAsyncArg (asyncType: Type) = 
@@ -62,11 +66,13 @@ module Proxy =
             | [| TypeInfo.Unit; TypeInfo.Async _ |] -> false 
             | otherwise -> true 
 
-        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12 arg13 arg14 arg15 ->
+        fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 ->
             
+            console.log(func.FieldName, "has argument count", argumentCount)
+
             let inputArguments =
                if funcNeedParameters  
-               then List.take argumentCount [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7;box arg8;box arg9;box arg10;box arg11;box arg12;box arg13;box arg14;box arg15 ]
+               then List.take argumentCount [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7 ]
                else [ ]
                         
             let proxyRequest = 
