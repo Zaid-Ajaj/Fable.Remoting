@@ -26,10 +26,9 @@ module Remoting =
     /// Sets the authorization header of every request from the proxy
     let withAuthorizationHeader token (options: RemoteBuilderOptions) = 
         { options with Authorization = Some token }
-
  
     [<PassGenerics>]
-    let buildProxy<'t>() (options: RemoteBuilderOptions) : 't = 
+    let buildProxy<'t> (options: RemoteBuilderOptions) : 't = 
         // create an empty object literal
         let proxy = obj()
         let typeInfo = typeof<'t>

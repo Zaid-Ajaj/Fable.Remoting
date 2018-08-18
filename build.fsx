@@ -30,6 +30,7 @@ let dotnet = "dotnet"
 let getPath x = cwd </> (sprintf "Fable.Remoting.%s" x)
 
 let Client = getPath "Client"
+let ClientV2 = getPath "ClientV2"
 let Json = getPath "Json"
 let Server = getPath "Server"
 let Reflection = getPath "Reflection"
@@ -55,7 +56,7 @@ let publish projectPath = fun () ->
 
 
 Target "PublishClient" (publish Client)
-
+Target "PublishClientV2" (publish ClientV2)
 Target "PublishJson" (publish Json)
 Target "PublishServer" (publish Server)
 Target "PublishReflection" (publish Reflection)
@@ -181,6 +182,34 @@ Target "IntegrationTests" <| fun _ ->
     run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
     run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run --headless"
+
+Target "IntegrationTestsV2" <| fun _ ->
+    clean (getPath "Server")
+    clean (getPath "Json")
+    clean (getPath "Suave")
+    clean (getPath "UITests")
+    clean (getPath "IntegrationTests" </> "Server.Suave")
+    clean "ClientV2Tests"
+
+    run "ClientV2Tests" "npm" "install"
+    run ("ClientV2Tests" </> "src") "dotnet" "restore --no-cache"
+    run ("ClientV2Tests" </> "src") "dotnet" "fable npm-run build"
+    run "UITests" "dotnet" "restore --no-cache"
+    run "UITests" "dotnet" "run --headless"
+
+Target "IntegrationTestsV2Live" <| fun _ ->
+    clean (getPath "Server")
+    clean (getPath "Json")
+    clean (getPath "Suave")
+    clean (getPath "UITests")
+    clean (getPath "IntegrationTests" </> "Server.Suave")
+    clean "ClientV2Tests"
+
+    run "ClientV2Tests" "npm" "install"
+    run ("ClientV2Tests" </> "src") "dotnet" "restore --no-cache"
+    run ("ClientV2Tests" </> "src") "dotnet" "fable npm-run build"
+    run "UITests" "dotnet" "restore --no-cache"
+    run "UITests" "dotnet" "run"
 
 Target "IntegrationTestsLive" <| fun _ ->
     clean (getPath "Server")

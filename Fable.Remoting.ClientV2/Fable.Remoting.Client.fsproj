@@ -1,26 +1,23 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Suave-Fable adapter that generates routes for shared server spec with a Fable client. Client must use Fable.Remoting.Client</Description>
+    <Description>Proxy generation for client Fable apps targeting F# server-side apps using Fable.Remoting</Description>
     <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
     <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
     <PackageIconUrl></PackageIconUrl>
-    <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
+    <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>3.4.0</Version>
+    <Version>4.0.0-beta-001</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Include="FableSuaveAdapter.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Proxy.fs" />
+    <Compile Include="Remoting.fs" />
   </ItemGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
-    <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
+    <Content Include="*.fsproj; *.fs" PackagePath="fable\" />
   </ItemGroup>
-
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

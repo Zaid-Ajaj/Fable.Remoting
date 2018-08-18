@@ -21,6 +21,8 @@ open Newtonsoft.Json
 open System.Reflection
 open System.Collections.Generic
 open System.Collections.Concurrent
+open Newtonsoft.Json.Linq
+open Newtonsoft.Json.Linq
 
 type Kind =
     | Other = 0
@@ -31,6 +33,7 @@ type Kind =
     | StringEnum = 5
     | DateTime = 6
     | MapOrDictWithNonStringKey = 7
+    | MapWithStringKey = 11
     | Long = 8
     | BigInt = 9
     | TimeSpan = 10
@@ -71,11 +74,37 @@ type MapSerializer<'k,'v when 'k : comparison>() =
                 serializer.Serialize(writer, v) )
         writer.WriteEndObject()
 
+type MapStringKeySerializer<'v>() =
+    static member Deserialize(t:Type, reader:JsonReader, serializer:JsonSerializer) =
+        let dictJson = JObject.ReadFrom(reader) :?> JObject
+        let dictionary = Dictionary<string,'v>()
+        for prop in dictJson.Properties() do 
+            let deserializedValue = serializer.Deserialize<'v>(prop.Value.CreateReader())
+            dictionary.Add(prop.Name, deserializedValue) 
+        if t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Map<_,_>>
+        then dictionary |> Seq.map (|KeyValue|) |> Map.ofSeq :> obj
+        elif t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Dictionary<_,_>>
+        then dictionary :> obj
+        else failwith "MapSerializer input type wasn't a Map or a Dictionary"
+    static member Serialize(value: obj, writer:JsonWriter, serializer:JsonSerializer) =
+        let kvpSeq =
+            match value with
+            | :? Map<string,'v> as mapObj -> mapObj |> Map.toSeq
+            | :? Dictionary<string,'v> as dictObj -> dictObj |> Seq.map (|KeyValue|)
+            | _ -> failwith "MapSerializer input value wasn't a Map or a Dictionary"
+        writer.WriteStartObject()
+        kvpSeq
+        |> Seq.iter (fun (k,v) ->
+            writer.WritePropertyName(k)
+            serializer.Serialize(writer, v) )
+        writer.WriteEndObject()
+
 module private Cache =
     let jsonConverterTypes = ConcurrentDictionary<Type,Kind>()
     let serializationBinderTypes = ConcurrentDictionary<string,Type>()
 
 open Cache
+open Newtonsoft.Json.Linq
 
  type InternalLong = { high : int; low: int; unsigned: bool }
 
@@ -137,6 +166,8 @@ type FableJsonConverter() =
                     && t.GetGenericArguments().[0] <> typeof<string>
                 then
                     Kind.MapOrDictWithNonStringKey
+                elif t.IsGenericType && (t.GetGenericTypeDefinition() = typedefof<Map<_,_>>)
+                    then Kind.MapWithStringKey
                 else Kind.Other)
         kind <> Kind.Other
 
@@ -202,6 +233,12 @@ type FableJsonConverter() =
             | true, Kind.MapOrDictWithNonStringKey ->
                 let mapTypes = t.GetGenericArguments()
                 let mapSerializer = typedefof<MapSerializer<_,_>>.MakeGenericType mapTypes
+                let mapSerializeMethod = mapSerializer.GetMethod("Serialize")
+                mapSerializeMethod.Invoke(null, [| value; writer; serializer |]) |> ignore
+            | true, Kind.MapWithStringKey ->
+                let mapTypes = t.GetGenericArguments()
+                let valueT = mapTypes.[1]
+                let mapSerializer = typedefof<MapStringKeySerializer<_>>.MakeGenericType valueT
                 let mapSerializeMethod = mapSerializer.GetMethod("Serialize")
                 mapSerializeMethod.Invoke(null, [| value; writer; serializer |]) |> ignore
             | true, _ ->
@@ -319,12 +356,46 @@ type FableJsonConverter() =
                     advance reader
                     FSharpValue.MakeUnion(uci, [|value|])
             | JsonToken.Null -> null // for { "union": null }
-            | _ -> failwith "invalid token"
+            | JsonToken.StartArray -> 
+                let unionArray = serializer.Deserialize<JToken>(reader) :?> JArray
+                let name = unionArray.[0].Value<string>() 
+                let unionCaseInfo = getUci t name
+                let unionCaseTypes = unionCaseInfo.GetFields() |> Array.map (fun pi -> pi.PropertyType)
+                let values = Seq.skip 1 (unionArray.AsJEnumerable())
+                let parsedValue = 
+                    [| 0 .. (unionCaseTypes.Length - 1) |]
+                    |> Array.map (fun index -> 
+                        let value = Seq.item index values
+                        value.ToObject(unionCaseTypes.[index], serializer)) 
+                    |> fun unionCaseValues -> FSharpValue.MakeUnion(unionCaseInfo, unionCaseValues)
+                parsedValue
+            | _ -> failwithf "Invalid JSON token: %s" (reader.TokenType.ToString())
         | true, Kind.MapOrDictWithNonStringKey ->
             let mapTypes = t.GetGenericArguments()
             let mapSerializer = typedefof<MapSerializer<_,_>>.MakeGenericType mapTypes
             let mapDeserializeMethod = mapSerializer.GetMethod("Deserialize")
             mapDeserializeMethod.Invoke(null, [| t; reader; serializer |])
+        | true, Kind.MapWithStringKey ->
+            if reader.TokenType = JsonToken.StartObject 
+            then 
+              // map is encoded as { key: value }
+              let mapTypes = t.GetGenericArguments()
+              let valueT = mapTypes.[1]
+              let mapSerializer = typedefof<MapStringKeySerializer<_>>.MakeGenericType valueT
+              let mapDeserializeMethod = mapSerializer.GetMethod("Deserialize")
+              mapDeserializeMethod.Invoke(null, [| t; reader; serializer |])
+            else 
+              // map is encoded as [ [key, value] ] => rewrite as { key: value }
+              let tuplesArray = serializer.Deserialize<JToken>(reader) :?> JArray
+              let mapLiteral = JObject()
+              for tuple in tuplesArray do
+                let innerTuple = tuple :?> JArray 
+                mapLiteral.Add(JProperty(tuple.[0].Value<string>(), tuple.[1]))
+              let mapTypes = t.GetGenericArguments()
+              let valueT = mapTypes.[1]
+              let mapSerializer = typedefof<MapStringKeySerializer<_>>.MakeGenericType valueT
+              let mapDeserializeMethod = mapSerializer.GetMethod("Deserialize")
+              mapDeserializeMethod.Invoke(null, [| t; mapLiteral.CreateReader(); serializer |])
         | true, _ ->
             serializer.Deserialize(reader, t)
 

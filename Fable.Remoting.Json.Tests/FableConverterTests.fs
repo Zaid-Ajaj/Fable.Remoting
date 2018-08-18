@@ -169,7 +169,58 @@ let converterTest =
             match deserialize<Maybe<string>> "\"Nothing\"" with
             | Nothing -> pass()
             | otherwise -> fail()
-            
+
+        testCase "Deserializing generic union types encoded as arrays" <| fun () ->
+            match deserialize<Maybe<int>> "[\"Just\", 5]" with 
+            | Just 5 -> pass() 
+            | otherwise -> fail() 
+
+        testCase "Deserializing Map<string, int> from object literal works" <| fun () ->
+            "{ \"firstKey\": 10, \"secondKey\": 20 }"
+            |> deserialize<Map<string, int>> 
+            |> Map.toList 
+            |> function 
+                | [ "firstKey", 10; "secondKey", 20 ] -> pass()
+                | otherwise -> fail()
+
+        testCase "Deserializing Map<int, int> from object literal works" <| fun () ->
+            "{ \"10\": 10, \"20\": 20 }"
+            |> deserialize<Map<int, int>> 
+            |> Map.toList 
+            |> function 
+                | [ 10, 10; 20, 20 ] -> pass()
+                | otherwise -> fail()
+
+        testCase "Deserializing map from array of arrays works" <| fun () ->
+            "[[\"firstKey\", 10], [\"secondKey\", 20]]"
+            |> deserialize<Map<string, int>> 
+            |> Map.toList 
+            |> function 
+                | [ "firstKey", 10; "secondKey", 20 ] -> pass()
+                | otherwise -> fail()
+
+        testCase "Deserializing map from array of arrays with complex types works" <| fun () ->
+            "[[\"firstKey\", [\"Just\", 5]], [\"secondKey\", \"Nothing\"]]"
+            |> deserialize<Map<string, Maybe<int>>>
+            |> Map.toList 
+            |> function 
+                | [ "firstKey", Just 5; "secondKey", Nothing ] -> pass()
+                | otherwise -> fail()
+
+        testCase "Deserializing recursive union works - part 1" <| fun () -> 
+            "[\"Leaf\", 5]"
+            |> deserialize<Tree<int>>
+            |> function 
+                | Leaf 5 -> pass() 
+                | otherwise -> fail() 
+
+        testCase "Deserializing recursive union works - part 2" <| fun () -> 
+            "[\"Branch\", [\"Leaf\", 5], [\"Leaf\", 10]]"
+            |> deserialize<Tree<int>>
+            |> function 
+                | Branch(Leaf 5, Leaf 10) -> pass() 
+                | otherwise -> fail() 
+
         testCase "Deserialization with provided type at runtime works" <| fun () -> 
             let inputType = typeof<Option<int>>
             let json = "5"

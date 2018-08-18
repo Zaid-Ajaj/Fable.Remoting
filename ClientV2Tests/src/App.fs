@@ -1,37 +1,13 @@
 module App
 
-open Fable.Core
-open Fable.Core.JsInterop
 open Fable.Remoting.Client
+open Fable.Import.Browser
 open SharedTypes
+
 let server = 
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<IServer>
-
-QUnit.registerModule "Internal functionality" 
-
-[<PassGenerics>]
-let makeFuncType<'t>() = Proxy.makeRecordFuncType (typeof<'t>)
-
-QUnit.testCase "SingleArgument function can be converted" <| fun test ->
-    let funcType = makeFuncType<int -> int>() 
-    match funcType with 
-    | SingleArgument (input, output) -> 
-        match input.Name, output.Name with 
-        | "number", "number" -> test.pass() 
-        | _ -> test.fail()  
-    | _ -> test.fail()
-
-QUnit.testCase "ManyArguments function can be converted" <| fun test ->
-    let funcType = makeFuncType<int -> int -> int>() 
-    match funcType with 
-    | ManyArguments (inputTypes, output) -> 
-        match inputTypes |> List.map (fun input -> input.Name) , output.Name with 
-        | ["number"; "number"], "number" -> test.pass() 
-        | other -> test.failWith (toJson other)  
-    | other -> test.failWith (toJson other) 
-
 
 QUnit.registerModule "Fable.Remoting"
 
@@ -358,9 +334,53 @@ QUnit.testCaseAsync "IServer.asyncNestedGeneric" <| fun test ->
 QUnit.testCaseAsync "IServer.multiArgComplex" <| fun test -> 
     async {
         let input = { OtherValue = 10; Value = Just (Some "value") }
-        let partialF = server.multiArgComplex false 
-        let! output = partialF input 
+        let! output = server.multiArgComplex false input
         test.equal true (input = output)
+    }
+
+QUnit.testCaseAsync "IServer.getSeq" <| fun test ->
+    async {
+        let! output = server.getSeq()
+        let maybes = List.ofSeq output
+        match maybes with 
+        | [ Just 5; Nothing ] -> test.equal true true 
+        | _ -> test.equal false true
+    }
+
+QUnit.testCaseAsync "IServer.echoGenericMap" <| fun test ->
+    async {
+        let input = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ]
+        let! output = server.echoGenericMap input 
+        test.equal true (input = output)
+    }
+
+QUnit.testCaseAsync "IServer.echoRecursiveRecord" <| fun test ->
+    async {
+        let input = {
+            Name = "root" 
+            Children = [ 
+                { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] } 
+                { Name = "Child 1"; Children = [ ] } 
+            ]
+        }
+
+        let! output = server.echoRecursiveRecord input 
+        test.equal true (output = input)
+    }
+
+QUnit.testCaseAsync "IServer.echoTree (recursive union)" <| fun test ->
+    async {
+        let input = Branch(Branch(Leaf 10, Leaf 5), Leaf 5)
+        let! output = server.echoTree input 
+        test.equal true (input = output)
+    }
+
+QUnit.testCaseAsync "IServer.multiArgComplex partially applied" <| fun test -> 
+    async {
+        let input = { OtherValue = 10; Value = Just (Some "value") }
+        let partialF = fun x -> server.multiArgComplex false x
+        let! output = partialF input 
+        test.equal true (input = output) 
     }
 
 QUnit.testCaseAsync "IServer.tuplesAndLists" <| fun test ->

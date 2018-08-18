@@ -233,7 +233,7 @@ open SharedTypes
 // studentApi : IStudentApi
 let studentApi =
     Remoting.createApi()
-    |> Remoting.buildProxy<IStudentApi>()
+    |> Remoting.buildProxy<IStudentApi>
 
 async {
   // students : Student[]

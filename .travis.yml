@@ -9,4 +9,5 @@ script:
  - travis_wait dotnet run -p Fable.Remoting.Suave.Tests/Fable.Remoting.Suave.Tests.fsproj
  - travis_wait dotnet run -p Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj
  - travis_wait ./build.sh IntegrationTests
+ - travis_wait ./build.sh IntegrationTestsV2
  - travis_wait ./build.sh RunDotnetClientTests
