@@ -30,6 +30,7 @@ let dotnet = "dotnet"
 let getPath x = cwd </> (sprintf "Fable.Remoting.%s" x)
 
 let Client = getPath "Client"
+let ClientV2 = getPath "ClientV2"
 let Json = getPath "Json"
 let Server = getPath "Server"
 let Reflection = getPath "Reflection"
@@ -55,7 +56,7 @@ let publish projectPath = fun () ->
 
 
 Target "PublishClient" (publish Client)
-
+Target "PublishClientV2" (publish ClientV2)
 Target "PublishJson" (publish Json)
 Target "PublishServer" (publish Server)
 Target "PublishReflection" (publish Reflection)
