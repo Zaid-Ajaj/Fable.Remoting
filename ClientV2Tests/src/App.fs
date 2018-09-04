@@ -4,7 +4,7 @@ open Fable.Remoting.Client
 open Fable.Import.Browser
 open SharedTypes
 
-let server = 
+let server =
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<IServer>
@@ -25,9 +25,9 @@ QUnit.testCaseAsync "ISever.echoInteger" <| fun test ->
         do test.equal sndResult 15
     }
 
-QUnit.testCaseAsync "IServer.simpleUnit" <| fun test -> 
+QUnit.testCaseAsync "IServer.simpleUnit" <| fun test ->
     async {
-        let! result = server.simpleUnit() 
+        let! result = server.simpleUnit()
         do test.equal result 42
     }
 
@@ -86,18 +86,18 @@ QUnit.testCaseAsync "IServer.echoPrimitiveLong" <| fun test ->
         do test.equal true (thirdResult = -20L)
     }
 
-QUnit.testCaseAsync "IServer.echoPrimitiveLong with large values" <| fun test -> 
+QUnit.testCaseAsync "IServer.echoPrimitiveLong with large values" <| fun test ->
     async {
-        let! fstResult = server.echoPrimitiveLong System.Int64.MaxValue 
+        let! fstResult = server.echoPrimitiveLong System.Int64.MaxValue
         let! sndResult = server.echoPrimitiveLong System.Int64.MinValue
         do test.equal true (fstResult = System.Int64.MaxValue)
         do test.equal true (sndResult = System.Int64.MinValue)
     }
 
-QUnit.testCaseAsync "IServer.echoComplexLong" <| fun test -> 
+QUnit.testCaseAsync "IServer.echoComplexLong" <| fun test ->
     async {
         let input = { Value = 20L; OtherValue = 10 }
-        let! output = server.echoComplexLong input 
+        let! output = server.echoComplexLong input
         do test.equal true (input = output)
     }
 
@@ -118,11 +118,11 @@ QUnit.testCaseAsync "IServer.echoSingleDULong" <| fun test ->
 QUnit.testCaseAsync "IServer.echoLongInGenericUnion" <| fun test ->
     async {
         let! output = server.echoLongInGenericUnion (Just 20L)
-        let! result = server.echoLongInGenericUnion Nothing 
+        let! result = server.echoLongInGenericUnion Nothing
         do test.equal true (output = Just 20L)
         do test.equal true (result = Nothing)
     }
-    
+
 QUnit.testCaseAsync "IServer.echoSimpleUnionType" <| fun test ->
     async {
         let! result1 = server.echoSimpleUnionType One
@@ -207,9 +207,9 @@ QUnit.testCaseAsync "IServer.echoIntList" <| fun test ->
     }
 
 QUnit.testCaseAsync "IServer.echoSingleCase" <| fun test ->
-    async { 
+    async {
         let! output = server.echoSingleCase (SingleCase 10)
-        match output with 
+        match output with
         | SingleCase 10 -> test.pass()
         | other -> test.fail()
     }
@@ -261,6 +261,24 @@ QUnit.testCaseAsync "IServer.echoMap" <| fun test ->
         | false -> test.fail()
     }
 
+QUnit.testCaseAsync "IServer.echoConfigMap" <| fun test ->
+    async {
+        let input = [K1, One; K2, Two] |> Map.ofList
+        let! output = server.echoConfigMap input
+        match input = output with
+        | true -> test.pass()
+        | false -> test.fail()
+    }
+
+QUnit.testCaseAsync "IServer.returnConfigMap" <| fun test ->
+    async {
+        let expected = [K1, One; K2, Two] |> Map.ofList
+        let! output = server.returnConfigMap
+        match expected = output with
+        | true -> test.pass()
+        | false -> test.fail()
+    }
+
 QUnit.testCaseAsync "IServer.echoBigInteger" <|
     fun test ->
         async {
@@ -291,11 +309,11 @@ QUnit.testCaseAsync "IServer.throwError" <| fun test ->
         match result with
         | Choice1Of2 output -> test.fail()
         | Choice2Of2 error ->
-            match error with 
+            match error with
             | :? ProxyRequestException as ex ->
                 if ex.ResponseText.Contains("Generating custom server error")
                 then test.pass()
-                else test.fail() 
+                else test.fail()
             | otherwise -> test.fail()
     }
 
@@ -331,7 +349,7 @@ QUnit.testCaseAsync "IServer.asyncNestedGeneric" <| fun test ->
         test.equal true (result = { OtherValue = 10; Value = Just (Some "value") })
     }
 
-QUnit.testCaseAsync "IServer.multiArgComplex" <| fun test -> 
+QUnit.testCaseAsync "IServer.multiArgComplex" <| fun test ->
     async {
         let input = { OtherValue = 10; Value = Just (Some "value") }
         let! output = server.multiArgComplex false input
@@ -342,53 +360,53 @@ QUnit.testCaseAsync "IServer.getSeq" <| fun test ->
     async {
         let! output = server.getSeq()
         let maybes = List.ofSeq output
-        match maybes with 
-        | [ Just 5; Nothing ] -> test.equal true true 
+        match maybes with
+        | [ Just 5; Nothing ] -> test.equal true true
         | _ -> test.equal false true
     }
 
 QUnit.testCaseAsync "IServer.echoGenericMap" <| fun test ->
     async {
         let input = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ]
-        let! output = server.echoGenericMap input 
+        let! output = server.echoGenericMap input
         test.equal true (input = output)
     }
 
 QUnit.testCaseAsync "IServer.echoRecursiveRecord" <| fun test ->
     async {
         let input = {
-            Name = "root" 
-            Children = [ 
-                { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] } 
-                { Name = "Child 1"; Children = [ ] } 
+            Name = "root"
+            Children = [
+                { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
+                { Name = "Child 1"; Children = [ ] }
             ]
         }
 
-        let! output = server.echoRecursiveRecord input 
+        let! output = server.echoRecursiveRecord input
         test.equal true (output = input)
     }
 
 QUnit.testCaseAsync "IServer.echoTree (recursive union)" <| fun test ->
     async {
         let input = Branch(Branch(Leaf 10, Leaf 5), Leaf 5)
-        let! output = server.echoTree input 
+        let! output = server.echoTree input
         test.equal true (input = output)
     }
 
-QUnit.testCaseAsync "IServer.multiArgComplex partially applied" <| fun test -> 
+QUnit.testCaseAsync "IServer.multiArgComplex partially applied" <| fun test ->
     async {
         let input = { OtherValue = 10; Value = Just (Some "value") }
         let partialF = fun x -> server.multiArgComplex false x
-        let! output = partialF input 
-        test.equal true (input = output) 
+        let! output = partialF input
+        test.equal true (input = output)
     }
 
 QUnit.testCaseAsync "IServer.tuplesAndLists" <| fun test ->
     async {
         let inputDict = Map.ofList [ "hello", 5 ]
         let inputStrings = [ "there!" ]
-        let! outputDict = server.tuplesAndLists (inputDict, inputStrings) 
+        let! outputDict = server.tuplesAndLists (inputDict, inputStrings)
 
-        let expected = Map.ofList [ "hello", 5; "there!", 6 ] 
-        test.equal true (expected = outputDict)  
+        let expected = Map.ofList [ "hello", 5; "there!", 6 ]
+        test.equal true (expected = outputDict)
     }

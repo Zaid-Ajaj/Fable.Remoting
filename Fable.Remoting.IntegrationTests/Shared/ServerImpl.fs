@@ -38,18 +38,20 @@ let server : IServer  = {
     echoBoolList = Async.result
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
-    tuplesAndLists = fun (dict, xs) -> 
-        xs 
+    tuplesAndLists = fun (dict, xs) ->
+        xs
         |> List.map (fun x -> x, x.Length)
         |> List.append (Map.toList dict)
-        |> Map.ofList  
+        |> Map.ofList
         |> Async.result
-        
+
     echoResult = Async.result
     echoSingleCase = Async.result
     echoBigInteger = Async.result
     throwError = fun () -> async { return! failwith "Generating custom server error" }
     echoMap = Async.result
+    echoConfigMap = Async.result
+    returnConfigMap = Async.result ([K1, One; K2, Two] |> Map.ofList)
     multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
     overriddenFunction = fun str -> async { return! failwith str }
     customStatusCode = fun () -> async {return "No content"}
