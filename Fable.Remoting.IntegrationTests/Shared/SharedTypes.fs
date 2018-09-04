@@ -32,9 +32,12 @@ type RecursiveRecord = {
     Children : RecursiveRecord list
 }
 
-type Tree = 
-    | Leaf of int 
-    | Branch of Tree * Tree 
+type Tree =
+    | Leaf of int
+    | Branch of Tree * Tree
+
+type UnionKey = K1 | K2 | K3
+type ConfigMap = Map<UnionKey,UnionType>
 
 type IServer = {
     // primitive types
@@ -69,6 +72,8 @@ type IServer = {
     echoGenericMap : Map<string, Maybe<int>> -> Async<Map<string, Maybe<int>>>
     // maps
     echoMap : Map<string, int> -> Async<Map<string, int>>
+    echoConfigMap : ConfigMap -> Async<ConfigMap>
+    returnConfigMap : Async<ConfigMap>
     // errors
     throwError : unit -> Async<string>
 
