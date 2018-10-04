@@ -16,5 +16,8 @@
     "webpack": "^4.8.1",
     "webpack-cli": "^3.0.1",
     "webpack-dev-server": "^3.1.4"
+  },
+  "dependencies": {
+    "@babel/core": "^7.1.2"
   }
 }
