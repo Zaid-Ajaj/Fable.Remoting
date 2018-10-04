@@ -69,10 +69,13 @@ let main argv =
     
     printfn "Server listening to requests"
 
+    let mutable autoClose = false
     let driversDir = root </> "UITests" </> "drivers"
     let options = FirefoxOptions()
     match argv with 
-    | [| "--headless" |] -> options.AddArgument("--headless")
+    | [| "--headless" |] -> 
+        autoClose <- true 
+        options.AddArgument("--headless")
     | _ -> () 
 
 
@@ -111,8 +114,14 @@ let main argv =
     printfn "Passed: %s" success.Text
     printfn "Failed: %s" failed.Text
 
-    cts.Cancel()
-    driver.Quit()
+    if autoClose 
+    then 
+      cts.Cancel()
+      driver.Quit()
+    else 
+      printfn "Finished testing, press any key to continue..."
+      Console.ReadKey() |> ignore
+    
 
     try 
       let failedCount = int failedText
