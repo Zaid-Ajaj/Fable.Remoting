@@ -68,10 +68,7 @@ module Proxy =
     let combineRouteWithBaseUrl route (baseUrl: string option) = 
         match baseUrl with
         | None -> route
-        | Some url -> 
-            if url.EndsWith("/")
-            then sprintf "%s%s" url route
-            else sprintf "%s/%s" url route
+        | Some url -> sprintf "%s%s" (url.TrimEnd('/')) route
 
     /// Extracts the 'T from Async<'T>
     let extractAsyncArg (asyncType: Type) = 
