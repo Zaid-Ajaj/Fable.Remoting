@@ -11,6 +11,15 @@ let server =
 
 QUnit.registerModule "Fable.Remoting"
 
+QUnit.testCase "Proxy.combineWithBaseUrlWorks" <| fun test -> 
+    let route = "/IMusicStore/getLength"
+    ["http://api.example.com"; "http://api.example.com/"]
+    |> List.map (Some >> Proxy.combineRouteWithBaseUrl route)
+    |> List.distinct
+    |> function 
+        | [ "http://api.example.com/IMusicStore/getLength" ] -> test.pass()
+        | otherwise -> test.fail() 
+        
 QUnit.testCaseAsync "IServer.getLegth" <| fun test ->
     async {
         let! result = server.getLength "hello"
