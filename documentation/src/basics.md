@@ -40,7 +40,7 @@ let musicStore : IMusicStore = {
     popularAlbums = async {
         // getAllAlbums : unit -> Async<list<Album>>
         let! albums =  Database.getAllAlbums() 
-        let popularAlbums = List.filter (fun album -> album.Popular) albums
+        let popularAlbums = albums |> List.filter (fun album -> album.Popular) 
         return popularAlbums 
     }
     

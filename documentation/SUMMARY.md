@@ -25,7 +25,9 @@
 - [Implicit Authentication](src/implicit-authentication.md)
 - [Accessing Request Context](src/request-context.md)
 - [Raw Http Communication](src/raw-http.md)
+- [Type-Safe Documentation](src/docs.md)
 - [Logging](src/logging.md)
+
 
 ### Misc
 - [Changelog](src/change-log.md)

@@ -10,11 +10,11 @@ You start off using the [SAFE template](https://github.com/SAFE-Stack/SAFE-templ
 # install the template
 dotnet new -i SAFE.Template
 # scaffold a new Fable/Saturn project with Fable.Remoting
-dotnet new SAFE --remoting
+dotnet new SAFE --communication remoting
 # Giraffe as your server
-dotnet new SAFE --server giraffe --remoting
+dotnet new SAFE --server giraffe --communication remoting
 # Suave on the server
-dotnet new SAFE --server suave --remoting
+dotnet new SAFE --server suave --communication remoting
 ``` 
 
 See `Fable.Remoting` in action demonstrated in the awesome talk at [FSharp eXchange 2018](https://skillsmatter.com/skillscasts/11308-safe-apps-with-f-web-stack) by [Tomasz Heimowski](https://github.com/theimowski)
