@@ -332,7 +332,20 @@
             
         </li>
     
-        <li class="chapter " data-level="5.7" data-path="src/logging.html">
+        <li class="chapter " data-level="5.7" data-path="src/docs.html">
+            
+                <a href="src/docs.html">
+            
+                    
+                    Type-Safe Documentation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="src/logging.html">
             
                 <a href="src/logging.html">
             
@@ -457,11 +470,11 @@
 <pre><code class="lang-bash"><span class="hljs-comment"># install the template</span>
 dotnet new -i SAFE.Template
 <span class="hljs-comment"># scaffold a new Fable/Saturn project with Fable.Remoting</span>
-dotnet new SAFE --remoting
+dotnet new SAFE --communication remoting
 <span class="hljs-comment"># Giraffe as your server</span>
-dotnet new SAFE --server giraffe --remoting
+dotnet new SAFE --server giraffe --communication remoting
 <span class="hljs-comment"># Suave on the server</span>
-dotnet new SAFE --server suave --remoting
+dotnet new SAFE --server suave --communication remoting
 </code></pre>
 <p>See <code>Fable.Remoting</code> in action demonstrated in the awesome talk at <a href="https://skillsmatter.com/skillscasts/11308-safe-apps-with-f-web-stack" target="_blank">FSharp eXchange 2018</a> by <a href="https://github.com/theimowski" target="_blank">Tomasz Heimowski</a></p>
 
@@ -503,7 +516,7 @@ dotnet new SAFE --server suave --remoting
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-07-09T09:26:54.114Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-08-18T22:38:37.399Z"},"basePath":".","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Introduction","level":"1.1","depth":1,"next":{"title":"Getting Started","level":"1.2","depth":1,"path":"src/basics.md","ref":"src/basics.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"README.md","mtime":"2018-10-07T14:21:43.359Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-10-07T17:54:04.238Z"},"basePath":".","book":{"language":""}});
         });
     </script>
 </div>
