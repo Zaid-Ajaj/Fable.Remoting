@@ -31,6 +31,6 @@
 
 ### Misc
 - [Changelog](src/change-log.md)
-- [Migratiion 2.x to 3.x](src/migrate.md)
+- [Migration 2.x to 3.x](src/migrate.md)
 - [Troubleshooting](src/troubleshoot.md)
 - [Credits](src/credits.md)
