@@ -17,13 +17,13 @@ Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable
 dotnet new -i SAFE.Template
 
 # scaffold a new Fable/Saturn project with Fable.Remoting
-dotnet new SAFE --remoting
+dotnet new SAFE --communication remoting
 
 # Or use Giraffe as your server
-dotnet new SAFE --server giraffe --remoting
+dotnet new SAFE --server giraffe --communication remoting
 
 # Or use Suave as your server
-dotnet new SAFE --server suave --remoting
+dotnet new SAFE --server suave --communication remoting
 ```
 ## Available Packages:
 
