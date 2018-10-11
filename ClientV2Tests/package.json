@@ -6,18 +6,15 @@
     "test": "node ./node_modules/qunitjs/bin/qunit public/bundle.js"
   },
   "devDependencies": {
-    "babel-core": "^6.26.3",
-    "babel-loader": "^7.1.4",
-    "babel-preset-env": "^1.7.0",
-    "fable-loader": "^2.0.0-alpha-003",
-    "fable-utils": "^1.0.6",
+    "@babel/core": "^7.0.0",
+    "@babel/polyfill": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
+    "babel-loader": "^8.0.0",
+    "fable-loader": "^2.0.0",
     "loglevel": "^1.6.0",
     "qunitjs": "^2.4.1",
     "webpack": "^4.8.1",
     "webpack-cli": "^3.0.1",
     "webpack-dev-server": "^3.1.4"
-  },
-  "dependencies": {
-    "@babel/core": "^7.1.2"
   }
 }

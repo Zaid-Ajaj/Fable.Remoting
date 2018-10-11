@@ -7,7 +7,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>4.1.1</Version>
+    <Version>4.2.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>

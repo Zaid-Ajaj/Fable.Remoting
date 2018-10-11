@@ -31,5 +31,5 @@ group NextClient
     source https://www.nuget.org/api/v2
 
     clitool dotnet-fable ~> 2.0.3
-    nuget Fable.SimpleJson ~> 2.3.0
+    nuget Fable.SimpleJson ~> 2.4.0
     nuget Fable.PowerPack
