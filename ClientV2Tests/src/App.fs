@@ -220,6 +220,15 @@ QUnit.testCaseAsync "IServer.echoHighScores" <| fun test ->
         do test.equal 28 result.[1].Score 
     }
 
+QUnit.testCaseAsync "IServer.echoHighScores without do" <| fun test -> 
+    async {
+        let! result = server.getHighScores() 
+        test.equal "alfonsogarciacaro" result.[0].Name 
+        test.equal 100 result.[0].Score 
+        test.equal "theimowski" result.[1].Name 
+        test.equal 28 result.[1].Score 
+    }
+
 
 QUnit.testCaseAsync "IServer.echoNestedGeneric" <| fun test ->
 
