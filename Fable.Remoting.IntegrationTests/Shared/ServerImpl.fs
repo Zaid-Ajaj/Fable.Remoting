@@ -28,7 +28,7 @@ let server : IServer  = {
     echoGenericUnionString = Async.result
     echoSimpleUnionType = Async.result
     echoGenericMap = Async.result
-    echoRecord = Async.result
+    echoRecord = Async.result 
     echoTree = Async.result
     echoGenericRecordInt = Async.result
     echoNestedGeneric = Async.result
@@ -47,6 +47,13 @@ let server : IServer  = {
         
     echoResult = Async.result
     echoSingleCase = Async.result
+    echoHighScores = Async.result 
+    getHighScores = fun () -> async {
+        return [|
+            { Name = "alfonsogarciacaro"; Score =  100 }
+            { Name = "theimowski"; Score =  28 }
+        |]
+    }
     echoBigInteger = Async.result
     throwError = fun () -> async { return! failwith "Generating custom server error" }
     echoMap = Async.result

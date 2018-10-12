@@ -183,7 +183,28 @@ QUnit.testCaseAsync "IServer.echoRecord" <| fun test ->
 
 QUnit.setTimeout 5000
 
+QUnit.testCaseAsync "IServer.echoHighScores" <| fun test -> 
+    let input = [|
+        { Name = "alfonsogarciacaro"; Score =  100 }
+        { Name = "theimowski"; Score =  28 }
+    |]
 
+    async {
+        let! result = server.echoHighScores input 
+        do test.equal "alfonsogarciacaro" result.[0].Name 
+        do test.equal 100 result.[0].Score 
+        do test.equal "theimowski" result.[1].Name 
+        do test.equal 28 result.[1].Score 
+    }
+
+QUnit.testCaseAsync "IServer.echoHighScores" <| fun test -> 
+    async {
+        let! result = server.getHighScores() 
+        do test.equal "alfonsogarciacaro" result.[0].Name 
+        do test.equal 100 result.[0].Score 
+        do test.equal "theimowski" result.[1].Name 
+        do test.equal 28 result.[1].Score 
+    }
 
 
 QUnit.testCaseAsync "IServer.echoNestedGeneric" <| fun test ->

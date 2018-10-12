@@ -19,6 +19,9 @@ type GenericRecord<'t> = {
     OtherValue : int
 }
 
+type HighScore = { Name: string; Score: int }
+
+
 type SingleCase = SingleCase of int
 
 type SingleLongCase = SingleLongCase of int64
@@ -63,6 +66,10 @@ type IServer = {
     echoBoolList : bool list -> Async<bool list>
     echoListOfListsOfStrings : string list list -> Async<string list list>
     echoListOfGenericRecords :  GenericRecord<int> list -> Async<GenericRecord<int> list>
+    
+    // arrays
+    echoHighScores : HighScore array -> Async<HighScore array>
+    getHighScores : unit -> Async<HighScore array>
 
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint -> Async<bigint>
