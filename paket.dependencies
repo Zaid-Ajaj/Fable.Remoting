@@ -12,7 +12,7 @@ nuget Newtonsoft.Json
 nuget NUnit
 nuget Suave
 nuget Giraffe
-
+nuget Selenium.WebDriver
 clitool dotnet-fable
 
 group Build
@@ -25,11 +25,8 @@ group SaturnTests
     storage: none
     nuget Saturn
 
-nuget Selenium.WebDriver
-
 group NextClient
     source https://www.nuget.org/api/v2
-
     clitool dotnet-fable ~> 2.0.4
     nuget Fable.SimpleJson ~> 2.4.0
     nuget Fable.PowerPack
