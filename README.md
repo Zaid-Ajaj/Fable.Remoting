@@ -1,13 +1,12 @@
 # Fable.Remoting 
 
-[![Build Status](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting.svg?branch=master)](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting)
-
-### [Full Documentation](https://zaid-ajaj.github.io/Fable.Remoting/)
-### [In-depth Introduction (Blog)](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
+[![Build Status](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting.svg?branch=master)](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting) [![Build status](https://ci.appveyor.com/api/projects/status/euhwktyycm2wvvi4?svg=true)](https://ci.appveyor.com/project/Zaid-Ajaj/fable-remoting)
 
 Fable.Remoting is a [RPC](https://en.wikipedia.org/wiki/Remote_procedure_call) communication layer for Fable and .NET apps, it abstracts away http and lets you think of your client-server interactions only in terms of pure stateless functions.
 
-The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.net core middleware. Clients can be Fable applications or the usual .NET application.
+### [Full Documentation](https://zaid-ajaj.github.io/Fable.Remoting/)
+
+The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.NET Core middleware. Clients can be Fable or .NET application.
 
 ## Quick Start
 Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
@@ -276,3 +275,5 @@ Done! You can now use that function from the client too.
 
 See the following article if you are interested in how this library is implemented (a bit outdated but gives you an overview of the mechanism)
 [Statically Typed Client-Server Communication with F#: Proof of Concept](https://medium.com/@zaid.naom/statically-typed-client-server-communication-with-f-proof-of-concept-7e52cff4a625#.2ltqlajm4)
+
+### [In-depth Introduction (Blog)](https://medium.com/@zaid.naom/introducing-fable-remoting-automated-type-safe-client-server-communication-for-fable-apps-e567454d594c)
