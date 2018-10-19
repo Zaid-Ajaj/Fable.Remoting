@@ -6,7 +6,7 @@ environment:
   nodejs_version: "10.10.0"
 
 build_script:
-- sh: ./build.sh IntegtationTests
+- sh: ./build.sh IntegrationTests
 - sh: ./build.sh IntegrationTestsV2
 
 test: off
