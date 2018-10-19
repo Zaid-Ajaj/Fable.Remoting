@@ -24,8 +24,8 @@ let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
     printfn "Error at %s on method %s" routeInfo.path routeInfo.methodName
     // decide whether or not you want to propagate the error to the client
     match ex with
-    | :? System.IOException as x ->
-        let customError = { errorMsg = "Something terrible happend" }
+    | :? System.IO.IOException as x ->
+        let customError = { errorMsg = "Something terrible happened" }
         Propagate customError
     | :? System.Exception as x ->
         // ignore error
@@ -88,7 +88,7 @@ Finally when a custom error like the `CustomError` shown above gets propagated, 
 ```json
 { 
     "error":  {
-        "errorMsg": "Something terrible happend"
+        "errorMsg": "Something terrible happened"
     },
     "ignored": false, 
     "handled": true 

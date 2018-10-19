@@ -112,7 +112,7 @@ module SuaveUtil =
               let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger
               match inputArgs with 
               | Ok inputArgs -> return! runFunction func impl options inputArgs context
-              | Error error -> return! sendError error options.DiagnosticsLogger context  
+              | Result.Error error -> return! sendError error options.DiagnosticsLogger context  
           | _ -> 
               return! halt context
     }
