@@ -28,5 +28,5 @@ group SaturnTests
 group NextClient
     source https://www.nuget.org/api/v2
     clitool dotnet-fable ~> 2.0.4
-    nuget Fable.SimpleJson ~> 2.5.0
+    nuget Fable.SimpleJson ~> 2.6.0
     nuget Fable.PowerPack
