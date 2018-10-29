@@ -1,6 +1,5 @@
 group NextClient
-
 FSharp.Core
 Fable.Core
-Fable.PowerPack
 Fable.SimpleJson
+Fable.Import.Browser

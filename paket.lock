@@ -990,7 +990,7 @@ NUGET
 GROUP NextClient
 NUGET
   remote: https://www.nuget.org/api/v2
-    dotnet-fable (2.0.4) - clitool: true
+    dotnet-fable (2.0.8) - clitool: true
       Dotnet.ProjInfo (>= 0.9) - restriction: >= netcoreapp2.0
       FSharp.Compiler.Service (>= 25.0.1) - restriction: >= netcoreapp2.0
       FSharp.Core (>= 4.5.2) - restriction: >= netcoreapp2.0
