@@ -1,13 +1,8 @@
 namespace Fable.Remoting.Client
 
 open System
-open FSharp.Reflection
-open Fable.PowerPack
 open Fable.Core
-open Fable.Core.JsInterop
-open Fable.PowerPack.Fetch
 open Fable.SimpleJson
-open Fable.Import.Browser
 
 module Proxy =
 
