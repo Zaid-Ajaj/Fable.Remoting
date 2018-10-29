@@ -1,7 +1,5 @@
 namespace Fable.Remoting.Client 
 
-open Fable.PowerPack.Fetch
-
 type HttpMethod = GET | POST 
 
 type HttpRequest = {
@@ -14,14 +12,6 @@ type HttpRequest = {
 type HttpResponse = {
     StatusCode: int 
     ResponseBody: string
-}
-
-
-type ErrorInfo = {
-    path: string;
-    methodName: string;
-    error: string;
-    response: Response
 }
 
 type RemoteBuilderOptions = {
