@@ -52,7 +52,7 @@ async {
     | Choice2Of2 ex ->
         match ex with  
         | :? ProxyRequestException as ex -> 
-            let response : Response = ex.Response 
+            let response : HttpResponse = ex.Response 
             let responseText : string = ex.ResponseText
             let statusCode : int = ex.StatusCode 
             (* do stuff with error information*) 
@@ -62,10 +62,10 @@ async {
 ```
 The `ProxyRequestException` is special, it has all information about the response:
 ```fs
-type ProxyRequestException(response: Response, errorMsg, reponseText: string) = 
+type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string) = 
     inherit System.Exception(errorMsg)
     member this.Response = response 
-    member this.StatusCode = response.Status
+    member this.StatusCode = response.StatusCode
     member this.ResponseText = reponseText 
 ```
 When an error is unhanlded by the application (i.e. there was no error handler on the server) the `ResponseText` gives a generic error message to the client:
