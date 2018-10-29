@@ -70,46 +70,34 @@ module Proxy =
                then List.take argumentCount [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7 ]
                else [ ]
                         
-            let proxyRequest = 
-              promise {
-                
-                let defaultHeaders = 
-                    [  ContentType "application/json; charset=utf8"
-                       Cookie Fable.Import.Browser.document.cookie ]
+            async {
 
                 let headers =
-                  [ match options.Authorization with 
-                    | Some authToken -> 
-                      yield Authorization authToken 
-                      yield! defaultHeaders
-                      yield! options.CustomHeaders
-                    | None -> 
-                      yield! defaultHeaders
-                      yield! options.CustomHeaders  ] 
-
-                // Send RPC request to the server
-                let requestProps = [
-                    if funcNeedParameters then 
-                        yield Body (unbox (Json.stringify inputArguments))
-                        yield Method HttpMethod.POST
-                    else 
-                        yield Method HttpMethod.GET
-                    yield Credentials RequestCredentials.Sameorigin
-                    yield requestHeaders headers
-                ]
-
-                let makeReqProps props = keyValueList CaseRules.LowerFirst props :?> RequestInit
+                  [ yield "Content-Type", "application/json; charset=utf8"
+                    yield "Cookie", Fable.Import.Browser.document.cookie
+                    yield! options.CustomHeaders
                     
-                // use GlobalFetch.fetch to control error handling
-                let! response = GlobalFetch.fetch(RequestInfo.Url url, makeReqProps requestProps)
-                //let! response = Fetch.fetch url requestProps
-                let! responseText = response.text()
+                    match options.Authorization with 
+                    | Some authToken -> yield "Authorization", authToken
+                    | None -> () ]
 
-                match response.Status with 
+
+                let! response = 
+                    if funcNeedParameters 
+                    then 
+                        Http.post url
+                        |> Http.withBody (Json.stringify inputArguments)
+                        |> Http.withHeaders headers 
+                        |> Http.send 
+                    else  
+                        Http.get url 
+                        |> Http.withHeaders headers  
+                        |> Http.send 
+
+                match response.StatusCode with 
                 | 200 -> 
-                    let parsedJson = SimpleJson.parseNative responseText
+                    let parsedJson = SimpleJson.parseNative response.ResponseBody
                     return Convert.fromJsonAs parsedJson returnType 
-                | 500 -> return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, responseText)) 
-                | _ ->   return! raise (ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, responseText)) }
-            
-            Async.AwaitPromise proxyRequest
+                | 500 -> return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
+                | _ ->   return! raise (ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, response.ResponseBody)) 
+            }
