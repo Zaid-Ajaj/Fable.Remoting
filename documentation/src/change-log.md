@@ -1,5 +1,9 @@
 # Change Log
 
+### 21 October 2018 
+- Remove Fable.PowerPack from the dependencies of remoting client in favor of simple XMLHttpRequest, fixes [#80](https://github.com/Zaid-Ajaj/Fable.Remoting/issues/80) in [this PR](https://github.com/Zaid-Ajaj/Fable.Remoting/pull/86)
+
+
 ### 19 August 2018
 - Ported Fable client to Fable 2, using SimpleJson for JSON marshalling (see [PR](https://github.com/Zaid-Ajaj/Fable.Remoting/pull/71))
 - Breaking change on the client: `Remoting.buildProxy<'t>()` becomes  `Remoting.buildProxy<'t>` when used, see [Client](client.md) docs

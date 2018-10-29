@@ -2,7 +2,6 @@ namespace Fable.Remoting.Client
 
 open Fable.Core
 open Fable.SimpleJson
-open Fable.Import.Browser
 
 module Remoting = 
     /// Starts with default configuration for building a proxy
