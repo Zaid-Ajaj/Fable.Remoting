@@ -12,6 +12,7 @@ open System.Threading
 open Suave.Logging
 open Suave.Operators
 open Suave.Filters
+
 open SharedTypes
 open ServerImpl
 open OpenQA.Selenium
@@ -51,7 +52,7 @@ let main argv =
 
     let testWebApp = 
         choose [ 
-            GET >=> Files.browseHome
+            GET >=> Files.browseHome >=> Writers.setHeader "Set-Cookie" "dummy=value;"
             fableWebPart 
             OK "Not Found"
         ]

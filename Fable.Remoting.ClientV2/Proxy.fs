@@ -69,7 +69,6 @@ module Proxy =
 
                 let headers =
                   [ yield "Content-Type", "application/json; charset=utf8"
-                    yield "Cookie", Fable.Import.Browser.document.cookie
                     yield! options.CustomHeaders
                     
                     match options.Authorization with 
