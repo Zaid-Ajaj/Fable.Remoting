@@ -36,6 +36,7 @@ let server : IServer  = {
     echoIntList = Async.result
     echoStringList = Async.result
     echoBoolList = Async.result
+    mapRecordAsKey = fun () -> async { return Map.ofList [ { Key = 1; Value = "Value" }, 1 ] }
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
     tuplesAndLists = fun (dict, xs) -> 
