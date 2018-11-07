@@ -462,6 +462,6 @@ QUnit.testCaseAsync "ICookieServer.checkCookie" <| fun test ->
         test.equalWithMsg true secondCall "Cookie should have been set and sent"
 
         // Cookie should not be visible to javascript (HttpOnly)
-        let notInJs = Fable.Import.Browser.document.cookie = ""
+        let notInJs = Fable.Import.Browser.document.cookie.Contains("httpOnly-test-cookie") = false
         test.equalWithMsg true notInJs "Cookie should not be visible to javascript"
     }
