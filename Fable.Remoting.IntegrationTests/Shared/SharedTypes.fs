@@ -39,6 +39,9 @@ type Tree =
     | Leaf of int 
     | Branch of Tree * Tree 
 
+type RecordAsKey = { Key: int; Value: string }
+
+
 type IServer = {
     // primitive types
     simpleUnit : unit -> Async<int>
@@ -76,7 +79,8 @@ type IServer = {
     echoGenericMap : Map<string, Maybe<int>> -> Async<Map<string, Maybe<int>>>
     // maps
     echoMap : Map<string, int> -> Async<Map<string, int>>
-    // errors
+    mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
+    // errors 
     throwError : unit -> Async<string>
 
     echoSingleCase : SingleCase -> Async<SingleCase>

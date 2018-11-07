@@ -58,6 +58,16 @@ QUnit.testCaseAsync "IServer.echoBool" <| fun test ->
         do test.equal fstFalse false
     }
 
+QUnit.testCaseAsync "IServer.mapRecordAsKey" <| fun test -> 
+    async {
+        let! result = server.mapRecordAsKey()
+        result 
+        |> Map.toList 
+        |> function 
+            | [ { Key = 1; Value = "Value" }, 1 ] -> test.pass()
+            | otherwise -> test.failWith (sprintf "%A" otherwise)
+    } 
+
 open System
 
 let datesEqual (test: QUnit.Asserter) (x: DateTime) (y: DateTime) =
