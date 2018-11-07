@@ -30,6 +30,10 @@ type ISimpleServer = {
     getLength : string -> Async<int>
 }
 
+type ICookieServer = {
+    checkCookie : unit -> Async<bool>
+}
+
 type RecursiveRecord = {
     Name: string
     Children : RecursiveRecord list

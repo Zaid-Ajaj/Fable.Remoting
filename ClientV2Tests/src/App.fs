@@ -445,3 +445,23 @@ QUnit.testCaseAsync "IServer.tuplesAndLists" <| fun test ->
         let expected = Map.ofList [ "hello", 5; "there!", 6 ] 
         test.equal true (expected = outputDict)  
     }
+
+let cookieServer =
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.buildProxy<ICookieServer>
+
+QUnit.testCaseAsync "ICookieServer.checkCookie" <| fun test ->
+    async {
+        // Cookie not set yet
+        let! firstCall = cookieServer.checkCookie ()
+        test.equalWithMsg false firstCall "Cookie should not be set yet"
+
+        // Cookie should now be set and sent back to server
+        let! secondCall = cookieServer.checkCookie ()
+        test.equalWithMsg true secondCall "Cookie should have been set and sent"
+
+        // Cookie should not be visible to javascript (HttpOnly)
+        let notInJs = Fable.Import.Browser.document.cookie = ""
+        test.equalWithMsg true notInJs "Cookie should not be visible to javascript"
+    }

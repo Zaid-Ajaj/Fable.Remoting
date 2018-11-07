@@ -12,6 +12,10 @@ let simpleServer : ISimpleServer = {
     getLength = fun input -> Async.result input.Length
 }
 
+let cookieServer readCookie : ICookieServer = {
+    checkCookie = fun () -> readCookie () |> Async.result
+}
+
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
 let server : IServer  = {

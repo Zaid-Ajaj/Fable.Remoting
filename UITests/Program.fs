@@ -1,4 +1,4 @@
-﻿// Learn more about F# at http://fsharp.org
+// Learn more about F# at http://fsharp.org
 
 open System
 open Suave 
@@ -35,6 +35,34 @@ let rec findRoot dir =
             failwith "Couldn't find root directory"
         findRoot parent.FullName
 
+module CookieTest =
+    open Suave.Cookie
+    let cookieName = "httpOnly-test-cookie"
+
+    let setCookie ctx =
+        let cookie = {
+            name = cookieName
+            value = "test value"
+            expires = None
+            path = Some "/"
+            domain = None
+            secure = false
+            httpOnly = true
+            sameSite = None
+        }
+        Cookie.setCookie cookie ctx
+
+    let cookieWebPart =
+        let cookieServer (ctx:HttpContext) : ICookieServer =
+            cookieServer <| fun _ -> ctx.request.cookies |> Map.containsKey cookieName
+
+        Remoting.createApi()
+        |> Remoting.fromContext cookieServer
+        |> Remoting.withRouteBuilder routeBuilder
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
+        |> Remoting.buildWebPart
+        >=> setCookie
+
 [<EntryPoint>]
 let main argv =
     let cwd = Directory.GetCurrentDirectory()
@@ -53,6 +81,7 @@ let main argv =
         choose [ 
             GET >=> Files.browseHome
             fableWebPart 
+            CookieTest.cookieWebPart
             OK "Not Found"
         ]
 
