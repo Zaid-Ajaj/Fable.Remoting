@@ -96,14 +96,13 @@ module Proxy =
                        Cookie Fable.Import.Browser.document.cookie ]
 
                 let headers =
-                  [ match options.Authorization with 
-                    | Some authToken -> 
-                      yield Authorization authToken 
-                      yield! defaultHeaders
-                      yield! options.CustomHeaders
-                    | None -> 
-                      yield! defaultHeaders
-                      yield! options.CustomHeaders  ] 
+                  [ yield! defaultHeaders
+                    yield! options.CustomHeaders
+
+                    match options.AuthorizationResolve, options.Authorization with 
+                    | Some resolveFun, _ -> yield Authorization (resolveFun())
+                    | None, Some authToken -> yield Authorization authToken 
+                    | _ -> () ]
 
                 // Send RPC request to the server
                 let requestProps = [

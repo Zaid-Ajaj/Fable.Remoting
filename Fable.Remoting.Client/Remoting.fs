@@ -8,6 +8,7 @@ module Remoting =
         CustomHeaders = [ ]
         BaseUrl = None
         Authorization = None
+        AuthorizationResolve = None
         RouteBuilder = sprintf ("/%s/%s") 
     }
     
@@ -27,6 +28,10 @@ module Remoting =
     let withAuthorizationHeader token (options: RemoteBuilderOptions) = 
         { options with Authorization = Some token }
  
+    /// Sets the resolve function for authorization header of every request from the proxy
+    let withAuthorizationHeaderResolver resolveFun (options: RemoteBuilderOptions) =
+        { options with AuthorizationResolve = Some resolveFun }
+
     [<PassGenerics>]
     let buildProxy<'t> (options: RemoteBuilderOptions) : 't = 
         // create an empty object literal
