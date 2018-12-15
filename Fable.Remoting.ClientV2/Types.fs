@@ -18,6 +18,7 @@ type RemoteBuilderOptions = {
     CustomHeaders : (string * string) list
     BaseUrl  : string option
     Authorization : string option
+    AuthorizationResolve : (unit -> string) option
     RouteBuilder : (string -> string -> string)
 }
 

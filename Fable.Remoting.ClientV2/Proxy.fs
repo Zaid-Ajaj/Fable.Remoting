@@ -71,9 +71,10 @@ module Proxy =
                   [ yield "Content-Type", "application/json; charset=utf8"
                     yield! options.CustomHeaders
                     
-                    match options.Authorization with 
-                    | Some authToken -> yield "Authorization", authToken
-                    | None -> () ]
+                    match options.AuthorizationResolve, options.Authorization with 
+                    | Some resolveFun, _ -> yield "Authorization", (resolveFun())
+                    | None, Some authToken -> yield "Authorization", authToken
+                    | _ -> () ]
 
 
                 let! response = 
