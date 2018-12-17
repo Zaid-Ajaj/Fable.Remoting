@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Raw Http Communication · GitBook</title>
+        <title>Using Multiple Protocols · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,10 +53,10 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="multiple-protocols.html" />
+    <link rel="next" href="docs.html" />
     
     
-    <link rel="prev" href="request-context.html" />
+    <link rel="prev" href="raw-http.html" />
     
 
     </head>
@@ -334,7 +334,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="5.7" data-path="raw-http.html">
+        <li class="chapter " data-level="5.7" data-path="raw-http.html">
             
                 <a href="raw-http.html">
             
@@ -347,7 +347,7 @@
             
         </li>
     
-        <li class="chapter " data-level="5.8" data-path="multiple-protocols.html">
+        <li class="chapter active" data-level="5.8" data-path="multiple-protocols.html">
             
                 <a href="multiple-protocols.html">
             
@@ -475,7 +475,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Raw Http Communication</a>
+        <a href=".." >Using Multiple Protocols</a>
     </h1>
 </div>
 
@@ -490,48 +490,34 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="raw-http-communication">Raw Http Communication</h1>
-<p>Clients other than Fable can communicate with a server using Fable.Remoting quite easily using raw http requests. For that, we have to understand how the functions of the record implementation is translated to Http. These functions can have the following pattern:</p>
-<pre><code class="lang-fs">Async&lt;<span class="hljs-symbol">&apos;A</span>&gt; 
-<span class="hljs-symbol">&apos;A</span> -&gt; Async&lt;<span class="hljs-symbol">&apos;B</span>&gt;
-<span class="hljs-symbol">&apos;A</span> -&gt; <span class="hljs-symbol">&apos;B</span> -&gt; Async&lt;<span class="hljs-symbol">&apos;C</span>&gt;
-<span class="hljs-symbol">&apos;A</span> -&gt; <span class="hljs-symbol">&apos;B</span> -&gt; <span class="hljs-symbol">&apos;C</span> -&gt; Async&lt;<span class="hljs-symbol">&apos;D</span>&gt;
-<span class="hljs-comment">// etc.</span>
-</code></pre>
-<p>Lets take the following protocol and implementation as an example:</p>
-<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ListsRecord</span> </span>= {
-    firstList : int list 
-    secondList : int list  
-}
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IServer</span> </span>= {
-    getNumbers : Async&lt;int list&gt;  
-    concatLists : ListsRecord -&gt; Async&lt;int list&gt; 
-}
-</code></pre>
-<p>Notice that the field <code>getNumbers</code> is a simple async value and does not require input parameters, while <code>concatLists</code> needs a record as input. Now let us provide a simple implementation and run the server:</p>
-<pre><code class="lang-fs"><span class="hljs-keyword">let</span> server = { 
-    getNumbers = async { <span class="hljs-keyword">return</span> [<span class="hljs-number">1</span> .. <span class="hljs-number">5</span>] }
-    concatLists = <span class="hljs-keyword">fun</span> input -&gt; async {
-        <span class="hljs-keyword">return</span> List.concat [input.firstList; input.secondList]
-    }
-}
-
-<span class="hljs-keyword">let</span> webApp = 
+                                <h1 id="using-multiple-procotols">Using Multiple Procotols</h1>
+<p>It is possible to use multiple protocols for communication with remoting, this is because the result of the <code>Remoting</code> module is either a <code>WebPart</code> in case of Suave or a <code>HttpHandler</code> in case of Giraffe or Saturn. In all cases, you can compose multiple resuling API&apos;s the same way you do with normal <code>WebPart</code>s or <code>HttpHandler</code>s using the <code>choose</code> combinator:</p>
+<h3 id="suave">Suave</h3>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> firstApi = 
     Remoting.createApi()
-    |&gt; Remoting.fromValue server 
-    |&gt; Remoting.buildWebPart 
+    |&gt; Remoting.fromValue firstProtocol
+    |&gt; Remoting.buildWebpart 
 
-startWebServer defaultConfig webApp
+<span class="hljs-keyword">let</span> secondApi = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue secondProtocol
+    |&gt; Remoting.buildWebpart 
+
+<span class="hljs-keyword">let</span> combinedApi = choose [firstApi; secondApi]
 </code></pre>
-<p>Now, to invoke <code>getNumbers</code> using raw http request you can send a <code>GET</code> request (because no parameters are required) to the default field url <code>/IServer/getNumbers</code>:</p>
-<p><img src="imgs/getNumbers.png" alt="getNumbers"></p>
-<p>As simple as that. This rule of <code>No parameters &lt;=&gt; GET request</code> also applies to functions where the input is <code>unit</code>, i.e. functions of type <code>unit -&gt; Async&lt;&apos;t&gt;</code>. </p>
-<p>Now moving on to the function <code>concatLists</code>, it has one parameter of type <code>ListsRecord</code>. By convention, we will send <code>POST</code> requests with the parameters as a JSON array that contains the serializable data. The entries of the array correspond with the arguments of the function:</p>
-<p><img src="imgs/concatLists.png" alt="concatLists"></p>
-<p>Functions of a single parameter such as <code>concatLists</code> are special: you don&apos;t always need to wrap their parameter in an array, so it will work as well when you send just the serializable input object without an array:</p>
-<p><img src="imgs/singleParam.png" alt="singleParam"></p>
-<p>This rule only applies when the function has a single parameter and when the parameter is not array-like is serialized form, this means the rule doesn&apos;t apply to arrays, lists or tuples because of ambiguity and you would have to wrap these arguments in an array just like in the situation with multiple parameters.   </p>
+<h3 id="giraffe-or-saturn">Giraffe or Saturn</h3>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> firstApi = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue firstProtocol
+    |&gt; Remoting.buildHttpHandler 
+
+<span class="hljs-keyword">let</span> secondApi = 
+    Remoting.createApi()
+    |&gt; Remoting.fromValue secondProtocol
+    |&gt; Remoting.buildHttpHandler 
+
+<span class="hljs-keyword">let</span> combinedApi = choose [firstApi; secondApi]
+</code></pre>
 
                                 
                                 </section>
@@ -559,12 +545,12 @@ startWebServer defaultConfig webApp
 
             
                 
-                <a href="request-context.html" class="navigation navigation-prev " aria-label="Previous page: Accessing Request Context">
+                <a href="raw-http.html" class="navigation navigation-prev " aria-label="Previous page: Raw Http Communication">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
                 
-                <a href="multiple-protocols.html" class="navigation navigation-next " aria-label="Next page: Using Multiple Protocols">
+                <a href="docs.html" class="navigation navigation-next " aria-label="Next page: Type-Safe Documentation">
                     <i class="fa fa-angle-right"></i>
                 </a>
                 
@@ -575,7 +561,7 @@ startWebServer defaultConfig webApp
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Raw Http Communication","level":"5.7","depth":1,"next":{"title":"Using Multiple Protocols","level":"5.8","depth":1,"path":"src/multiple-protocols.md","ref":"src/multiple-protocols.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"5.6","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/raw-http.md","mtime":"2018-07-13T12:32:35.220Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-12-17T21:00:24.515Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Using Multiple Protocols","level":"5.8","depth":1,"next":{"title":"Type-Safe Documentation","level":"5.9","depth":1,"path":"src/docs.md","ref":"src/docs.md","articles":[]},"previous":{"title":"Raw Http Communication","level":"5.7","depth":1,"path":"src/raw-http.md","ref":"src/raw-http.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/multiple-protocols.md","mtime":"2018-12-17T20:51:36.585Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-12-17T21:00:24.515Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
