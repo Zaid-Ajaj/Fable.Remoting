@@ -23,8 +23,10 @@
 - [Error Handling](src/error-handling.md)
 - [Modeling Authentication](src/modeling-authentication.md)
 - [Implicit Authentication](src/implicit-authentication.md)
+- [Refreshing Access Tokens](src/refresh-auth-tokens.md)
 - [Accessing Request Context](src/request-context.md)
 - [Raw Http Communication](src/raw-http.md)
+- [Using Multiple Protocols](src/multiple-protocols.md)
 - [Type-Safe Documentation](src/docs.md)
 - [Logging](src/logging.md)
 
