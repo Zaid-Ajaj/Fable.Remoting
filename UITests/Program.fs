@@ -36,6 +36,51 @@ let rec findRoot dir =
             failwith "Couldn't find root directory"
         findRoot parent.FullName
 
+module AuthServer = 
+
+    // acquire the access token from here, returns an integer
+    let token = pathScan "/IAuthServer/token/%d" (sprintf "%d" >> OK)
+
+    // WebPart to ensure that there is a non-empty authorization header
+    let requireAuthorized : WebPart = 
+        fun (ctx: HttpContext) -> 
+            async {
+                return ctx.request.headers 
+                       |> List.tryFind (fun (key, value) -> key = "authorization" && value <> "")
+                       |> function 
+                        | Some header -> Some ctx 
+                        | None -> None       
+            }  
+
+    // the actual secure api, cannot be reached unless an authorization header is present
+    let authorizedServerApi = 
+        Remoting.createApi()
+        |> Remoting.fromContext (fun ctx -> 
+            {
+                // return the authorization header
+                getSecureValue = fun () ->
+                    async {
+                        return ctx.request.headers
+                               |> List.tryFind (fun (key, value) -> key = "authorization" && value <> "")
+                               |> Option.map (snd >> int) 
+                               |> function 
+                                  | Some value -> value
+                                  | None -> -1
+                    } 
+            }) 
+        |> Remoting.withRouteBuilder routeBuilder
+        |> Remoting.buildWebPart
+
+
+    let api = 
+        choose [ 
+            // web part to acquire the token
+            token
+            // protect authorized server api
+            requireAuthorized >=> authorizedServerApi 
+        ]
+
+    
 module CookieTest =
     open Suave.Cookie
     let cookieName = "httpOnly-test-cookie"
@@ -83,6 +128,7 @@ let main argv =
             GET >=> Files.browseHome >=> Writers.setHeader "Set-Cookie" "dummy=value;"
             fableWebPart 
             CookieTest.cookieWebPart
+            AuthServer.api
             OK "Not Found"
         ]
 

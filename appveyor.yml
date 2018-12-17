@@ -1,12 +1,28 @@
-image: Ubuntu1804
+init:
+  - git config --global core.autocrlf input
 
-stack: node 10
+build:
+  verbosity: detailed
 
 environment:
   nodejs_version: "10.10.0"
 
+cache:
+ - "%LOCALAPPDATA%\\Yarn"
+
+# Install scripts. (runs after repo cloning)
+install:
+  # Get the latest stable version of Node.js
+  - ps: Install-Product node $env:nodejs_version
+  # # Update npm
+  # # There seems to be issues with npm 5.4 in Windows
+  # # See https://github.com/npm/npm/issues/18380
+  # - npm install -g npm@6.1.0
+
+os: Visual Studio 2015
+
 build_script:
-- sh: ./build.sh IntegrationTests
-- sh: ./build.sh IntegrationTestsV2
+  - cmd: build.cmd IntegrationTests
+  - cmd: build.cmd IntegrationTestsV2
 
 test: off

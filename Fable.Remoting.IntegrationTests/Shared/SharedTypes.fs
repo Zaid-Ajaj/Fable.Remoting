@@ -34,6 +34,14 @@ type ICookieServer = {
     checkCookie : unit -> Async<bool>
 }
 
+type AccessToken = AccessToken of int 
+
+type IAuthServer = {
+    // secured by authorization token
+    getSecureValue : unit -> Async<int> 
+}
+
+
 type RecursiveRecord = {
     Name: string
     Children : RecursiveRecord list

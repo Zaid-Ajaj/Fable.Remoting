@@ -475,3 +475,32 @@ QUnit.testCaseAsync "ICookieServer.checkCookie" <| fun test ->
         let notInJs = Fable.Import.Browser.document.cookie.Contains("httpOnly-test-cookie") = false
         test.equalWithMsg true notInJs "Cookie should not be visible to javascript"
     }
+
+
+let resolveAccessToken n = 
+    async {
+        let request = Http.get (sprintf "/IAuthServer/token/%d" n)
+        let! response = Http.send request
+        return response.ResponseBody
+    }
+
+let createSecureApi (accessToken: string) = 
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withAuthorizationHeader accessToken
+    |> Remoting.buildProxy<IAuthServer>
+
+let authorizedServer n f = 
+    async {
+        let! accessToken = resolveAccessToken n
+        let authServer = createSecureApi accessToken 
+        return! f authServer
+    }
+
+QUnit.testCaseAsync "IAuthServer can be used by resolving access tokens" <| fun test ->
+    async {
+        let! firstResponse = authorizedServer 1 (fun api -> api.getSecureValue())
+        let! secondResponse = authorizedServer 2 (fun api -> api.getSecureValue())
+        test.equalWithMsg firstResponse 1 "The returned values are the access tokens resolved from server"
+        test.equalWithMsg secondResponse 2 "The returned values are the access tokens resolved from server"
+    } 

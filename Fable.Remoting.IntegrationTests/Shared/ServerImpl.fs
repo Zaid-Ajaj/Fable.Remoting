@@ -16,6 +16,12 @@ let cookieServer readCookie : ICookieServer = {
     checkCookie = fun () -> readCookie () |> Async.result
 }
 
+let getInt : unit -> int = 
+    let mutable i = 0
+    fun () ->
+        i <- i + 1
+        i
+ 
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
 let server : IServer  = {

@@ -17,8 +17,8 @@
     "babel-loader": "^7.1.2",
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-es2015": "^6.24.1",
-    "fable-loader": "^1.1.2",
-    "fable-utils": "^1.0.6",
+    "fable-loader": "1.1.2",
+    "fable-utils": "1.0.6",
     "loglevel": "^1.5.0",
     "webpack": "^3.6.0",
     "webpack-dev-server": "^2.8.2"

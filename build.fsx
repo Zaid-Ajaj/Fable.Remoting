@@ -132,7 +132,7 @@ Target "RunGiraffeTests" <| fun _ ->
     run "." "dotnet" GiraffeTestDll
 
 Target "InstallDocs" <| fun _ ->
-    run "docs" "npm" "install"
+    run "docs" "yarn" "install"
 
 Target "BuildDocs" <| fun _ ->
     run "docs" "npm" "run build"
@@ -191,7 +191,7 @@ Target "IntegrationTestsV2" <| fun _ ->
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
 
-    run "ClientV2Tests" "npm" "install"
+    run "ClientV2Tests" "yarn" "install"
     run ("ClientV2Tests" </> "src") "dotnet" "restore --no-cache"
     run ("ClientV2Tests" </> "src") "dotnet" "fable npm-run build"
     run "UITests" "dotnet" "restore --no-cache"
@@ -219,7 +219,7 @@ Target "IntegrationTestsLive" <| fun _ ->
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean (getPath "IntegrationTests" </> "Client")
 
-    run (getPath "IntegrationTests") "npm" "install"
+    run (getPath "IntegrationTests") "yarn" "install"
     run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
     run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
     run "UITests" "dotnet" "restore --no-cache"
