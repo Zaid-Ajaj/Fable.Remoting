@@ -1,18 +1,19 @@
 # Logging
 
-Logging is dead-simple to integrate with `Fable.Remoting`, if you are using Suave, then [Suave.SerilogExtensions](https://github.com/Zaid-Ajaj/Suave.SerilogExtensions) is what we recommend to use where [Serilog](https://github.com/Zaid-Ajaj/Suave.SerilogExtensions) is the logging framework of choice.
+Logging is easy to integrate with `Fable.Remoting`, in this section, [Serilog](https://github.com/serilog/serilog) will be the recommended logging framework of choice. Dependending on which web framework you are using, you can pick one of:
+ - [Suave.SerilogExtensions](https://github.com/Zaid-Ajaj/Suave.SerilogExtensions) for Suave
+ - [Giraffe.SerilogExtensions](https://github.com/Zaid-Ajaj/Giraffe.SerilogExtensions) for Giraffe/Saturn
 
-> Suave.SerilogExtensions is specially written to work with Fable.Remoting, although it would work just great with any Suave app.
-> Logging extensions for Giraffe/Saturn are not yet available.
+Since both serilog extensions have the same API, I will only go through an example for Suave, the exact same code can be used with Giraffe if you just change `Remoting.buildWebPart` to `Remoting.buildHttpHandler` and `WebPart` type signatures to `HttpHandler`:
 
 ## Basic use case
 1 - Install from Nuget:
 ```bash
 dotnet add package Suave.SerilogExtensions
 # or if you are using paket
-mono .paket/paket.exe add Suave.SerilogExtensions
+.paket/paket.exe add Suave.SerilogExtensions
 ```
-2 - Wrap your `remoting` WebPart with the Serilog adapter:
+2 - Wrap your `WebPart` given by `Remoting` with `SerilogAdaper.Enable` function:
 ```fs  
 open System
 // ...
@@ -23,13 +24,13 @@ open Suave
 let errorHandler (ex: Exception)  
                  (routeInfo: RouteInfo<HttpContext>) =
     // get a contextual logger with RequestId attached to it
+    // .Logger() is an extension from Suave.SerilogExtensions
     let contextLogger = routeInfo.httpContext.Logger()
     // log the exception with relevant data
     let errorMsgTemplate = "Error occured while invoking {MethodName} at {RoutePath}"
     contextLogger.Error(ex, errorMsgTemplate, routeInfo.methodName, routeInfo.path)
     // No need to propagate custom errors back to client
     Ignore 
-
 
 // create the WebPart
 let webApp : WebPart = 
@@ -63,7 +64,7 @@ startWebServer defaultConfig webAppWithLogging
 [Suave.SerilogExtensions](https://github.com/Zaid-Ajaj/Suave.SerilogExtensions) contains many configuration options that you might want to check out. 
 
 ## Using logger from remoting functions
-Ofcourse, we don't want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remote functions, you need to access to `HttpContext` and call `httpContext.Logger()` to get a contexual logger you can log events from. 
+Ofcourse, we don't want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remote functions, you need to [Access to `HttpContext`](request-context.md) and call `httpContext.Logger()` to get a contexual logger you can log events from. 
 
 > Logger() is an extension method provided from Suave.SerilogExtensions
 
@@ -76,10 +77,9 @@ type IMusicStore = {
 ```
 To gain access to the `HttpContext`, use it as a parameter to end up with `HttpContext -> IMusicStore`:
 ```fs
-// The musicStore value is dependent on the context
-let musicStore (httpContext: HttpContext) : IMusicStore = {
+// The musicStore value is dependent on the ILogger
+let musicStore (logger: ILogger) : IMusicStore = {
     albums = async {
-        let logger = httpContext.Logger()
         logger.Information("Retrieving albums from database")
         let! albums = Database.getAllAlbums()
         logger.Information("Read {AlbumCount} albums from database", List.length albums)
@@ -87,10 +87,15 @@ let musicStore (httpContext: HttpContext) : IMusicStore = {
     }
 } 
 
+// Get the logger from the context
+let musicStoreApi (context: HttpContext) : IMusicStore = 
+    let logger : ILogger = context.Logger()
+    musicStore logger 
+
 // create the WebPart using 'fromContext' instead of 'fromValue' to gain access to the context
 let webApp : WebPart = 
     Remoting.createApi()
-    |> Remoting.fromContext musicStore
+    |> Remoting.fromContext musicStoreApi
     |> Remoting.withRouteBuilder (sprintfn "/api/%s/%s") 
     |> Remoting.withErrorHandler errorHandler 
     |> Remoting.buildWebPart

@@ -491,18 +491,19 @@
                                 <section class="normal markdown-section">
                                 
                                 <h1 id="logging">Logging</h1>
-<p>Logging is dead-simple to integrate with <code>Fable.Remoting</code>, if you are using Suave, then <a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Suave.SerilogExtensions</a> is what we recommend to use where <a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Serilog</a> is the logging framework of choice.</p>
-<blockquote>
-<p>Suave.SerilogExtensions is specially written to work with Fable.Remoting, although it would work just great with any Suave app.
-Logging extensions for Giraffe/Saturn are not yet available.</p>
-</blockquote>
+<p>Logging is easy to integrate with <code>Fable.Remoting</code>, in this section, <a href="https://github.com/serilog/serilog" target="_blank">Serilog</a> will be the recommended logging framework of choice. Dependending on which web framework you are using, you can pick one of:</p>
+<ul>
+<li><a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Suave.SerilogExtensions</a> for Suave</li>
+<li><a href="https://github.com/Zaid-Ajaj/Giraffe.SerilogExtensions" target="_blank">Giraffe.SerilogExtensions</a> for Giraffe/Saturn</li>
+</ul>
+<p>Since both serilog extensions have the same API, I will only go through an example for Suave, the exact same code can be used with Giraffe if you just change <code>Remoting.buildWebPart</code> to <code>Remoting.buildHttpHandler</code> and <code>WebPart</code> type signatures to <code>HttpHandler</code>:</p>
 <h2 id="basic-use-case">Basic use case</h2>
 <p>1 - Install from Nuget:</p>
 <pre><code class="lang-bash">dotnet add package Suave.SerilogExtensions
 <span class="hljs-comment"># or if you are using paket</span>
-mono .paket/paket.exe add Suave.SerilogExtensions
+.paket/paket.exe add Suave.SerilogExtensions
 </code></pre>
-<p>2 - Wrap your <code>remoting</code> WebPart with the Serilog adapter:</p>
+<p>2 - Wrap your <code>WebPart</code> given by <code>Remoting</code> with <code>SerilogAdaper.Enable</code> function:</p>
 <pre><code class="lang-fs"><span class="hljs-keyword">open</span> System
 <span class="hljs-comment">// ...</span>
 <span class="hljs-keyword">open</span> Suave.SerilogExtensions
@@ -512,13 +513,13 @@ mono .paket/paket.exe add Suave.SerilogExtensions
 <span class="hljs-keyword">let</span> errorHandler (ex: Exception)  
                  (routeInfo: RouteInfo&lt;HttpContext&gt;) =
     <span class="hljs-comment">// get a contextual logger with RequestId attached to it</span>
+    <span class="hljs-comment">// .Logger() is an extension from Suave.SerilogExtensions</span>
     <span class="hljs-keyword">let</span> contextLogger = routeInfo.httpContext.Logger()
     <span class="hljs-comment">// log the exception with relevant data</span>
     <span class="hljs-keyword">let</span> errorMsgTemplate = <span class="hljs-string">&quot;Error occured while invoking {MethodName} at {RoutePath}&quot;</span>
     contextLogger.Error(ex, errorMsgTemplate, routeInfo.methodName, routeInfo.path)
     <span class="hljs-comment">// No need to propagate custom errors back to client</span>
     Ignore 
-
 
 <span class="hljs-comment">// create the WebPart</span>
 <span class="hljs-keyword">let</span> webApp : WebPart = 
@@ -548,7 +549,7 @@ Log.Logger &lt;-
 <pre><code>startWebServer defaultConfig webAppWithLogging
 </code></pre><p><a href="https://github.com/Zaid-Ajaj/Suave.SerilogExtensions" target="_blank">Suave.SerilogExtensions</a> contains many configuration options that you might want to check out. </p>
 <h2 id="using-logger-from-remoting-functions">Using logger from remoting functions</h2>
-<p>Ofcourse, we don&apos;t want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remote functions, you need to access to <code>HttpContext</code> and call <code>httpContext.Logger()</code> to get a contexual logger you can log events from. </p>
+<p>Ofcourse, we don&apos;t want to just log the http requests and responses but we also want to log application specific and custom logs. To use Serilog from the remote functions, you need to <a href="request-context.html">Access to <code>HttpContext</code></a> and call <code>httpContext.Logger()</code> to get a contexual logger you can log events from. </p>
 <blockquote>
 <p>Logger() is an extension method provided from Suave.SerilogExtensions</p>
 </blockquote>
@@ -558,10 +559,9 @@ Log.Logger &lt;-
 }
 </code></pre>
 <p>To gain access to the <code>HttpContext</code>, use it as a parameter to end up with <code>HttpContext -&gt; IMusicStore</code>:</p>
-<pre><code class="lang-fs"><span class="hljs-comment">// The musicStore value is dependent on the context</span>
-<span class="hljs-keyword">let</span> musicStore (httpContext: HttpContext) : IMusicStore = {
+<pre><code class="lang-fs"><span class="hljs-comment">// The musicStore value is dependent on the ILogger</span>
+<span class="hljs-keyword">let</span> musicStore (logger: ILogger) : IMusicStore = {
     albums = async {
-        <span class="hljs-keyword">let</span> logger = httpContext.Logger()
         logger.Information(<span class="hljs-string">&quot;Retrieving albums from database&quot;</span>)
         <span class="hljs-keyword">let!</span> albums = Database.getAllAlbums()
         logger.Information(<span class="hljs-string">&quot;Read {AlbumCount} albums from database&quot;</span>, List.length albums)
@@ -569,10 +569,15 @@ Log.Logger &lt;-
     }
 } 
 
+<span class="hljs-comment">// Get the logger from the context</span>
+<span class="hljs-keyword">let</span> musicStoreApi (context: HttpContext) : IMusicStore = 
+    <span class="hljs-keyword">let</span> logger : ILogger = context.Logger()
+    musicStore logger 
+
 <span class="hljs-comment">// create the WebPart using &apos;fromContext&apos; instead of &apos;fromValue&apos; to gain access to the context</span>
 <span class="hljs-keyword">let</span> webApp : WebPart = 
     Remoting.createApi()
-    |&gt; Remoting.fromContext musicStore
+    |&gt; Remoting.fromContext musicStoreApi
     |&gt; Remoting.withRouteBuilder (sprintfn <span class="hljs-string">&quot;/api/%s/%s&quot;</span>) 
     |&gt; Remoting.withErrorHandler errorHandler 
     |&gt; Remoting.buildWebPart
@@ -625,7 +630,7 @@ startWebServer defaultConfig webAppWithLogging
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Logging","level":"5.10","depth":1,"next":{"title":"Changelog","level":"6.1","depth":1,"path":"src/change-log.md","ref":"src/change-log.md","articles":[]},"previous":{"title":"Type-Safe Documentation","level":"5.9","depth":1,"path":"src/docs.md","ref":"src/docs.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-07-13T11:18:25.597Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-12-17T21:00:24.515Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Logging","level":"5.10","depth":1,"next":{"title":"Changelog","level":"6.1","depth":1,"path":"src/change-log.md","ref":"src/change-log.md","articles":[]},"previous":{"title":"Type-Safe Documentation","level":"5.9","depth":1,"path":"src/docs.md","ref":"src/docs.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/logging.md","mtime":"2018-12-23T13:34:41.781Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2018-12-23T13:42:40.677Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
