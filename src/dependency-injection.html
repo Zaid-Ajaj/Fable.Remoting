@@ -1,0 +1,879 @@
+
+<!DOCTYPE HTML>
+<html lang="" >
+    <head>
+        <meta charset="UTF-8">
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <title>Functional Dependency Injection · GitBook</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="GitBook 3.2.3">
+        
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-enhanced-katex/katex.min.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+        <link rel="stylesheet" href="../styles/website.css">
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="raw-http.html" />
+    
+    
+    <link rel="prev" href="request-context.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="basics.html">
+            
+                <a href="basics.html">
+            
+                    
+                    Getting Started
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Setup Server</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="suave.html">
+            
+                <a href="suave.html">
+            
+                    
+                    Setup Suave
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="aspnet-core.html">
+            
+                <a href="aspnet-core.html">
+            
+                    
+                    Setup Asp.NET Core
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="giraffe.html">
+            
+                <a href="giraffe.html">
+            
+                    
+                    Setup Giraffe
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="saturn.html">
+            
+                <a href="saturn.html">
+            
+                    
+                    Setup Saturn
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Setup Client</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="client.html">
+            
+                <a href="client.html">
+            
+                    
+                    Setup Fable Client
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Dotnet Client</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="dotnet-client.html">
+            
+                <a href="dotnet-client.html">
+            
+                    
+                    Getting Started from .NET
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="dotnet-csharp.html">
+            
+                <a href="dotnet-csharp.html">
+            
+                    
+                    C# Support
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="dotnet-integration-tests.html">
+            
+                <a href="dotnet-integration-tests.html">
+            
+                    
+                    Asp.NET Core Integration Testing
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.4" data-path="dotnet-client-limitations.html">
+            
+                <a href="dotnet-client-limitations.html">
+            
+                    
+                    Limitations and Workaround
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Advanced</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="route-builder.html">
+            
+                <a href="route-builder.html">
+            
+                    
+                    Custom Route Paths
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="error-handling.html">
+            
+                <a href="error-handling.html">
+            
+                    
+                    Error Handling
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="modeling-authentication.html">
+            
+                <a href="modeling-authentication.html">
+            
+                    
+                    Modeling Authentication
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="implicit-authentication.html">
+            
+                <a href="implicit-authentication.html">
+            
+                    
+                    Implicit Authentication
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="refresh-auth-tokens.html">
+            
+                <a href="refresh-auth-tokens.html">
+            
+                    
+                    Refreshing Access Tokens
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="request-context.html">
+            
+                <a href="request-context.html">
+            
+                    
+                    Accessing Request Context
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="5.7" data-path="dependency-injection.html">
+            
+                <a href="dependency-injection.html">
+            
+                    
+                    Functional Dependency Injection
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="raw-http.html">
+            
+                <a href="raw-http.html">
+            
+                    
+                    Raw Http Communication
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="multiple-protocols.html">
+            
+                <a href="multiple-protocols.html">
+            
+                    
+                    Using Multiple Protocols
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="docs.html">
+            
+                <a href="docs.html">
+            
+                    
+                    Type-Safe Documentation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="logging.html">
+            
+                <a href="logging.html">
+            
+                    
+                    Logging
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Misc</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="change-log.html">
+            
+                <a href="change-log.html">
+            
+                    
+                    Changelog
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="migrate.html">
+            
+                <a href="migrate.html">
+            
+                    
+                    Migration 2.x to 3.x
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="troubleshoot.html">
+            
+                <a href="troubleshoot.html">
+            
+                    
+                    Troubleshooting
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="credits.html">
+            
+                <a href="credits.html">
+            
+                    
+                    Credits
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://www.gitbook.com" target="blank" class="gitbook-link">
+            Published with GitBook
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >Functional Dependency Injection</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="functional-dependency-injection">Functional Dependency Injection</h1>
+<blockquote>
+<p>This section applies to Giraffe, Saturn and ASP.NET Core middleware adapters.</p>
+</blockquote>
+<p>Since remoting uses records of functions as the building blocks of your application, we will be applying dependency injection to functions when building the implementation of the protocol and see how to make the protocol unit-testable. </p>
+<p>Lets take an example too see how this looks like starting with a simple to-do list protocol:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">Todo</span> </span>= {
+    Id: int
+    Description: string
+    Done: bool
+}
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ITodoApi</span> </span>= {
+    getTodos: unit -&gt; Async&lt;Todo list&gt;
+}
+</code></pre>
+<p>As you can see, the protocol only has one function that returns a list of <code>Todo</code> items. An implementation of such protocol can be simply constructed from a static list of this type:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> todoApi = {
+    getTodos = <span class="hljs-keyword">fun</span> () -&gt;
+        async {
+            <span class="hljs-keyword">return</span> [
+                { Id = <span class="hljs-number">0</span>; Description = <span class="hljs-string">&quot;Fall in love with F#&quot;</span>; Done = <span class="hljs-keyword">true</span> }
+                { Id = <span class="hljs-number">1</span>; Description = <span class="hljs-string">&quot;Learn SAFE stack&quot;</span>; Done = <span class="hljs-keyword">false</span> }
+            ]
+        }
+}
+</code></pre>
+<h2 id="defining-and-implementing-dependencies">Defining and implementing dependencies</h2>
+<p>So far so good, this is the basic way of constructing an implementation of the protocol but now lets look at it from a point of view of <em>dependencies</em> so you can use them to build the implementation. For this protocol the only dependency is some kind of <em>storage</em> for the <code>Todo</code> items. The store might be an &quot;in-memory&quot; implementation returning the static list as we did above but another implmentation can be reading the <code>Todo</code> items from a database. Either way, we need an interface for the store so that multiple implementation are possbile:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ITodoStore</span> </span>= 
+    <span class="hljs-keyword">abstract</span> getAllTodos: unit -&gt; Async&lt;Todo list&gt;
+</code></pre>
+<p>An in-memory store might look like this:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">InMemoryTodoStore</span></span>() = 
+    <span class="hljs-keyword">interface</span> ITodoStore = 
+        <span class="hljs-keyword">member</span> this.getAllTodos() = 
+            async {
+                <span class="hljs-keyword">return</span> [
+                    { Id = <span class="hljs-number">0</span>; Description = <span class="hljs-string">&quot;Learn F#&quot;</span>; Done = <span class="hljs-keyword">true</span> }
+                    { Id = <span class="hljs-number">1</span>; Description = <span class="hljs-string">&quot;Learn SAFE stack&quot;</span>; Done = <span class="hljs-keyword">false</span> }
+                ]
+            }
+</code></pre>
+<h2 id="registering-dependencies">Registering dependencies</h2>
+<p>Now we want to use the store from the protocol implementation of the <code>ITodoApi</code>. First we will tap into the built-in dependency injection mechanism of ASP.NET Core (<a href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-2.2" target="_blank">docs</a>) to register the dependencies, we do this part using <code>IServiceCollection</code> where you configure the services:</p>
+<p>In Giraffe</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> configureServices (services : IServiceCollection) =
+    <span class="hljs-comment">// register which service implementation goes to which inteface </span>
+    services.AddSingleton&lt;ITodoStore, InMemoryTodoStore&gt;() |&gt; ignore
+    services.AddGiraffe() |&gt; ignore
+
+WebHost
+    .CreateDefaultBuilder()
+    .UseWebRoot(publicPath)
+    .UseContentRoot(publicPath)
+    .Configure(Action&lt;IApplicationBuilder&gt; configureApp)
+    .ConfigureServices(configureServices)
+    .UseUrls(<span class="hljs-string">&quot;http://0.0.0.0:&quot;</span> + port.ToString() + <span class="hljs-string">&quot;/&quot;</span>)
+    .Build()
+    .Run()
+</code></pre>
+<p>In Saturn, we use the <code>service_config</code> helper function at the <code>application</code> level:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> configureServices (services : IServiceCollection) =
+    services.AddSingleton&lt;ITodoStore, InMemoryTodoStore&gt;()
+
+application {
+    router webApp
+    service_config configureServices
+    <span class="hljs-comment">// other config options</span>
+}
+</code></pre>
+<p>the important part is this:</p>
+<pre><code class="lang-fs">services.AddSingleton&lt;ITodoStore, InMemoryTodoStore&gt;()
+</code></pre>
+<p>Here is where you register your dependencies, with the function above you are saying: &quot;When a dependency of type <code>ITodoStore</code> is required, return an instance of <code>InMemoryTodoStore</code>&quot;. </p>
+<p>Notice that we are using <code>AddSingleton</code> which means the <code>InMemoryTodoStore</code> instance is created once and is re-used everytime you require <code>ITodoStore</code> through out the lifetime of the application. <code>AddSingleton</code> is one way of controlling the lifetime of a dependency. In ASP.NET Core there are other ways as well:</p>
+<ul>
+<li><code>AddTransient</code>: an instance of the dependency is created every time the dependency is required which can happen multiple times during a single request. </li>
+<li><code>AddScoped</code>: an instance of the dependency is created once and re-used <em>per request</em>. </li>
+</ul>
+<p>Read more on <a href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-2.2#service-lifetimes" target="_blank">Service lifetime</a> in ASP.NET Core.</p>
+<h3 id="requiring-the-dependencies">Requiring the dependencies</h3>
+<p>Now that the dependencies are registered, we can start using them from the implementation. Requiring one of the registered dependencies is commonly referred to as <em>resolving the services</em> or <em>resolving the services</em>. For resolving a registered dependency we will need to <a href="request-context.html">access the HttpContext</a> and there will be a function <code>ResolveService&lt;&apos;T&gt;</code> extension function (from Giraffe) that we will use. </p>
+<p>To effectively use the dependencies and make your protocol implmentation unit-testable we will need two functions:</p>
+<ul>
+<li>A function that constructs the protocol implementation from dependencies</li>
+<li>A function that reads dependencies from the <code>HttpContext</code></li>
+</ul>
+<p>Having two seperate function is necessary in order to make the protocol implementation unit-testable. The first function looks like this:</p>
+<pre><code class="lang-fs"><span class="hljs-comment">// create protocol implemention using the depndencies</span>
+<span class="hljs-keyword">let</span> createTodoApi (store: ITodoStore) : ITodoApi = 
+  {
+    getTodos = <span class="hljs-keyword">fun</span> () -&gt;
+        async { 
+            <span class="hljs-keyword">return!</span> store.getAllTodos() 
+        }
+  }
+</code></pre>
+<p>Now the second function:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> createTodoApiFromContext (httpContext: HttpContext) : ITodoApi = 
+    <span class="hljs-keyword">let</span> todoStore = httpContext.GetService&lt;ITodoStore&gt;()
+    createTodoApi todoStore
+</code></pre>
+<p>And that is it, you can now construct the API using the <code>Remoting</code> module:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApi = 
+    Remoting.createApi()
+    |&gt; Remoting.fromContext createTodoApiFromContext
+    |&gt; Remoting.buildHttpHander
+</code></pre>
+<h2 id="requiring-multiple-dependencies">Requiring multiple dependencies</h2>
+<p>If you had more dependencies, say you need a logger, you only need to extend the definition of your first function with another dependency and require the dependency from the <code>HttpContext</code>:</p>
+<blockquote>
+<p>open Microsoft.Extensions.Logging</p>
+</blockquote>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> createTodoApi (store: ITodoStore) (logger: ILogger&lt;ITodoApi&gt;) : ITodoApi = 
+  {
+    getTodos = <span class="hljs-keyword">fun</span> () -&gt; 
+        async {
+            <span class="hljs-keyword">do</span> logger.LogInformation(<span class="hljs-string">&quot;Reading todo items from the store&quot;</span>)
+            <span class="hljs-keyword">return!</span> store.getAllTodos()
+        }
+  }
+</code></pre>
+<p>and then require the logger from the <code>HttpContext</code>:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> createTodoApiFromContext (httpContext: HttpContext) : ITodoApi = 
+    <span class="hljs-keyword">let</span> todoStore = httpContext.GetService&lt;ITodoStore&gt;()
+    <span class="hljs-keyword">let</span> logger = httpContext.GetService&lt;ILogger&lt;ITodoApi&gt;&gt;()
+    createTodoApi todoStore logger
+</code></pre>
+<p>You might be wondering where this <code>ILogger&lt;&apos;T&gt;</code> is coming from since you only registered one dependency. <code>ILogger&lt;&apos;T&gt;</code> is one of the <a href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-2.2#framework-provided-services" target="_blank">Framework-provided</a> services from ASP.NET Core that your application can simply require and they will be ready to use.</p>
+<h2 id="nested-dependencies">Nested dependencies</h2>
+<p>Your dependencies, like <code>InMemoryTodoStore</code>, can have other (nested) dependencies themselves. Lets say that you want to do some logging from within <code>InMemoryTodoStore</code>, you only need to specify the logger in the constructor of the type:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">InMemoryTodoStore</span></span>(logger: ILogger&lt;InMemoryTodoStore&gt;) = 
+    <span class="hljs-keyword">interface</span> ITodoStore = 
+        <span class="hljs-keyword">member</span> this.getAllTodos() = 
+            async {
+                <span class="hljs-keyword">do</span> logger.LogInformation(<span class="hljs-string">&quot;Returning a static list of to-do items&quot;</span>)
+
+                <span class="hljs-keyword">return</span> [
+                    { Id = <span class="hljs-number">0</span>; Description = <span class="hljs-string">&quot;Learn F#&quot;</span>; Done = <span class="hljs-keyword">true</span> }
+                    { Id = <span class="hljs-number">1</span>; Description = <span class="hljs-string">&quot;Learn SAFE stack&quot;</span>; Done = <span class="hljs-keyword">false</span> }
+                ]
+            }
+</code></pre>
+<p>The reason that we have <code>InMemoryTodoStore</code> as class and not a function is so that ASP.NET Core will understand how to resolve these nested dependencies from the constructor.</p>
+<h2 id="requiring-dependencies-for-seperate-protocol-functions">Requiring dependencies for seperate protocol functions</h2>
+<p>Previously, we have used two functions for the protocol implementation, one that uses the dependencies to create the protocol and one that requires the dependencies from the <code>HttpContext</code>. This way your protocol implementation becomes unit-testable because in your unit-tests you construct the test dependencies yourself and construct the protocol without requiring them from <code>HttpContext</code>. However, this can become very messy if you have a lot of dependencies, say 3 different dependencies per function, so that you have to construct <em>every</em> dependency if you want to test a single part (function) of the protocol. </p>
+<p>A better way is making your little functions unit-testable instead of the making the whole protocol unit-testable. You define each function <em>seperately</em> along with the dependencies it requires, then resolve these from the <code>HttpContext</code>:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> getTodos (store: ITodoStore) (logger: ILogger&lt;ITodoApi&gt;) = 
+    <span class="hljs-keyword">fun</span> () -&gt; 
+        async {
+            <span class="hljs-keyword">do</span> logger.LogInformation(<span class="hljs-string">&quot;reading to-do items&quot;</span>)
+            <span class="hljs-keyword">return!</span> store.getAllTodos()
+        }
+
+<span class="hljs-keyword">let</span> createTodoApi (httpContext: HttpContext) : ITodoApi = 
+    <span class="hljs-keyword">let</span> todoStore = httpContext.GetService&lt;ITodoStore&gt;()
+    <span class="hljs-keyword">let</span> logger = httpContext.GetService&lt;ILogger&lt;ITodoApi&gt;&gt;()
+    <span class="hljs-keyword">let</span> todoApi = {
+        getTodos = getTodos todoStore logger
+    }
+
+    todoApi
+
+<span class="hljs-comment">// constuct the API</span>
+Remoting.createApi()
+|&gt; Remoting.fromContext createTodoApi
+|&gt; Remoting.buildHttpHander
+</code></pre>
+<p>Now the <code>getTodos</code> function is unit-testable on it&apos;s own and the same idea holds if your protocol had more functions:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ITodoApi</span> </span>= {
+    getTodos : unit -&gt; Async&lt;Todo list&gt;
+    getTodoById : int -&gt; Async&lt;Option&lt;Todo&gt;&gt;
+} 
+
+<span class="hljs-keyword">let</span> getTodos (store: ITodoStore) (logger: ILogger&lt;ITodoApi&gt;) = 
+    <span class="hljs-keyword">fun</span> () -&gt; 
+        async {
+            <span class="hljs-keyword">do</span> logger.LogInformation(<span class="hljs-string">&quot;reading to-do items&quot;</span>)
+            <span class="hljs-keyword">return!</span> store.getAllTodos()
+        }
+
+<span class="hljs-keyword">let</span> getTodoById (store: ITodoStore) = 
+    <span class="hljs-keyword">fun</span> todoId -&gt;
+        async {
+            <span class="hljs-keyword">let!</span> todos = store.getAllTodos()
+            <span class="hljs-keyword">let</span> foundTodo = todos |&gt; List.tryFind (<span class="hljs-keyword">fun</span> todo -&gt; todo.Id = todoId)
+            <span class="hljs-keyword">return</span> foundTodo
+        }
+
+<span class="hljs-keyword">let</span> createTodoApi (httpContext: HttpContext) : ITodoApi = 
+    <span class="hljs-keyword">let</span> todoStore = httpContext.GetService&lt;ITodoStore&gt;()
+    <span class="hljs-keyword">let</span> logger = httpContext.GetService&lt;ILogger&lt;ITodoApi&gt;&gt;()
+    <span class="hljs-keyword">let</span> todoApi = {
+        getTodos = getTodos todoStore logger
+        getTodoById = getTodoById todoStore
+    }
+
+    todoApi
+</code></pre>
+<p>And so on and so forth. This way makes for a clean, simple approach to dependency injection.</p>
+<h2 id="going-even-further-using-the-built-in-reader-monad">Going even further: using the built-in Reader monad.</h2>
+<p>Ever since version 3.x of remoting, the final rewrite, remoting has included the <code>reader</code> monad which is way of resolving dependencies in a functional manner. With the <code>reader</code> monad, the above example can be refactored in two ways:</p>
+<ul>
+<li>Writing a single <em>reader function</em> for the <code>ITodoApi</code></li>
+<li>Writing a reader function for each seperate protocol function</li>
+</ul>
+<p>The first one looks like this:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ITodoApi</span> </span>= {
+    getTodos : unit -&gt; Async&lt;Todo list&gt;
+    getTodoById : int -&gt; Async&lt;Option&lt;Todo&gt;&gt;
+} 
+
+<span class="hljs-keyword">let</span> getTodos (store: ITodoStore) (logger: ILogger&lt;ITodoApi&gt;) = 
+    <span class="hljs-keyword">fun</span> () -&gt; 
+        async {
+            <span class="hljs-keyword">do</span> logger.LogInformation(<span class="hljs-string">&quot;reading to-do items&quot;</span>)
+            <span class="hljs-keyword">return!</span> store.getAllTodos()
+        }
+
+<span class="hljs-keyword">let</span> getTodoById (store: ITodoStore) = 
+    <span class="hljs-keyword">fun</span> todoId -&gt;
+        async {
+            <span class="hljs-keyword">let!</span> todos = store.getAllTodos()
+            <span class="hljs-keyword">let</span> foundTodo = todos |&gt; List.tryFind (<span class="hljs-keyword">fun</span> todo -&gt; todo.Id = todoId)
+            <span class="hljs-keyword">return</span> foundTodo
+        }       
+
+<span class="hljs-keyword">let</span> todoApiReader = 
+    reader {
+        <span class="hljs-keyword">let!</span> store = resolve&lt;ITodoStore&gt;()
+        <span class="hljs-keyword">let!</span> logger = resolve&lt;ILogger&lt;ITodoApi&gt;&gt;()
+        <span class="hljs-keyword">return</span> { 
+            getTodos = getTodos store logger
+            getTodoById = getTodoById store
+        }
+    }
+</code></pre>
+<p>This simplifies the construction of the <code>ITodoApi</code> so that you don&apos;t need to work with <code>HttpContext</code> or even think about it being there. Now you can the use <code>fromReader</code> function in the <code>Remoting</code> module to expose the API to Http:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> webApi = 
+  Remoting.createApi()
+  |&gt; Remoting.fromReader todoApiReader
+  |&gt; Remoting.buildHttpHandler
+</code></pre>
+<p>The second way of refactoring looks like this:</p>
+<pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ITodoApi</span> </span>= {
+    getTodos : unit -&gt; Async&lt;Todo list&gt;
+    getTodoById : int -&gt; Async&lt;Option&lt;Todo&gt;&gt;
+} 
+
+<span class="hljs-keyword">let</span> getTodos (store: ITodoStore) (logger: ILogger&lt;ITodoApi&gt;) = 
+    <span class="hljs-keyword">fun</span> () -&gt; 
+        async {
+            <span class="hljs-keyword">do</span> logger.LogInformation(<span class="hljs-string">&quot;reading to-do items&quot;</span>)
+            <span class="hljs-keyword">return!</span> store.getAllTodos()
+        }
+
+<span class="hljs-comment">// reader for getTodos</span>
+<span class="hljs-keyword">let</span> getTodosReader = 
+    reader {
+        <span class="hljs-keyword">let!</span> store = resolve&lt;ITodoStore&gt;()
+        <span class="hljs-keyword">let!</span> logger = resolve&lt;ILogger&lt;ITodoApi&gt;&gt;()
+        <span class="hljs-keyword">return</span> getTodos store logger
+    }
+
+<span class="hljs-keyword">let</span> getTodoById (store: ITodoStore) = 
+    <span class="hljs-keyword">fun</span> todoId -&gt;
+        async {
+            <span class="hljs-keyword">let!</span> todos = store.getAllTodos()
+            <span class="hljs-keyword">let</span> foundTodo = todos |&gt; List.tryFind (<span class="hljs-keyword">fun</span> todo -&gt; todo.Id = todoId)
+            <span class="hljs-keyword">return</span> foundTodo
+        }
+
+<span class="hljs-keyword">let</span> getTodoByIdReader = 
+    reader {
+        <span class="hljs-keyword">let!</span> store = resolve&lt;ITodoStore&gt;()
+        <span class="hljs-keyword">return</span> getTodoById store
+    }
+
+<span class="hljs-keyword">let</span> todoApiReader = 
+    reader {
+        <span class="hljs-keyword">let!</span> getTodos = getTodosReader
+        <span class="hljs-keyword">let!</span> getTodoById = getTodoByIdReader 
+        <span class="hljs-keyword">return</span> {
+            getTodos = getTodos
+            getTodoById = getTodoById
+        }
+    }
+
+<span class="hljs-keyword">let</span> webApi = 
+  Remoting.createApi()
+  |&gt; Remoting.fromReader todoApiReader
+  |&gt; Remoting.buildHttpHandler
+</code></pre>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="request-context.html" class="navigation navigation-prev " aria-label="Previous page: Accessing Request Context">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="raw-http.html" class="navigation navigation-next " aria-label="Next page: Raw Http Communication">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Functional Dependency Injection","level":"5.7","depth":1,"next":{"title":"Raw Http Communication","level":"5.8","depth":1,"path":"src/raw-http.md","ref":"src/raw-http.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"5.6","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dependency-injection.md","mtime":"2019-01-06T17:04:44.007Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2019-01-06T17:06:23.537Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-sharing/buttons.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+
