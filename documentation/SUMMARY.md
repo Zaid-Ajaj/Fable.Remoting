@@ -25,6 +25,7 @@
 - [Implicit Authentication](src/implicit-authentication.md)
 - [Refreshing Access Tokens](src/refresh-auth-tokens.md)
 - [Accessing Request Context](src/request-context.md)
+- [Functional Dependency Injection](src/dependency-injection.md)
 - [Raw Http Communication](src/raw-http.md)
 - [Using Multiple Protocols](src/multiple-protocols.md)
 - [Type-Safe Documentation](src/docs.md)
