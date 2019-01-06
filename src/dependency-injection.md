@@ -29,7 +29,7 @@ let todoApi = {
 }
 ```
 ## Defining and implementing dependencies
-So far so good, this is the basic way of constructing an implementation of the protocol but now lets look at it from a point of view of *dependencies* so you can use them to build the implementation. For this protocol the only dependency is some kind of *storage* for the `Todo` items. The store might be an "in-memory" implementation returning the static list as we did above but another implmentation can be reading the `Todo` items from a database. Either way, we need an interface for the store so that multiple implementation are possbile:
+So far so good, this is the basic way of constructing an implementation of the protocol but now lets look at it from a point of view of *dependencies* so you can use them to build the implementation. For this protocol the only dependency is some kind of *storage* for the `Todo` items. The store might be an "in-memory" implementation returning the static list as we did above but another implementation can be reading the `Todo` items from a database. Either way, we need an interface for the store so that multiple implementation are possbile:
 ```fs
 type ITodoStore = 
     abstract getAllTodos: unit -> Async<Todo list>
@@ -92,12 +92,12 @@ Read more on [Service lifetime](https://docs.microsoft.com/en-us/aspnet/core/fun
 
 
 ### Requiring the dependencies
-Now that the dependencies are registered, we can start using them from the implementation. Requiring one of the registered dependencies is commonly referred to as *resolving the services* or *resolving the services*. For resolving a registered dependency we will need to [access the HttpContext](request-context.md) and there will be a function `ResolveService<'T>` extension function (from Giraffe) that we will use. 
+Now that the dependencies are registered, we can start using them from the implementation. Requiring one of the registered dependencies is commonly referred to as *resolving the services* or *requiring the services*. For resolving a registered dependency we will need to [access the HttpContext](request-context.md) and there will be a function `GetService<'T>` extension function (from Giraffe) that we will use. 
 
 To effectively use the dependencies and make your protocol implmentation unit-testable we will need two functions:
 
 - A function that constructs the protocol implementation from dependencies
-- A function that reads dependencies from the `HttpContext`
+- A function that requires dependencies from the `HttpContext`
 
 Having two seperate function is necessary in order to make the protocol implementation unit-testable. The first function looks like this:
 ```fs
@@ -224,7 +224,7 @@ let createTodoApi (httpContext: HttpContext) : ITodoApi =
 
     todoApi
 ```
-And so on and so forth. This way makes for a clean, simple approach to dependency injection.
+And so on and so forth. This way makes for a clean and simple approach to dependency injection.
 
 ## Going even further: using the built-in Reader monad. 
 

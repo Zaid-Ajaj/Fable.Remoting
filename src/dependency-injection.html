@@ -531,7 +531,7 @@
 }
 </code></pre>
 <h2 id="defining-and-implementing-dependencies">Defining and implementing dependencies</h2>
-<p>So far so good, this is the basic way of constructing an implementation of the protocol but now lets look at it from a point of view of <em>dependencies</em> so you can use them to build the implementation. For this protocol the only dependency is some kind of <em>storage</em> for the <code>Todo</code> items. The store might be an &quot;in-memory&quot; implementation returning the static list as we did above but another implmentation can be reading the <code>Todo</code> items from a database. Either way, we need an interface for the store so that multiple implementation are possbile:</p>
+<p>So far so good, this is the basic way of constructing an implementation of the protocol but now lets look at it from a point of view of <em>dependencies</em> so you can use them to build the implementation. For this protocol the only dependency is some kind of <em>storage</em> for the <code>Todo</code> items. The store might be an &quot;in-memory&quot; implementation returning the static list as we did above but another implementation can be reading the <code>Todo</code> items from a database. Either way, we need an interface for the store so that multiple implementation are possbile:</p>
 <pre><code class="lang-fs"><span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ITodoStore</span> </span>= 
     <span class="hljs-keyword">abstract</span> getAllTodos: unit -&gt; Async&lt;Todo list&gt;
 </code></pre>
@@ -585,11 +585,11 @@ application {
 </ul>
 <p>Read more on <a href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-2.2#service-lifetimes" target="_blank">Service lifetime</a> in ASP.NET Core.</p>
 <h3 id="requiring-the-dependencies">Requiring the dependencies</h3>
-<p>Now that the dependencies are registered, we can start using them from the implementation. Requiring one of the registered dependencies is commonly referred to as <em>resolving the services</em> or <em>resolving the services</em>. For resolving a registered dependency we will need to <a href="request-context.html">access the HttpContext</a> and there will be a function <code>ResolveService&lt;&apos;T&gt;</code> extension function (from Giraffe) that we will use. </p>
+<p>Now that the dependencies are registered, we can start using them from the implementation. Requiring one of the registered dependencies is commonly referred to as <em>resolving the services</em> or <em>requiring the services</em>. For resolving a registered dependency we will need to <a href="request-context.html">access the HttpContext</a> and there will be a function <code>GetService&lt;&apos;T&gt;</code> extension function (from Giraffe) that we will use. </p>
 <p>To effectively use the dependencies and make your protocol implmentation unit-testable we will need two functions:</p>
 <ul>
 <li>A function that constructs the protocol implementation from dependencies</li>
-<li>A function that reads dependencies from the <code>HttpContext</code></li>
+<li>A function that requires dependencies from the <code>HttpContext</code></li>
 </ul>
 <p>Having two seperate function is necessary in order to make the protocol implementation unit-testable. The first function looks like this:</p>
 <pre><code class="lang-fs"><span class="hljs-comment">// create protocol implemention using the depndencies</span>
@@ -703,7 +703,7 @@ Remoting.createApi()
 
     todoApi
 </code></pre>
-<p>And so on and so forth. This way makes for a clean, simple approach to dependency injection.</p>
+<p>And so on and so forth. This way makes for a clean and simple approach to dependency injection.</p>
 <h2 id="going-even-further-using-the-built-in-reader-monad">Going even further: using the built-in Reader monad.</h2>
 <p>Ever since version 3.x of remoting, the final rewrite, remoting has included the <code>reader</code> monad which is way of resolving dependencies in a functional manner. With the <code>reader</code> monad, the above example can be refactored in two ways:</p>
 <ul>
@@ -840,7 +840,7 @@ Remoting.createApi()
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Functional Dependency Injection","level":"5.7","depth":1,"next":{"title":"Raw Http Communication","level":"5.8","depth":1,"path":"src/raw-http.md","ref":"src/raw-http.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"5.6","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dependency-injection.md","mtime":"2019-01-06T17:04:44.007Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2019-01-06T17:06:23.537Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Functional Dependency Injection","level":"5.7","depth":1,"next":{"title":"Raw Http Communication","level":"5.8","depth":1,"path":"src/raw-http.md","ref":"src/raw-http.md","articles":[]},"previous":{"title":"Accessing Request Context","level":"5.6","depth":1,"path":"src/request-context.md","ref":"src/request-context.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dependency-injection.md","mtime":"2019-01-06T18:28:22.678Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2019-01-06T18:33:38.969Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
