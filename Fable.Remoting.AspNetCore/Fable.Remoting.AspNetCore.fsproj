@@ -8,7 +8,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;rpc;webserver;aspnet</PackageTags>
     <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>

@@ -1,6 +1,7 @@
 ﻿module Types
 
 open System
+open System
 
 type Record = { 
     Prop1 : string
@@ -39,6 +40,8 @@ type IProtocol = {
     multipleSum : int -> int -> Async<int>
     lotsOfArgs : string -> int -> float -> Async<string>
     echoSingleDULong : SingleLongCase -> Async<SingleLongCase>
+    datetimeOffset : DateTimeOffset -> Async<DateTimeOffset>
+    maybeDatetimeOffset : Maybe<DateTimeOffset> -> Async<Maybe<DateTimeOffset>>
 }
 
 let implementation = {
@@ -70,4 +73,6 @@ let implementation = {
     multipleSum = fun a b -> async {return a + b}
     lotsOfArgs = fun s i f -> async {return sprintf "string: %s; int: %i; float: %f" s i f}
     echoSingleDULong = fun x -> async { return x } 
- }
+    datetimeOffset = fun x -> async { return x }
+    maybeDatetimeOffset = fun x -> async { return x }
+}

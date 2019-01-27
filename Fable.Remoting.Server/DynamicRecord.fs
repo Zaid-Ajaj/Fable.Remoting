@@ -6,10 +6,6 @@ open FSharp.Reflection
 open Fable.Remoting.Json
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
-open Newtonsoft.Json.Linq
-open Newtonsoft.Json.Linq
-open Newtonsoft.Json.Linq
-open Newtonsoft.Json.Linq
 
 /// Provides utilities to run functions dynamically from record fields
 module DynamicRecord = 
@@ -109,7 +105,7 @@ module DynamicRecord =
             | _ -> ()
 
     let private fableConverter = new FableJsonConverter() :> JsonConverter
-
+ 
     let private fableSeriazizer = 
         let serializer = JsonSerializer() 
         serializer.Converters.Add fableConverter
@@ -124,24 +120,24 @@ module DynamicRecord =
         |> String.concat ", "
         |> sprintf "[%s]"
 
+    let internal settings = JsonSerializerSettings(DateParseHandling = DateParseHandling.None)
     /// Based of function metadata, convert the input JSON into an appropriate array of typed arguments. 
     let createArgsFromJson (func: RecordFunctionInfo) (inputJson: string) (logger: Option<string -> unit>) = 
         match func.Type with 
         | NoArguments _ -> [|  |] 
-        | SingleArgument (input, _) when input = typeof<unit> -> [| box () |]
+        | SingleArgument (input, _) when input = typeof<unit> -> [| box () |] 
         | SingleArgument (input, _) ->
-            let parsedJson = JToken.Parse(inputJson) 
+            let parsedJson = JsonConvert.DeserializeObject<JToken>(inputJson, settings) 
             if parsedJson.Type = JTokenType.Array && not (input.IsArray || FSharpType.IsTuple input || input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpList`1")) then
-                let jsonValues = List.ofArray (parsedJson.ToObject<JToken[]>()) 
+                let jsonValues = List.ofSeq (unbox<JArray> parsedJson) 
                 match jsonValues with 
-                | [ ] -> 
+                | [ ] ->  
                     // JSON input array is empty -> fine only if input is unit
                     if input = typeof<unit> 
                     then [| box () |]
                     else failwithf "Input JSON array of the arguments for function '%s' was empty while the function expected a value of type '%s'" func.FunctionName (Diagnostics.typePrinter input)
                 | [ singleJsonObject ] -> 
-                    let singleJsonString = singleJsonObject.ToString()
-                    Diagnostics.deserializationPhase logger (fun () -> singleJsonString) [| input |]
+                    Diagnostics.deserializationPhase logger (fun () -> singleJsonObject.ToString()) [| input |]
                     if input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpMap`2") && singleJsonObject.Type = JTokenType.Array
                     then    
                         // Fable 2 sends map as array of tuples: [ [key1, value1], [key2, value2] ]
@@ -162,7 +158,7 @@ module DynamicRecord =
                     [| singleJsonObject.ToObject(input, fableSeriazizer) |]  
             elif parsedJson.Type = JTokenType.Array && (input.IsArray || FSharpType.IsTuple input || input.FullName.StartsWith("Microsoft.FSharp.Collections.FSharpList`1")) then
                 // expected type is list-like and the Json is list like
-                let jsonValues = parsedJson.ToObject<JToken[]>()
+                let jsonValues = Array.ofSeq (unbox<JArray> parsedJson)
                 Array.zip [| input |] jsonValues 
                 |> Array.map (fun (jsonType, json) -> 
                     Diagnostics.deserializationPhase logger (fun () -> json.ToString()) [| jsonType |]
@@ -172,13 +168,13 @@ module DynamicRecord =
                  // then the input json is a single object (not an array) and can be deserialized directly
                 [| JsonConvert.DeserializeObject(inputJson, input, [| fableConverter |]) |]
         | ManyArguments (inputArgTypes, _) -> 
-            let parsedJson = JToken.Parse(inputJson) 
+            let parsedJson = JsonConvert.DeserializeObject<JToken>(inputJson, settings) 
             if parsedJson.Type <> JTokenType.Array
             then 
                 let typeInfo = typeNames inputArgTypes
                 failwithf "The record function '%s' expected %d argument(s) of the types %s to be recieved in the form of a JSON array but the input JSON was not an array" func.FunctionName (List.length inputArgTypes) typeInfo
             else 
-                let jsonValues = List.ofArray (parsedJson.ToObject<JToken[]>()) 
+                let jsonValues = List.ofSeq (unbox<JArray> parsedJson) 
                 if (List.length jsonValues <> List.length inputArgTypes) 
                 then 
                     let typeInfo = typeNames inputArgTypes

@@ -26,6 +26,7 @@ let errorHandler (ex: exn) (_: RouteInfo<_>) =
 let app = 
   Remoting.createApi()
   |> Remoting.fromValue implementation  
+  |> Remoting.withDiagnosticsLogger (printfn "%s")
   |> Remoting.withErrorHandler errorHandler 
   |> Remoting.buildWebPart
 
@@ -60,7 +61,20 @@ let fableSuaveAdapterTests =
             |> req POST "/IProtocol/echoInteger" (Some input)
             |> fun result -> equal "10" result
 
-    
+        testCase "DateTimeOffset roundtrip" <| fun () -> 
+            let defaultConfig = getConfig()
+            let input = postContent "\"2019-04-01T16:00:00+05:00\""
+            runWith defaultConfig app 
+            |> req POST "/IProtocol/datetimeOffset" (Some input)
+            |> fun result -> equal "\"2019-04-01T16:00:00+05:00\"" result
+
+        testCase "Maybe<DateTimeOffset> roundtrip" <| fun () -> 
+            let defaultConfig = getConfig()
+            let input = postContent "{\"Just\":\"2019-04-01T16:00:00+05:00\"}"
+            runWith defaultConfig app 
+            |> req POST "/IProtocol/maybeDatetimeOffset" (Some input)
+            |> fun result -> equal "{\"Just\":\"2019-04-01T16:00:00+05:00\"}" result
+
         testCase "Sending some option as input works" <| fun () ->
             let defaultConfig = getConfig ()
             let someInput = postContent "5" // toJson (Some 5) => "5"
