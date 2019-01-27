@@ -6,6 +6,7 @@ open System
 open Fable.Remoting.Json
 open Expecto
 open Types
+open Expecto.Logging
 
 let converter = new FableJsonConverter()
 let deserialize<'a> (json : string) = 
@@ -152,6 +153,17 @@ let converterTest =
             match Map.toList deserialized with
             | ["one", Some 1; "two", Some 2] -> pass()
             | otherwise -> fail()
+
+        testCase "DateTimeOffset can be deserialized" <| fun () -> 
+            let input = "\"2019-04-01T16:00:00.000+05:00\""
+            let deserialized = deserialize<DateTimeOffset> input
+            let parsed = DateTimeOffset.Parse "2019-04-01T16:00:00.000+05:00"
+            Expect.equal (deserialized.ToString()) (parsed.ToString()) "offsets should be the same"
+
+        testCase "DateTimeOffset can be serialized correctly" <| fun () -> 
+            let value = DateTimeOffset.Parse "2019-04-01T16:00:00.000+05:00"
+            let roundtripped = deserialize<DateTimeOffset> (serialize value) 
+            Expect.equal value roundtripped "offsets should be the same"
 
         testCase "Generic union types deserialization from raw json works" <| fun () -> 
             // toJson (Just 5) = "{\"Just\":5}"
