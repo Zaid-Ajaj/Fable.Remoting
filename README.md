@@ -209,7 +209,7 @@ let webApp : HttpHandler =
 
 let app = application {
     url "http://127.0.0.1:8083/"
-    router webApp
+    use_router webApp
 }
 
 run app
