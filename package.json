@@ -15,7 +15,9 @@
   },
   "watch": {
     "build": {
-      "patterns": ["src"],
+      "patterns": [
+        "src"
+      ],
       "extensions": "md",
       "quiet": false
     }
