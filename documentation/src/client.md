@@ -44,7 +44,7 @@ devServer: {
   // tell webpack-dev-server to re-route all requests 
   // from dev-server to the actual server
   proxy: {
-    '/*': { 
+    '/**': { 
       // assuming the suave server is running on port 8083
       target: "http://localhost:8083",
       changeOrigin: true

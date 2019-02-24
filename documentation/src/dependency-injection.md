@@ -72,7 +72,7 @@ let configureServices (services : IServiceCollection) =
     services.AddSingleton<ITodoStore, InMemoryTodoStore>()
 
 application {
-    router webApp
+    use_router webApp
     service_config configureServices
     // other config options
 }
