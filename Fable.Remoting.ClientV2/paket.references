@@ -2,4 +2,4 @@ group NextClient
 FSharp.Core
 Fable.Core
 Fable.SimpleJson
-Fable.Import.Browser
+Fable.Browser.XMLHttpRequest

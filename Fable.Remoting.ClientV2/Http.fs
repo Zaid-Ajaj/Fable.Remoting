@@ -1,6 +1,7 @@
 namespace Fable.Remoting.Client 
 
-open Fable.Import.Browser 
+open Browser
+open Browser.Types 
 
 module Http = 
 
@@ -51,7 +52,7 @@ module Http =
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
-                | 4.0 (* DONE *) -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
+                | 4 (* DONE *) -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
                 | otherwise -> ignore() 
         
             xhr.send(defaultArg req.RequestBody null)

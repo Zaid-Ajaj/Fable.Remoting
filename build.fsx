@@ -193,7 +193,7 @@ Target "IntegrationTestsV2" <| fun _ ->
 
     run "ClientV2Tests" "yarn" "install"
     run ("ClientV2Tests" </> "src") "dotnet" "restore --no-cache"
-    run ("ClientV2Tests" </> "src") "dotnet" "fable npm-run build"
+    run "ClientV2Tests" "npm" "run build"
     run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run --headless"
 

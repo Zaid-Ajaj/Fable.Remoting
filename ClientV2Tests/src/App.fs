@@ -1,7 +1,8 @@
 module App
 
+open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Remoting.Client
-open Fable.Import.Browser
 open SharedTypes
 
 let server = 
@@ -461,6 +462,9 @@ let cookieServer =
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<ICookieServer>
 
+[<Emit("document.cookie")>]
+let currentDocumentCookie : string = jsNative
+
 QUnit.testCaseAsync "ICookieServer.checkCookie" <| fun test ->
     async {
         // Cookie not set yet
@@ -472,10 +476,9 @@ QUnit.testCaseAsync "ICookieServer.checkCookie" <| fun test ->
         test.equalWithMsg true secondCall "Cookie should have been set and sent"
 
         // Cookie should not be visible to javascript (HttpOnly)
-        let notInJs = Fable.Import.Browser.document.cookie.Contains("httpOnly-test-cookie") = false
+        let notInJs = not (currentDocumentCookie.Contains("httpOnly-test-cookie"))
         test.equalWithMsg true notInJs "Cookie should not be visible to javascript"
     }
-
 
 let resolveAccessToken n = 
     async {
