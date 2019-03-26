@@ -17,6 +17,11 @@ module SuaveUtil =
       return Some { ctx with response = { ctx.response with content = outputContent json  } } 
     }
 
+  let setBinaryResponseBody (content: byte[]) = 
+    fun (ctx: HttpContext) -> async {
+      return Some { ctx with response = { ctx.response with content = HttpContent.Bytes content  } } 
+    }
+
   /// Sets the status code of the response
   let setStatusCode code =
     fun ctx -> async { 
@@ -30,8 +35,13 @@ module SuaveUtil =
     setResponseBody value logger 
     >=> setStatusCode 200
     >=> Writers.setMimeType "application/json; charset=utf-8"
-  
 
+  /// Returns output from dynamic functions as binary content
+  let successBytes value = 
+    setBinaryResponseBody value 
+    >=> setStatusCode 200
+    >=> Writers.setMimeType "application/octet-stream"
+  
   let html content : WebPart = 
     fun ctx -> async {
       return Some { ctx with response = { ctx.response with content = outputContent content  } } 
@@ -69,8 +79,24 @@ module SuaveUtil =
       Diagnostics.runPhase logger func.FunctionName
       let! functionResult = Async.Catch (DynamicRecord.invokeAsync func impl args) 
       match functionResult with
-      | Choice.Choice1Of2 output -> 
-          return! success output logger context 
+      | Choice.Choice1Of2 output ->
+          let isBinaryOutput = 
+            match func.Type with 
+            | NoArguments t when t = typeof<Async<byte[]>> -> true
+            | SingleArgument (i, t) when t = typeof<Async<byte[]>> -> true
+            | ManyArguments (i, t) when t = typeof<Async<byte[]>> -> true
+            | otherwise -> false
+             
+          let isFableProxyRequest = 
+            context.request.headers
+            |> Map.ofList
+            |> Map.containsKey "x-remoting-proxy" 
+
+          if isBinaryOutput && isFableProxyRequest then 
+            let binaryContent = unbox<byte[]> output
+            return! successBytes binaryContent context
+          else
+            return! success output logger context 
       | Choice.Choice2Of2 ex -> 
           let routeInfo = { methodName = func.FunctionName; path = context.request.path; httpContext = context }
           return! fail ex routeInfo options context

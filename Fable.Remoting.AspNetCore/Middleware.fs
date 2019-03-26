@@ -21,6 +21,13 @@ module Extensions =
 
 /// The parts from Giraffe needed to simplify the middleware implementation 
 module internal Middleware = 
+    
+    let writeBytesAsync (content: byte[]) (ctx: HttpContext)  = 
+        task {
+            do! ctx.Response.Body.WriteAsync(content, 0, content.Length)
+            return Some ctx
+        } 
+    
     let writeStringAsync (input: string) (ctx: HttpContext) (logger: Option<string -> unit>) = 
         task {
             Diagnostics.outputPhase logger input
@@ -44,7 +51,9 @@ module internal Middleware =
                 match ctx.Response.HasStarted with
                 | true  -> final ctx
                 | false -> func ctx
+
     let (>=>) = compose
+    
     let setResponseBody (response: obj) logger : HttpHandler = 
         fun (next : HttpFunc) (ctx : HttpContext) -> 
             task {
@@ -90,9 +99,26 @@ module internal Middleware =
             let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
             match functionResult with
             | Choice.Choice1Of2 output -> 
-                ctx.Response.StatusCode <- 200
-                ctx.Response.ContentType <- "application/json; charset=utf-8"
-                return! setBody output logger next ctx 
+                // check whether the output type is Async<byte[]>
+                let isBinaryOutput = 
+                    match func.Type with 
+                    | NoArguments t when t = typeof<Async<byte[]>> -> true
+                    | SingleArgument (i, t) when t = typeof<Async<byte[]>> -> true
+                    | ManyArguments (i, t) when t = typeof<Async<byte[]>> -> true
+                    | otherwise -> false
+                    
+                // if the output is binary and the request is sent from the new proxy (x-remoting-proxy)
+                // then return write the bytes to the response stream
+                if isBinaryOutput && ctx.Request.Headers.ContainsKey("x-remoting-proxy") then
+                    let binaryResponse = unbox<byte[]> output
+                    ctx.Response.StatusCode <- 200
+                    ctx.Response.ContentType <- "application/octet-stream"
+                    return! writeBytesAsync binaryResponse ctx
+                else   
+                    ctx.Response.StatusCode <- 200
+                    ctx.Response.ContentType <- "application/json; charset=utf-8"
+                    return! setBody output logger next ctx  
+            
             | Choice.Choice2Of2 ex -> 
                ctx.Response.StatusCode <- 500
                ctx.Response.ContentType <- "application/json; charset=utf-8"
@@ -139,7 +165,8 @@ module internal Middleware =
                 let! inputJson = streamReader.ReadToEndAsync()
                 let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger 
                 match inputArgs with 
-                | Ok inputArgs -> return! runFunction func impl options inputArgs next ctx
+                | Ok inputArgs -> 
+                    return! runFunction func impl options inputArgs next ctx
                 | Error error -> 
                     ctx.Response.StatusCode <- 500
                     return! setBody error options.DiagnosticsLogger next ctx

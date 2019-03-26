@@ -33,6 +33,17 @@ module Proxy =
     let extractAsyncArg (asyncType: Type) = 
         asyncType.GenericTypeArguments.[0]
 
+    
+    let isAsyncOfByteArray = function 
+        | TypeInfo.Async getAsyncType -> 
+            match getAsyncType() with 
+            | TypeInfo.Array getElemType ->
+                match getElemType() with 
+                | TypeInfo.Byte -> true 
+                | otherwise -> false 
+            | otherwise -> false 
+        | otherwise -> false
+
     let proxyFetch options typeName (func: RecordField) =
         let funcArgs : (TypeInfo [ ]) = 
             match func.FieldType with  
@@ -48,6 +59,8 @@ module Proxy =
             | TypeInfo.Async getAsyncTypeArgument -> getAsyncTypeArgument()
             | TypeInfo.Promise getPromiseTypeArgument -> getPromiseTypeArgument()
             | _ -> failwithf "Expected field %s to have a return type of Async<'t>" func.FieldName
+
+        let readAsBinary = isAsyncOfByteArray returnTypeAsync 
 
         let route = options.RouteBuilder typeName func.FieldName
         let url = combineRouteWithBaseUrl route options.BaseUrl 
@@ -66,32 +79,55 @@ module Proxy =
                else [ ]
                         
             async {
-
                 let headers =
                   [ yield "Content-Type", "application/json; charset=utf8"
+                    yield "x-remoting-proxy", "true"
                     yield! options.CustomHeaders
-                    
                     match options.Authorization with 
                     | Some authToken -> yield "Authorization", authToken
                     | None -> () ]
 
+                match readAsBinary with 
+                | true -> 
+                    // don't deserialize, read as arraybuffer and convert to byte[]
+                    let! (response, statusCode) = 
+                        if funcNeedParameters 
+                        then 
+                            Http.post url
+                            |> Http.withBody (Json.stringify inputArguments)
+                            |> Http.withHeaders headers 
+                            |> Http.sendAndReadBinary
+                        else 
+                            Http.get url 
+                            |> Http.withHeaders headers  
+                            |> Http.sendAndReadBinary
+                    
+                    match statusCode with 
+                    | 200 -> return unbox response 
+                    | 500 -> 
+                        let response = { StatusCode = statusCode; ResponseBody = "" }
+                        return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
+                    | n ->
+                        let response = { StatusCode = statusCode; ResponseBody = "" }
+                        return! raise (ProxyRequestException(response, sprintf "Http error (%d) while making request to %s" n url, response.ResponseBody)) 
+                | false ->
+                    // make plain RPC request and let it go through the deserialization pipeline
+                    let! response = 
+                        if funcNeedParameters 
+                        then 
+                            Http.post url
+                            |> Http.withBody (Json.stringify inputArguments)
+                            |> Http.withHeaders headers 
+                            |> Http.send 
+                        else  
+                            Http.get url 
+                            |> Http.withHeaders headers  
+                            |> Http.send 
 
-                let! response = 
-                    if funcNeedParameters 
-                    then 
-                        Http.post url
-                        |> Http.withBody (Json.stringify inputArguments)
-                        |> Http.withHeaders headers 
-                        |> Http.send 
-                    else  
-                        Http.get url 
-                        |> Http.withHeaders headers  
-                        |> Http.send 
-
-                match response.StatusCode with 
-                | 200 -> 
-                    let parsedJson = SimpleJson.parseNative response.ResponseBody
-                    return Convert.fromJsonAs parsedJson returnType 
-                | 500 -> return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
-                | _ ->   return! raise (ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, response.ResponseBody)) 
+                    match response.StatusCode with  
+                    | 200 -> 
+                        let parsedJson = SimpleJson.parseNative response.ResponseBody
+                        return Convert.fromJsonAs parsedJson returnType  
+                    | 500 -> return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
+                    | n ->   return! raise (ProxyRequestException(response, sprintf "Http error (%d) from server occured while making request to %s" n url, response.ResponseBody)) 
             }

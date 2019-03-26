@@ -25,6 +25,10 @@ type IProtocol = {
     echoBool : bool -> Async<bool>
     echoSimpleUnion : AB -> Async<AB>
     echoRecord : Record -> Async<Record>
+        // binary responses
+    binaryContent : unit -> Async<byte[]> 
+    binaryInputOutput : byte[] -> Async<byte[]> 
+
     echoIntList : int list -> Async<int list>
     unitToInts : unit -> Async<int list>
     echoRecordList : Record list -> Async<Record list>
@@ -40,6 +44,8 @@ let pureAsync (x: 'a) : Async<'a> =
     async { return x }
 
 let implementation = { 
+    binaryContent = fun () -> async { return [| byte 1; byte 2; byte 3 |] }
+    binaryInputOutput = pureAsync
     echoInteger = pureAsync
     echoMonth = pureAsync
     echoString = pureAsync
@@ -57,7 +63,7 @@ let implementation = {
     echoResult = pureAsync
     echoBigInteger = pureAsync
     echoMap = pureAsync
-}
+} 
 
 
 open System

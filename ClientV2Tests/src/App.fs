@@ -27,6 +27,21 @@ QUnit.testCaseAsync "IServer.getLegth" <| fun test ->
         do test.equal result 5
     }
 
+QUnit.testCaseAsync "IServer.binaryContent" <| fun test ->
+    async {
+        let! result = server.binaryContent()
+        test.equal 3 result.Length
+        test.equal true (result = [| byte 1; byte 2; byte 3|])
+    }
+
+QUnit.testCaseAsync "IServer.binaryContent" <| fun test ->
+    async {
+        let input = [| byte 1; byte 2; byte 3|]
+        let! output = server.binaryInputOutput input
+        test.equal 3 output.Length
+        test.equal true (input = output) 
+    }
+
 QUnit.testCaseAsync "ISever.echoInteger" <| fun test ->
     async {
         let! fstResult = server.echoInteger 20
