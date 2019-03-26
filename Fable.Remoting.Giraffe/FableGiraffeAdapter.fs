@@ -53,7 +53,7 @@ module GiraffeUtil =
       fun (next : HttpFunc) (ctx : HttpContext) -> 
         task {
             Diagnostics.runPhase logger func.FunctionName
-            let! functionResult = Async.StartAsTask (Async.Catch (DynamicRecord.invokeAsync func impl args)) 
+            let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
             match functionResult with
             | Choice.Choice1Of2 output -> 
                 ctx.Response.StatusCode <- 200
