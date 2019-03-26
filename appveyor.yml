@@ -22,7 +22,6 @@ install:
 os: Visual Studio 2015
 
 build_script:
-  - cmd: build.cmd BuildRunAllTests
   - cmd: build.cmd IntegrationTests
   - cmd: build.cmd IntegrationTestsV2
 
