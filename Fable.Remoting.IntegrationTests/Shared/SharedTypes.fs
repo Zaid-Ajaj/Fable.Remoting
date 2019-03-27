@@ -112,6 +112,10 @@ type IServer = {
     // edge cases
     multiArgComplex : bool -> GenericRecord<Maybe<Option<string>>> -> Async<GenericRecord<Maybe<Option<string>>>>
 
+    // binary responses
+    binaryContent : unit -> Async<byte[]> 
+    binaryInputOutput : byte[] -> Async<byte[]> 
+
     // long (int64) conversion
     echoPrimitiveLong : int64 -> Async<int64>
     echoComplexLong : GenericRecord<Int64> -> Async<GenericRecord<Int64>>

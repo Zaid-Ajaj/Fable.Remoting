@@ -71,6 +71,11 @@ let middlewareTests =
             Expect.equal (Just 5) result "it works"
         }
 
+        testCaseAsync "IProtocol.binaryContent" <| async {
+            let! result = protocolProxy.call <@ fun server -> server.binaryContent() @>
+            Expect.equal [| 1uy; 2uy; 3uy |] result "it works"
+        } 
+
         testCaseAsync "IServer.getLength" <| async {
             let! result =  proxy.call <@ fun server -> server.getLength "hello" @> 
             Expect.equal 5 result "Length returned is correct"

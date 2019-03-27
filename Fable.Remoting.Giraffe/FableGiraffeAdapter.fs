@@ -26,8 +26,7 @@ module GiraffeUtil =
             }
 
     let setJsonBody error logger = 
-       setResponseBody error logger 
-       >=> setContentType "application/json; charset=utf-8"
+        setResponseBody error logger 
     
     /// Used to halt the forwarding of the Http context
     let halt : HttpHandler = 
@@ -56,9 +55,22 @@ module GiraffeUtil =
             let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
             match functionResult with
             | Choice.Choice1Of2 output -> 
-                ctx.Response.StatusCode <- 200
-                ctx.Response.ContentType <- "application/json; charset=utf-8"
-                return! setJsonBody output logger next ctx 
+                let isBinaryOutput = 
+                    match func.Type with 
+                    | NoArguments t when t = typeof<Async<byte[]>> -> true
+                    | SingleArgument (i, t) when t = typeof<Async<byte[]>> -> true
+                    | ManyArguments (i, t) when t = typeof<Async<byte[]>> -> true
+                    | otherwise -> false
+                  
+                if isBinaryOutput && ctx.Request.Headers.ContainsKey("x-binary-content") then
+                    let binaryResponse = unbox<byte[]> output
+                    ctx.Response.StatusCode <- 200
+                    ctx.Response.ContentType <- "application/octet-stream"
+                    return! Giraffe.ResponseWriters.setBody binaryResponse next ctx
+                else  
+                    ctx.Response.StatusCode <- 200
+                    ctx.Response.ContentType <- "application/json; charset=utf-8"
+                    return! setJsonBody output logger next ctx 
             | Choice.Choice2Of2 ex -> 
                 ctx.Response.StatusCode <- 500
                 ctx.Response.ContentType <- "application/json; charset=utf-8"
