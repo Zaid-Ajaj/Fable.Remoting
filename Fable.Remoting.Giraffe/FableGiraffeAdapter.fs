@@ -62,7 +62,7 @@ module GiraffeUtil =
                     | ManyArguments (i, t) when t = typeof<Async<byte[]>> -> true
                     | otherwise -> false
                   
-                if isBinaryOutput && ctx.Request.Headers.ContainsKey("x-binary-content") then
+                if isBinaryOutput && ctx.Request.Headers.ContainsKey("x-remoting-proxy") then
                     let binaryResponse = unbox<byte[]> output
                     ctx.Response.StatusCode <- 200
                     ctx.Response.ContentType <- "application/octet-stream"
