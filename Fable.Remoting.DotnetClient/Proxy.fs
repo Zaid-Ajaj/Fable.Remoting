@@ -86,7 +86,7 @@ module Proxy =
         ///     let! result = proxy.call <@ server -> server.getLength "input" @>
         ///  }
         /// ```
-        member this.call<'u> (expr: Quotations.Expr<'t -> Async<'u>>) =
+        member this.call<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
@@ -103,7 +103,7 @@ module Proxy =
         ///       | Error ex -> (* panic! *)
         ///    }
         /// ```
-        member this.callSafely<'u> (expr: Quotations.Expr<'t -> Async<'u>>) : Async<Result<'u, exn>> =
+        member this.callSafely<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) : Async<Result<'u, exn>> =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
