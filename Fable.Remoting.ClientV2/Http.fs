@@ -12,7 +12,7 @@ module Http =
         HttpMethod = HttpMethod.GET 
         Url = "/" 
         Headers = [ ]
-        RequestBody = None
+        RequestBody = Empty 
     }
 
     /// Creates a GET request to the specified url
@@ -37,7 +37,7 @@ module Http =
     let withHeaders headers (req: HttpRequest) = { req with Headers = headers  }
     
     /// Appends a request with string body content
-    let withBody body (req: HttpRequest) = { req with RequestBody = Some body }
+    let withBody body (req: HttpRequest) = { req with RequestBody = body }
 
     /// Sends the request to the server and asynchronously returns a response
     let send (req: HttpRequest) =
@@ -56,8 +56,11 @@ module Http =
                 match xhr.readyState with
                 | 4 (* DONE *) -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
                 | otherwise -> ignore() 
-        
-            xhr.send(defaultArg req.RequestBody null)
+         
+            match req.RequestBody with 
+            | Empty -> xhr.send()
+            | Json content -> xhr.send(content)
+            | Binary content -> xhr.send(content)
 
     [<Emit("new Uint8Array($0)")>]
     let internal createUInt8Array (x: obj) : byte[] = jsNative
@@ -85,4 +88,7 @@ module Http =
                 | otherwise -> 
                     ignore() 
            
-            xhr.send(defaultArg req.RequestBody null)
+            match req.RequestBody with 
+            | Empty -> xhr.send()
+            | Json content -> xhr.send(content)
+            | Binary content -> xhr.send(content) 

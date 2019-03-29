@@ -2,11 +2,16 @@ namespace Fable.Remoting.Client
 
 type HttpMethod = GET | POST 
 
+type RequestBody = 
+    | Empty
+    | Json of string 
+    | Binary of byte[] 
+
 type HttpRequest = {
     HttpMethod: HttpMethod
     Url: string 
     Headers: (string * string) list  
-    RequestBody : Option<string> 
+    RequestBody : RequestBody 
 }
  
 type HttpResponse = {

@@ -127,12 +127,28 @@ module SuaveUtil =
           | _ -> 
               return! halt context     
       | Some funcName -> 
+          let contentIsBinaryEncoded = 
+            context.request.headers
+            |> List.tryFind (fun (key, _) -> key.ToLowerInvariant() = "content-type")
+            |> Option.map (fun (_, value) -> value)
+            |> function 
+              | Some "application/octet-stream" -> true 
+              | otherwise -> false 
+ 
           let func = Map.find funcName dynamicFunctions
+          
           match context.request.method, func.Type with  
           | (HttpMethod.GET | HttpMethod.POST), NoArguments _ ->  
               return! runFunction func impl options [|  |] context  
+          
           | (HttpMethod.GET | HttpMethod.POST), SingleArgument(input, _) when input = typeof<unit> ->
-              return! runFunction func impl options [|  |] context     
+              return! runFunction func impl options [|  |] context   
+
+          | HttpMethod.POST, SingleArgument(input, _) when input = typeof<byte[]> && contentIsBinaryEncoded ->
+              let inputBytes = context.request.rawForm
+              let inputArgs = [| box inputBytes |]
+              return! runFunction func impl options inputArgs context
+          
           | HttpMethod.POST, _ ->      
               let inputJson = System.Text.Encoding.UTF8.GetString(context.request.rawForm)
               let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger

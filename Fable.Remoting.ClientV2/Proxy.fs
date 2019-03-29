@@ -33,7 +33,13 @@ module Proxy =
     let extractAsyncArg (asyncType: Type) = 
         asyncType.GenericTypeArguments.[0]
 
-    
+    let isByteArray = function 
+        | TypeInfo.Array getElemType ->
+            match getElemType() with 
+            | TypeInfo.Byte -> true 
+            | otherwise -> false 
+        | otherwise -> false 
+
     let isAsyncOfByteArray = function 
         | TypeInfo.Async getAsyncType -> 
             match getAsyncType() with 
@@ -61,7 +67,15 @@ module Proxy =
             | _ -> failwithf "Expected field %s to have a return type of Async<'t>" func.FieldName
 
         let readAsBinary = isAsyncOfByteArray returnTypeAsync 
-
+        
+        let binaryInput = 
+            match func.FieldType with 
+            | TypeInfo.Func getArgs -> 
+                match getArgs() with 
+                | [| input; output |] -> isByteArray input 
+                | otherwise -> false 
+            | otherwise -> false 
+        
         let route = options.RouteBuilder typeName func.FieldName
         let url = combineRouteWithBaseUrl route options.BaseUrl 
         let funcNeedParameters = 
@@ -78,14 +92,24 @@ module Proxy =
                then List.take argumentCount [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7 ]
                else [ ]
                         
+            let contentType = 
+                if binaryInput 
+                then "application/octet-stream"
+                else "application/json; charset=utf8"
+
             async {
                 let headers =
-                  [ yield "Content-Type", "application/json; charset=utf8"
+                  [ yield "Content-Type", contentType
                     yield "x-remoting-proxy", "true"
                     yield! options.CustomHeaders
                     match options.Authorization with 
                     | Some authToken -> yield "Authorization", authToken
                     | None -> () ]
+
+                let requestBody = 
+                    if binaryInput 
+                    then RequestBody.Binary (unbox arg0)
+                    else RequestBody.Json (Json.stringify inputArguments)
 
                 match readAsBinary with 
                 | true -> 
@@ -94,7 +118,7 @@ module Proxy =
                         if funcNeedParameters 
                         then 
                             Http.post url
-                            |> Http.withBody (Json.stringify inputArguments)
+                            |> Http.withBody requestBody
                             |> Http.withHeaders headers 
                             |> Http.sendAndReadBinary
                         else 
@@ -116,7 +140,7 @@ module Proxy =
                         if funcNeedParameters 
                         then 
                             Http.post url
-                            |> Http.withBody (Json.stringify inputArguments)
+                            |> Http.withBody requestBody
                             |> Http.withHeaders headers 
                             |> Http.send 
                         else  
