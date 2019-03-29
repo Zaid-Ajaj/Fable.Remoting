@@ -105,10 +105,26 @@ module GiraffeUtil =
         | Some funcName -> 
             let func = Map.find funcName dynamicFunctions
             match ctx.Request.Method.ToUpper(), func.Type with  
+            // GET or POST routes of type the Async<'T>
+            // Just invoke the remote function with an empty list of arguments
             | ("GET" | "POST"), NoArguments _ ->  
                 return! runFunction func impl options [|  |] next ctx  
+            
+            // GET or POST routes of type the unit -> Async<'T>
+            // Just invoke the remote function with an empty list of arguments
             | ("GET" | "POST"), SingleArgument(input, _) when input = typeof<unit> ->
                 return! runFunction func impl options [|  |] next ctx    
+            
+            // POST routes of type byte[] -> Async<T> and the request body is binary encoded (i.e. application/octet-stream)
+            | "POST", SingleArgument(inputType, _) when inputType = typeof<byte[]> && ctx.Request.ContentType = "application/octet-stream" ->
+                let requestBodyStream = ctx.Request.Body
+                use memoryStream = new MemoryStream()
+                do requestBodyStream.CopyTo(memoryStream)
+                let inputBytes = memoryStream.ToArray()
+                let inputArgs = [| box inputBytes |] 
+                return! runFunction func impl options inputArgs next ctx
+            
+            // All other generic routes of type T -> Async<U> etc.
             | "POST", _ ->      
                 let requestBodyStream = ctx.Request.Body
                 use streamReader = new StreamReader(requestBodyStream)
