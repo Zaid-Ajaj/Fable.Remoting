@@ -2,7 +2,54 @@
 
 [![Build Status](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting.svg?branch=master)](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting) [![Build status](https://ci.appveyor.com/api/projects/status/euhwktyycm2wvvi4?svg=true)](https://ci.appveyor.com/project/Zaid-Ajaj/fable-remoting)
 
-Fable.Remoting is a [RPC](https://en.wikipedia.org/wiki/Remote_procedure_call) communication layer for Fable and .NET apps, it abstracts away http and lets you think of your client-server interactions only in terms of pure stateless functions.
+Fable.Remoting is a [RPC](https://en.wikipedia.org/wiki/Remote_procedure_call) communication layer for Fable and .NET apps, it abstracts away Http and Json and lets you think of your client-server interactions only in terms of pure stateless functions that are statically checked at compile-time:
+
+### Define a shared interface
+This interface is a record type where each field is a function that returns `Async<'T>` 
+
+```fs
+type IGreetingApi = {
+  greet : string -> Async<string>
+}
+```
+
+### Implement the interface on the *server*
+
+```fs
+let greetinApi = {
+  greet = fun name ->
+    async {
+      let greeting = sprintf "Hello, %s" name
+      return greeting
+    }
+}
+
+// Expose the implementation as a HTTP service
+let webApp = 
+  Remoting.createApi()
+  |> Remoting.fromValue greetinApi
+```
+
+### Call the functions from the *client*
+```fs
+// get a typed-proxy for the service
+let greetingApi = 
+  Remoting.createApi()
+  |> Remoting.buildProxy<IGreetingApi>
+
+// Start using the service  
+async {
+  let! message = greetingApi.greet "World"
+  printfn "%s" message // Hello, World
+}
+```
+That's it, no HTTP, no JSON and it is all type-safe.
+
+### Applications using Remoting
+- [SAFE-TodoList](https://github.com/Zaid-Ajaj/SAFE-TodoList) A simple full-stack Todo list application (beginner)
+- [tabula-rasa](https://github.com/Zaid-Ajaj/tabula-rasa) a real-world-ish blogging platform (intermediate)
+- [Yobo](https://github.com/Dzoukr/Yobo) Yoga Class Booking System
+implemented with Event Sourcing (advanced)
 
 ### [Full Documentation](https://zaid-ajaj.github.io/Fable.Remoting/)
 
@@ -52,7 +99,7 @@ type Student = {
 // Shared specs between Server and Client
 type IStudentApi = {
     studentByName : string -> Async<Student option>
-    allStudents : Async<list<Student>>
+    allStudents : unit -> Async<list<Student>>
 }
 ```
 The type `IStudentApi` is very important, this is the specification of the protocol between your server and client. `Fable.Remoting` expects such type to only have functions returning `Async` on the final result:
@@ -68,23 +115,25 @@ Then provide an implementation for `IStudentApi` on the server:
 ```fs
 open SharedTypes
 
-let getStudents() = async {
+let getStudents() = 
+  async {
     return [
         { Name = "Mike";  Age = 23; }
         { Name = "John";  Age = 22; }
         { Name = "Diana"; Age = 22; }
     ]
-}
+  }
 
-let findStudentByName name = async {
+let findStudentByName name = 
+  async {
     let! students = getStudents() 
     let student = List.tryFind (fun student -> student.Name = name) students
     return student 
-}
+  }
 
 let studentApi : IStudentApi = {
     studentByName = findStudentByName
-    allStudents = getStudents() 
+    allStudents = getStudents 
 }
 ```
 Now that we have the implementation `studentApi`, you can expose it as a web service from different web frameworks. We start with [Suave](https://github.com/SuaveIO/suave)  
