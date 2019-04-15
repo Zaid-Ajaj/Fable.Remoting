@@ -34,6 +34,13 @@ QUnit.testCaseAsync "IServer.binaryContent" <| fun test ->
         test.equal true (result = [| byte 1; byte 2; byte 3|])
     }
 
+QUnit.testCaseAsync "IServer.echoRemoteWorkEntity" <| fun test ->
+    async {
+        let entity = { RemoteWork = RequiredInputItem.validOrFail (ValidUserInput (RemoteWork "Fully Remote")) }
+        let! echoedEntity = server.echoRemoteWorkEntity entity 
+        test.equal true (echoedEntity.RemoteWork = RemoteWork "Fully Remote")
+    }
+ 
 QUnit.testCaseAsync "IServer.binaryContent" <| fun test ->
     async {
         let input = [| byte 1; byte 2; byte 3|]

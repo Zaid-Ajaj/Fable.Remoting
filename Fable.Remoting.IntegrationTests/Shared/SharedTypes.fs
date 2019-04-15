@@ -26,6 +26,24 @@ type SingleCase = SingleCase of int
 
 type SingleLongCase = SingleLongCase of int64
 
+type RemoteWork = RemoteWork of string 
+
+type RemoteWorkEntity = { RemoteWork : RemoteWork }
+
+type ValidationError = ValidationError of string 
+
+type RequiredInputItem<'TInput> =
+    | NoUserInputYet 
+    | InvalidUserInput of ('TInput * ValidationError)
+    | ValidUserInput   of 'TInput   
+
+module RequiredInputItem =
+    let validOrFail (ii:RequiredInputItem<'TInput>) =
+        match ii with
+        | NoUserInputYet     -> failwith "No value has been inputted"
+        | InvalidUserInput _ -> failwith "Input is not valid!"
+        | ValidUserInput x   -> x
+
 type ISimpleServer = {
     getLength : string -> Async<int>
 }
@@ -72,6 +90,7 @@ type IServer = {
     echoTree : Tree -> Async<Tree>
     // Records, simple and generic
     echoRecord : Record -> Async<Record>
+    echoRemoteWorkEntity : RemoteWorkEntity -> Async<RemoteWorkEntity>
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
 
