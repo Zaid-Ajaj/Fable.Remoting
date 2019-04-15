@@ -37,7 +37,7 @@ type RequiredInputItem<'TInput> =
     | InvalidUserInput of ('TInput * ValidationError)
     | ValidUserInput   of 'TInput   
 
-module RequiredInputItem =
+module RequiredInput =
     let validOrFail (ii:RequiredInputItem<'TInput>) =
         match ii with
         | NoUserInputYet     -> failwith "No value has been inputted"
