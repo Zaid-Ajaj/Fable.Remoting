@@ -10,7 +10,7 @@
     "@babel/polyfill": "^7.0.0",
     "@babel/preset-env": "^7.0.0",
     "babel-loader": "8.0.0",
-    "fable-compiler": "^2.2.0-beta-018",
+    "fable-compiler": "^2.2.3",
     "fable-loader": "^2.1.5",
     "loglevel": "^1.6.0",
     "qunitjs": "^2.4.1",
