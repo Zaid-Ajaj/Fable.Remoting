@@ -5,7 +5,7 @@
 Fable.Remoting is a [RPC](https://en.wikipedia.org/wiki/Remote_procedure_call) communication layer for Fable and .NET apps, it abstracts away Http and Json and lets you think of your client-server interactions only in terms of pure stateless functions that are statically checked at compile-time:
 
 ### Define a shared interface
-This interface is a record type where each field is a function that returns `Async<'T>` 
+This interface is a record type where each field is either `Async<'T>` or function that returns `Async<'T>`
 
 ```fs
 type IGreetingApi = {
