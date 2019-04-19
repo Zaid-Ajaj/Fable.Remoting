@@ -176,7 +176,7 @@ Target "IntegrationTests" <| fun _ ->
     clean (getPath "UITests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean (getPath "IntegrationTests" </> "Client")
-
+    
     run (getPath "IntegrationTests") "npm" "install"
     run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
     run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
@@ -188,11 +188,12 @@ Target "IntegrationTestsV2" <| fun _ ->
     clean (getPath "Json")
     clean (getPath "Suave")
     clean (getPath "UITests")
+    clean (getPath "Fable.Remoting.ClientV2")
+    clean (getPath "ClientV2Tests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
-
+    CleanDirs [ getPath "ClientV2Tests" </> ".fable" ]
     run "ClientV2Tests" "yarn" "install"
-    run ("ClientV2Tests" </> "src") "dotnet" "restore --no-cache"
     run "ClientV2Tests" "npm" "run build"
     run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run --headless"

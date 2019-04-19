@@ -54,7 +54,7 @@ module Http =
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
-                | 4 (* DONE *) -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
+                | ReadyState.Done -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
                 | otherwise -> ignore() 
          
             match req.RequestBody with 
@@ -82,7 +82,7 @@ module Http =
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
-                | 4 (* DONE *) ->
+                | ReadyState.Done ->
                     let bytes = createUInt8Array xhr.response
                     resolve (bytes, xhr.status)
                 | otherwise -> 

@@ -2,4 +2,3 @@ group NextClient
 
 FSharp.Core
 Fable.Core
-Fable.Browser.XMLHttpRequest

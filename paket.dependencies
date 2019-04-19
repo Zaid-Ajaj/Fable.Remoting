@@ -27,7 +27,6 @@ group SaturnTests
 
 group NextClient
     source https://api.nuget.org/v3/index.json
-    nuget Fable.SimpleJson ~> 3.1.1-beta
-    nuget Fable.Core 3.0.0-beta-005
-    nuget Fable.Browser.XMLHttpRequest 1.0.0-alpha-001
-    nuget Fable.Import.Browser
+    nuget Fable.SimpleJson
+    nuget Fable.Browser.XMLHttpRequest
+    nuget Fable.Core 
