@@ -24,7 +24,6 @@ install:
 os: Visual Studio 2017
 
 build_script:
-  - cmd: build.cmd IntegrationTests
   - cmd: build.cmd IntegrationTestsV2
 
 test: off
