@@ -141,6 +141,8 @@ type IServer = {
     echoOptionalLong : Option<int64> -> Async<Option<int64>>
     echoSingleDULong : SingleLongCase -> Async<SingleLongCase>
     echoLongInGenericUnion : Maybe<int64> -> Async<Maybe<int64>>
+    echoAnonymousRecord : Maybe<{| name: string |}> -> Async<Maybe<{| name: string |}>>
+    echoNestedAnonRecord : Maybe<{| nested: {| name: string |} |}> -> Async<Maybe<{| nested: {| name: string |} |}>>
 }
 
 let routeBuilder typeName methodName =

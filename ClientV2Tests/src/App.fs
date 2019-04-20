@@ -27,6 +27,22 @@ QUnit.testCaseAsync "IServer.getLegth" <| fun test ->
         do test.equal result 5
     }
 
+QUnit.testCaseAsync "IServer.echoAnonymousRecord" <| fun test -> 
+    async {
+        let! result = server.echoAnonymousRecord (Just {| name = "John" |})
+        match result with 
+        | Just record -> test.equal "John" record.name 
+        | otherwise -> test.failWith "Unexpected result"
+    }
+
+QUnit.testCaseAsync "IServer.echoNestedAnonRecord" <| fun test -> 
+    async {
+        let! result = server.echoNestedAnonRecord (Just {| nested  = {| name = "John" |} |})
+        match result with 
+        | Just record -> test.equal "John" record.nested.name 
+        | otherwise -> test.failWith "Unexpected result"
+    }
+
 QUnit.testCaseAsync "IServer.binaryContent" <| fun test ->
     async {
         let! result = server.binaryContent()
