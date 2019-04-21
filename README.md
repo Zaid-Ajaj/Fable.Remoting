@@ -55,7 +55,7 @@ implemented with Event Sourcing (advanced)
 
 The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Saturn `HttpHandler` or any other framework as Asp.NET Core middleware. Clients can be Fable or .NET application.
 
-> "Fable.Remoting solves the age-old problem of keeping your front-end code in sync with your backend code at compile time, and in a language as enjoyable to use as F#" - [David Falker](https://twitter.com/ardave2002)
+> "Fable.Remoting solves the age-old problem of keeping your front-end code in sync with your backend code at compile time, and in a language as enjoyable to use as F#" - [David Falkner](https://twitter.com/ardave2002)
 
 ## Quick Start
 Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
