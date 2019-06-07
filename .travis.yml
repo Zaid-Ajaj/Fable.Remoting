@@ -1,9 +1,12 @@
 language: csharp
-mono: 5.2.0
-dotnet: 3.0.100-preview4-011223
-dist: trusty
+mono: none
+dist: xenial
 sudo: required
 addons:
+  snaps:
+  - name: dotnet-sdk
+    classic: true
+    channel: latest/beta
   apt:
     sources:
       - ubuntu-toolchain-r-test
@@ -18,6 +21,8 @@ before_install:
   - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
   - echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
   - sudo apt-get update && sudo apt-get install yarn
+  - snap alias dotnet-sdk.dotnet dotnet
+  - dotnet --version 
   
 script:
  - echo "Running tests"
