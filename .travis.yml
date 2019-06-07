@@ -27,10 +27,9 @@ before_install:
   
 script:
  - echo "Running tests"
- - travis_wait dotnet run -p Fable.Remoting.Json.Tests/Fable.Remoting.Json.Tests.fsproj
- - travis_wait dotnet run -p Fable.Remoting.Server.Tests/Fable.Remoting.Server.Tests.fsproj
- - travis_wait dotnet run -p Fable.Remoting.Suave.Tests/Fable.Remoting.Suave.Tests.fsproj
- - travis_wait dotnet run -p Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj
- - travis_wait ./build.sh IntegrationTests
- - travis_wait ./build.sh IntegrationTestsV2
- - travis_wait ./build.sh RunDotnetClientTests
+ - dotnet run -p Fable.Remoting.Json.Tests/Fable.Remoting.Json.Tests.fsproj
+ - dotnet run -p Fable.Remoting.Server.Tests/Fable.Remoting.Server.Tests.fsproj
+ - dotnet run -p Fable.Remoting.Suave.Tests/Fable.Remoting.Suave.Tests.fsproj
+ - dotnet run -p Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj
+ - ./build.sh IntegrationTestsV2
+ - ./build.sh RunDotnetClientTests
