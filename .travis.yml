@@ -1,5 +1,5 @@
 language: csharp
-mono: none
+mono: 5.2.0
 dist: xenial
 sudo: required
 addons:
