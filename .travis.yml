@@ -1,6 +1,6 @@
 language: csharp
 mono: 5.2.0
-dotnet: 2.1.300
+dotnet: 3.0.100-preview4-011223
 dist: trusty
 sudo: required
 addons:
