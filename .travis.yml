@@ -2,7 +2,7 @@ language: csharp
 mono: 5.2.0
 dist: xenial
 sudo: required
-dotnet: 2.1.300
+dotnet: 2.2.300
 addons:
   snaps:
   - name: dotnet-sdk
