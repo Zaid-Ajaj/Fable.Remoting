@@ -144,6 +144,22 @@ type FableJsonConverter() =
         FSharpType.GetUnionCases(t)
         |> Array.find (fun uci -> uci.Name = name)
 
+    let unionCaseInfoCache = Dictionary<Type,string*PropertyInfo array>()
+
+    let getUnionCaseNameAndFields value t =
+        match unionCaseInfoCache.TryGetValue t with
+        | true, (uciName,fieldPropInfos) ->
+            let fields = [|
+                for p in fieldPropInfos -> p.GetValue(value)
+            |]
+            uciName, fields
+        | false, _ ->
+            let uci, fields = FSharpValue.GetUnionFields(value, t)
+            let uciName = uci.Name
+            let fieldPropInfos = uci.GetFields()
+            unionCaseInfoCache.[t] <- (uciName,fieldPropInfos)
+            uciName, fields
+
     override x.CanConvert(t) =
         let kind =
             jsonConverterTypes.GetOrAdd(t, fun t ->
@@ -220,12 +236,12 @@ type FableJsonConverter() =
                 | _ -> uci.Name.Substring(0,1).ToLowerInvariant() + uci.Name.Substring(1)
                 |> writer.WriteValue
             | true, Kind.Union ->
-                let uci, fields = FSharpValue.GetUnionFields(value, t)
+                let uciName, fields = getUnionCaseNameAndFields value t
                 if fields.Length = 0
-                then serializer.Serialize(writer, uci.Name)
+                then serializer.Serialize(writer, uciName)
                 else
                     writer.WriteStartObject()
-                    writer.WritePropertyName(uci.Name)
+                    writer.WritePropertyName(uciName)
                     if fields.Length = 1
                     then serializer.Serialize(writer, fields.[0])
                     else serializer.Serialize(writer, fields)
