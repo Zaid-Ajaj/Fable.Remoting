@@ -102,6 +102,7 @@ type MapStringKeySerializer<'v>() =
 module private Cache =
     let jsonConverterTypes = ConcurrentDictionary<Type,Kind>()
     let serializationBinderTypes = ConcurrentDictionary<string,Type>()
+    let unionCaseInfoCache = ConcurrentDictionary<Type,string*PropertyInfo array>()
 
 open Cache
 open Newtonsoft.Json.Linq
@@ -144,7 +145,6 @@ type FableJsonConverter() =
         FSharpType.GetUnionCases(t)
         |> Array.find (fun uci -> uci.Name = name)
 
-    let unionCaseInfoCache = Dictionary<Type,string*PropertyInfo array>()
 
     let getUnionCaseNameAndFields value t =
         match unionCaseInfoCache.TryGetValue t with
