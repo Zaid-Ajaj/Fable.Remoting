@@ -146,19 +146,27 @@ type FableJsonConverter() =
         |> Array.find (fun uci -> uci.Name = name)
 
 
-    let getUnionCaseNameAndFields value t =
-        match unionCaseInfoCache.TryGetValue t with
-        | true, (uciName,fieldPropInfos) ->
-            let fields = [|
-                for p in fieldPropInfos -> p.GetValue(value)
-            |]
-            uciName, fields
-        | false, _ ->
+    let getUnionCaseNameAndFields value (t:Type) =
+        // The type-based caching doesn't work for struct unions, because all cases share one type.
+        if t.IsValueType then
             let uci, fields = FSharpValue.GetUnionFields(value, t)
             let uciName = uci.Name
-            let fieldPropInfos = uci.GetFields()
-            unionCaseInfoCache.[t] <- (uciName,fieldPropInfos)
             uciName, fields
+        else
+            match unionCaseInfoCache.TryGetValue t with
+            | true, (uciName,fieldPropInfos) ->
+                let fields = [|
+                    for p in fieldPropInfos -> p.GetValue(value)
+                |]
+                uciName, fields
+            | false, _ ->
+                let uci, fields = FSharpValue.GetUnionFields(value, t)
+                let uciName = uci.Name
+                // cases without fields don't have distinct types -> don't cache them.
+                if fields.Length > 0 then
+                    let fieldPropInfos = uci.GetFields()
+                    unionCaseInfoCache.[t] <- (uciName,fieldPropInfos)
+                uciName, fields
 
     override x.CanConvert(t) =
         let kind =
