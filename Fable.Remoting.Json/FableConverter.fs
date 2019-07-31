@@ -102,6 +102,7 @@ type MapStringKeySerializer<'v>() =
 module private Cache =
     let jsonConverterTypes = ConcurrentDictionary<Type,Kind>()
     let serializationBinderTypes = ConcurrentDictionary<string,Type>()
+    let unionCaseInfoCache = ConcurrentDictionary<Type,string*PropertyInfo array>()
 
 open Cache
 open Newtonsoft.Json.Linq
@@ -143,6 +144,29 @@ type FableJsonConverter() =
     let getUci t name =
         FSharpType.GetUnionCases(t)
         |> Array.find (fun uci -> uci.Name = name)
+
+
+    let getUnionCaseNameAndFields value (t:Type) =
+        // The type-based caching doesn't work for struct unions, because all cases share one type.
+        if t.IsValueType then
+            let uci, fields = FSharpValue.GetUnionFields(value, t)
+            let uciName = uci.Name
+            uciName, fields
+        else
+            match unionCaseInfoCache.TryGetValue t with
+            | true, (uciName,fieldPropInfos) ->
+                let fields = [|
+                    for p in fieldPropInfos -> p.GetValue(value)
+                |]
+                uciName, fields
+            | false, _ ->
+                let uci, fields = FSharpValue.GetUnionFields(value, t)
+                let uciName = uci.Name
+                // cases without fields don't have distinct types -> don't cache them.
+                if fields.Length > 0 then
+                    let fieldPropInfos = uci.GetFields()
+                    unionCaseInfoCache.[t] <- (uciName,fieldPropInfos)
+                uciName, fields
 
     override x.CanConvert(t) =
         let kind =
@@ -220,12 +244,12 @@ type FableJsonConverter() =
                 | _ -> uci.Name.Substring(0,1).ToLowerInvariant() + uci.Name.Substring(1)
                 |> writer.WriteValue
             | true, Kind.Union ->
-                let uci, fields = FSharpValue.GetUnionFields(value, t)
+                let uciName, fields = getUnionCaseNameAndFields value t
                 if fields.Length = 0
-                then serializer.Serialize(writer, uci.Name)
+                then serializer.Serialize(writer, uciName)
                 else
                     writer.WriteStartObject()
-                    writer.WritePropertyName(uci.Name)
+                    writer.WritePropertyName(uciName)
                     if fields.Length = 1
                     then serializer.Serialize(writer, fields.[0])
                     else serializer.Serialize(writer, fields)
