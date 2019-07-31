@@ -1,36 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <Description>Shared Server Utilities for Fable.Remoting</Description>
-    <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
-    <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageIconUrl></PackageIconUrl>
-    <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
-    <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>4.7.0</Version>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
+    <PropertyGroup>
+        <Description>Shared Server Utilities for Fable.Remoting</Description>
+        <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
+        <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageIconUrl></PackageIconUrl>
+        <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
+        <Authors>Zaid Ajaj;Diego Esmerio</Authors>
+        <Version>4.8.0</Version>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="Types.fs" />
-    <Compile Include="TypeInfo.fs" />
-    <Compile Include="Errors.fs" />
-    <Compile Include="Diagnostics.fs" />
-    <Compile Include="Patterns.fs" />
-    <Compile Include="Documentation.fs" />
-    <Compile Include="DynamicRecord.fs" />
-    <Compile Include="DocsApp.fs" />
-    <Compile Include="Remoting.fs" />
-    <Compile Include="Reader.fs" />
-    <Compile Include="ThreadSafeCell.fs" />
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Include="Types.fs" />
+        <Compile Include="TypeInfo.fs" />
+        <Compile Include="Errors.fs" />
+        <Compile Include="Diagnostics.fs" />
+        <Compile Include="Patterns.fs" />
+        <Compile Include="Documentation.fs" />
+        <Compile Include="DynamicRecord.fs" />
+        <Compile Include="DocsApp.fs" />
+        <Compile Include="Remoting.fs" />
+        <Compile Include="Reader.fs" />
+        <Compile Include="ThreadSafeCell.fs" />
+    </ItemGroup>
 
-  <ItemGroup>    
-    <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
+    </ItemGroup>
 
-  <Import Project="..\.paket\Paket.Restore.targets" />
+    <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

@@ -1,21 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <Description>Json serialization utilities for Fable.Remoting</Description>
-    <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
-    <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageIconUrl></PackageIconUrl>
-    <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
-    <Authors>Zaid Ajaj</Authors>
-    <Version>2.3.0</Version>
-    <TargetFrameworks>netstandard2.0;net45;net461</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
+    <PropertyGroup>
+        <Description>Json serialization utilities for Fable.Remoting</Description>
+        <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
+        <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageIconUrl></PackageIconUrl>
+        <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
+        <Authors>Zaid Ajaj</Authors>
+        <Version>2.4.0</Version>
+        <TargetFrameworks>netstandard2.0;net45;net461</TargetFrameworks>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="FableConverter.fs" />
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Include="FableConverter.fs" />
+    </ItemGroup>
 
-  <Import Project="..\.paket\Paket.Restore.targets" />
+    <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

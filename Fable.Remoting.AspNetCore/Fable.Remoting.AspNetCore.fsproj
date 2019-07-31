@@ -1,27 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <Description>Asp.Net Core middleware for Fable.Remoting</Description>
-    <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
-    <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageIconUrl></PackageIconUrl>
-    <PackageTags>fsharp;fable;remoting;rpc;webserver;aspnet</PackageTags>
-    <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-    <Version>1.7.0</Version>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup>
+    <PropertyGroup>
+        <Description>Asp.Net Core middleware for Fable.Remoting</Description>
+        <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
+        <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageIconUrl></PackageIconUrl>
+        <PackageTags>fsharp;fable;remoting;rpc;webserver;aspnet</PackageTags>
+        <Authors>Zaid Ajaj;Diego Esmerio</Authors>
+        <Version>1.8.0</Version>
+        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="..\Fable.Remoting.Giraffe\SharedReader.fs" />
-    <Compile Include="Middleware.fs" />
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Include="..\Fable.Remoting.Giraffe\SharedReader.fs" />
+        <Compile Include="Middleware.fs" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
-    <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
+        <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
+    </ItemGroup>
 
-  <Import Project="..\.paket\Paket.Restore.targets" />
+    <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
