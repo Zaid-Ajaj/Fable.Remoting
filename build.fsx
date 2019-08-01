@@ -138,11 +138,11 @@ Target "BuildDocs" <| fun _ ->
     run "docs" "npm" "run build"
 
 Target "ServeDocs" <| fun _ ->
-    async { 
+    async {
         run "docs" "npm" "run serve"
     }
     |> Async.StartImmediate
-    
+
 
 Target "PublishDocs" <| fun _ ->
     run "docs" "npm" "run publish"
@@ -176,7 +176,7 @@ Target "IntegrationTests" <| fun _ ->
     clean (getPath "UITests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean (getPath "IntegrationTests" </> "Client")
-    
+
     run (getPath "IntegrationTests") "npm" "install"
     run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
     run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
@@ -193,7 +193,7 @@ Target "IntegrationTestsV2" <| fun _ ->
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
     CleanDirs [ getPath "ClientV2Tests" </> ".fable" ]
-    run "ClientV2Tests" "yarn" "install"
+    run "ClientV2Tests" "npm" "install"
     run "ClientV2Tests" "npm" "run build"
     run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run --headless"

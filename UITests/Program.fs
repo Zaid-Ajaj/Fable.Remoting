@@ -1,7 +1,7 @@
 // Learn more about F# at http://fsharp.org
 
 open System
-open Suave 
+open Suave
 open Suave.Successful
 open System.IO
 open Fable.Remoting.Server
@@ -17,14 +17,15 @@ open SharedTypes
 open ServerImpl
 open OpenQA.Selenium
 open OpenQA.Selenium.Chrome
+open PuppeteerSharp
 
-let fableWebPart = 
+let fableWebPart =
     Remoting.createApi()
     |> Remoting.fromContext (fun ctx -> server)
     |> Remoting.withRouteBuilder routeBuilder
-    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message) 
+    |> Remoting.withErrorHandler (fun ex _ -> Propagate ex.Message)
     |> Remoting.buildWebPart
-    
+
 let (</>) x y = Path.Combine(x, y)
 
 let rec findRoot dir =
@@ -36,51 +37,51 @@ let rec findRoot dir =
             failwith "Couldn't find root directory"
         findRoot parent.FullName
 
-module AuthServer = 
+module AuthServer =
 
     // acquire the access token from here, returns an integer
     let token = pathScan "/IAuthServer/token/%d" (sprintf "%d" >> OK)
 
     // WebPart to ensure that there is a non-empty authorization header
-    let requireAuthorized : WebPart = 
-        fun (ctx: HttpContext) -> 
+    let requireAuthorized : WebPart =
+        fun (ctx: HttpContext) ->
             async {
-                return ctx.request.headers 
+                return ctx.request.headers
                        |> List.tryFind (fun (key, value) -> key = "authorization" && value <> "")
-                       |> function 
-                        | Some header -> Some ctx 
-                        | None -> None       
-            }  
+                       |> function
+                        | Some header -> Some ctx
+                        | None -> None
+            }
 
     // the actual secure api, cannot be reached unless an authorization header is present
-    let authorizedServerApi = 
+    let authorizedServerApi =
         Remoting.createApi()
-        |> Remoting.fromContext (fun ctx -> 
+        |> Remoting.fromContext (fun ctx ->
             {
                 // return the authorization header
                 getSecureValue = fun () ->
                     async {
                         return ctx.request.headers
                                |> List.tryFind (fun (key, value) -> key = "authorization" && value <> "")
-                               |> Option.map (snd >> int) 
-                               |> function 
+                               |> Option.map (snd >> int)
+                               |> function
                                   | Some value -> value
                                   | None -> -1
-                    } 
-            }) 
+                    }
+            })
         |> Remoting.withRouteBuilder routeBuilder
         |> Remoting.buildWebPart
 
 
-    let api = 
-        choose [ 
+    let api =
+        choose [
             // web part to acquire the token
             token
             // protect authorized server api
-            requireAuthorized >=> authorizedServerApi 
+            requireAuthorized >=> authorizedServerApi
         ]
 
-    
+
 module CookieTest =
     open Suave.Cookie
     let cookieName = "httpOnly-test-cookie"
@@ -112,29 +113,45 @@ module CookieTest =
 [<EntryPoint>]
 let main argv =
     let cwd = Directory.GetCurrentDirectory()
-    let root = findRoot cwd 
+    let root = findRoot cwd
     let rnd = new Random()
-    let port = rnd.Next(5000, 9000) 
-    let cts = new CancellationTokenSource() 
-    let suaveConfig = 
+    let port = rnd.Next(5000, 9000)
+    let cts = new CancellationTokenSource()
+    let suaveConfig =
         { defaultConfig with
             homeFolder = Some (root </> "Fable.Remoting.IntegrationTests" </> "client-dist")
             bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" port ]
             bufferSize = 2048
             cancellationToken = cts.Token }
 
-    let testWebApp = 
-        choose [ 
+    let testWebApp =
+        choose [
             GET >=> Files.browseHome >=> Writers.setHeader "Set-Cookie" "dummy=value;"
-            fableWebPart 
+            fableWebPart
             CookieTest.cookieWebPart
             AuthServer.api
             OK "Not Found"
         ]
 
-    printfn "Starting Web server"
+    if not (Array.contains "--headless" argv)
+    then
+      printfn "Starting web server..."
+      startWebServer suaveConfig testWebApp
+      0
+    else
+    printfn "Starting Integration Tests"
+    printfn ""
+    printfn "========== SETUP =========="
+    printfn ""
+    printfn "Downloading chromium browser..."
+    let browserFetcher = BrowserFetcher()
+    browserFetcher.DownloadAsync(BrowserFetcher.DefaultRevision)
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    |> ignore
+    printfn "Chromium browser downloaded"
     let listening, server = startWebServerAsync suaveConfig testWebApp
-    
+
     Async.Start server
     printfn "Web server started"
 
@@ -142,69 +159,89 @@ let main argv =
     listening
     |> Async.RunSynchronously
     |> ignore
-    
+
     printfn "Server listening to requests"
+    let launchOptions = LaunchOptions()
+    launchOptions.ExecutablePath <- browserFetcher.GetExecutablePath(BrowserFetcher.DefaultRevision)
+    launchOptions.Headless <- true
 
-    let mutable autoClose = false
-    let driversDir = root </> "UITests" </> "drivers"
-    let options = FirefoxOptions()
-    match argv with 
-    | [| "--headless" |] -> 
-        autoClose <- true 
-        options.AddArgument("--headless")
-    | _ -> () 
+    async {
+        use! browser = Async.AwaitTask(Puppeteer.LaunchAsync(launchOptions))
+        use! page = Async.AwaitTask(browser.NewPageAsync())
+        printfn ""
+        printfn "Navigating to http://localhost:%d/index.html" port
+        let! _ = Async.AwaitTask (page.GoToAsync (sprintf "http://localhost:%d/index.html" port))
+        let stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        let toArrayFunction = """
+        window.domArr = function(elements) {
+            var arr = [ ];
+            for(var i = 0; i < elements.length;i++) arr.push(elements.item(i));
+            return arr;
+        };
+        """
 
+        let getResultsFunctions = """
+        window.getTests = function() {
+            var tests = document.querySelectorAll("div.passed, div.executing, div.failed, div.pending");
+            return domArr(tests).map(function(test) {
+                var name = test.getAttribute('data-test')
+                var type = test.classList[0]
+                var module =
+                    type === 'failed'
+                    ? test.parentNode.parentNode.parentNode.getAttribute('data-module')
+                    : test.parentNode.parentNode.getAttribute('data-module')
+                return [name, type, module];
+            });
+        }
+        """
+        let! _ = Async.AwaitTask (page.EvaluateExpressionAsync(toArrayFunction))
+        let! _ = Async.AwaitTask (page.EvaluateExpressionAsync(getResultsFunctions))
+        let! _ = Async.AwaitTask (page.WaitForExpressionAsync("document.getElementsByClassName('executing').length === 0"))
+        stopwatch.Stop()
+        printfn "Finished running tests, took %d ms" stopwatch.ElapsedMilliseconds
+        let passingTests = "document.getElementsByClassName('passed').length"
+        let! passedTestsCount = Async.AwaitTask (page.EvaluateExpressionAsync<int>(passingTests))
+        let failingTests = "document.getElementsByClassName('failed').length"
+        let! failedTestsCount = Async.AwaitTask (page.EvaluateExpressionAsync<int>(failingTests))
+        let pendingTests = "document.getElementsByClassName('pending').length"
+        let! pendingTestsCount = Async.AwaitTask(page.EvaluateExpressionAsync<int>(pendingTests))
+        let! testResults = Async.AwaitTask (page.EvaluateExpressionAsync<string [] []>("window.getTests()"))
+        printfn ""
+        printfn "========== SUMMARY =========="
+        printfn ""
+        printfn "Total test count %d" (passedTestsCount + failedTestsCount + pendingTestsCount)
+        printfn "Passed tests %d" passedTestsCount
+        printfn "Failed tests %d" failedTestsCount
+        printfn "Skipped tests %d" pendingTestsCount
+        printfn ""
+        printfn "========== TESTS =========="
+        printfn ""
+        let moduleGroups = testResults |> Array.groupBy (fun arr -> arr.[2])
 
-    printfn "Starting FireFox Driver"
-    use driver = new FirefoxDriver(driversDir, options)
-    
+        for (moduleName, tests) in moduleGroups do
+            for test in tests do
+                let name = test.[0]
+                let testType = test.[1]
 
-    driver.Url <- sprintf "http://localhost:%d/index.html" port
-    
-    let mutable testsFinishedRunning = false
+                match testType with
+                | "passed" ->
+                    Console.ForegroundColor <- ConsoleColor.Green
+                    printfn "√ %s / %s" moduleName name
+                | "failed" ->
+                    Console.ForegroundColor <- ConsoleColor.Red
+                    printfn "X %s / %s" moduleName name
+                | "pending" ->
+                    Console.ForegroundColor <- ConsoleColor.Blue
+                    printfn "~ %s / %s" moduleName name
+                | other ->
+                    printfn "~ %s / %s" moduleName name
 
-    while not testsFinishedRunning do
-      // give tests time to run
-      printfn "Tests have not finished running yet"
-      printfn "Waiting for another 5 seconds"
-      Threading.Thread.Sleep(5 * 1000)
-      try 
-        driver.FindElementByClassName("failed") |> ignore
-        testsFinishedRunning <- true
-      with 
-        | _ -> ()
+        Console.ResetColor()
+        printfn ""
+        printfn "Stopping web server..."
+        cts.Cancel()
+        printfn "Exit code: %d" failedTestsCount
+        return failedTestsCount
+    }
 
-    let passedTests = unbox<string> (driver.ExecuteScript("return JSON.stringify(passedTests, null, 4);"))
-    let failedTests = unbox<string> (driver.ExecuteScript("return JSON.stringify(failedTests, null, 4);"))
-    Console.ForegroundColor <- ConsoleColor.Green
-    printfn "Tests Passed: \n%s" passedTests
-    Console.ForegroundColor <- ConsoleColor.Red
-    printfn "Tests Failed: \n%s" failedTests
-    Console.ResetColor()
-    let failed = driver.FindElementByClassName("failed")
-    let success = driver.FindElementByClassName("passed")
-
-    let failedText = failed.Text
-
-    printfn ""
-    printfn "Passed: %s" success.Text
-    printfn "Failed: %s" failed.Text
-
-    if autoClose 
-    then 
-      cts.Cancel()
-      driver.Quit()
-    else 
-      printfn "Finished testing, press any key to continue..."
-      Console.ReadKey() |> ignore
-    
-
-    try 
-      let failedCount = int failedText
-      if failedCount <> 0 then 1
-      else 0
-    with
-    | e ->
-        printfn "Error occured while parsing the number of failed tests"
-        printfn "%s\n%s" e.Message e.StackTrace
-        1 // return an integer exit code
+    |> Async.RunSynchronously

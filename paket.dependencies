@@ -10,6 +10,7 @@ nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.TestHost
 nuget Newtonsoft.Json
 nuget NUnit
+nuget PuppeteerSharp
 nuget Suave
 nuget Giraffe
 nuget Selenium.WebDriver
@@ -27,6 +28,7 @@ group SaturnTests
 
 group NextClient
     source https://api.nuget.org/v3/index.json
+    nuget Fable.Mocha
     nuget Fable.SimpleJson
     nuget Fable.Browser.XMLHttpRequest
-    nuget Fable.Core 
+    nuget Fable.Core

@@ -1,4 +1,5 @@
 group NextClient
-
 FSharp.Core
 Fable.Core
+Fable.Mocha
+Fable.SimpleJson
