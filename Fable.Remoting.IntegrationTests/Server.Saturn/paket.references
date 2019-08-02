@@ -1,6 +1,0 @@
-group SaturnTests
-FSharp.Core
-Giraffe
-Saturn
-Microsoft.AspNetCore.Hosting
-Microsoft.AspNetCore.Server.Kestrel

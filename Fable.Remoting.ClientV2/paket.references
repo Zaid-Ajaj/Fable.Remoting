@@ -1,4 +1,4 @@
-group NextClient
+group Client
 
 FSharp.Core
 Fable.Core

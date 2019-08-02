@@ -26,16 +26,16 @@ type SingleCase = SingleCase of int
 
 type SingleLongCase = SingleLongCase of int64
 
-type RemoteWork = RemoteWork of string 
+type RemoteWork = RemoteWork of string
 
 type RemoteWorkEntity = { RemoteWork : RemoteWork }
 
-type ValidationError = ValidationError of string 
+type ValidationError = ValidationError of string
 
 type RequiredInputItem<'TInput> =
-    | NoUserInputYet 
+    | NoUserInputYet
     | InvalidUserInput of ('TInput * ValidationError)
-    | ValidUserInput   of 'TInput   
+    | ValidUserInput   of 'TInput
 
 module RequiredInput =
     let validOrFail (ii:RequiredInputItem<'TInput>) =
@@ -52,11 +52,11 @@ type ICookieServer = {
     checkCookie : unit -> Async<bool>
 }
 
-type AccessToken = AccessToken of int 
+type AccessToken = AccessToken of int
 
 type IAuthServer = {
     // secured by authorization token
-    getSecureValue : unit -> Async<int> 
+    getSecureValue : unit -> Async<int>
 }
 
 
@@ -65,9 +65,9 @@ type RecursiveRecord = {
     Children : RecursiveRecord list
 }
 
-type Tree = 
-    | Leaf of int 
-    | Branch of Tree * Tree 
+type Tree =
+    | Leaf of int
+    | Branch of Tree * Tree
 
 type RecordAsKey = { Key: int; Value: string }
 
@@ -100,7 +100,7 @@ type IServer = {
     echoBoolList : bool list -> Async<bool list>
     echoListOfListsOfStrings : string list list -> Async<string list list>
     echoListOfGenericRecords :  GenericRecord<int> list -> Async<GenericRecord<int> list>
-    
+
     // arrays
     echoHighScores : HighScore array -> Async<HighScore array>
     getHighScores : unit -> Async<HighScore array>
@@ -111,7 +111,7 @@ type IServer = {
     // maps
     echoMap : Map<string, int> -> Async<Map<string, int>>
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
-    // errors 
+    // errors
     throwError : unit -> Async<string>
 
     echoSingleCase : SingleCase -> Async<SingleCase>
@@ -132,8 +132,8 @@ type IServer = {
     multiArgComplex : bool -> GenericRecord<Maybe<Option<string>>> -> Async<GenericRecord<Maybe<Option<string>>>>
 
     // binary responses
-    binaryContent : unit -> Async<byte[]> 
-    binaryInputOutput : byte[] -> Async<byte[]> 
+    binaryContent : unit -> Async<byte[]>
+    binaryInputOutput : byte[] -> Async<byte[]>
 
     // long (int64) conversion
     echoPrimitiveLong : int64 -> Async<int64>
@@ -142,7 +142,9 @@ type IServer = {
     echoSingleDULong : SingleLongCase -> Async<SingleLongCase>
     echoLongInGenericUnion : Maybe<int64> -> Async<Maybe<int64>>
     echoAnonymousRecord : Maybe<{| name: string |}> -> Async<Maybe<{| name: string |}>>
-    echoNestedAnonRecord : Maybe<{| nested: {| name: string |} |}> -> Async<Maybe<{| nested: {| name: string |} |}>>
+    // TODO: Support anonymous records as generic type arguments
+    // See https://github.com/Zaid-Ajaj/Fable.Remoting/issues/132
+    //echoNestedAnonRecord : Maybe<{| nested: {| name: string |} |}> -> Async<Maybe<{| nested: {| name: string |} |}>>
 }
 
 let routeBuilder typeName methodName =

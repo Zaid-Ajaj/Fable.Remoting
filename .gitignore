@@ -26,15 +26,15 @@ bld/
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot
 #wwwroot/
-
+ionide
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
-
+client-dist
 # NUNIT
 *.VisualState.xml
 TestResult.xml
-
+.local-chromium
 # Build Results of an ATL Project
 [Dd]ebugPS/
 [Rr]eleasePS/
@@ -169,7 +169,7 @@ rcf/
 # Windows Store app package directory
 AppPackages/
 BundleArtifacts/
-
+bundle.js
 # Visual Studio cache files
 # files ending in .cache can be ignored
 *.[Cc]ache

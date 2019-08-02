@@ -14,6 +14,8 @@ cache:
 install:
   # install latest dotnet core 3 preview
   - cmd: choco install dotnetcore-sdk --pre
+  - cmd: dotnet tool install -g fake-cli
+  - cmd: dotnet tool install -g paket
   # Get the latest stable version of Node.js
   - ps: Install-Product node $env:nodejs_version
   # # Update npm
@@ -24,7 +26,7 @@ install:
 os: Visual Studio 2017
 
 build_script:
-  - cmd: build.cmd BuildRunAllTests
-  - cmd: build.cmd IntegrationTestsV2
+  - cmd: fake build -t BuildRunAllTests
+  - cmd: fake build -t IntegrationTests
 
 test: off

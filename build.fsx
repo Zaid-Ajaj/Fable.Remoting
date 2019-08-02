@@ -1,19 +1,33 @@
-#r "packages/build/FAKE/tools/FakeLib.dll"
+#r "paket: groupref build //"
+#load "./.fake/build.fsx/intellisense.fsx"
+
+#if !FAKE
+#r "netstandard"
+#r "Facades/netstandard" // https://github.com/ionide/ionide-vscode-fsharp/issues/839#issuecomment-396296095
+#endif
 
 open System
 open Fake
+open Fake.Core
+open Fake.IO
+open Fake.SystemHelper
+
+let (</>) x y = System.IO.Path.Combine(x, y);
+let cwd = __SOURCE_DIRECTORY__
 
 let run workingDir fileName args =
     printfn "CWD: %s" workingDir
     let fileName, args =
-        if EnvironmentHelper.isUnix
+        if Environment.isUnix
         then fileName, args else "cmd", ("/C " + fileName + " " + args)
-    let ok =
-        execProcess (fun info ->
-            info.FileName <- fileName
-            info.WorkingDirectory <- workingDir
-            info.Arguments <- args) TimeSpan.MaxValue
-    if not ok then failwith (sprintf "'%s> %s %s' task failed" workingDir fileName args)
+
+    CreateProcess.fromRawCommandLine fileName args
+    |> CreateProcess.withWorkingDirectory workingDir
+    |> CreateProcess.withTimeout TimeSpan.MaxValue
+    |> CreateProcess.ensureExitCodeWithMessage (sprintf "'%s> %s %s' task failed" workingDir fileName args)
+    |> Proc.run
+    |> ignore
+
 
 let proj file = (sprintf "Fable.Remoting.%s" file) </> (sprintf "Fable.Remoting.%s.fsproj" file)
 let testDll file = (sprintf "Fable.Remoting.%s.Tests" file) </> "bin" </> "Release" </> "netcoreapp2.0" </> (sprintf "Fable.Remoting.%s.Tests.dll" file)
@@ -23,7 +37,6 @@ let ServerTestsDll = testDll "Server"
 let SuaveTestDll = testDll "Suave"
 let GiraffeTestDll = testDll "Giraffe"
 
-let cwd = __SOURCE_DIRECTORY__
 let dotnet = "dotnet"
 
 
@@ -33,21 +46,22 @@ let Client = getPath "Client"
 let ClientV2 = getPath "ClientV2"
 let Json = getPath "Json"
 let Server = getPath "Server"
-let Reflection = getPath "Reflection"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
 let clean projectPath =
-    [ projectPath </> "bin"
-      projectPath </> "obj" ] |> CleanDirs
+    Shell.cleanDirs [
+      projectPath </> "bin"
+      projectPath </> "obj"
+    ]
 
-let publish projectPath = fun () ->
+let publish projectPath = fun _ ->
     clean projectPath
     "pack -c Release"
     |> run projectPath dotnet
     let nugetKey =
-        match environVarOrNone "NUGET_KEY" with
+        match Environment.environVarOrNone "NUGET_KEY" with
         | Some nugetKey -> nugetKey
         | None -> failwith "The Nuget API key must be set in a NUGET_KEY environmental variable"
     let nupkg = System.IO.Directory.GetFiles(projectPath </> "bin" </> "Release") |> Seq.head
@@ -55,135 +69,118 @@ let publish projectPath = fun () ->
     run projectPath dotnet pushCmd
 
 
-Target "PublishClient" (publish Client)
-Target "PublishClientV2" (publish ClientV2)
-Target "PublishJson" (publish Json)
-Target "PublishServer" (publish Server)
-Target "PublishReflection" (publish Reflection)
-Target "PublishDotnetClient" (publish DotnetClient)
-Target "PublishSuave" (publish Suave)
-Target "PublishGiraffe" (publish Giraffe)
-Target "PublishAspnetCore" (publish AspNetCore)
+Target.create "PublishClientV2" (publish ClientV2)
+Target.create "PublishJson" (publish Json)
+Target.create "PublishServer" (publish Server)
+Target.create "PublishDotnetClient" (publish DotnetClient)
+Target.create "PublishSuave" (publish Suave)
+Target.create "PublishGiraffe" (publish Giraffe)
+Target.create "PublishAspnetCore" (publish AspNetCore)
 
-Target "CleanGiraffe" <| fun _ ->
+Target.create "CleanGiraffe" <| fun _ ->
     clean (getPath "Giraffe")
     clean (getPath "Giraffe.Tests")
 
-Target "CleanSuave" <| fun _ ->
+Target.create "CleanSuave" <| fun _ ->
     clean (getPath "Suave")
     clean (getPath "Suave.Tests")
 
-Target "RestoreBuildRunJsonTests" <| fun _ ->
-    run "." "dotnet"  ("restore " + proj "Json.Tests")
-    run "." "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
-    run "." "dotnet" JsonTestsDll
+Target.create "RestoreBuildRunJsonTests" <| fun _ ->
+    run cwd "dotnet"  ("restore " + proj "Json.Tests")
+    run cwd "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
+    run cwd "dotnet" JsonTestsDll
 
-Target "BuildRunJsonTests" <| fun _ ->
-    run "." "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
-    run "." "dotnet" JsonTestsDll
+Target.create "BuildRunJsonTests" <| fun _ ->
+    run cwd "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
+    run cwd "dotnet" JsonTestsDll
 
-Target "RunJsonTests" <| fun _ ->
-    run "." "dotnet" JsonTestsDll
+Target.create "RunJsonTests" <| fun _ ->
+    run cwd "dotnet" JsonTestsDll
 
-Target "RestoreBuildRunServerTests" <| fun _ ->
-    run "." "dotnet"  ("restore " + proj "Server.Tests")
-    run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
-    run "." "dotnet" ServerTestsDll
+Target.create "RestoreBuildRunServerTests" <| fun _ ->
+    run cwd "dotnet"  ("restore " + proj "Server.Tests")
+    run cwd "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
+    run cwd "dotnet" ServerTestsDll
 
-Target "BuildDotnetClientTests" <| fun _ ->
+Target.create "BuildDotnetClientTests" <| fun _ ->
     clean (getPath "IntegrationTests" </> "DotnetClient")
     run (getPath "IntegrationTests" </> "DotnetClient") "dotnet" "build"
 
-Target "RunDotnetClientTests" <| fun _ ->
+Target.create "RunDotnetClientTests" <| fun _ ->
     let path = getPath "IntegrationTests" </> "DotnetClient"
     clean path
     run path "dotnet" "restore --no-cache"
     run path "dotnet" "run"
 
-Target "BuildRunServerTests" <| fun _ ->
-    run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
-    run "." "dotnet" ServerTestsDll
+Target.create "BuildRunServerTests" <| fun _ ->
+    run cwd "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
+    run cwd "dotnet" ServerTestsDll
 
-Target "RunServerTests" <| fun _ ->
-    run "." "dotnet" ServerTestsDll
+Target.create "RunServerTests" <| fun _ ->
+    run cwd "dotnet" ServerTestsDll
 
-Target "RestoreBuildRunSuaveTests" <| fun _ ->
-    run "." "dotnet"  ("restore " + proj "Suave.Tests")
-    run "." "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
-    run "." "dotnet" SuaveTestDll
+Target.create "RestoreBuildRunSuaveTests" <| fun _ ->
+    run cwd "dotnet"  ("restore " + proj "Suave.Tests")
+    run cwd "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
+    run cwd "dotnet" SuaveTestDll
 
-Target "BuildRunSuaveTests" <| fun _ ->
-    run "." "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
-    run "." "dotnet" SuaveTestDll
+Target.create "BuildRunSuaveTests" <| fun _ ->
+    run cwd "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
+    run cwd "dotnet" SuaveTestDll
 
-Target "RunSuaveTests" <| fun _ ->
-    run "." "dotnet" SuaveTestDll
+Target.create "RunSuaveTests" <| fun _ ->
+    run cwd "dotnet" SuaveTestDll
 
-Target "RestoreBuildRunGiraffeTests" <| fun _ ->
-    run "." "dotnet"  ("restore " + proj "Giraffe.Tests")
-    run "." "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
-    run "." "dotnet" GiraffeTestDll
+Target.create "RestoreBuildRunGiraffeTests" <| fun _ ->
+    run cwd "dotnet"  ("restore " + proj "Giraffe.Tests")
+    run cwd "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
+    run cwd "dotnet" GiraffeTestDll
 
-Target "BuildRunGiraffeTests" <| fun _ ->
-    run "." "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
-    run "." "dotnet" GiraffeTestDll
+Target.create "BuildRunGiraffeTests" <| fun _ ->
+    run cwd "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
+    run cwd "dotnet" GiraffeTestDll
 
-Target "RunGiraffeTests" <| fun _ ->
-    run "." "dotnet" GiraffeTestDll
+Target.create "RunGiraffeTests" <| fun _ ->
+    run cwd "dotnet" GiraffeTestDll
 
-Target "InstallDocs" <| fun _ ->
+Target.create "InstallDocs" <| fun _ ->
     run "docs" "yarn" "install"
 
-Target "BuildDocs" <| fun _ ->
+Target.create "BuildDocs" <| fun _ ->
     run "docs" "npm" "run build"
 
-Target "ServeDocs" <| fun _ ->
-    async { 
+Target.create "ServeDocs" <| fun _ ->
+    async {
         run "docs" "npm" "run serve"
     }
     |> Async.StartImmediate
-    
 
-Target "PublishDocs" <| fun _ ->
+
+Target.create "PublishDocs" <| fun _ ->
     run "docs" "npm" "run publish"
 
-Target "Default" <| DoNothing
+Target.create "Default" (fun _ -> ())
 
-"CleanGiraffe"
-    ==> "BuildRunGiraffeTests"
+open Fake.Core.TargetOperators
 
-"CleanSuave"
-  ==> "BuildRunSuaveTests"
+"CleanGiraffe" ==> "BuildRunGiraffeTests"
+"CleanSuave" ==> "BuildRunSuaveTests"
 
-Target "BuildRunAllTests" <| fun _ ->
+Target.create "BuildRunAllTests" <| fun _ ->
     // Json
-    run "." "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
-    run "." "dotnet" JsonTestsDll
+    run cwd "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
+    run cwd "dotnet" JsonTestsDll
     // Server
-    run "." "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
-    run "." "dotnet" ServerTestsDll
+    run cwd "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
+    run cwd "dotnet" ServerTestsDll
     // Suave
-    run "." "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
-    run "." "dotnet" SuaveTestDll
+    run cwd "dotnet" ("build " + proj "Suave.Tests" + " --configuration=Release")
+    run cwd "dotnet" SuaveTestDll
     // Giraffe
-    run "." "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
-    run "." "dotnet" GiraffeTestDll
+    run cwd "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
+    run cwd "dotnet" GiraffeTestDll
 
-Target "IntegrationTests" <| fun _ ->
-    clean (getPath "Server")
-    clean (getPath "Json")
-    clean (getPath "Suave")
-    clean (getPath "UITests")
-    clean (getPath "IntegrationTests" </> "Server.Suave")
-    clean (getPath "IntegrationTests" </> "Client")
-    
-    run (getPath "IntegrationTests") "npm" "install"
-    run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
-    run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
-    run "UITests" "dotnet" "restore --no-cache"
-    run "UITests" "dotnet" "run --headless"
-
-Target "IntegrationTestsV2" <| fun _ ->
+Target.create "IntegrationTests" <| fun _ ->
     clean (getPath "Server")
     clean (getPath "Json")
     clean (getPath "Suave")
@@ -192,13 +189,13 @@ Target "IntegrationTestsV2" <| fun _ ->
     clean (getPath "ClientV2Tests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
-    CleanDirs [ getPath "ClientV2Tests" </> ".fable" ]
-    run "ClientV2Tests" "yarn" "install"
+    Shell.cleanDirs [ getPath "ClientV2Tests" </> ".fable" ]
+    run "ClientV2Tests" "npm" "install"
     run "ClientV2Tests" "npm" "run build"
     run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run --headless"
 
-Target "IntegrationTestsV2Live" <| fun _ ->
+Target.create "IntegrationTestsLive" <| fun _ ->
     clean (getPath "Server")
     clean (getPath "Json")
     clean (getPath "Suave")
@@ -211,18 +208,4 @@ Target "IntegrationTestsV2Live" <| fun _ ->
     run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run"
 
-Target "IntegrationTestsLive" <| fun _ ->
-    clean (getPath "Server")
-    clean (getPath "Json")
-    clean (getPath "Suave")
-    clean (getPath "UITests")
-    clean (getPath "IntegrationTests" </> "Server.Suave")
-    clean (getPath "IntegrationTests" </> "Client")
-
-    run (getPath "IntegrationTests") "yarn" "install"
-    run (getPath "IntegrationTests" </> "Client") "dotnet" "restore --no-cache"
-    run (getPath "IntegrationTests" </> "Client") "dotnet" "fable npm-run build"
-    run "UITests" "dotnet" "restore --no-cache"
-    run "UITests" "dotnet" "run"
-
-RunTargetOrDefault "BuildRunAllTests"
+Target.runOrDefault "BuildRunAllTests"
