@@ -169,7 +169,7 @@ rcf/
 # Windows Store app package directory
 AppPackages/
 BundleArtifacts/
-
+bundle.js
 # Visual Studio cache files
 # files ending in .cache can be ignored
 *.[Cc]ache

@@ -16,12 +16,12 @@ let cookieServer readCookie : ICookieServer = {
     checkCookie = fun () -> readCookie () |> Async.result
 }
 
-let getInt : unit -> int = 
+let getInt : unit -> int =
     let mutable i = 0
     fun () ->
         i <- i + 1
         i
- 
+
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
 let server : IServer  = {
@@ -31,7 +31,7 @@ let server : IServer  = {
     getSeq = fun () -> async { return seq { yield (Just 5); yield Nothing }  }
     binaryContent = fun () -> async { return [| byte 1; byte 2; byte 3 |] }
     binaryInputOutput = Async.result
-    echoInteger = Async.result 
+    echoInteger = Async.result
     echoString = Async.result
     echoBool = Async.result
     echoIntOption = Async.result
@@ -40,10 +40,12 @@ let server : IServer  = {
     echoGenericUnionString = Async.result
     echoSimpleUnionType = Async.result
     echoGenericMap = Async.result
-    echoRecord = Async.result 
+    echoRecord = Async.result
     echoRemoteWorkEntity = Async.result
     echoAnonymousRecord = Async.result
-    echoNestedAnonRecord = Async.result
+    // TODO: Support anonymous records as generic type arguments
+    // See https://github.com/Zaid-Ajaj/Fable.Remoting/issues/132
+    // echoNestedAnonRecord = Async.result
     echoTree = Async.result
     echoGenericRecordInt = Async.result
     echoNestedGeneric = Async.result
@@ -54,16 +56,16 @@ let server : IServer  = {
     mapRecordAsKey = fun () -> async { return Map.ofList [ { Key = 1; Value = "Value" }, 1 ] }
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
-    tuplesAndLists = fun (dict, xs) -> 
-        xs 
+    tuplesAndLists = fun (dict, xs) ->
+        xs
         |> List.map (fun x -> x, x.Length)
         |> List.append (Map.toList dict)
-        |> Map.ofList  
+        |> Map.ofList
         |> Async.result
-        
+
     echoResult = Async.result
     echoSingleCase = Async.result
-    echoHighScores = Async.result 
+    echoHighScores = Async.result
     getHighScores = fun () -> async {
         return [|
             { Name = "alfonsogarciacaro"; Score =  100 }
