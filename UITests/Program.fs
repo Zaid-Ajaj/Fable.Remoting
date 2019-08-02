@@ -1,22 +1,14 @@
-// Learn more about F# at http://fsharp.org
-
 open System
 open Suave
 open Suave.Successful
 open System.IO
 open Fable.Remoting.Server
 open Fable.Remoting.Suave
-open OpenQA.Selenium
-open OpenQA.Selenium.Firefox
 open System.Threading
-open Suave.Logging
 open Suave.Operators
 open Suave.Filters
-
 open SharedTypes
 open ServerImpl
-open OpenQA.Selenium
-open OpenQA.Selenium.Chrome
 open PuppeteerSharp
 
 let fableWebPart =

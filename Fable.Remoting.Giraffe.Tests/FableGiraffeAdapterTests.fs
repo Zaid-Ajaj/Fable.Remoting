@@ -7,6 +7,7 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open Giraffe
+open FSharp.Control.Tasks.V2.ContextInsensitive
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Expecto
@@ -15,14 +16,14 @@ open Newtonsoft.Json
 open Fable.Remoting.Json
 
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
-let pass () = Expect.equal true true ""   
+let pass () = Expect.equal true true ""
 let fail () = Expect.equal false true ""
-let failUnexpect (x: obj) = Expect.equal false true (sprintf "%A was not expected" x) 
+let failUnexpect (x: obj) = Expect.equal false true (sprintf "%A was not expected" x)
 
-let giraffeApp = 
+let giraffeApp =
     Remoting.createApi()
-    |> Remoting.fromValue implementation 
-    |> Remoting.buildHttpHandler 
+    |> Remoting.fromValue implementation
+    |> Remoting.buildHttpHandler
 
 let postContent (input: string) =  new StringContent(input, Text.Encoding.UTF8)
 let configureApp (app : IApplicationBuilder) =
@@ -54,46 +55,46 @@ let makeRequest (request : HttpRequestMessage) =
         return content
     } |> runTask
 
-let request (path: string) (body: string) = 
+let request (path: string) (body: string) =
     makeRequest (postReq path body)
 
 let private fableConverter = FableJsonConverter()
 
-let ofJson<'t> (input: string) = 
+let ofJson<'t> (input: string) =
     JsonConvert.DeserializeObject<'t>(input, fableConverter)
-let toJson (x: obj) = 
+let toJson (x: obj) =
     JsonConvert.SerializeObject(x, fableConverter)
- 
-let fableGiraffeAdapterTests = 
+
+let fableGiraffeAdapterTests =
     testList "FableGiraffeAdapter tests" [
-        testCase "String round trip" <| fun () ->   
+        testCase "String round trip" <| fun () ->
             let input = "\"hello\""
             let output = makeRequest (postReq "/IProtocol/echoString" (toJson input))
             match ofJson<string> output with
             | "\"hello\"" -> pass()
-            | otherwise -> failUnexpect otherwise 
+            | otherwise -> failUnexpect otherwise
 
         testCase "Int round trip" <| fun () ->
             [-2; -1; 0; 1; 2]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoInteger" (toJson input)))
             |> List.map (fun output -> ofJson<int> output)
-            |> function 
+            |> function
                 | [-2; -1; 0; 1; 2] -> pass()
-                | otherwise -> failUnexpect otherwise  
+                | otherwise -> failUnexpect otherwise
 
         testCase "Option<int> round first trip" <| fun () ->
             [Some 2; None; Some -2]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntOption" (toJson input)))
             |> List.map (fun output -> ofJson<int option> output)
-            |> function 
+            |> function
                 | [Some 2; None; Some -2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "bigint roundtrip" <| fun () ->
             [1I .. 5I]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoBigInteger" (toJson input)))
-            |> List.map ofJson<bigint> 
-            |> function 
+            |> List.map ofJson<bigint>
+            |> function
                 | xs when xs = [1I .. 5I] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -101,15 +102,15 @@ let fableGiraffeAdapterTests =
             [Some "hello"; None; Some "there"]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
             |> List.map (fun output -> ofJson<string option> output)
-            |> function 
+            |> function
                 | [Some "hello"; None; Some "there"] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Option<string> round second trip" <| fun () ->
             [Some "hello"; None; Some "there"]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
-            |> List.map ofJson<string option> 
-            |> function 
+            |> List.map ofJson<string option>
+            |> function
                 | [Some "hello"; None; Some "there"] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -117,7 +118,7 @@ let fableGiraffeAdapterTests =
             [true; false; true]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoBool" (toJson input)))
             |> List.map (fun output -> ofJson<bool> output)
-            |> function 
+            |> function
                 | [true; false; true] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -125,7 +126,7 @@ let fableGiraffeAdapterTests =
             [Just 5; Nothing; Just -2]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoGenericUnionInt" (toJson input)))
             |> List.map (fun output -> ofJson<Maybe<int>> output)
-            |> function 
+            |> function
                 | [Just 5; Nothing; Just -2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -133,7 +134,7 @@ let fableGiraffeAdapterTests =
             [Just "hello"; Nothing; Just "there"; Just null]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoGenericUnionString" (toJson input)))
             |> List.map (fun output -> ofJson<Maybe<string>> output)
-            |> function 
+            |> function
                 | [Just "hello"; Nothing; Just "there"; Just null] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -141,7 +142,7 @@ let fableGiraffeAdapterTests =
             [A; B]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoSimpleUnion" (toJson input)))
             |> List.map (fun output -> ofJson<AB> output)
-            |> function 
+            |> function
                 | [A; B] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -149,7 +150,7 @@ let fableGiraffeAdapterTests =
             [[]; [1 .. 5]]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntList" (toJson input)))
             |> List.map (fun output -> ofJson<int list> output)
-            |> function 
+            |> function
                 | [[]; [1;2;3;4;5]] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -157,7 +158,7 @@ let fableGiraffeAdapterTests =
             [[1.5; 1.5; 3.0]]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/floatList" (toJson input)))
             |> List.map (fun output -> ofJson<float list> output)
-            |> function 
+            |> function
                 | [[1.5; 1.5; 3.0]] -> pass()
                 | otherwise -> failUnexpect otherwise
 
@@ -165,21 +166,21 @@ let fableGiraffeAdapterTests =
             [(); ()]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/unitToInts" (toJson input)))
             |> List.map (fun output -> ofJson<int list> output)
-            |> function 
+            |> function
                 | [[1;2;3;4;5]; [1;2;3;4;5]] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Result<int, string> roundtrip works with Ok" <| fun _ ->
             makeRequest (postReq "/IProtocol/echoResult" (toJson (Ok 15)))
             |> ofJson<Result<int, string>>
-            |> function 
+            |> function
                 | Ok 15 -> pass()
                 | otherwise -> fail()
 
         testCase "Result<int, string> roundtrip works with Error" <| fun _ ->
             makeRequest (postReq "/IProtocol/echoResult" (toJson (Error "hello")))
             |> ofJson<Result<int, string>>
-            |> function 
+            |> function
                 | Error "hello" -> pass()
                 | otherwise -> fail()
 
@@ -187,10 +188,10 @@ let fableGiraffeAdapterTests =
             [{ Prop1 = "hello"; Prop2 = 10; Prop3 = Some 5 }
              { Prop1 = "";      Prop2 = 1;  Prop3 = None }]
             |> List.map (toJson >> request "/IProtocol/echoRecord" >> ofJson<Record>)
-            |> function 
+            |> function
                 | [{ Prop1 = "hello"; Prop2 = 10; Prop3 = Some 5 }
                    { Prop1 = "";      Prop2 = 1;  Prop3 = None   } ] -> pass()
-                | otherwise -> failUnexpect otherwise  
+                | otherwise -> failUnexpect otherwise
 
         testCase "Map<string, int> roundtrip" <| fun () ->
             ["one",1; "two",2]

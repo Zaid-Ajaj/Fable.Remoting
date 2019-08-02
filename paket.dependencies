@@ -3,9 +3,6 @@ source https://api.nuget.org/v3/index.json
 storage: none
 nuget Expecto
 nuget FSharp.Core
-nuget Fable.Core
-nuget Fable.PowerPack
-nuget Http.fs
 nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.TestHost
 nuget Newtonsoft.Json
@@ -13,20 +10,19 @@ nuget NUnit
 nuget PuppeteerSharp
 nuget Suave
 nuget Giraffe
-nuget Selenium.WebDriver
-clitool dotnet-fable
 
 group Build
-    framework >= net45
     source https://api.nuget.org/v3/index.json
-    nuget FAKE
-
-group SaturnTests
-    source https://api.nuget.org/v3/index.json
+    framework: netstandard2.0
     storage: none
-    nuget Saturn
 
-group NextClient
+    nuget FSharp.Core
+    nuget Fake.Core.ReleaseNotes
+    nuget Fake.Core.Target
+    nuget Fake.DotNet.Cli
+    nuget Fake.IO.FileSystem
+
+group Client
     source https://api.nuget.org/v3/index.json
     nuget Fable.Mocha
     nuget Fable.SimpleJson

@@ -1,5 +1,4 @@
 language: csharp
-mono: 5.2.0
 dist: xenial
 sudo: required
 dotnet: 2.2.300
@@ -18,18 +17,12 @@ addons:
 before_install:
   - nvm install 10.12.0
   - nvm use 10.12.0
-  # Yarn
-  - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-  - echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-  - sudo apt-get update && sudo apt-get install yarn
   - sudo snap alias dotnet-sdk.dotnet dotnet
-  - dotnet --version 
-  
+  - dotnet --version
+  - dotnet tool install -g fake-cli
+  - dotnet tool install -g paket
+
 script:
- - echo "Running tests"
- - dotnet run -p Fable.Remoting.Json.Tests/Fable.Remoting.Json.Tests.fsproj
- - dotnet run -p Fable.Remoting.Server.Tests/Fable.Remoting.Server.Tests.fsproj
- - dotnet run -p Fable.Remoting.Suave.Tests/Fable.Remoting.Suave.Tests.fsproj
- - dotnet run -p Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj
- - ./build.sh IntegrationTestsV2
- - ./build.sh RunDotnetClientTests
+  - echo "Running tests"
+  - fake build -t BuildRunAllTests
+  - fake build -t IntegrationTests
