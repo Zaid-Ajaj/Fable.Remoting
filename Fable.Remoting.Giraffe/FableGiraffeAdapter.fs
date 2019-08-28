@@ -28,11 +28,6 @@ module GiraffeUtil =
     let setJsonBody error logger =
         setResponseBody error logger
 
-    /// Used to halt the forwarding of the Http context
-    let halt : HttpHandler =
-      fun (next : HttpFunc) (ctx : HttpContext) ->
-        task { return None }
-
     /// Handles thrown exceptions
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
       let logger = options.DiagnosticsLogger
@@ -101,7 +96,7 @@ module GiraffeUtil =
                 let serializedSchema = schema.ToString(Formatting.None)
                 return! text serializedSchema next ctx
             | _ ->
-                return! halt next ctx
+                return! skipPipeline
         | Some funcName ->
             let func = Map.find funcName dynamicFunctions
             match ctx.Request.Method.ToUpper(), func.Type with
@@ -136,7 +131,7 @@ module GiraffeUtil =
                     ctx.Response.StatusCode <- 500
                     return! setJsonBody error options.DiagnosticsLogger next ctx
             | _ ->
-                return! halt next ctx
+                return! skipPipeline
       }
 
 module Remoting =
@@ -144,7 +139,7 @@ module Remoting =
   /// Builds a HttpHandler from the given implementation and options
   let buildHttpHandler (options: RemotingOptions<HttpContext, 't>) =
     match options.Implementation with
-    | Empty -> GiraffeUtil.halt
+    | Empty -> fun _ _ -> skipPipeline
     | StaticValue impl -> GiraffeUtil.buildFromImplementation impl options
     | FromContext createImplementationFrom ->
         fun (next : HttpFunc) (ctx : HttpContext) ->
