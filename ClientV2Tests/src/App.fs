@@ -48,6 +48,34 @@ let serverTests =
                 do test.equal result 5
             }
 
+        testCaseAsync "IServer.returnUnit" <|
+            async {
+                let! result = server.returnUnit()
+                do! Async.Sleep 1000
+                do test.pass()
+            }
+
+        testCaseAsync "IServer.intToUnit" <|
+            async {
+                let! result = server.intToUnit 42
+                do! Async.Sleep 100
+                do test.pass()
+            }
+
+        testCaseAsync "IServer.tupleToUnit" <|
+            async {
+                let! result = server.tupleToUnit (42, "Hello world")
+                do! Async.Sleep 100
+                do test.pass()
+            }
+
+        testCaseAsync "IServer.tupleToTuple" <|
+            async {
+                let! (text, number) = server.tupleToTuple (42, "Hello world")
+                do test.areEqual text "Hello world"
+                do test.areEqual number 42
+            }
+
         testCaseAsync "IServer.echoAnonymousRecord" <|
             async {
                 let! result = server.echoAnonymousRecord (Just {| name = "John" |})

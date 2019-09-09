@@ -27,6 +27,10 @@ let getInt : unit -> int =
 let server : IServer  = {
     // primitive types
     simpleUnit = fun () -> async { return 42 }
+    returnUnit = fun () -> async { return () }
+    intToUnit = fun n -> async { return () }
+    tupleToUnit = fun (a, b) -> async { return () }
+    tupleToTuple = fun (a,b) -> async { return (b, a) }
     getLength = fun input -> Async.result input.Length
     getSeq = fun () -> async { return seq { yield (Just 5); yield Nothing }  }
     binaryContent = fun () -> async { return [| byte 1; byte 2; byte 3 |] }

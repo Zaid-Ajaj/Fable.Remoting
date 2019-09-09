@@ -38,8 +38,8 @@ type RequiredInputItem<'TInput> =
     | ValidUserInput   of 'TInput
 
 module RequiredInput =
-    let validOrFail (ii:RequiredInputItem<'TInput>) =
-        match ii with
+    let validOrFail (requestInput:RequiredInputItem<'TInput>) =
+        match requestInput with
         | NoUserInputYet     -> failwith "No value has been inputted"
         | InvalidUserInput _ -> failwith "Input is not valid!"
         | ValidUserInput x   -> x
@@ -75,6 +75,10 @@ type RecordAsKey = { Key: int; Value: string }
 type IServer = {
     // primitive types
     simpleUnit : unit -> Async<int>
+    returnUnit : unit -> Async<unit>
+    intToUnit : int -> Async<unit>
+    tupleToUnit : int * string -> Async<unit>
+    tupleToTuple : int * string -> Async<string * int>
     getLength : string -> Async<int>
     getSeq : unit -> Async<seq<Maybe<int>>>
     echoInteger : int -> Async<int>
