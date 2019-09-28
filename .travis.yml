@@ -27,4 +27,5 @@ before_install:
 script:
   - echo "Running tests"
   - fake build -t BuildRunAllTests
+  - paket restore
   - fake build -t IntegrationTests
