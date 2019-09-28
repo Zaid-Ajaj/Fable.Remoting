@@ -12,8 +12,6 @@ open Fable.Remoting.DotnetClient
 open Expecto
 open Types
 open System.Net
-open Expecto.Logging
-open Newtonsoft.Json.Linq
 
 let readerTest = reader {
     let! context = resolve<HttpContext>()
@@ -270,7 +268,7 @@ let middlewareTests =
             Expect.equal output (Ok 15) "Result is correct"
 
             let! output = proxy.call ( fun server -> server.echoResult (Result.Error "somewhere here") )
-            Expect.equal output (Result.Error "somewhere here")  "Result is correct"
+            Expect.equal output (Error "somewhere here")  "Result is correct"
         }
 
         testCaseAsync "IServer.echoMap" <| async {
