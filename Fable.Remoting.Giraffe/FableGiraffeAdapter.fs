@@ -49,24 +49,24 @@ module GiraffeUtil =
             Diagnostics.runPhase logger func.FunctionName
             let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
             match functionResult with
-            | Choice.Choice1Of2 output ->
+            | Choice1Of2 output ->
                 let isBinaryOutput =
                     match func.Type with
                     | NoArguments t when t = typeof<Async<byte[]>> -> true
                     | SingleArgument (i, t) when t = typeof<Async<byte[]>> -> true
                     | ManyArguments (i, t) when t = typeof<Async<byte[]>> -> true
-                    | otherwise -> false
+                    | _ -> false
 
                 if isBinaryOutput && ctx.Request.Headers.ContainsKey("x-remoting-proxy") then
                     let binaryResponse = unbox<byte[]> output
                     ctx.Response.StatusCode <- 200
                     ctx.Response.ContentType <- "application/octet-stream"
-                    return! Giraffe.ResponseWriters.setBody binaryResponse next ctx
+                    return! setBody binaryResponse next ctx
                 else
                     ctx.Response.StatusCode <- 200
                     ctx.Response.ContentType <- "application/json; charset=utf-8"
                     return! setJsonBody output logger next ctx
-            | Choice.Choice2Of2 ex ->
+            | Choice2Of2 ex ->
                 ctx.Response.StatusCode <- 500
                 ctx.Response.ContentType <- "application/json; charset=utf-8"
                 let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
