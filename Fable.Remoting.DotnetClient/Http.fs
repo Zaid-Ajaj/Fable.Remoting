@@ -12,9 +12,9 @@ module Http =
 
     type ProxyRequestException(response: HttpResponseMessage, errorMsg, reponseText: string) = 
         inherit System.Exception(errorMsg)
-        member this.Response = response 
-        member this.StatusCode = response.StatusCode
-        member this.ResponseText = reponseText 
+        member __.Response = response 
+        member __.StatusCode = response.StatusCode
+        member __.ResponseText = reponseText 
 
     let makePostRequest (client: HttpClient) (url : string) (requestBody : string) auth : Async<string> = 
         let contentType = "application/json"

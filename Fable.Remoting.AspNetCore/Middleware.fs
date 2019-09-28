@@ -105,7 +105,7 @@ module internal Middleware =
                     | NoArguments t when t = typeof<Async<byte[]>> -> true
                     | SingleArgument (i, t) when t = typeof<Async<byte[]>> -> true
                     | ManyArguments (i, t) when t = typeof<Async<byte[]>> -> true
-                    | otherwise -> false
+                    | _ -> false
                     
                 // if the output is binary and the request is sent from the new proxy (x-remoting-proxy)
                 // then return write the bytes to the response stream

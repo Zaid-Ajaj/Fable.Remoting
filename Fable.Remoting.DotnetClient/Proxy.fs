@@ -44,10 +44,10 @@ module Proxy =
         let mutable authHeader = Http.Authorisation.NoToken
         let client = defaultArg client (new HttpClient())
         /// Uses the specified string as the authorization header for the requests that the proxy makes to the server
-        member this.authorisationHeader (header: string) =
+        member __.authorisationHeader (header: string) =
             authHeader <- Http.Authorisation.Token header
              
-        member this.Call<'a> (expr: Expression<Func<'t, Async<'a>>>) : Task<'a> =
+        member __.Call<'a> (expr: Expression<Func<'t, Async<'a>>>) : Task<'a> =
             let args = [  ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
@@ -55,7 +55,7 @@ module Proxy =
             let asyncPost = proxyPost<'a> args route client authHeader
             Async.StartAsTask asyncPost 
 
-        member this.Call<'a, 'b> (expr: Expression<Func<'t, FSharpFunc<'a, Async<'b>>>>, input: 'a) : Task<'b> =
+        member __.Call<'a, 'b> (expr: Expression<Func<'t, FSharpFunc<'a, Async<'b>>>>, input: 'a) : Task<'b> =
             let args = [ box input ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
@@ -63,7 +63,7 @@ module Proxy =
             let asyncPost = proxyPost<'b> args route client authHeader
             Async.StartAsTask asyncPost 
 
-        member this.Call<'a, 'b, 'c> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, Async<'c>>>>>, arg1: 'a, arg2: 'b) : Task<'c> = 
+        member __.Call<'a, 'b, 'c> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, Async<'c>>>>>, arg1: 'a, arg2: 'b) : Task<'c> = 
             let args = [ box arg1; box arg2 ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
@@ -71,7 +71,7 @@ module Proxy =
             let asyncPost = proxyPost<'c> args route client authHeader
             Async.StartAsTask asyncPost 
 
-        member this.Call<'a, 'b, 'c, 'd> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, FSharpFunc<'c, Async<'d>>>>>>, arg1: 'a, arg2: 'b, arg3: 'c) : Task<'d> = 
+        member __.Call<'a, 'b, 'c, 'd> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, FSharpFunc<'c, Async<'d>>>>>>, arg1: 'a, arg2: 'b, arg3: 'c) : Task<'d> = 
             let args = [ box arg1; box arg2; box arg3 ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
@@ -86,7 +86,7 @@ module Proxy =
         ///     let! result = proxy.call <@ server -> server.getLength "input" @>
         ///  }
         /// ```
-        member this.call<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) =
+        member __.call<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
@@ -103,7 +103,7 @@ module Proxy =
         ///       | Error ex -> (* panic! *)
         ///    }
         /// ```
-        member this.callSafely<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) : Async<Result<'u, exn>> =
+        member __.callSafely<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) : Async<Result<'u, exn>> =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
