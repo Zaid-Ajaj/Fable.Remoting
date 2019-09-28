@@ -2,11 +2,12 @@ language: csharp
 dist: xenial
 sudo: required
 dotnet: 3.0.100
+mono: none
 addons:
   snaps:
-  - name: dotnet-sdk
-    classic: true
-    channel: latest/beta
+    - name: dotnet-sdk
+      classic: true
+      channel: latest/beta
   apt:
     sources:
       - ubuntu-toolchain-r-test
