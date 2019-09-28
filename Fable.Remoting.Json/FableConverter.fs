@@ -423,23 +423,21 @@ type FableJsonConverter() =
         | true, _ ->
             serializer.Deserialize(reader, t)
 
-#if !DOTNETCORE
-// See https://github.com/fable-compiler/Fable/issues/450#issuecomment-251000889
-type SerializationBinder() =
-    inherit System.Runtime.Serialization.SerializationBinder()
-    let findType name =
-        System.AppDomain.CurrentDomain.GetAssemblies()
-        |> Seq.tryPick(fun a ->
-            a.GetTypes()
-            |> Seq.tryPick(fun t -> if t.FullName.Replace("+", ".") = name then Some t else None))
-    let getType name =
-        serializationBinderTypes.GetOrAdd(name, findType >> Option.toObj)
+// // See https://github.com/fable-compiler/Fable/issues/450#issuecomment-251000889
+// type SerializationBinder() =
+//     inherit System.Runtime.Serialization.SerializationBinder()
+//     let findType name =
+//         System.AppDomain.CurrentDomain.GetAssemblies()
+//         |> Seq.tryPick(fun a ->
+//             a.GetTypes()
+//             |> Seq.tryPick(fun t -> if t.FullName.Replace("+", ".") = name then Some t else None))
+//     let getType name =
+//         serializationBinderTypes.GetOrAdd(name, findType >> Option.toObj)
 
-    override x.BindToType(assemblyName:string, typeName:string) =
-        if not <| isNull assemblyName
-        then base.BindToType(assemblyName, typeName)
-        else getType typeName
-    override x.BindToName(typ:Type, assemblyName:byref<string>, typeName:byref<string>) =
-        assemblyName <- null
-        typeName <- typ.FullName.Replace("+", ".")
-#endif
+//     override x.BindToType(assemblyName:string, typeName:string) =
+//         if not <| isNull assemblyName
+//         then base.BindToType(assemblyName, typeName)
+//         else getType typeName
+//     override x.BindToName(typ:Type, assemblyName:byref<string>, typeName:byref<string>) =
+//         assemblyName <- null
+//         typeName <- typ.FullName.Replace("+", ".")
