@@ -1,9 +1,7 @@
 namespace Fable.Remoting.DotnetClient
 
 open Quotations.Patterns
-open Quotations.DerivedPatterns
 open FSharp.Reflection
-open System.ComponentModel
 
 module Patterns =
     let (| AsyncField |_|) = function 

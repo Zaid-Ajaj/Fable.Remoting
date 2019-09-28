@@ -2,9 +2,6 @@ namespace Fable.Remoting.DotnetClient
 
 open System.Net.Http
 open System.Text
-open Newtonsoft.Json.Linq
-open Fable.Remoting.Json
-open Newtonsoft.Json
 
 [<RequireQualifiedAccess>]
 module Http = 
@@ -34,10 +31,10 @@ module Http =
             if response.IsSuccessStatusCode 
             then return responseText
             elif response.StatusCode = System.Net.HttpStatusCode.InternalServerError 
-            then return raise (new ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, responseText))
+            then return raise ( ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, responseText))
             elif response.StatusCode = System.Net.HttpStatusCode.Unauthorized 
-            then return raise (new ProxyRequestException(response, sprintf "Unauthorized error from the server (401) while making request to %s" url, responseText))          
+            then return raise ( ProxyRequestException(response, sprintf "Unauthorized error from the server (401) while making request to %s" url, responseText))          
             elif response.StatusCode = System.Net.HttpStatusCode.Forbidden
-            then return raise (new ProxyRequestException(response, sprintf "Forbidden error from the server (403) while making request to %s" url, responseText))
-            else return raise (new ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, responseText))
+            then return raise ( ProxyRequestException(response, sprintf "Forbidden error from the server (403) while making request to %s" url, responseText))
+            else return raise ( ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, responseText))
         }

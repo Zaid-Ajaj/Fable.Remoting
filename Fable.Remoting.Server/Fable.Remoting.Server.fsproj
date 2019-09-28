@@ -10,7 +10,7 @@
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
         <Version>4.8.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;net461;netcoreapp3.0</TargetFrameworks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

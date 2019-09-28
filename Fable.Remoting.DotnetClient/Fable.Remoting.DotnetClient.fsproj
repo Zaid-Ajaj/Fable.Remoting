@@ -8,7 +8,7 @@
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
         <Version>2.6.0</Version>
-        <TargetFrameworks>net45; net461; netstandard2.0</TargetFrameworks>
+        <TargetFrameworks>net45; net461; netstandard2.0; netcoreapp3.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <ItemGroup>
