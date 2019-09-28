@@ -1,8 +1,6 @@
 open System
-open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
-open Microsoft.AspNetCore.Server.Kestrel
 open Microsoft.Extensions.Logging
 open Giraffe
 open ServerImpl

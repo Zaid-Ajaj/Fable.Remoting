@@ -76,96 +76,84 @@ let fableGiraffeAdapterTests =
 
         testCase "Int round trip" <| fun () ->
             [-2; -1; 0; 1; 2]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoInteger" (toJson input)))
-            |> List.map (fun output -> ofJson<int> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoInteger" (toJson input)) |> ofJson<int>)
             |> function
                 | [-2; -1; 0; 1; 2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Option<int> round first trip" <| fun () ->
             [Some 2; None; Some -2]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntOption" (toJson input)))
-            |> List.map (fun output -> ofJson<int option> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntOption" (toJson input))|> ofJson<int option>)
             |> function
                 | [Some 2; None; Some -2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "bigint roundtrip" <| fun () ->
             [1I .. 5I]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoBigInteger" (toJson input)))
-            |> List.map ofJson<bigint>
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoBigInteger" (toJson input))|> ofJson<bigint>)
             |> function
                 | xs when xs = [1I .. 5I] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Option<string> round first trip" <| fun () ->
             [Some "hello"; None; Some "there"]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
-            |> List.map (fun output -> ofJson<string option> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input))|> ofJson<string option>)
             |> function
                 | [Some "hello"; None; Some "there"] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Option<string> round second trip" <| fun () ->
             [Some "hello"; None; Some "there"]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input)))
-            |> List.map ofJson<string option>
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoStringOption" (toJson input))|> ofJson<string option>)
             |> function
                 | [Some "hello"; None; Some "there"] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "bool round trip" <| fun () ->
             [true; false; true]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoBool" (toJson input)))
-            |> List.map (fun output -> ofJson<bool> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoBool" (toJson input)) |> ofJson<bool>)
             |> function
                 | [true; false; true] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Generic union Maybe<int> round trip" <| fun () ->
             [Just 5; Nothing; Just -2]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoGenericUnionInt" (toJson input)))
-            |> List.map (fun output -> ofJson<Maybe<int>> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoGenericUnionInt" (toJson input))|> ofJson<Maybe<int>>)
             |> function
                 | [Just 5; Nothing; Just -2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Generic union Maybe<string> round trip" <| fun () ->
             [Just "hello"; Nothing; Just "there"; Just null]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoGenericUnionString" (toJson input)))
-            |> List.map (fun output -> ofJson<Maybe<string>> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoGenericUnionString" (toJson input))|> ofJson<Maybe<string>>)
             |> function
                 | [Just "hello"; Nothing; Just "there"; Just null] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Simple union round trip" <| fun () ->
             [A; B]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoSimpleUnion" (toJson input)))
-            |> List.map (fun output -> ofJson<AB> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoSimpleUnion" (toJson input)) |> ofJson<AB>)
             |> function
                 | [A; B] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "List<int> round first trip" <| fun () ->
             [[]; [1 .. 5]]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntList" (toJson input)))
-            |> List.map (fun output -> ofJson<int list> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntList" (toJson input)) |> ofJson<int list>)
             |> function
                 | [[]; [1;2;3;4;5]] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "List<int> round second trip" <| fun () ->
             [[1.5; 1.5; 3.0]]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/floatList" (toJson input)))
-            |> List.map (fun output -> ofJson<float list> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/floatList" (toJson input))|> ofJson<float list>)
             |> function
                 | [[1.5; 1.5; 3.0]] -> pass()
                 | otherwise -> failUnexpect otherwise
 
         testCase "Unit as input with list result" <| fun () ->
             [(); ()]
-            |> List.map (fun input -> makeRequest (postReq "/IProtocol/unitToInts" (toJson input)))
-            |> List.map (fun output -> ofJson<int list> output)
+            |> List.map (fun input -> makeRequest (postReq "/IProtocol/unitToInts" (toJson input)) |> ofJson<int list>)
             |> function
                 | [[1;2;3;4;5]; [1;2;3;4;5]] -> pass()
                 | otherwise -> failUnexpect otherwise

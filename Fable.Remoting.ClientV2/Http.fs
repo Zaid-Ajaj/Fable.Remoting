@@ -3,13 +3,12 @@ namespace Fable.Remoting.Client
 open Browser
 open Browser.Types 
 open Fable.Core
-open Fable.Core.JsInterop
 
 module Http = 
 
     /// Constructs default values for HttpRequest
     let private defaultRequestConfig : HttpRequest = {
-        HttpMethod = HttpMethod.GET 
+        HttpMethod = GET 
         Url = "/" 
         Headers = [ ]
         RequestBody = Empty 
@@ -19,13 +18,13 @@ module Http =
     let get (url: string) : HttpRequest = 
         { defaultRequestConfig 
             with Url = url
-                 HttpMethod = HttpMethod.GET }
+                 HttpMethod = GET }
     
     /// Creates a POST request to the specified url
     let post (url: string) : HttpRequest = 
         { defaultRequestConfig 
             with Url = url
-                 HttpMethod = HttpMethod.POST }
+                 HttpMethod = POST }
 
     /// Creates a request using the given method and url
     let request method url = 
@@ -45,8 +44,8 @@ module Http =
             let xhr = XMLHttpRequest.Create()
             
             match req.HttpMethod with 
-            | HttpMethod.GET -> xhr.``open``("GET", req.Url)
-            | HttpMethod.POST -> xhr.``open``("POST", req.Url)
+            | GET -> xhr.``open``("GET", req.Url)
+            | POST -> xhr.``open``("POST", req.Url)
                 
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do 
@@ -55,7 +54,7 @@ module Http =
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
                 | ReadyState.Done -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
-                | otherwise -> ignore() 
+                | _ -> ignore() 
          
             match req.RequestBody with 
             | Empty -> xhr.send()
@@ -70,8 +69,8 @@ module Http =
             let xhr = XMLHttpRequest.Create()
             
             match req.HttpMethod with 
-            | HttpMethod.GET -> xhr.``open``("GET", req.Url)
-            | HttpMethod.POST -> xhr.``open``("POST", req.Url)
+            | GET -> xhr.``open``("GET", req.Url)
+            | POST -> xhr.``open``("POST", req.Url)
                
             // read response as byte array
             xhr.responseType <- "arraybuffer"
@@ -85,7 +84,7 @@ module Http =
                 | ReadyState.Done ->
                     let bytes = createUInt8Array xhr.response
                     resolve (bytes, xhr.status)
-                | otherwise -> 
+                | _ -> 
                     ignore() 
            
             match req.RequestBody with 

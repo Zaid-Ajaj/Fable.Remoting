@@ -31,9 +31,9 @@ module Remoting =
 type Remoting() = 
     static member buildProxy<'t>(options: RemoteBuilderOptions, [<Inject>] ?resolver: ITypeResolver<'t>) : 't = 
         let resolvedType = resolver.Value.ResolveType()
-        let schemaType = Converter.createTypeInfo resolvedType
+        let schemaType = createTypeInfo resolvedType
         match schemaType with 
-        | TypeInfo.Record getFields ->
+        | Record getFields ->
             let (fields, recordType) = getFields() 
             let proxy = obj() 
             for field in fields do 
@@ -68,9 +68,9 @@ type Remoting() =
                     | _ -> failwith "Only up to 8 arguments are supported" 
                 let argumentCount = 
                     match field.FieldType with 
-                    | TypeInfo.Async _  -> 0 
-                    | TypeInfo.Promise _  -> 0 
-                    | TypeInfo.Func getArgs -> Array.length (getArgs()) - 1
+                    | Async _  -> 0 
+                    | Promise _  -> 0 
+                    | Func getArgs -> Array.length (getArgs()) - 1
                     | _ -> 0 
                 let normalizedProxyFetch = normalize argumentCount
                 Proxy.setProp field.FieldName normalizedProxyFetch proxy

@@ -1,7 +1,7 @@
 language: csharp
 dist: xenial
 sudo: required
-dotnet: 2.2.300
+dotnet: 3.0.100
 addons:
   snaps:
   - name: dotnet-sdk

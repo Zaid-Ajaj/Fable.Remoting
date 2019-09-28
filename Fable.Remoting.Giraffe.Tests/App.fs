@@ -5,8 +5,7 @@ open Expecto.Logging
 
 open FableGiraffeAdapterTests 
 open MiddlewareTests 
-let testConfig =  { Expecto.Tests.defaultConfig with 
-                        verbosity = LogLevel.Debug }
+let testConfig =  { defaultConfig with verbosity = Debug }
 
 let allTests = testList "All Tests" [ fableGiraffeAdapterTests; middlewareTests ]
 
