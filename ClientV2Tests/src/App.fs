@@ -84,14 +84,13 @@ let serverTests =
                 | otherwise -> test.failwith "Unexpected result"
             }
 
-        // See https://github.com/Zaid-Ajaj/Fable.Remoting/issues/132
-        //testCaseAsync "IServer.echoNestedAnonRecord" <|
-        //    async {
-        //        let! result = server.echoNestedAnonRecord (Just {| nested  = {| name = "John" |} |})
-        //        match result with
-        //        | Just record -> test.equal "John" record.nested.name
-        //        | otherwise -> test.failwith "Unexpected result"
-        //    }
+        testCaseAsync "IServer.echoNestedAnonRecord" <|
+            async {
+                let! result = server.echoNestedAnonRecord (Just {| nested  = {| name = "John" |} |})
+                match result with
+                | Just record -> test.equal "John" record.nested.name
+                | otherwise -> test.failwith "Unexpected result"
+            }
 
         testCaseAsync "IServer.binaryContent" <|
             async {
