@@ -143,7 +143,5 @@ module Remoting =
     | StaticValue impl -> GiraffeUtil.buildFromImplementation impl options
     | FromContext createImplementationFrom ->
         fun (next : HttpFunc) (ctx : HttpContext) ->
-            task {
-              let impl = createImplementationFrom ctx
-              return! GiraffeUtil.buildFromImplementation impl options next ctx
-            }
+            let impl = createImplementationFrom ctx
+            GiraffeUtil.buildFromImplementation impl options next ctx
