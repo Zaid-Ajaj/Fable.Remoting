@@ -114,7 +114,7 @@ module GiraffeUtil =
             | "POST", SingleArgument(inputType, _) when inputType = typeof<byte[]> && ctx.Request.ContentType = "application/octet-stream" ->
                 let requestBodyStream = ctx.Request.Body
                 use memoryStream = new MemoryStream()
-                do requestBodyStream.CopyTo(memoryStream)
+                do! requestBodyStream.CopyToAsync(memoryStream)
                 let inputBytes = memoryStream.ToArray()
                 let inputArgs = [| box inputBytes |]
                 return! runFunction func impl options inputArgs next ctx
