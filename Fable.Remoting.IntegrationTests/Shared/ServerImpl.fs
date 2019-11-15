@@ -77,6 +77,7 @@ let server : IServer  = {
     echoBigInteger = Async.result
     throwError = fun () -> async { return! failwith "Generating custom server error" }
     echoMap = Async.result
+    echoTupleMap = Async.result
     multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
     overriddenFunction = fun str -> async { return! failwith str }
     customStatusCode = fun () -> async {return "No content"}

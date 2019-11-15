@@ -48,6 +48,14 @@ let serverTests =
                 do test.equal result 5
             }
 
+        testCaseAsync "IServer.echoTupleMap" <|
+            async {
+                let! result = server.echoTupleMap (Map.ofList [(1,1), 1])
+                match Map.toList result with
+                | [ (1,1), 1 ] -> test.pass()
+                | otherwise -> test.failwith "Map<int * int, int> fails"
+            }
+
         testCaseAsync "IServer.returnUnit" <|
             async {
                 let! result = server.returnUnit()

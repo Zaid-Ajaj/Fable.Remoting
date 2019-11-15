@@ -2,19 +2,19 @@
 
 open System
 
-type Record = { 
+type Record = {
     Prop1 : string
     Prop2 : int
     Prop3 : int option
 }
 
-type Maybe<'t> = 
+type Maybe<'t> =
     | Just of 't
     | Nothing
 
 type AB = A | B
 
-type IProtocol = { 
+type IProtocol = {
     echoInteger : int -> Async<int>
     echoMonth : DateTime -> Async<DateTime>
     echoString : string -> Async<string>
@@ -26,8 +26,8 @@ type IProtocol = {
     echoSimpleUnion : AB -> Async<AB>
     echoRecord : Record -> Async<Record>
         // binary responses
-    binaryContent : unit -> Async<byte[]> 
-    binaryInputOutput : byte[] -> Async<byte[]> 
+    binaryContent : unit -> Async<byte[]>
+    binaryInputOutput : byte[] -> Async<byte[]>
 
     echoIntList : int list -> Async<int list>
     unitToInts : unit -> Async<int list>
@@ -36,6 +36,8 @@ type IProtocol = {
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint -> Async<bigint>
     echoMap : Map<string, int> -> Async<Map<string, int>>
+    echoTupleMap : Map<int*int, int> -> Async<Map<int*int, int>>
+
 }
 
 
@@ -43,7 +45,7 @@ type IProtocol = {
 let pureAsync (x: 'a) : Async<'a> =
     async { return x }
 
-let implementation = { 
+let implementation = {
     binaryContent = fun () -> async { return [| byte 1; byte 2; byte 3 |] }
     binaryInputOutput = pureAsync
     echoInteger = pureAsync
@@ -63,7 +65,8 @@ let implementation = {
     echoResult = pureAsync
     echoBigInteger = pureAsync
     echoMap = pureAsync
-} 
+    echoTupleMap = pureAsync
+}
 
 
 open System
@@ -177,13 +180,13 @@ let server : IServer  = {
     echoBoolList = Async.result
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
-    tuplesAndLists = fun (dict, xs) -> 
-        xs 
+    tuplesAndLists = fun (dict, xs) ->
+        xs
         |> List.map (fun x -> x, x.Length)
         |> List.append (Map.toList dict)
-        |> Map.ofList  
+        |> Map.ofList
         |> Async.result
-        
+
     echoResult = Async.result
     echoSingleCase = Async.result
     echoBigInteger = Async.result

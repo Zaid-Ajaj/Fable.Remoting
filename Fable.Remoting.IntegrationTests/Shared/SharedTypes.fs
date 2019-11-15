@@ -114,6 +114,7 @@ type IServer = {
     echoGenericMap : Map<string, Maybe<int>> -> Async<Map<string, Maybe<int>>>
     // maps
     echoMap : Map<string, int> -> Async<Map<string, int>>
+    echoTupleMap : Map<int * int, int> -> Async<Map<int * int, int>>
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
     // errors
     throwError : unit -> Async<string>

@@ -12,6 +12,12 @@
             },
             "command": "./build.sh BuildDotnetClientTests",
             "problemMatcher": []
+        },
+        {
+            "label": "build-giraffe-tests",
+            "type": "shell",
+            "command": "fake build -t BuildGiraffeTests",
+            "problemMatcher": []
         }
     ]
 }

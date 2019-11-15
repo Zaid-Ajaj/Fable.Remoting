@@ -4,13 +4,24 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/Fable.Remoting.IntegrationTests/DotnetClient/bin/Debug/netcoreapp2.0/DotnetClient.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "name": "Giraffe Tests",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-giraffe-tests",
+            "program": "${workspaceFolder}/Fable.Remoting.Giraffe.Tests/bin/Debug/netcoreapp3.0/Fable.Remoting.Giraffe.Tests.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",

@@ -81,6 +81,17 @@ let fableGiraffeAdapterTests =
                 | [-2; -1; 0; 1; 2] -> pass()
                 | otherwise -> failUnexpect otherwise
 
+        testCase "Map<int * int, int> round trip" <| fun () ->
+            [(1,1), 1]
+            |> Map.ofList
+            |> toJson
+            |> (postReq "/IProtocol/echoTupleMap" >> makeRequest)
+            |> ofJson<Map<int * int, int>>
+            |> fun dict ->
+                match Map.toList dict with
+                | [(1,1), 1] -> pass()
+                | otherwise -> failUnexpect otherwise
+
         testCase "Option<int> round first trip" <| fun () ->
             [Some 2; None; Some -2]
             |> List.map (fun input -> makeRequest (postReq "/IProtocol/echoIntOption" (toJson input))|> ofJson<int option>)

@@ -102,6 +102,11 @@ Target.create "RestoreBuildRunServerTests" <| fun _ ->
     run cwd "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
     run cwd "dotnet" ServerTestsDll
 
+Target.create "BuildGiraffeTests" <| fun _ ->
+    let path = getPath "Giraffe.Tests"
+    run path "dotnet" "restore --no-cache"
+    run path "dotnet" "build -c Debug"
+
 Target.create "BuildDotnetClientTests" <| fun _ ->
     clean (getPath "IntegrationTests" </> "DotnetClient")
     run (getPath "IntegrationTests" </> "DotnetClient") "dotnet" "build"
