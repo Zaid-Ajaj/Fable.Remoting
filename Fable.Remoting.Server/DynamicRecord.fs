@@ -177,9 +177,7 @@ module DynamicRecord =
     let tryCreateArgsFromJson (func: RecordFunctionInfo) (inputJson: string) (logger: Option<string -> unit>) =
         try Ok (createArgsFromJson func inputJson logger)
         with | ex ->
-            printfn "%A" ex
-            let error = { ParsingArgumentsError = ex.Message }
-            Error error
+            Error { ParsingArgumentsError = ex.Message }
 
     let routeMethod = function
         | NoArguments outputType when isAsync outputType -> "GET"
