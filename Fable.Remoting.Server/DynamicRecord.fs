@@ -6,14 +6,15 @@ open FSharp.Reflection
 open Fable.Remoting.Json
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
+open System.Collections.Concurrent
 
 /// Provides utilities to run functions dynamically from record fields
 module DynamicRecord =
 
     /// Invokes a function of a record field given the name of the method, the record itself, and an array of arguments for that function
-    let invoke (func: RecordFunctionInfo) args =
+    let invoke (func: RecordFunctionInfo) implementation args =
         let args = if Array.isEmpty args then [| null |] else args
-        let propValue = func.PropertyInfo.GetValue(func.Implementation, null)
+        let propValue = func.PropertyInfo.GetValue(implementation, null)
         let invokeMethod =  propValue.GetType().GetMethods() |> Array.tryFind (fun m -> m.Name = "Invoke")
         match invokeMethod with
         | Some methodInfo -> methodInfo.Invoke(propValue, args)
@@ -63,25 +64,29 @@ module DynamicRecord =
             | ManyArguments (_, output) ->
                 let asyncTypeParam = extractAsyncArg output
                 let boxer = createAsyncBoxer asyncTypeParam
-                let asyncValue = invoke func methodArgs
+                let asyncValue = invoke func implementation methodArgs
                 return! boxer.BoxAsyncResult asyncValue
         }
 
-    /// Reads the metadata from protocol definition, assumes the shape is checked and is correct
-    let createRecordFuncInfo (implementation: 't) =
-        let protocolType = implementation.GetType()
-        FSharpType.GetRecordFields(protocolType)
-        |> List.ofArray
-        |> List.map (fun propertyInfo ->
-            propertyInfo.Name,
-            {
-                FunctionName = propertyInfo.Name
-                PropertyInfo = propertyInfo
-                Type = makeRecordFuncType propertyInfo.PropertyType
-                Implementation = implementation
-            })
-        |> Map.ofList
+    let private recordFuncInfoCache = ConcurrentDictionary<Type, Map<String, RecordFunctionInfo>>()
 
+    /// Reads the metadata from protocol definition, assumes the shape is checked and is correct
+    let createRecordFuncInfo protocolType =
+        match recordFuncInfoCache.TryGetValue protocolType with
+        | true, x -> x
+        | _ ->
+            let x =
+                FSharpType.GetRecordFields protocolType
+                |> Array.map (fun propertyInfo ->
+                    propertyInfo.Name,
+                    {
+                        FunctionName = propertyInfo.Name
+                        PropertyInfo = propertyInfo
+                        Type = makeRecordFuncType propertyInfo.PropertyType
+                    })
+                |> Map.ofArray
+            recordFuncInfoCache.[protocolType] <- x
+            x
 
     let isAsync (inputType: Type) =
         inputType.FullName.StartsWith("Microsoft.FSharp.Control.FSharpAsync`1")
@@ -92,7 +97,7 @@ module DynamicRecord =
         if not (FSharpType.IsRecord protocolType)
         then failwithf "Protocol definition must be encoded as a record type. The input type '%s' was not a record." protocolType.Name
         else
-          let functionInfo = createRecordFuncInfo implementation
+          let functionInfo = createRecordFuncInfo protocolType
           let functions = Map.toList functionInfo
           for (funcName, info) in functions do
             match info.Type with

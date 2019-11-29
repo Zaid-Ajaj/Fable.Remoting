@@ -32,7 +32,6 @@ type RecordFunctionInfo = {
     FunctionName: string 
     Type: RecordFunctionType
     PropertyInfo: PropertyInfo 
-    Implementation: obj
 }
 
 type ProtocolImplementationMetadata = Type * RecordFunctionInfo list
