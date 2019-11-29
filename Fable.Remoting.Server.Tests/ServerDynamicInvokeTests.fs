@@ -31,9 +31,9 @@ let invalidRecInstance = { someFunc = fun n -> "" }
 let fsharpRecordTests =
 
     let invoke (funcName: string) (record: 't) (input: obj[]) (_: bool) =
-        let recordFunctions = DynamicRecord.createRecordFuncInfo record
+        let recordFunctions = DynamicRecord.createRecordFuncInfo (record.GetType())
         match Map.tryFind funcName recordFunctions with
-        | Some func -> DynamicRecord.invoke func input
+        | Some func -> DynamicRecord.invoke func record input
         | None -> failwithf "Function %s was not found" funcName
 
     let testRec = {
@@ -136,7 +136,7 @@ let serverTests =
 
     let implementation = TestImplementation.implementation
 
-    let recordFunctions = DynamicRecord.createRecordFuncInfo implementation
+    let recordFunctions = DynamicRecord.createRecordFuncInfo (implementation.GetType())
 
     let getFunc name = Map.find name recordFunctions
 

@@ -75,24 +75,24 @@ module GiraffeUtil =
 
     /// Builds the entire HttpHandler from implementation record, handles routing and dynamic running of record functions
     let buildFromImplementation impl options =
-      let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
-      let typeName = impl.GetType().Name
+      let typ = impl.GetType()
+      let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
       fun (next : HttpFunc) (ctx : HttpContext) -> task {
         let foundFunction =
           dynamicFunctions
-          |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typeName funcName)
+          |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typ.Name funcName)
         match foundFunction with
         | None ->
             match ctx.Request.Method.ToUpper(), options.Docs with
             | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
                 let (Documentation(docsName, docsRoutes)) = docs
-                let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+                let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
                 let docsApp = DocsApp.embedded docsName docsUrl schema
                 return! htmlString docsApp next ctx
             | "OPTIONS", (Some docsUrl, Some docs)
                 when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
                   || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
-                let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+                let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
                 let serializedSchema = schema.ToString(Formatting.None)
                 return! text serializedSchema next ctx
             | _ ->

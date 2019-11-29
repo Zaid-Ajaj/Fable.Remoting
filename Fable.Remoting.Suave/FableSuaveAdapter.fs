@@ -104,24 +104,24 @@ module SuaveUtil =
 
   /// Builds the entire WebPart from implementation record, handles routing and dynamic running of record functions
   let buildFromImplementation impl options = 
-    let dynamicFunctions = DynamicRecord.createRecordFuncInfo impl
-    let typeName = impl.GetType().Name   
+    let typ = impl.GetType()
+    let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
     fun (context: HttpContext) -> async {
       let foundFunction = 
         dynamicFunctions 
-        |> Map.tryFindKey (fun funcName _ -> context.request.path = options.RouteBuilder typeName funcName) 
+        |> Map.tryFindKey (fun funcName _ -> context.request.path = options.RouteBuilder typ.Name funcName) 
       match foundFunction with 
       | None -> 
           match context.request.method, options.Docs with 
           | HttpMethod.GET, (Some docsUrl, Some docs) when docsUrl = context.request.path -> 
               let (Documentation(docsName, docsRoutes)) = docs
-              let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+              let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
               let docsApp = DocsApp.embedded docsName docsUrl schema
               return! html docsApp context
           | HttpMethod.OPTIONS, (Some docsUrl, Some docs) 
                 when sprintf "/%s/$schema" docsUrl = context.request.path
                   || sprintf "%s/$schema" docsUrl = context.request.path ->
-              let schema = DynamicRecord.makeDocsSchema (impl.GetType()) docs options.RouteBuilder
+              let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
               let serializedSchema =  schema.ToString(Formatting.None)
               return! success serializedSchema None context   
           | _ -> 
