@@ -9,7 +9,7 @@
         "@babel/polyfill": "^7.6.0",
         "@babel/preset-env": "^7.6.0",
         "babel-loader": "8.0.0",
-        "fable-compiler": "^2.4.7",
+        "fable-compiler": "^2.8.4",
         "fable-loader": "^2.1.8",
         "webpack": "^4.39.3",
         "webpack-cli": "^3.3.8",
