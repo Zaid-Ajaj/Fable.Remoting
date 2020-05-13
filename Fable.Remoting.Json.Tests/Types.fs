@@ -16,6 +16,16 @@ type Maybe<'t> =
     | Just of 't
     | Nothing
 
+type String50 = 
+    private String50 of string
+
+    with 
+        member this.Read() = 
+            match this with 
+            | String50 content -> content
+
+        static member Create(content: string) = String50 content
+
 type UnionWithDateTime = 
     | Date of DateTime
     | Int of int

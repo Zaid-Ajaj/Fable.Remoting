@@ -35,6 +35,7 @@ let server : IServer  = {
     getSeq = fun () -> async { return seq { yield (Just 5); yield Nothing }  }
     binaryContent = fun () -> async { return [| byte 1; byte 2; byte 3 |] }
     binaryInputOutput = Async.result
+    privateConstructor = Async.result
     echoInteger = Async.result
     echoString = Async.result
     echoBool = Async.result

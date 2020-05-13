@@ -65,6 +65,11 @@ let converterTest =
           | SingleLongCase 20L -> pass()
           | otherwise -> fail()
 
+        testCase "String50 with private constructor can be serialized" <| fun ()  -> 
+            let serialized = "[\"String50\", \"onur\"]"
+            let deserialized = deserialize<String50> serialized  
+            Expect.equal (deserialized.Read()) "onur" "Value is deserialized"
+
         testCase "Map<int * int, int> can be deserialized" <| fun () ->
             let serialized = "[[[1,1],1]]"
             let deserialized =  deserialize<Map<int * int, int>> serialized

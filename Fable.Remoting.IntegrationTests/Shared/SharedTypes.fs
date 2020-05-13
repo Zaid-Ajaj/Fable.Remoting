@@ -21,6 +21,15 @@ type GenericRecord<'t> = {
 
 type HighScore = { Name: string; Score: int }
 
+type String50 = 
+    private String50 of string
+
+    with 
+        member this.Read() = 
+            match this with 
+            | String50 content -> content
+
+        static member Create(content: string) = String50 content
 
 type SingleCase = SingleCase of int
 
@@ -77,6 +86,7 @@ type IServer = {
     simpleUnit : unit -> Async<int>
     returnUnit : unit -> Async<unit>
     intToUnit : int -> Async<unit>
+    privateConstructor : String50 -> Async<String50>
     tupleToUnit : int * string -> Async<unit>
     tupleToTuple : int * string -> Async<string * int>
     getLength : string -> Async<int>

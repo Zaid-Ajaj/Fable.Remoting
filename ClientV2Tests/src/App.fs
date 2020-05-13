@@ -107,6 +107,13 @@ let serverTests =
                 test.equal true (result = [| byte 1; byte 2; byte 3|])
             }
 
+        testCaseAsync "IServer.privateConstructor" <| 
+            async {
+                let input = String50.Create "Hello"
+                let! output = server.privateConstructor input 
+                test.equal "Hello" (output.Read()) 
+            }
+
         testCaseAsync "IServer.echoRemoteWorkEntity" <|
             async {
                 let entity = { RemoteWork = RequiredInput.validOrFail (ValidUserInput (RemoteWork "Fully Remote")) }
