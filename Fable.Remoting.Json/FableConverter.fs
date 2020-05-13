@@ -122,7 +122,7 @@ open Newtonsoft.Json.Linq
 type FableJsonConverter() =
     inherit Newtonsoft.Json.JsonConverter()
 
-
+    let bindingFlags = BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance
     let [<Literal>] PojoDU_TAG = "type"
 
     let advance(reader: JsonReader) =
@@ -149,14 +149,14 @@ type FableJsonConverter() =
         |> defaultArg <| Kind.Union
 
     let getUci t name =
-        FSharpType.GetUnionCases(t)
+        FSharpType.GetUnionCases(t, true)
         |> Array.find (fun uci -> uci.Name = name)
 
 
     let getUnionCaseNameAndFields value (t:Type) =
         // The type-based caching doesn't work for struct unions, because all cases share one type.
         if t.IsValueType then
-            let uci, fields = FSharpValue.GetUnionFields(value, t)
+            let uci, fields = FSharpValue.GetUnionFields(value, t, true)
             let uciName = uci.Name
             uciName, fields
         else
@@ -167,7 +167,7 @@ type FableJsonConverter() =
                 |]
                 uciName, fields
             | false, _ ->
-                let uci, fields = FSharpValue.GetUnionFields(value, t)
+                let uci, fields = FSharpValue.GetUnionFields(value, t, true)
                 let uciName = uci.Name
                 // cases without fields don't have distinct types -> don't cache them.
                 if fields.Length > 0 then
@@ -190,7 +190,7 @@ type FableJsonConverter() =
                 then Kind.BigInt
                 elif FSharpType.IsTuple t
                 then Kind.Tuple
-                elif (FSharpType.IsUnion t && t.Name <> "FSharpList`1")
+                elif (FSharpType.IsUnion(t, BindingFlags.Instance ||| BindingFlags.NonPublic ||| BindingFlags.Public) && t.Name <> "FSharpList`1")
                 then getUnionKind t
                 elif t.IsGenericType
                     && (t.GetGenericTypeDefinition() = typedefof<Map<_,_>> || t.GetGenericTypeDefinition() = typedefof<Dictionary<_,_>>)
@@ -228,13 +228,13 @@ type FableJsonConverter() =
                 let milliseconds = ts.TotalMilliseconds
                 serializer.Serialize(writer, milliseconds)
             | true, Kind.Option ->
-                let _,fields = FSharpValue.GetUnionFields(value, t)
+                let _,fields = FSharpValue.GetUnionFields(value, t, true)
                 serializer.Serialize(writer, fields.[0])
             | true, Kind.Tuple ->
                 let values = FSharpValue.GetTupleFields(value)
                 serializer.Serialize(writer, values)
             | true, Kind.PojoDU ->
-                let uci, fields = FSharpValue.GetUnionFields(value, t)
+                let uci, fields = FSharpValue.GetUnionFields(value, t,true)
                 writer.WriteStartObject()
                 writer.WritePropertyName(PojoDU_TAG)
                 writer.WriteValue(uci.Name)
@@ -244,7 +244,7 @@ type FableJsonConverter() =
                     serializer.Serialize(writer, v))
                 writer.WriteEndObject()
             | true, Kind.StringEnum ->
-                let uci, _ = FSharpValue.GetUnionFields(value, t)
+                let uci, _ = FSharpValue.GetUnionFields(value, t, true)
                 // TODO: Should we cache the case-name pairs somewhere? (see also `ReadJson`)
                 match uci.GetCustomAttributes(typeof<CompiledNameAttribute>) with
                 | [|:? CompiledNameAttribute as att|] -> att.CompiledName
@@ -324,11 +324,11 @@ type FableJsonConverter() =
                 let ts = TimeSpan.FromMilliseconds (float json)
                 upcast ts
         | true, Kind.Option ->
-            let cases = FSharpType.GetUnionCases(t)
+            let cases = FSharpType.GetUnionCases(t, true)
             match reader.TokenType with
             | JsonToken.Null ->
                 serializer.Deserialize(reader, typeof<obj>) |> ignore
-                FSharpValue.MakeUnion(cases.[0], [||])
+                FSharpValue.MakeUnion(cases.[0], [||], bindingFlags)
             | _ ->
                 let innerType = t.GetGenericArguments().[0]
                 let innerType =
@@ -337,8 +337,8 @@ type FableJsonConverter() =
                     else innerType
                 let value = serializer.Deserialize(reader, innerType)
                 if isNull value
-                then FSharpValue.MakeUnion(cases.[0], [||])
-                else FSharpValue.MakeUnion(cases.[1], [|value|])
+                then FSharpValue.MakeUnion(cases.[0], [||], bindingFlags)
+                else FSharpValue.MakeUnion(cases.[1], [|value|], bindingFlags)
         | true, Kind.Tuple ->
             match reader.TokenType with
             | JsonToken.StartArray ->
@@ -351,10 +351,10 @@ type FableJsonConverter() =
             let uciName = dic.[PojoDU_TAG] :?> string
             let uci = getUci t uciName
             let fields = uci.GetFields() |> Array.map (fun fi -> Convert.ChangeType(dic.[fi.Name], fi.PropertyType))
-            FSharpValue.MakeUnion(uci, fields)
+            FSharpValue.MakeUnion(uci, fields, bindingFlags)
         | true, Kind.StringEnum ->
             let name = serializer.Deserialize(reader, typeof<string>) :?> string
-            FSharpType.GetUnionCases(t)
+            FSharpType.GetUnionCases(t, true)
             |> Array.tryFind (fun uci ->
                 // TODO: Should we cache the case-name pairs somewhere? (see also `WriteJson`)
                 match uci.GetCustomAttributes(typeof<CompiledNameAttribute>) with
@@ -363,14 +363,14 @@ type FableJsonConverter() =
                     let name2 = uci.Name.Substring(0,1).ToLowerInvariant() + uci.Name.Substring(1)
                     name = name2)
             |> function
-                | Some uci -> FSharpValue.MakeUnion(uci, [||])
+                | Some uci -> FSharpValue.MakeUnion(uci, [||], bindingFlags )
                 | None -> failwithf "Cannot find case corresponding to '%s' for `StringEnum` type %s"
                                 name t.FullName
         | true, Kind.Union ->
             match reader.TokenType with
             | JsonToken.String ->
                 let name = serializer.Deserialize(reader, typeof<string>) :?> string
-                FSharpValue.MakeUnion(getUci t name, [||])
+                FSharpValue.MakeUnion(getUci t name, [||], bindingFlags)
             | JsonToken.StartObject ->
                 advance reader
                 let name = reader.Value :?> string
@@ -381,11 +381,11 @@ type FableJsonConverter() =
                 then
                     let values = readElements(reader, itemTypes, serializer)
                     advance reader
-                    FSharpValue.MakeUnion(uci, List.toArray values)
+                    FSharpValue.MakeUnion(uci, List.toArray values, bindingFlags)
                 else
                     let value = serializer.Deserialize(reader, itemTypes.[0])
                     advance reader
-                    FSharpValue.MakeUnion(uci, [|value|])
+                    FSharpValue.MakeUnion(uci, [|value|], bindingFlags)
             | JsonToken.Null -> null // for { "union": null }
             | JsonToken.StartArray ->
                 let unionArray = serializer.Deserialize<JToken>(reader) :?> JArray
@@ -398,7 +398,7 @@ type FableJsonConverter() =
                     |> Array.map (fun index ->
                         let value = Seq.item index values
                         value.ToObject(unionCaseTypes.[index], serializer))
-                    |> fun unionCaseValues -> FSharpValue.MakeUnion(unionCaseInfo, unionCaseValues)
+                    |> fun unionCaseValues -> FSharpValue.MakeUnion(unionCaseInfo, unionCaseValues, bindingFlags)
                 parsedValue
             | _ -> failwithf "Invalid JSON token: %s" (reader.TokenType.ToString())
         | true, Kind.MapOrDictWithNonStringKey ->
