@@ -446,6 +446,21 @@ let serverTests =
                     | otherwise -> test.fail()
             }
 
+        testCaseAsync "IServer.throwBinaryError" <|
+            async {
+                let! result = Async.Catch (server.throwBinaryError())
+                match result with
+                | Choice1Of2 output -> test.fail()
+                | Choice2Of2 error ->
+                    match error with
+                    | :? ProxyRequestException as ex ->
+                        if ex.ResponseText.Contains("Generating custom server error for binary response")
+                        then test.pass()
+                        else test.fail()
+                    | otherwise -> test.fail()
+            }
+
+
         testCaseAsync "IServer.mutliArgFunc" <|
             async {
                 let! output = server.multiArgFunc "hello" 10 false

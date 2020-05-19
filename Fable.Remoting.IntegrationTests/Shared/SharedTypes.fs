@@ -128,6 +128,7 @@ type IServer = {
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
     // errors
     throwError : unit -> Async<string>
+    throwBinaryError : unit -> Async<byte[]>
 
     echoSingleCase : SingleCase -> Async<SingleCase>
     // mutli-arg functions

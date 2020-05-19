@@ -3,6 +3,25 @@ namespace Fable.Remoting.Client
 open System
 open Fable.Core
 open Fable.SimpleJson
+open Browser.Types
+
+module internal Blob =
+    /// Creates a Blob from the given input string
+    [<Emit("new Blob([$0.buffer], { type: 'text/plain' })")>]
+    let fromBinaryEncodedText (value: byte[]) : Blob = jsNative
+    
+    [<Emit("new FileReader()")>]
+    let createFileReader() : FileReader = jsNative
+
+    /// Asynchronously reads the blob data content as string
+    let readBlobAsText (blob: Blob) : Async<string> =
+        Async.FromContinuations <| fun (resolve, _, _) ->
+            let reader = createFileReader()
+            reader.onload <- fun _ ->
+                if reader.readyState = FileReaderState.DONE
+                then resolve (unbox reader.result)
+
+            reader.readAsText(blob)
 
 module Proxy =
 
@@ -127,12 +146,17 @@ module Proxy =
                             |> Http.sendAndReadBinary
                     
                     match statusCode with 
-                    | 200 -> return unbox response 
-                    | 500 -> 
-                        let response = { StatusCode = statusCode; ResponseBody = "" }
+                    | 200 -> 
+                        return unbox response 
+                    | 500 ->
+                        let responseAsBlob = Blob.fromBinaryEncodedText response
+                        let! responseText = Blob.readBlobAsText responseAsBlob
+                        let response = { StatusCode = statusCode; ResponseBody = responseText }
                         return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
                     | n ->
-                        let response = { StatusCode = statusCode; ResponseBody = "" }
+                        let responseAsBlob = Blob.fromBinaryEncodedText response
+                        let! responseText = Blob.readBlobAsText responseAsBlob
+                        let response = { StatusCode = statusCode; ResponseBody = responseText }
                         return! raise (ProxyRequestException(response, sprintf "Http error (%d) while making request to %s" n url, response.ResponseBody)) 
                 | false ->
                     // make plain RPC request and let it go through the deserialization pipeline
