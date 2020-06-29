@@ -1,1 +1,1 @@
-fake build.fsx %*
+fake %*
