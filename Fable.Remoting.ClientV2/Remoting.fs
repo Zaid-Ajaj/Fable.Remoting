@@ -2,6 +2,7 @@ namespace Fable.Remoting.Client
 
 open Fable.Core
 open Fable.SimpleJson
+open System
 
 module Remoting = 
     /// Starts with default configuration for building a proxy
@@ -10,6 +11,7 @@ module Remoting =
         BaseUrl = None
         Authorization = None
         RouteBuilder = sprintf ("/%s/%s") 
+        IsBinary = false
     }
     
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -28,6 +30,10 @@ module Remoting =
     let withAuthorizationHeader token (options: RemoteBuilderOptions) = 
         { options with Authorization = Some token }
 
+    /// Specifies that the API only uses binary serialization
+    let withBinarySerialization (options: RemoteBuilderOptions) = 
+        { options with IsBinary = true }
+
 type Remoting() = 
     static member buildProxy<'t>(options: RemoteBuilderOptions, [<Inject>] ?resolver: ITypeResolver<'t>) : 't = 
         let resolvedType = resolver.Value.ResolveType()
@@ -36,9 +42,12 @@ type Remoting() =
         | Record getFields ->
             let (fields, recordType) = getFields() 
             let proxy = obj() 
+            let fieldTypes = Reflection.FSharpType.GetRecordFields recordType |> Array.map (fun prop -> prop.Name, prop.PropertyType)
             for field in fields do 
                 let normalize n =
-                    let fn = Proxy.proxyFetch options recordType.Name field
+                    let fieldType = fieldTypes |> Array.pick (fun (name, typ) -> if name = field.FieldName then Some typ else None)
+
+                    let fn = Proxy.proxyFetch options recordType.Name field fieldType
                     match n with
                     | 0 -> box (fn null null null null null null null null)
                     | 1 -> box (fun a -> 

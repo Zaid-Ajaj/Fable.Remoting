@@ -7,11 +7,18 @@ open SharedTypes
 open Fable.SimpleJson
 open Fable.Mocha
 open System
+open Fable.Remoting.MsgPack
 
 let server =
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<IServer>
+
+let binaryServer =
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withBinarySerialization
+    |> Remoting.buildProxy<IBinaryServer>
 
 type test =
     static member equal a b = Expect.equal a b "They are equal"
@@ -556,6 +563,45 @@ let serverTests =
             }
     ]
 
+let binaryServerTests =
+    testList "Fable.Remoting binary" [
+        testCaseAsync "nestedMaybe" <|
+            async {
+                try
+                    let! actual = binaryServer.nestedMaybe ()
+                    ()
+                with e ->
+                    Browser.Dom.console.error e
+                    Browser.Dom.console.log e
+                    printfn "%A" e
+            }
+        testCaseAsync "number" <|
+            async {
+                let! actual = binaryServer.number ()
+                test.equal actual 55
+            }
+        testCaseAsync "simple array" <|
+            async {
+                let! actual = binaryServer.simpleArray ()
+                test.equal actual [| 2; 3 |]
+            }
+        testCaseAsync "maybe" <|
+            async {
+                let! actual = binaryServer.maybe ()
+                test.equal actual Nothing
+            }
+        testCaseAsync "maybe2" <|
+            async {
+                let! actual = binaryServer.maybe2 ()
+                test.equal actual (Just 1)
+            }
+        testCaseAsync "record" <|
+            async {
+                let! actual = binaryServer.record ()
+                test.equal actual { Prop1 = "yup"; Prop2 = 2; Prop3 = Some 3 }
+            }
+    ]
+
 let cookieServer =
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
@@ -617,6 +663,7 @@ let secureApiTests =
 let alltests =
     testList "All Tests" [
         serverTests
+        binaryServerTests
         cookieServerTests
         secureApiTests
     ]

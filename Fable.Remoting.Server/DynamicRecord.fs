@@ -53,20 +53,18 @@ module DynamicRecord =
 
     /// Invokes an async function or value from a record, given the function metadata
     let invokeAsync (func: RecordFunctionInfo) implementation methodArgs =
-       async {
-            match func.Type with
-            | NoArguments output ->
-                let asyncTypeParam = extractAsyncArg output
-                let boxer = createAsyncBoxer asyncTypeParam
-                let asyncValue = func.PropertyInfo.GetValue(implementation, null)
-                return! boxer.BoxAsyncResult asyncValue
-            | SingleArgument (_, output)
-            | ManyArguments (_, output) ->
-                let asyncTypeParam = extractAsyncArg output
-                let boxer = createAsyncBoxer asyncTypeParam
-                let asyncValue = invoke func implementation methodArgs
-                return! boxer.BoxAsyncResult asyncValue
-        }
+        match func.Type with
+        | NoArguments output ->
+            let asyncTypeParam = extractAsyncArg output
+            let boxer = createAsyncBoxer asyncTypeParam
+            let asyncValue = func.PropertyInfo.GetValue(implementation, null)
+            boxer.BoxAsyncResult asyncValue
+        | SingleArgument (_, output)
+        | ManyArguments (_, output) ->
+            let asyncTypeParam = extractAsyncArg output
+            let boxer = createAsyncBoxer asyncTypeParam
+            let asyncValue = invoke func implementation methodArgs
+            boxer.BoxAsyncResult asyncValue
 
     let private recordFuncInfoCache = ConcurrentDictionary<Type, Map<String, RecordFunctionInfo>>()
 

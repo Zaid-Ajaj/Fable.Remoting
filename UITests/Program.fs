@@ -18,6 +18,14 @@ let fableWebPart =
     |> Remoting.withErrorHandler (fun ex _ -> Propagate ex.Message)
     |> Remoting.buildWebPart
 
+let fableWebPartBinary = 
+    Remoting.createApi()
+    |> Remoting.fromContext (fun ctx -> serverBinary)
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
+    |> Remoting.withBinarySerialization
+    |> Remoting.buildWebPart
+
 let (</>) x y = Path.Combine(x, y)
 
 let rec findRoot dir =
@@ -120,6 +128,7 @@ let main argv =
         choose [
             GET >=> Files.browseHome >=> Writers.setHeader "Set-Cookie" "dummy=value;"
             fableWebPart
+            fableWebPartBinary
             CookieTest.cookieWebPart
             AuthServer.api
             OK "Not Found"

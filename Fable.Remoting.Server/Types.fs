@@ -84,5 +84,6 @@ type RemotingOptions<'context, 'serverImpl> = {
     RouteBuilder : string -> string -> string 
     ErrorHandler : ErrorHandler<'context> option 
     DiagnosticsLogger : (string -> unit) option 
-    Docs : string option * Option<Documentation> 
+    Docs : string option * Option<Documentation>
+    IsBinary : bool
 }

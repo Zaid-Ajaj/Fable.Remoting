@@ -102,6 +102,22 @@ module SuaveUtil =
           return! fail ex routeInfo options context
     }
 
+  /// Runs the given dynamic function and catches unhandled exceptions, sending them off to the configured error handler, if any. Returns 200 (OK) status code for successful runs and 500  (Internal Server Error) when an exception is thrown 
+  let runFunctionBinary func impl options args : WebPart = 
+    let logger = options.DiagnosticsLogger
+    fun context -> async {
+      Diagnostics.runPhase logger func.FunctionName
+      let! functionResult = Async.Catch (DynamicRecord.invokeAsync func impl args) 
+      match functionResult with
+      | Choice.Choice1Of2 output ->
+          use ms = new System.IO.MemoryStream ()
+          Fable.Remoting.MsgPack.Write.writeObj output ms
+          return! successBytes (ms.ToArray ()) context
+      | Choice.Choice2Of2 ex -> 
+          let routeInfo = { methodName = func.FunctionName; path = context.request.path; httpContext = context }
+          return! fail ex routeInfo options context
+    }
+
   /// Builds the entire WebPart from implementation record, handles routing and dynamic running of record functions
   let buildFromImplementation impl options = 
     let typ = impl.GetType()
@@ -159,19 +175,67 @@ module SuaveUtil =
               return! halt context
     }
 
+  /// Builds the entire WebPart from implementation record, handles routing and dynamic running of record functions
+  let buildFromImplementationBinary impl options = 
+    let typ = impl.GetType()
+    let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
+    fun (context: HttpContext) -> async {
+      let foundFunction = 
+        dynamicFunctions 
+        |> Map.tryFindKey (fun funcName _ -> context.request.path = options.RouteBuilder typ.Name funcName) 
+      match foundFunction with 
+      | None -> 
+          match context.request.method, options.Docs with 
+          | HttpMethod.GET, (Some docsUrl, Some docs) when docsUrl = context.request.path -> 
+              let (Documentation(docsName, docsRoutes)) = docs
+              let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
+              let docsApp = DocsApp.embedded docsName docsUrl schema
+              return! html docsApp context
+          | HttpMethod.OPTIONS, (Some docsUrl, Some docs) 
+                when sprintf "/%s/$schema" docsUrl = context.request.path
+                  || sprintf "%s/$schema" docsUrl = context.request.path ->
+              let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
+              let serializedSchema =  schema.ToString(Formatting.None)
+              return! success serializedSchema None context   
+          | _ -> 
+              return! halt context     
+      | Some funcName -> 
+          let func = Map.find funcName dynamicFunctions
+          
+          match context.request.method, func.Type with  
+          | (HttpMethod.GET | HttpMethod.POST), NoArguments _ ->  
+              return! runFunctionBinary func impl options [|  |] context  
+          
+          | (HttpMethod.GET | HttpMethod.POST), SingleArgument(input, _) when input = typeof<unit> ->
+              return! runFunctionBinary func impl options [|  |] context   
+
+          | HttpMethod.POST, _ ->      
+              let inputJson = System.Text.Encoding.UTF8.GetString(context.request.rawForm)
+              let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger
+              match inputArgs with 
+              | Ok inputArgs -> return! runFunctionBinary func impl options inputArgs context
+              | Result.Error error -> return! sendError error options.DiagnosticsLogger context  
+          | _ -> 
+              return! halt context
+    }
+
 module Remoting = 
   
   /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
   let fromContext (f: HttpContext -> 't) (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
     { options with Implementation = FromContext f } 
 
+  /// Specifies that the API only uses binary serialization
+  let withBinarySerialization (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
+    { options with IsBinary = true } 
+
   /// Builds a WebPart from the given implementation and options  
   let buildWebPart (options: RemotingOptions<HttpContext, 't>) : WebPart = 
     match options.Implementation with 
     | Empty -> SuaveUtil.halt
-    | StaticValue impl -> SuaveUtil.buildFromImplementation impl options 
+    | StaticValue impl -> (if options.IsBinary then SuaveUtil.buildFromImplementationBinary else SuaveUtil.buildFromImplementation) impl options 
     | FromContext createImplementationFrom -> 
         fun (context: HttpContext) -> async {
           let impl = createImplementationFrom context 
-          return! SuaveUtil.buildFromImplementation impl options context
+          return! (if options.IsBinary then SuaveUtil.buildFromImplementationBinary else SuaveUtil.buildFromImplementation) impl options context
         }

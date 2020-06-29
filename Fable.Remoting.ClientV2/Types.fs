@@ -24,6 +24,7 @@ type RemoteBuilderOptions = {
     BaseUrl  : string option
     Authorization : string option
     RouteBuilder : (string -> string -> string)
+    IsBinary : bool
 }
 
 type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string) = 

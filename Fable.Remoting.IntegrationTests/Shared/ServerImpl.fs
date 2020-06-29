@@ -22,6 +22,15 @@ let getInt : unit -> int =
         i <- i + 1
         i
 
+let serverBinary : IBinaryServer = {
+    nestedMaybe = fun () -> async { return Just [| Nothing; Just 1 |] }
+    number = fun () -> async { return 55 }
+    simpleArray = fun () -> async { return [| 2; 3 |] }
+    maybe = fun () -> async { return Nothing }
+    maybe2 = fun () -> async { return Just 1 }
+    record = fun () -> async { return { Prop1 = "yup"; Prop2 = 2; Prop3 = Some 3 } }
+}
+
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
 let server : IServer  = {
