@@ -567,13 +567,8 @@ let binaryServerTests =
     testList "Fable.Remoting binary" [
         testCaseAsync "nestedMaybe" <|
             async {
-                try
-                    let! actual = binaryServer.nestedMaybe ()
-                    ()
-                with e ->
-                    Browser.Dom.console.error e
-                    Browser.Dom.console.log e
-                    printfn "%A" e
+                let! actual = binaryServer.nestedMaybe ()
+                test.equal actual (Just [| Nothing; Just 1 |])
             }
         testCaseAsync "number" <|
             async {
