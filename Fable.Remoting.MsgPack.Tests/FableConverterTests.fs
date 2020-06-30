@@ -47,4 +47,16 @@ let converterTest =
         test "Some string works" {
             Some "ddd" |> serializeDeserializeCompare 
         }
+        test "Long serialized as fixnum works" {
+            20L |> serializeDeserializeCompare 
+        }
+        test "Long serialized as int16 works" {
+            60_000L |> serializeDeserializeCompare 
+        }
+        test "Array of bools works" {
+            [| false; true; true |] |> serializeDeserializeCompare
+        }
+        test "DateTime works" {
+            DateTime.Now |> serializeDeserializeCompare
+        }
     ]

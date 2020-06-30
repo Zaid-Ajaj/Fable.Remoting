@@ -62,24 +62,25 @@ module Format =
 #if !FABLE_COMPILER
 let packerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
 
-let inline write b1 b2 b3 b4 (s: Stream) =
-    if (b2 > 0uy || b1 > 0uy) then
+let inline write32bitNumber b1 b2 b3 b4 (s: Stream) =
+    if b2 > 0uy || b1 > 0uy then
         s.WriteByte b1
         s.WriteByte b2
-    if (b3 > 0uy) then
+        s.WriteByte b3
+    elif (b3 > 0uy) then
         s.WriteByte b3
         
     s.WriteByte b4
 
-let inline formatByUnsignedLength (length: UInt64) oneByte twoByte fourByte eightByte =
-    if length < 256UL then
-        oneByte
-    elif length < 65536UL then
-        twoByte
-    elif length < 4294967296UL then
-        fourByte
+let inline write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (s: Stream) =
+    if b4 > 0uy || b3 > 0uy || b2 > 0uy || b1 > 0uy then
+        s.WriteByte b1
+        s.WriteByte b2
+        s.WriteByte b3
+        s.WriteByte b4
+        write32bitNumber b5 b6 b7 b8 s
     else
-        eightByte
+        write32bitNumber b5 b6 b7 b8 s
 
 let inline formatBySignedLength (length: int64) oneByte twoByte fourByte eightByte =
     if length < 128L && length > -129L then
@@ -91,8 +92,11 @@ let inline formatBySignedLength (length: int64) oneByte twoByte fourByte eightBy
     else
         eightByte   
 
-let inline writeUnsignedNumber (n: UInt64) (s: Stream) =
-    write (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
+let inline writeUnsigned32bitNumber (n: UInt32) (s: Stream) =
+    write32bitNumber (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
+
+let inline writeUnsigned64bitNumber (n: UInt64) (s: Stream) =
+    write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
 
 let inline writeSignedNumber bytes (s: Stream) =
     if BitConverter.IsLittleEndian then
@@ -111,15 +115,22 @@ let inline writeSignedNumber bytes (s: Stream) =
 
 module Write =
     let inline nil (s: Stream) = s.WriteByte Format.nil
-    let inline fals (s: Stream) = s.WriteByte Format.fals
-    let inline tru (s: Stream) = s.WriteByte Format.tru
+    let inline bool x (s: Stream) = s.WriteByte (if x then Format.tru else Format.fals)
 
     let inline uint (n: UInt64) (s: Stream) =
         if n < 128UL then
             s.WriteByte (Format.fixposnum n)
         else
-            formatByUnsignedLength n Format.uint8 Format.uint16 Format.uint32 Format.uint64 |> s.WriteByte
-            writeUnsignedNumber n s
+            if n < 256UL then
+                s.WriteByte Format.uint8
+            elif n < 65536UL then
+                s.WriteByte Format.uint16
+            elif n < 4294967296UL then
+                s.WriteByte Format.uint32
+            else
+                s.WriteByte Format.uint64
+            
+            writeUnsigned64bitNumber n s
 
     let inline int (n: int64) (s: Stream) =
         if n >= 0L then
@@ -129,7 +140,7 @@ module Write =
                 s.WriteByte (Format.fixnegnum n)
             else
                 //todo length optimization
-                Format.int64 |> s.WriteByte
+                s.WriteByte Format.int64
                 writeSignedNumber (BitConverter.GetBytes n) s
 
     let inline str (str: string) (s: Stream) =
@@ -138,8 +149,14 @@ module Write =
         if bytes.Length < 32 then
             s.WriteByte (Format.fixstr bytes.Length)
         else
-            formatByUnsignedLength (uint64 bytes.Length) Format.str8 Format.str16 Format.str32 0uy |> s.WriteByte
-            writeUnsignedNumber (uint64 bytes.Length) s
+            if bytes.Length < 256 then
+                s.WriteByte Format.str8
+            elif bytes.Length < 65536 then
+                s.WriteByte Format.str16
+            else
+                s.WriteByte Format.str32
+
+            writeUnsigned32bitNumber (uint32 bytes.Length) s
 
         s.Write (bytes, 0, bytes.Length)
 
@@ -156,10 +173,10 @@ module Write =
             s.WriteByte (Format.fixarr arr.Length)
         elif arr.Length < 65536 then
             s.WriteByte Format.array16
-            writeUnsignedNumber (uint64 arr.Length) s
+            writeUnsigned32bitNumber (uint32 arr.Length) s
         else
             s.WriteByte Format.array32
-            writeUnsignedNumber (uint64 arr.Length) s
+            writeUnsigned32bitNumber (uint32 arr.Length) s
 
         for x in arr do
             writeObj x s
@@ -223,14 +240,21 @@ module Write =
             else
                 failwithf "Cannot pack %s" t.Name
 
+packerCache.TryAdd (typeof<unit>, fun _ s -> Write.nil s) |> ignore
+packerCache.TryAdd (typeof<bool>, fun x s -> Write.bool (x :?> bool) s) |> ignore
 packerCache.TryAdd (typeof<string>, fun x s -> Write.str (x :?> string) s) |> ignore
 packerCache.TryAdd (typeof<int>, fun x s -> Write.int (x :?> int |> int64) s) |> ignore
+packerCache.TryAdd (typeof<int16>, fun x s -> Write.int (x :?> int16 |> int64) s) |> ignore
 packerCache.TryAdd (typeof<int64>, fun x s -> Write.int (x :?> int64) s) |> ignore
+packerCache.TryAdd (typeof<UInt32>, fun x s -> Write.uint (x :?> UInt32 |> uint64) s) |> ignore
+packerCache.TryAdd (typeof<UInt16>, fun x s -> Write.uint (x :?> UInt16 |> uint64) s) |> ignore
+packerCache.TryAdd (typeof<UInt64>, fun x s -> Write.uint (x :?> UInt64) s) |> ignore
 packerCache.TryAdd (typeof<float32>, fun x s -> Write.float32 (x :?> float32) s) |> ignore
 packerCache.TryAdd (typeof<float>, fun x s -> Write.float64 (x :?> float) s) |> ignore
 packerCache.TryAdd (typeof<Array>, fun x s -> Write.array s (x :?> Array)) |> ignore
 packerCache.TryAdd (typeof<DateTime>, fun x s -> Write.int (x :?> DateTime).Ticks s) |> ignore
-packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.int (x :?> DateTimeOffset).Ticks s) |> ignore
+//todo timezone info
+//packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.int (x :?> DateTimeOffset).Ticks s) |> ignore
 
 #endif
 
@@ -243,23 +267,15 @@ module Read =
 
         arr
 
-    let interpretByteAs typ (b: byte) =
-        if typ = typeof<Int32> then int32 b |> box
-        elif typ = typeof<Int64> then int64 b |> box
-        elif typ = typeof<Int16> then int16 b |> box
-        elif typ = typeof<UInt32> then uint32 b |> box
-        elif typ = typeof<UInt64> then uint64 b |> box
-        elif typ = typeof<UInt16> then uint16 b |> box
-        else failwithf "Cannot interpret unsigned byte as %s" typ.Name
-
-    let interpretSbyteAs typ (b: sbyte) =
-        if typ = typeof<Int32> then int32 b |> box
-        elif typ = typeof<Int64> then int64 b |> box
-        elif typ = typeof<Int16> then int16 b |> box
-        elif typ = typeof<UInt32> then uint32 b |> box
-        elif typ = typeof<UInt64> then uint64 b |> box
-        elif typ = typeof<UInt16> then uint16 b |> box
-        else failwithf "Cannot interpret signed byte as %s" typ.Name
+    let inline interpretNumAs typ n =
+        if typ = typeof<Int32> then int32 n |> box
+        elif typ = typeof<Int64> then int64 n |> box
+        elif typ = typeof<Int16> then int16 n |> box
+        elif typ = typeof<UInt32> then uint32 n |> box
+        elif typ = typeof<UInt64> then uint64 n |> box
+        elif typ = typeof<UInt16> then uint16 n |> box
+        elif typ = typeof<DateTime> then DateTime (int64 n) |> box
+        else failwithf "Cannot interpret number %A as %s" n typ.Name
 
     type Reader (data: byte[]) =
         let mutable pos = 0
@@ -339,15 +355,17 @@ module Read =
             | Format.str8 -> x.ReadByte () |> int |> x.ReadString |> box
             | Format.str16 -> x.ReadUInt16 () |> int |> x.ReadString |> box
             | Format.str32 -> x.ReadUInt32 () |> int |> x.ReadString |> box
-            | Format.int64 -> x.ReadInt64 () |> box
-            | Format.int32 -> x.ReadInt32 () |> box
-            | Format.int16 -> x.ReadInt16 () |> box
-            | Format.uint16 -> x.ReadUInt16 () |> box
-            | Format.uint32 -> x.ReadUInt32 () |> box
-            | Format.uint64 -> x.ReadUInt64 () |> box
+            | Format.int64 -> x.ReadInt64 () |> interpretNumAs t
+            | Format.int32 -> x.ReadInt32 () |> interpretNumAs t
+            | Format.int16 -> x.ReadInt16 () |> interpretNumAs t
+            | Format.uint16 -> x.ReadUInt16 () |> interpretNumAs t
+            | Format.uint32 -> x.ReadUInt32 () |> interpretNumAs t
+            | Format.uint64 -> x.ReadUInt64 () |> interpretNumAs t
             | Format.float32 -> x.ReadFloat32 () |> box
             | Format.float64 -> x.ReadFloat64 () |> box
             | Format.nil -> box null
+            | Format.tru -> box true
+            | Format.fals -> box false
             // fixarr
             | b when b >>> 4 = 0b00001001uy ->
                 if Reflection.FSharpType.IsRecord t then
@@ -388,10 +406,10 @@ module Read =
                         failwithf "Expecting %s, but the data contains a fixarr." t.Name
             // fixposnum
             | b when b >>> 7 = 0b00000000uy ->
-                interpretByteAs t b
+                interpretNumAs t b
             // fixnegnum
             | b when b >>> 5 = 0b00000111uy ->
-                sbyte b |> interpretSbyteAs t
+                sbyte b |> interpretNumAs t
             // fixstr
             | b when b >>> 5 = 0b00000101uy ->
                 let len = b &&& 0b00011111uy |> int
