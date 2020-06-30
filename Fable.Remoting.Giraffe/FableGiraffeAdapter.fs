@@ -82,7 +82,7 @@ module GiraffeUtil =
             let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
             match functionResult with
             | Choice1Of2 output ->
-                Fable.Remoting.MsgPack.Write.writeObj output ctx.Response.Body
+                Fable.Remoting.MsgPack.Write.write output ctx.Response.Body
                 ctx.Response.StatusCode <- 200
                 ctx.Response.ContentType <- "application/octet-stream"
                 return! next ctx

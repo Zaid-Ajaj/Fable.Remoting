@@ -6,6 +6,7 @@ open Types
 open Expecto.Logging
 open Fable.Remoting
 open System.IO
+open System.Collections.Generic
 
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass() = Expect.equal true true ""
@@ -13,18 +14,26 @@ let fail () = Expect.equal false true ""
 
 let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.writeObj value ms
+    MsgPack.Write.write value ms
 
-    let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
+    let deserialized = MsgPack.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
 
     equal value deserialized
 
+let serializeDeserializeCompareSequence (value: 'a) =
+    use ms = new MemoryStream ()
+    MsgPack.Write.write value ms
+
+    let deserialized = MsgPack.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
+
+    Expect.sequenceEqual value deserialized "Sequences must be equal."
+
 let serializeDeserializeCompareWithLength<'a when 'a: equality> expectedLength (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.writeObj value ms
+    MsgPack.Write.write value ms
     let data = ms.ToArray ()
 
-    let deserialized = MsgPack.Read.Reader(data).Read typeof<'a> :?> 'a
+    let deserialized = MsgPack.Reader(data).Read typeof<'a> :?> 'a
 
     equal value deserialized
     Expect.equal data.Length expectedLength (sprintf "The expected and actual payload lengths must match.")
@@ -79,8 +88,14 @@ let converterTest =
         test "Decimal" {
             3.1415926535m |> serializeDeserializeCompare
         }
-        test "Dict" {
-            dict [ "a", 1; "b", 2 ] |> serializeDeserializeCompare
+        test "Map16 with map" {
+            Map.ofArray [| for i in 1 .. 295 -> i, (i * i) |] |> serializeDeserializeCompare
+        }
+        test "Fixmap with dictionary of nothing" {
+            Map.ofArray [| for i in 1 .. 2 -> i, Nothing |] |> Dictionary<_, _> |> serializeDeserializeCompareSequence
+        }
+        test "Map32 with dictionary" {
+            Map.ofArray [| for i in 1 .. 80_000 -> i, i |] |> Dictionary<_, _> |> serializeDeserializeCompareSequence
         }
         test "Binary data bin8, 5 bytes" {
             [| 55uy; 0uy; 255uy |] |> serializeDeserializeCompareWithLength 5
@@ -90,5 +105,8 @@ let converterTest =
         }
         test "Binary data bin32, 80005 bytes" {
             [| for _ in 1 .. 80_000 -> 23uy |] |> serializeDeserializeCompareWithLength 80_005
+        }
+        test "Array32 of long" {
+            [| for _ in 1 .. 80_000 -> 5_000_000_000L |] |> serializeDeserializeCompare
         }
     ]
