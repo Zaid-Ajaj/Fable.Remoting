@@ -580,6 +580,11 @@ let binaryServerTests =
                 let! actual = binaryServer.simpleArray ()
                 test.equal actual [| 2; 3 |]
             }
+        testCaseAsync "option" <|
+            async {
+                let! actual = binaryServer.option ()
+                test.equal actual (Some 33)
+            }
         testCaseAsync "maybe" <|
             async {
                 let! actual = binaryServer.maybe ()

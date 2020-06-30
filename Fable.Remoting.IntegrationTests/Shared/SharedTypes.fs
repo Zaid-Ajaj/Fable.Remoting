@@ -84,6 +84,7 @@ type IBinaryServer = {
     nestedMaybe : unit -> Async<Maybe<Maybe<int>[]>>
     number : unit -> Async<int>
     simpleArray : unit -> Async<int[]>
+    option: unit -> Async<Option<int>>
     maybe : unit -> Async<Maybe<unit>>
     maybe2 : unit -> Async<Maybe<int>>
     record : unit -> Async<Record>

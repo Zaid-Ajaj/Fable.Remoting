@@ -11,33 +11,40 @@ let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass() = Expect.equal true true ""
 let fail () = Expect.equal false true ""
 
+let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
+    use ms = new MemoryStream ()
+    MsgPack.Write.writeObj value ms
+
+    let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
+
+    equal value deserialized 
+
 let converterTest =
     testList "Converter Tests" [
-        test "Maybe works" {
-            let actual = Just 1
+        test "Fixed negative number works and is a single byte" {
+            let actual = -20
             use ms = new MemoryStream ()
             MsgPack.Write.writeObj actual ms
+            let data = ms.ToArray ()
 
-            let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<Maybe<int>> :?> Maybe<int>
+            let deserialized = MsgPack.Read.Reader(data).Read typeof<int> :?> int
 
             equal actual deserialized
+            Expect.equal data.Length 1 "Negative number more than -32 has to be serialized in a single byte."
         }
-        test "Record works" {
-            let actual = Just [| Nothing; Just 1 |]
-            use ms = new MemoryStream ()
-            MsgPack.Write.writeObj actual ms
-
-            let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<Maybe<Maybe<int>[]>> :?> Maybe<Maybe<int>[]>
-
-            equal actual deserialized
+        test "Maybe works" {
+            Just 1 |> serializeDeserializeCompare 
         }
         test "Nested maybe array works" {
-            let actual = { Prop1 = ""; Prop2 = 2; Prop3 = Some 3 }
-            use ms = new MemoryStream ()
-            MsgPack.Write.writeObj actual ms
-
-            let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<Record> :?> Record
-
-            equal actual deserialized
+            Just [| Nothing; Just 1 |] |> serializeDeserializeCompare 
+        }
+        test "Record works" {
+            { Prop1 = ""; Prop2 = 2; Prop3 = Some 3 } |> serializeDeserializeCompare 
+        }
+        test "None works" {
+            None |> serializeDeserializeCompare 
+        }
+        test "Some string works" {
+            Some "ddd" |> serializeDeserializeCompare 
         }
     ]

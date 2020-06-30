@@ -14,7 +14,8 @@ module Format =
     [<Literal>]
     let tru = 0xc3uy
 
-    let inline fixnum value = byte value
+    let inline fixposnum value = byte value
+    let inline fixnegnum value = byte value ||| 0b11100000uy
     [<Literal>]
     let uint8 = 0xccuy
     [<Literal>]
@@ -115,7 +116,7 @@ module Write =
 
     let inline uint (n: UInt64) (s: Stream) =
         if n < 128UL then
-            s.WriteByte (Format.fixnum n)
+            s.WriteByte (Format.fixposnum n)
         else
             formatByUnsignedLength n Format.uint8 Format.uint16 Format.uint32 Format.uint64 |> s.WriteByte
             writeUnsignedNumber n s
@@ -125,7 +126,7 @@ module Write =
             uint (uint64 n) s 
         else
             if n > -32L then
-                s.WriteByte (Format.fixnum n)
+                s.WriteByte (Format.fixnegnum n)
             else
                 //todo length optimization
                 Format.int64 |> s.WriteByte
@@ -168,7 +169,7 @@ module Write =
 
     and union (s: Stream) tag (vals: obj[]) =
         s.WriteByte (Format.fixarr 2uy)
-        s.WriteByte (Format.fixnum tag)
+        s.WriteByte (Format.fixposnum tag)
         array s vals
 
     //and map<'a, 'b> (dict: IDictionary<'a, 'b>) (s: Stream) =
@@ -205,21 +206,14 @@ module Write =
                 packerCache.TryAdd (t, writer) |> ignore
                 writer x s
             elif FSharp.Reflection.FSharpType.IsUnion t then
-                if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Option<_>> then
-                    let value = t.GetMethod("get_Value", Reflection.BindingFlags.Instance ||| Reflection.BindingFlags.Public)
-                    
-                    let writer x (s: Stream) =
-                        writeObj (value.Invoke(x, [||])) s
+                //todo optimization: if a case has a single parameter, don't emit an array
 
-                    packerCache.TryAdd (t, writer) |> ignore
-                    writer x s
-                else
-                    let writer x (s: Stream) =
-                        let case, vals = FSharp.Reflection.FSharpValue.GetUnionFields (x, t.BaseType)
-                        union s case.Tag vals
-                        
-                    packerCache.TryAdd (t, writer) |> ignore
-                    writer x s
+                let writer x (s: Stream) =
+                    let case, vals = FSharp.Reflection.FSharpValue.GetUnionFields (x, t)
+                    union s case.Tag vals
+
+                packerCache.TryAdd (t, writer) |> ignore
+                writer x s
             elif FSharp.Reflection.FSharpType.IsTuple t then
                 let writer x (s: Stream) =
                     FSharp.Reflection.FSharpValue.GetTupleFields x |> tuple s
@@ -248,6 +242,24 @@ module Read =
             arr.[i] <- data.[pos + len - 1 - i]
 
         arr
+
+    let interpretByteAs typ (b: byte) =
+        if typ = typeof<Int32> then int32 b |> box
+        elif typ = typeof<Int64> then int64 b |> box
+        elif typ = typeof<Int16> then int16 b |> box
+        elif typ = typeof<UInt32> then uint32 b |> box
+        elif typ = typeof<UInt64> then uint64 b |> box
+        elif typ = typeof<UInt16> then uint16 b |> box
+        else failwithf "Cannot interpret unsigned byte as %s" typ.Name
+
+    let interpretSbyteAs typ (b: sbyte) =
+        if typ = typeof<Int32> then int32 b |> box
+        elif typ = typeof<Int64> then int64 b |> box
+        elif typ = typeof<Int16> then int16 b |> box
+        elif typ = typeof<UInt32> then uint32 b |> box
+        elif typ = typeof<UInt64> then uint64 b |> box
+        elif typ = typeof<UInt16> then uint16 b |> box
+        else failwithf "Cannot interpret signed byte as %s" typ.Name
 
     type Reader (data: byte[]) =
         let mutable pos = 0
@@ -322,9 +334,7 @@ module Read =
             |]
 #endif
 
-        member x.Read t =
-            let b = x.ReadByte ()
-
+        member x.Read (t, b) =
             match b with
             | Format.str8 -> x.ReadByte () |> int |> x.ReadString |> box
             | Format.str16 -> x.ReadUInt16 () |> int |> x.ReadString |> box
@@ -338,41 +348,63 @@ module Read =
             | Format.float32 -> x.ReadFloat32 () |> box
             | Format.float64 -> x.ReadFloat64 () |> box
             | Format.nil -> box null
-            | _ ->
-                if b >>> 4 = 0b00001001uy then
-                    if Reflection.FSharpType.IsRecord t then
-                        let props = FSharp.Reflection.FSharpType.GetRecordFields t |> Array.sortBy (fun x -> x.Name)
-                        Reflection.FSharpValue.MakeRecord (t, props |> Array.map (fun prop -> x.Read prop.PropertyType))
-                    else
-                        let len = b &&& 0b00001111uy |> int
-
-                        if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Option<_>> then
-                            let v = x.Read (t.GetGenericArguments () |> Array.head)
-                            let optionCases = Reflection.FSharpType.GetUnionCases t
-                            if isNull v then
-                                Reflection.FSharpValue.MakeUnion (optionCases.[1], [||])
-                            else
-                                Reflection.FSharpValue.MakeUnion (optionCases.[0], [| v |])
-                        elif Reflection.FSharpType.IsUnion t then
-                            let tag = x.Read typeof<int> :?> byte |> int
-                            let case = Reflection.FSharpType.GetUnionCases t |> Array.find (fun y -> y.Tag = tag)
-                            let fields = case.GetFields ()
-#if !FABLE_COMPILER
-                            //todo cache parameterless case instances
-#endif
-                            x.ReadByte () |> ignore
-                            Reflection.FSharpValue.MakeUnion (case, fields |> Array.map (fun y -> x.Read y.PropertyType))
-                        elif Reflection.FSharpType.IsTuple t then
-                            x.ReadByte () |> ignore
-                            let elems = Reflection.FSharpType.GetTupleElements t
-                            Reflection.FSharpValue.MakeTuple (elems |> Array.map x.Read, t)
-                        else
-                            x.ReadArray (Some len) (t.GetElementType()) |> box
-                elif b >>> 7 = 0b00000000uy then
-                    b &&& 0b01111111uy |> box
-                elif b >>> 5 = 0b00000101uy then
-                    let len = b &&& 0b00011111uy |> int
-                    x.ReadString len |> box
+            // fixarr
+            | b when b >>> 4 = 0b00001001uy ->
+                if Reflection.FSharpType.IsRecord t then
+                    let props = FSharp.Reflection.FSharpType.GetRecordFields t |> Array.sortBy (fun x -> x.Name)
+                    Reflection.FSharpValue.MakeRecord (t, props |> Array.map (fun prop -> x.Read prop.PropertyType))
                 else
-                    failwithf "Byte %d, expected type %s" b t.Name
+                    let len = b &&& 0b00001111uy |> int
 
+                    if Reflection.FSharpType.IsUnion t then
+                        let tag = x.Read typeof<int> :?> int
+                        // don't care about this byte, it's going to be a fixarr of length fields.Length
+                        x.ReadByte () |> ignore
+
+                        let case = Reflection.FSharpType.GetUnionCases t |> Array.find (fun y -> y.Tag = tag)
+                        let fields = case.GetFields ()
+                        Reflection.FSharpValue.MakeUnion (case, fields |> Array.map (fun y -> x.Read y.PropertyType))
+#if FABLE_COMPILER // Fable does not recognize Option as a union
+                    elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Option<_>> then
+                        // don't care about this byte, it's going to be a fixarr of length fields.Length
+                        x.ReadByte () |> ignore
+                        // don't care about the union tag
+                        x.ReadByte () |> ignore
+                        x.Read (t.GetGenericArguments () |> Array.head)
+#endif
+                    elif Reflection.FSharpType.IsTuple t then
+                        // don't care about this byte, it's going to be an fixarr of length fields.Length
+                        x.ReadByte () |> ignore
+                        Reflection.FSharpValue.MakeTuple (Reflection.FSharpType.GetTupleElements t |> Array.map x.Read, t)
+                    elif t.IsArray then
+                        x.ReadArray (Some len) (t.GetElementType()) |> box
+                    else
+                        failwithf "Expecting %s, but the data contains a fixarr." t.Name
+            // fixposnum
+            | b when b >>> 7 = 0b00000000uy ->
+                interpretByteAs t b
+            // fixnegnum
+            | b when b >>> 5 = 0b00000111uy ->
+                sbyte b |> interpretSbyteAs t
+            // fixstr
+            | b when b >>> 5 = 0b00000101uy ->
+                let len = b &&& 0b00011111uy |> int
+                x.ReadString len |> box
+            | _ ->
+                failwithf "Byte %d, expected type %s." b t.Name
+
+        member x.Read t =
+            let b = x.ReadByte ()
+
+            //// todo cache
+            //if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Option<_>> then
+            //    let value = x.Read (t.GetGenericArguments () |> Array.head, b)
+
+            //    let optionCases = Reflection.FSharpType.GetUnionCases t
+            //    if isNull value then
+            //        Reflection.FSharpValue.MakeUnion (optionCases.[0], [||])
+            //    else
+            //        Reflection.FSharpValue.MakeUnion (optionCases.[1], [| value |])
+            //else
+            x.Read (t, b)
+            

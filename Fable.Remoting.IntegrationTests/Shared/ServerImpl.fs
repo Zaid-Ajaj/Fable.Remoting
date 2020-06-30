@@ -26,6 +26,7 @@ let serverBinary : IBinaryServer = {
     nestedMaybe = fun () -> async { return Just [| Nothing; Just 1 |] }
     number = fun () -> async { return 55 }
     simpleArray = fun () -> async { return [| 2; 3 |] }
+    option = fun () -> async { return Some 33 }
     maybe = fun () -> async { return Nothing }
     maybe2 = fun () -> async { return Just 1 }
     record = fun () -> async { return { Prop1 = "yup"; Prop2 = 2; Prop3 = Some 3 } }

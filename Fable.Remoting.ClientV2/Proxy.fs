@@ -152,8 +152,10 @@ module Proxy =
 
                             if Reflection.FSharpType.IsFunction res then
                                 getReturnType res
-                            else
+                            elif res.IsGenericType then
                                 res.GetGenericArguments () |> Array.head
+                            else
+                                res
                         
                         return MsgPack.Read.Reader(response).Read (getReturnType fieldType)
                     | 500 ->
