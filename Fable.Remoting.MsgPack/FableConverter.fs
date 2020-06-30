@@ -62,74 +62,52 @@ module Format =
 #if !FABLE_COMPILER
 let packerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
 
-let inline write32bitNumber b1 b2 b3 b4 (s: Stream) =
-    if b2 > 0uy || b1 > 0uy then
-        s.WriteByte b1
-        s.WriteByte b2
-        s.WriteByte b3
-    elif (b3 > 0uy) then
-        s.WriteByte b3
-        
-    s.WriteByte b4
-
-let inline write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (s: Stream) =
-    if b4 > 0uy || b3 > 0uy || b2 > 0uy || b1 > 0uy then
-        s.WriteByte b1
-        s.WriteByte b2
-        s.WriteByte b3
-        s.WriteByte b4
-        write32bitNumber b5 b6 b7 b8 s
-    else
-        write32bitNumber b5 b6 b7 b8 s
-
-let inline formatBySignedLength (length: int64) oneByte twoByte fourByte eightByte =
-    if length < 128L && length > -129L then
-        oneByte
-    elif length < 32768L && length > -32769L then
-        twoByte
-    elif length < 2147483647L && length > -2147483648L then
-        fourByte
-    else
-        eightByte   
-
-let inline writeUnsigned32bitNumber (n: UInt32) (s: Stream) =
-    write32bitNumber (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
-
-let inline writeUnsigned64bitNumber (n: UInt64) (s: Stream) =
-    write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
-
-let inline writeSignedNumber bytes (s: Stream) =
-    if BitConverter.IsLittleEndian then
-        Array.Reverse bytes
-
-    s.Write (bytes, 0, bytes.Length)
-
-//type MapSerializer<'k, 'v when 'k: comparison> () =
-//    static member Serialize (v: obj, s: Stream) =
-//        match v with
-//        | :? Map<'k,'v> as mapObj ->
-//            mapObj |> Map.toSeq
-//        | :? Dictionary<'k,'v> as dictObj ->
-//            dictObj |> Seq.map (|KeyValue|)
-//        | _ -> failwith "MapSerializer input value wasn't a Map or a Dictionary"
-
 module Write =
     let inline nil (s: Stream) = s.WriteByte Format.nil
     let inline bool x (s: Stream) = s.WriteByte (if x then Format.tru else Format.fals)
+
+    let inline write32bitNumber b1 b2 b3 b4 (s: Stream) writeFormat =
+        if b2 > 0uy || b1 > 0uy then
+            if writeFormat then s.WriteByte Format.uint32
+            s.WriteByte b1
+            s.WriteByte b2
+            s.WriteByte b3
+            s.WriteByte b4
+        elif (b3 > 0uy) then
+            if writeFormat then s.WriteByte Format.uint16
+            s.WriteByte b3
+            s.WriteByte b4
+        else
+            if writeFormat then s.WriteByte Format.uint8
+            s.WriteByte b4
+    
+    let inline write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (s: Stream) =
+        if b4 > 0uy || b3 > 0uy || b2 > 0uy || b1 > 0uy then
+            s.WriteByte Format.uint64
+            s.WriteByte b1
+            s.WriteByte b2
+            s.WriteByte b3
+            s.WriteByte b4
+            write32bitNumber b5 b6 b7 b8 s false
+        else
+            write32bitNumber b5 b6 b7 b8 s true
+    
+    let inline writeUnsigned32bitNumber (n: UInt32) (s: Stream) =
+        write32bitNumber (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
+    
+    let inline writeUnsigned64bitNumber (n: UInt64) (s: Stream) =
+        write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
+    
+    let inline writeSignedNumber bytes (s: Stream) =
+        if BitConverter.IsLittleEndian then
+            Array.Reverse bytes
+    
+        s.Write (bytes, 0, bytes.Length)
 
     let inline uint (n: UInt64) (s: Stream) =
         if n < 128UL then
             s.WriteByte (Format.fixposnum n)
         else
-            if n < 256UL then
-                s.WriteByte Format.uint8
-            elif n < 65536UL then
-                s.WriteByte Format.uint16
-            elif n < 4294967296UL then
-                s.WriteByte Format.uint32
-            else
-                s.WriteByte Format.uint64
-            
             writeUnsigned64bitNumber n s
 
     let inline int (n: int64) (s: Stream) =
@@ -144,21 +122,21 @@ module Write =
                 writeSignedNumber (BitConverter.GetBytes n) s
 
     let inline str (str: string) (s: Stream) =
-        let bytes = Encoding.UTF8.GetBytes str
+        let str = Encoding.UTF8.GetBytes str
 
-        if bytes.Length < 32 then
-            s.WriteByte (Format.fixstr bytes.Length)
+        if str.Length < 32 then
+            s.WriteByte (Format.fixstr str.Length)
         else
-            if bytes.Length < 256 then
+            if str.Length < 256 then
                 s.WriteByte Format.str8
-            elif bytes.Length < 65536 then
+            elif str.Length < 65536 then
                 s.WriteByte Format.str16
             else
                 s.WriteByte Format.str32
 
-            writeUnsigned32bitNumber (uint32 bytes.Length) s
+            writeUnsigned32bitNumber (uint32 str.Length) s false
 
-        s.Write (bytes, 0, bytes.Length)
+        s.Write (str, 0, str.Length)
 
     let inline float32 (n: float32) (s: Stream) =
         s.WriteByte Format.float32
@@ -173,10 +151,10 @@ module Write =
             s.WriteByte (Format.fixarr arr.Length)
         elif arr.Length < 65536 then
             s.WriteByte Format.array16
-            writeUnsigned32bitNumber (uint32 arr.Length) s
+            writeUnsigned32bitNumber (uint32 arr.Length) s false
         else
             s.WriteByte Format.array32
-            writeUnsigned32bitNumber (uint32 arr.Length) s
+            writeUnsigned32bitNumber (uint32 arr.Length) s false
 
         for x in arr do
             writeObj x s
@@ -187,21 +165,12 @@ module Write =
     and union (s: Stream) tag (vals: obj[]) =
         s.WriteByte (Format.fixarr 2uy)
         s.WriteByte (Format.fixposnum tag)
-        array s vals
 
-    //and map<'a, 'b> (dict: IDictionary<'a, 'b>) (s: Stream) =
-    //    if dict.Count < 16 then
-    //        s.WriteByte (Format.fixmap dict.Count)
-    //    elif dict.Count < 65536 then
-    //        s.WriteByte Format.map16
-    //        writeUnsignedNumber (uint64 dict.Count) s
-    //    else
-    //        s.WriteByte Format.map32
-    //        writeUnsignedNumber (uint64 dict.Count) s
-
-    //    for kvp in dict do
-    //       writeObj kvp.Key s
-    //       writeObj kvp.Value s
+        // save 1 byte the union case has a single parameter
+        if vals.Length <> 1 then
+            array s vals
+        else
+            writeObj vals.[0] s
 
     and writeObj (x: obj) (s: Stream) =
         if isNull x then nil s else
@@ -222,9 +191,8 @@ module Write =
 
                 packerCache.TryAdd (t, writer) |> ignore
                 writer x s
+            //todo optimization: serialize list like an array instead of union for a lot smaller payload
             elif FSharp.Reflection.FSharpType.IsUnion t then
-                //todo optimization: if a case has a single parameter, don't emit an array
-
                 let writer x (s: Stream) =
                     let case, vals = FSharp.Reflection.FSharpValue.GetUnionFields (x, t)
                     union s case.Tag vals
@@ -251,10 +219,12 @@ packerCache.TryAdd (typeof<UInt16>, fun x s -> Write.uint (x :?> UInt16 |> uint6
 packerCache.TryAdd (typeof<UInt64>, fun x s -> Write.uint (x :?> UInt64) s) |> ignore
 packerCache.TryAdd (typeof<float32>, fun x s -> Write.float32 (x :?> float32) s) |> ignore
 packerCache.TryAdd (typeof<float>, fun x s -> Write.float64 (x :?> float) s) |> ignore
+packerCache.TryAdd (typeof<decimal>, fun x s -> Write.float64 (x :?> decimal |> float) s) |> ignore
 packerCache.TryAdd (typeof<Array>, fun x s -> Write.array s (x :?> Array)) |> ignore
 packerCache.TryAdd (typeof<DateTime>, fun x s -> Write.int (x :?> DateTime).Ticks s) |> ignore
 //todo timezone info
 //packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.int (x :?> DateTimeOffset).Ticks s) |> ignore
+//todo units of measure
 
 #endif
 
@@ -267,7 +237,7 @@ module Read =
 
         arr
 
-    let inline interpretNumAs typ n =
+    let inline interpretIntegerAs typ n =
         if typ = typeof<Int32> then int32 n |> box
         elif typ = typeof<Int64> then int64 n |> box
         elif typ = typeof<Int16> then int16 n |> box
@@ -275,7 +245,13 @@ module Read =
         elif typ = typeof<UInt64> then uint64 n |> box
         elif typ = typeof<UInt16> then uint16 n |> box
         elif typ = typeof<DateTime> then DateTime (int64 n) |> box
-        else failwithf "Cannot interpret number %A as %s" n typ.Name
+        else failwithf "Cannot interpret integer %A as %s." n typ.Name
+
+    let inline interpretFloatAs typ n =
+        if typ = typeof<float32> then float32 n |> box
+        elif typ = typeof<float> then float n |> box
+        elif typ = typeof<decimal> then decimal n |> box
+        else failwithf "Cannot interpret float %A as %s." n typ.Name
 
     type Reader (data: byte[]) =
         let mutable pos = 0
@@ -352,20 +328,27 @@ module Read =
 
         member x.Read (t, b) =
             match b with
+            // fixstr
+            | b when b >>> 5 = 0b00000101uy -> b &&& 0b00011111uy |> int |> x.ReadString |> box
             | Format.str8 -> x.ReadByte () |> int |> x.ReadString |> box
             | Format.str16 -> x.ReadUInt16 () |> int |> x.ReadString |> box
             | Format.str32 -> x.ReadUInt32 () |> int |> x.ReadString |> box
-            | Format.int64 -> x.ReadInt64 () |> interpretNumAs t
-            | Format.int32 -> x.ReadInt32 () |> interpretNumAs t
-            | Format.int16 -> x.ReadInt16 () |> interpretNumAs t
-            | Format.uint16 -> x.ReadUInt16 () |> interpretNumAs t
-            | Format.uint32 -> x.ReadUInt32 () |> interpretNumAs t
-            | Format.uint64 -> x.ReadUInt64 () |> interpretNumAs t
-            | Format.float32 -> x.ReadFloat32 () |> box
-            | Format.float64 -> x.ReadFloat64 () |> box
+            // fixposnum
+            | b when b >>> 7 = 0b00000000uy -> interpretIntegerAs t b
+            // fixnegnum
+            | b when b >>> 5 = 0b00000111uy -> sbyte b |> interpretIntegerAs t
+            | Format.int64 -> x.ReadInt64 () |> interpretIntegerAs t
+            | Format.int32 -> x.ReadInt32 () |> interpretIntegerAs t
+            | Format.int16 -> x.ReadInt16 () |> interpretIntegerAs t
+            | Format.uint16 -> x.ReadUInt16 () |> interpretIntegerAs t
+            | Format.uint32 -> x.ReadUInt32 () |> interpretIntegerAs t
+            | Format.uint64 -> x.ReadUInt64 () |> interpretIntegerAs t
+            | Format.float32 -> x.ReadFloat32 () |> interpretFloatAs t
+            | Format.float64 -> x.ReadFloat64 () |> interpretFloatAs t
             | Format.nil -> box null
             | Format.tru -> box true
             | Format.fals -> box false
+            // todo longer arrays
             // fixarr
             | b when b >>> 4 = 0b00001001uy ->
                 if Reflection.FSharpType.IsRecord t then
@@ -376,17 +359,21 @@ module Read =
 
                     if Reflection.FSharpType.IsUnion t then
                         let tag = x.Read typeof<int> :?> int
-                        // don't care about this byte, it's going to be a fixarr of length fields.Length
-                        x.ReadByte () |> ignore
-
                         let case = Reflection.FSharpType.GetUnionCases t |> Array.find (fun y -> y.Tag = tag)
                         let fields = case.GetFields ()
-                        Reflection.FSharpValue.MakeUnion (case, fields |> Array.map (fun y -> x.Read y.PropertyType))
+
+                        let parameters =
+                            // single parameter is serialized directly, not in an array
+                            if fields.Length = 1 then
+                                [| x.Read fields.[0].PropertyType |]
+                            else
+                                // don't care about this byte, it's going to be a fixarr of length fields.Length
+                                x.ReadByte () |> ignore
+                                fields |> Array.map (fun y -> x.Read y.PropertyType)
+
+                        Reflection.FSharpValue.MakeUnion (case, parameters)
 #if FABLE_COMPILER // Fable does not recognize Option as a union
                     elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Option<_>> then
-                        // don't care about this byte, it's going to be a fixarr of length 2
-                        x.ReadByte () |> ignore
-
                         let tag = x.ReadByte ()
 
                         // none case
@@ -397,25 +384,15 @@ module Read =
                             x.Read (t.GetGenericArguments () |> Array.head)
 #endif
                     elif Reflection.FSharpType.IsTuple t then
-                        // don't care about this byte, it's going to be an fixarr of length fields.Length
+                        // don't care about this byte, it's going to be a fixarr of the length of the tuple
                         x.ReadByte () |> ignore
                         Reflection.FSharpValue.MakeTuple (Reflection.FSharpType.GetTupleElements t |> Array.map x.Read, t)
                     elif t.IsArray then
                         x.ReadArray (Some len) (t.GetElementType()) |> box
                     else
-                        failwithf "Expecting %s, but the data contains a fixarr." t.Name
-            // fixposnum
-            | b when b >>> 7 = 0b00000000uy ->
-                interpretNumAs t b
-            // fixnegnum
-            | b when b >>> 5 = 0b00000111uy ->
-                sbyte b |> interpretNumAs t
-            // fixstr
-            | b when b >>> 5 = 0b00000101uy ->
-                let len = b &&& 0b00011111uy |> int
-                x.ReadString len |> box
+                        failwithf "Expecting %s at position %d, but the data contains a fixarr." t.Name pos
             | _ ->
-                failwithf "Byte %d, expected type %s." b t.Name
+                failwithf "Position %d, byte %d, expected type %s." pos b t.Name
 
         member x.Read t =
             let b = x.ReadByte ()
