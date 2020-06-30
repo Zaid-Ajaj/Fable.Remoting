@@ -366,11 +366,17 @@ module Read =
                         Reflection.FSharpValue.MakeUnion (case, fields |> Array.map (fun y -> x.Read y.PropertyType))
 #if FABLE_COMPILER // Fable does not recognize Option as a union
                     elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Option<_>> then
-                        // don't care about this byte, it's going to be a fixarr of length fields.Length
+                        // don't care about this byte, it's going to be a fixarr of length 2
                         x.ReadByte () |> ignore
-                        // don't care about the union tag
-                        x.ReadByte () |> ignore
-                        x.Read (t.GetGenericArguments () |> Array.head)
+
+                        let tag = x.ReadByte ()
+
+                        // none case
+                        if tag = 0uy then
+                            x.ReadByte () |> ignore
+                            box null
+                        else
+                            x.Read (t.GetGenericArguments () |> Array.head)
 #endif
                     elif Reflection.FSharpType.IsTuple t then
                         // don't care about this byte, it's going to be an fixarr of length fields.Length
