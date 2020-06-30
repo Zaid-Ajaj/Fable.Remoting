@@ -53,6 +53,13 @@ module Format =
     [<Literal>]
     let array32 = 0xdduy
 
+    [<Literal>]
+    let bin8 = 0xc4uy
+    [<Literal>]
+    let bin16 = 0xc5uy
+    [<Literal>]
+    let bin32 = 0xc6uy
+
     let inline fixmap len = 128uy + byte len
     [<Literal>]
     let map16 = 0xdeuy
@@ -146,6 +153,19 @@ module Write =
         s.WriteByte Format.float64
         writeSignedNumber (BitConverter.GetBytes n) s
 
+    let bin (data: byte[]) (s: Stream) =
+        if data.Length < 256 then
+            s.WriteByte Format.bin8
+        elif data.Length < 65536 then
+            s.WriteByte Format.bin16
+        else
+            s.WriteByte Format.bin32
+
+        writeUnsigned32bitNumber (uint32 data.Length) s false
+
+        use sw = new MemoryStream (data)
+        sw.CopyTo s
+
     let rec array (s: Stream) (arr: Array) =
         if arr.Length < 16 then
             s.WriteByte (Format.fixarr arr.Length)
@@ -177,7 +197,7 @@ module Write =
 
         let t = x.GetType()
 
-        match packerCache.TryGetValue (if t.IsArray then typeof<Array> else t) with
+        match packerCache.TryGetValue (if t.IsArray && t <> typeof<byte[]> then typeof<Array> else t) with
         | (true, writer) ->
             writer x s
         | _ ->
@@ -221,6 +241,7 @@ packerCache.TryAdd (typeof<float32>, fun x s -> Write.float32 (x :?> float32) s)
 packerCache.TryAdd (typeof<float>, fun x s -> Write.float64 (x :?> float) s) |> ignore
 packerCache.TryAdd (typeof<decimal>, fun x s -> Write.float64 (x :?> decimal |> float) s) |> ignore
 packerCache.TryAdd (typeof<Array>, fun x s -> Write.array s (x :?> Array)) |> ignore
+packerCache.TryAdd (typeof<byte[]>, fun x s -> Write.bin (x :?> byte[]) s) |> ignore
 packerCache.TryAdd (typeof<DateTime>, fun x s -> Write.int (x :?> DateTime).Ticks s) |> ignore
 //todo timezone info
 //packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.int (x :?> DateTimeOffset).Ticks s) |> ignore
@@ -269,6 +290,10 @@ module Read =
         member _.ReadByte () =
             pos <- pos + 1
             data.[pos - 1]
+
+        member _.ReadByteArray len =
+            pos <- pos + len
+            data.[ pos - len .. pos - 1 ]
 
         member _.ReadString len =
             pos <- pos + len
@@ -391,6 +416,15 @@ module Read =
                         x.ReadArray (Some len) (t.GetElementType()) |> box
                     else
                         failwithf "Expecting %s at position %d, but the data contains a fixarr." t.Name pos
+            | Format.bin8 ->
+                let len = x.ReadByte () |> int
+                x.ReadByteArray len |> box
+            | Format.bin16 ->
+                let len = x.ReadUInt16 () |> int
+                x.ReadByteArray len |> box
+            | Format.bin32 ->
+                let len = x.ReadUInt32 () |> int
+                x.ReadByteArray len |> box
             | _ ->
                 failwithf "Position %d, byte %d, expected type %s." pos b t.Name
 

@@ -79,4 +79,16 @@ let converterTest =
         test "Decimal" {
             3.1415926535m |> serializeDeserializeCompare
         }
+        test "Dict" {
+            dict [ "a", 1; "b", 2 ] |> serializeDeserializeCompare
+        }
+        test "Binary data bin8, 5 bytes" {
+            [| 55uy; 0uy; 255uy |] |> serializeDeserializeCompareWithLength 5
+        }
+        test "Binary data bin16, 303 bytes" {
+            [| for _ in 1 .. 300 -> 55uy |] |> serializeDeserializeCompareWithLength 303
+        }
+        test "Binary data bin32, 80005 bytes" {
+            [| for _ in 1 .. 80_000 -> 23uy |] |> serializeDeserializeCompareWithLength 80_005
+        }
     ]
