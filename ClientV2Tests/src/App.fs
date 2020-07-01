@@ -1068,6 +1068,21 @@ let binaryServerTests =
                 let expected = Map.ofList [ "hello", 5; "there!", 6 ]
                 test.equal true (expected = outputDict)
             }
+
+        testCaseAsync "IBinaryServer.timespans" <|
+            async {
+                let input = TimeSpan.FromTicks 0L
+                let! output = binaryServer.echoTimeSpan input
+                test.equal true (input = output)
+
+                let input = TimeSpan.FromDays -33.
+                let! output = binaryServer.echoTimeSpan input
+                test.equal true (input = output)
+
+                let input = TimeSpan.FromMilliseconds 999.
+                let! output = binaryServer.echoTimeSpan input
+                test.equal true (input = output)
+            }
     ]
 
 let cookieServer =

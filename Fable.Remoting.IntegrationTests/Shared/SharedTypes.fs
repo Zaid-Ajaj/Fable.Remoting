@@ -1,6 +1,7 @@
 module SharedTypes
 
 open System
+open System
 
 type Record = {
     Prop1 : string
@@ -92,6 +93,7 @@ type IBinaryServer = {
     echoInteger : int -> Async<int>
     echoString : string -> Async<string>
     echoBool : bool -> Async<bool>
+    echoTimeSpan : TimeSpan -> Async<TimeSpan>
     echoIntOption : int option -> Async<int option>
     echoStringOption : string option -> Async<string option>
     echoRecursiveRecord : RecursiveRecord -> Async<RecursiveRecord>

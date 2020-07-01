@@ -300,6 +300,7 @@ packerCache.TryAdd (typeof<Array>, fun x s -> Write.array s (x :?> Array)) |> ig
 packerCache.TryAdd (typeof<byte[]>, fun x s -> Write.bin (x :?> byte[]) s) |> ignore
 packerCache.TryAdd (typeof<BigInteger>, fun x s -> Write.array s ((x :?> BigInteger).ToByteArray ())) |> ignore
 packerCache.TryAdd (typeof<DateTime>, fun x s -> Write.int (x :?> DateTime).Ticks s) |> ignore
+packerCache.TryAdd (typeof<TimeSpan>, fun x s -> Write.int (x :?> TimeSpan).Ticks s) |> ignore
 //todo timezone info
 //packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.int (x :?> DateTimeOffset).Ticks s) |> ignore
 //todo units of measure
@@ -318,10 +319,11 @@ let inline interpretIntegerAs typ n =
     if typ = typeof<Int32> then int32 n |> box
     elif typ = typeof<Int64> then int64 n |> box
     elif typ = typeof<Int16> then int16 n |> box
+    elif typ = typeof<DateTime> then DateTime (int64 n) |> box
     elif typ = typeof<UInt32> then uint32 n |> box
     elif typ = typeof<UInt64> then uint64 n |> box
     elif typ = typeof<UInt16> then uint16 n |> box
-    elif typ = typeof<DateTime> then DateTime (int64 n) |> box
+    elif typ = typeof<TimeSpan> then TimeSpan (int64 n) |> box
     elif typ = typeof<byte> then byte n |> box
     elif typ = typeof<sbyte> then sbyte n |> box
     else failwithf "Cannot interpret integer %A as %s." n typ.Name
@@ -408,7 +410,7 @@ type Reader (data: byte[]) =
         readInt 8 BitConverter.ToUInt64
 
     member _.ReadInt64 () =
-        readInt 8 BitConverter.ToInt16
+        readInt 8 BitConverter.ToInt64
 
     member _.ReadFloat32 () =
         readInt 4 BitConverter.ToSingle

@@ -127,4 +127,9 @@ let converterTest =
             -2I |> serializeDeserializeCompare
             12345678912345678912345678912345679123I |> serializeDeserializeCompare
         }
+        test "TimeSpan" {
+            TimeSpan.FromMilliseconds 0. |> serializeDeserializeCompare
+            TimeSpan.FromMilliseconds 33. |> serializeDeserializeCompare
+            TimeSpan.FromDays -23. |> serializeDeserializeCompare
+        }
     ]

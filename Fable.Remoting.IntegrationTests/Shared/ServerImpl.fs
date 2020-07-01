@@ -36,6 +36,7 @@ let serverBinary : IBinaryServer = {
     echoInteger = Async.result
     echoString = Async.result
     echoBool = Async.result
+    echoTimeSpan = Async.result
     echoIntOption = Async.result
     echoStringOption = Async.result
     echoGenericUnionInt = Async.result
