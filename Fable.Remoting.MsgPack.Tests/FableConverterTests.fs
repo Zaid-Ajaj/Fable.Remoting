@@ -70,8 +70,8 @@ let converterTest =
         test "Array of 3 bools, 4 bytes" {
             [| false; true; true |] |> serializeDeserializeCompareWithLength 4
         }
-        test "List of fixnums" {
-            [ 0; 2; 100; 10 ] |> serializeDeserializeCompare
+        test "List of fixnums, 5 bytes" {
+            [ 0; 2; 100; 10 ] |> serializeDeserializeCompareWithLength 5
         }
         test "DateTime" {
             DateTime.Now |> serializeDeserializeCompare
@@ -108,5 +108,15 @@ let converterTest =
         }
         test "Array32 of long" {
             [| for _ in 1 .. 80_000 -> 5_000_000_000L |] |> serializeDeserializeCompare
+        }
+        test "Recursive record" {
+            {
+                Name = "root"
+                Children = [
+                    { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
+                    { Name = "Child 1"; Children = [ ] }
+                ]
+            }
+            |> serializeDeserializeCompare
         }
     ]

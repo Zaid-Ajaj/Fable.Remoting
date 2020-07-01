@@ -8,6 +8,11 @@ type Record = {
     Prop3 : int option
 }
 
+type RecursiveRecord = {
+    Name: string
+    Children : RecursiveRecord list
+}
+
 type Tree<'t> = 
     | Leaf of 't 
     | Branch of Tree<'t> * Tree<'t> 
