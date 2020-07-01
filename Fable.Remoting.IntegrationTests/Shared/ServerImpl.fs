@@ -30,7 +30,6 @@ let serverBinary : IBinaryServer = {
     tupleToUnit = fun (a, b) -> async { return () }
     tupleToTuple = fun (a,b) -> async { return (b, a) }
     getLength = fun input -> Async.result input.Length
-    getSeq = fun () -> async { return seq { yield (Just 5); yield Nothing }  }
     binaryContent = fun () -> async { return [| byte 1; byte 2; byte 3 |] }
     binaryInputOutput = Async.result
     privateConstructor = Async.result

@@ -644,7 +644,7 @@ let binaryServerTests =
                 test.equal true (echoedEntity.RemoteWork = RemoteWork "Fully Remote")
             }
 
-        testCaseAsync "IBinaryServer.binaryContent" <|
+        testCaseAsync "IBinaryServer.binaryContentInOut" <|
             async {
                 let input = [| byte 1; byte 2; byte 3|]
                 let! output = binaryServer.binaryInputOutput input
@@ -1021,15 +1021,6 @@ let binaryServerTests =
                 let input = { OtherValue = 10; Value = Just (Some "value") }
                 let! output = binaryServer.multiArgComplex false input
                 test.equal true (input = output)
-            }
-
-        testCaseAsync "IBinaryServer.getSeq" <|
-            async {
-                let! output = binaryServer.getSeq()
-                let maybes = List.ofSeq output
-                match maybes with
-                | [ Just 5; Nothing ] -> test.equal true true
-                | _ -> test.equal false true
             }
 
         testCaseAsync "IBinaryServer.echoGenericMap" <|

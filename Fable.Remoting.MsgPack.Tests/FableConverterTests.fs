@@ -7,6 +7,7 @@ open Expecto.Logging
 open Fable.Remoting
 open System.IO
 open System.Collections.Generic
+open System.Numerics
 
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass() = Expect.equal true true ""
@@ -120,6 +121,10 @@ let converterTest =
             |> serializeDeserializeCompare
         }
         test "Complex tuple" {
-            (("ds", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Children = [] }) |> serializeDeserializeCompare
+            ((String50.Create "as", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Children = [] }) |> serializeDeserializeCompare
+        }
+        test "Bigint" {
+            -2I |> serializeDeserializeCompare
+            12345678912345678912345678912345679123I |> serializeDeserializeCompare
         }
     ]

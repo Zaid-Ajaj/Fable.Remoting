@@ -6,6 +6,7 @@ open System.Text
 open System.Collections.Concurrent
 open System.Collections.Generic
 open FSharp.Reflection
+open System.Numerics
 
 module Format =
     [<Literal>]
@@ -281,6 +282,8 @@ module Write =
             else
                 failwithf "Cannot pack %s" t.Name
 
+packerCache.TryAdd (typeof<byte>, fun x s -> Write.uint (x :?> byte |> uint64) s) |> ignore
+packerCache.TryAdd (typeof<sbyte>, fun x s -> Write.int (x :?> sbyte |> int64) s) |> ignore
 packerCache.TryAdd (typeof<unit>, fun _ s -> Write.nil s) |> ignore
 packerCache.TryAdd (typeof<bool>, fun x s -> Write.bool (x :?> bool) s) |> ignore
 packerCache.TryAdd (typeof<string>, fun x s -> Write.str (x :?> string) s) |> ignore
@@ -295,6 +298,7 @@ packerCache.TryAdd (typeof<float>, fun x s -> Write.float64 (x :?> float) s) |> 
 packerCache.TryAdd (typeof<decimal>, fun x s -> Write.float64 (x :?> decimal |> float) s) |> ignore
 packerCache.TryAdd (typeof<Array>, fun x s -> Write.array s (x :?> Array)) |> ignore
 packerCache.TryAdd (typeof<byte[]>, fun x s -> Write.bin (x :?> byte[]) s) |> ignore
+packerCache.TryAdd (typeof<BigInteger>, fun x s -> Write.array s ((x :?> BigInteger).ToByteArray ())) |> ignore
 packerCache.TryAdd (typeof<DateTime>, fun x s -> Write.int (x :?> DateTime).Ticks s) |> ignore
 //todo timezone info
 //packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.int (x :?> DateTimeOffset).Ticks s) |> ignore
@@ -318,6 +322,8 @@ let inline interpretIntegerAs typ n =
     elif typ = typeof<UInt64> then uint64 n |> box
     elif typ = typeof<UInt16> then uint16 n |> box
     elif typ = typeof<DateTime> then DateTime (int64 n) |> box
+    elif typ = typeof<byte> then byte n |> box
+    elif typ = typeof<sbyte> then sbyte n |> box
     else failwithf "Cannot interpret integer %A as %s." n typ.Name
 
 let inline interpretFloatAs typ n =
@@ -494,13 +500,17 @@ type Reader (data: byte[]) =
                 x.ReadList (len, t.GetGenericArguments () |> Array.head) |> box
 #endif
             elif FSharpType.IsTuple t then
-                // don't care about this byte, it's going to be a fixarr of the length of the tuple
-                x.ReadByte () |> ignore
                 FSharpValue.MakeTuple (FSharpType.GetTupleElements t |> Array.map x.Read, t)
             elif t.IsArray then
                 x.ReadRawArray (len, t.GetElementType()) |> box
             elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                 x.ReadList (len, t.GetGenericArguments () |> Array.head) |> box
+            elif t = typeof<bigint> then
+#if !FABLE_COMPILER
+                x.ReadRawArray (len, typeof<byte>) :?> byte[] |> bigint |> box
+#else
+                x.ReadRawArray (len, typeof<byte>) |> box :?> byte[] |> bigint |> box
+#endif
             else
                 failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 

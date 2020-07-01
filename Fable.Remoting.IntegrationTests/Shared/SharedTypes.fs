@@ -89,7 +89,6 @@ type IBinaryServer = {
     tupleToUnit : int * string -> Async<unit>
     tupleToTuple : int * string -> Async<string * int>
     getLength : string -> Async<int>
-    getSeq : unit -> Async<seq<Maybe<int>>>
     echoInteger : int -> Async<int>
     echoString : string -> Async<string>
     echoBool : bool -> Async<bool>
