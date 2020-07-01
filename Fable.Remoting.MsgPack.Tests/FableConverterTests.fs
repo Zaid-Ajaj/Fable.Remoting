@@ -119,4 +119,7 @@ let converterTest =
             }
             |> serializeDeserializeCompare
         }
+        test "Complex tuple" {
+            (("ds", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Children = [] }) |> serializeDeserializeCompare
+        }
     ]
