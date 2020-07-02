@@ -1,7 +1,7 @@
 module SharedTypes
 
 open System
-open System
+open Fable.Core
 
 type Record = {
     Prop1 : string
@@ -27,6 +27,11 @@ type SomeEnum =
     | Val0 = 0
     | Val1 = 1
     | Val2 = 2
+
+[<StringEnum>]
+type SomeStringEnum =
+    | FirstString
+    | SecondString
 
 type HighScore = { Name: string; Score: int }
 
@@ -102,6 +107,7 @@ type IBinaryServer = {
     echoString : string -> Async<string>
     echoBool : bool -> Async<bool>
     echoEnum : SomeEnum -> Async<SomeEnum>
+    echoStringEnum : SomeStringEnum -> Async<SomeStringEnum>
     echoTimeSpan : TimeSpan -> Async<TimeSpan>
     echoIntOption : int option -> Async<int option>
     echoIntWithMeasure : int<SomeUnit> -> Async<int<SomeUnit>>

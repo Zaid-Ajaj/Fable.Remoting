@@ -248,6 +248,14 @@ module Write =
 
                 packerCache.TryAdd (t, writer) |> ignore
                 writer x s
+            elif t.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
+                let writer x (s: Stream) =
+                    let case, _ = FSharpValue.GetUnionFields (x, t, true)
+                    //todo when overriden with CompiledName
+                    str (sprintf "%c%s" (Char.ToLowerInvariant case.Name.[0]) (case.Name.Substring 1)) s
+
+                packerCache.TryAdd (t, writer) |> ignore
+                writer x s
             elif FSharpType.IsUnion (t, true)  then
                 if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                     let listType = t.GetGenericArguments () |> Array.head
@@ -320,6 +328,17 @@ let inline flip (data: byte[]) pos len =
         arr.[i] <- data.[pos + len - 1 - i]
 
     arr
+
+let inline interpretStringAs (typ: Type) str =
+#if FABLE_COMPILER
+    box str
+#else
+    if typ.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
+        let case = FSharpType.GetUnionCases (typ, true) |> Array.find (fun y -> y.Name = str)
+        FSharpValue.MakeUnion (case, [||], true)
+    else
+        box str
+#endif
 
 let inline interpretIntegerAs typ n =
     if typ = typeof<Int32> then int32 n |> box
@@ -551,10 +570,10 @@ type Reader (data: byte[]) =
     member x.Read (t, b) =
         match b with
         // fixstr
-        | _ when b ||| 0b00011111uy = 0b10111111uy -> b &&& 0b00011111uy |> int |> x.ReadString |> box
-        | Format.str8 -> x.ReadByte () |> int |> x.ReadString |> box
-        | Format.str16 -> x.ReadUInt16 () |> int |> x.ReadString |> box
-        | Format.str32 -> x.ReadUInt32 () |> int |> x.ReadString |> box
+        | _ when b ||| 0b00011111uy = 0b10111111uy -> b &&& 0b00011111uy |> int |> x.ReadString |> interpretStringAs t
+        | Format.str8 -> x.ReadByte () |> int |> x.ReadString |> interpretStringAs t
+        | Format.str16 -> x.ReadUInt16 () |> int |> x.ReadString |> interpretStringAs t
+        | Format.str32 -> x.ReadUInt32 () |> int |> x.ReadString |> interpretStringAs t
         // fixposnum
         | _ when b ||| 0b01111111uy = 0b01111111uy -> interpretIntegerAs t b
         // fixnegnum

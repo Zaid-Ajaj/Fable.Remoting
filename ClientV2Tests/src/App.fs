@@ -1119,6 +1119,12 @@ let binaryServerTests =
                 let! output = binaryServer.echoEnum input
                 test.equal true (input = output)
             }
+        testCaseAsync "IBinaryServer.stringEnum" <|
+            async {
+                let input = SecondString
+                let! output = binaryServer.echoStringEnum input
+                test.equal true (input = output)
+            }
     ]
 
 let cookieServer =
