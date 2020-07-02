@@ -325,6 +325,11 @@ let inline interpretIntegerAs typ n =
     elif typ = typeof<UInt64> then uint64 n |> box
     elif typ = typeof<UInt16> then uint16 n |> box
     elif typ = typeof<TimeSpan> then TimeSpan (int64 n) |> box
+#if FABLE_COMPILER
+    elif typ.FullName = "Microsoft.FSharp.Core.int16`1" then int16 n |> box
+    elif typ.FullName = "Microsoft.FSharp.Core.int32`1" then int32 n |> box
+    elif typ.FullName = "Microsoft.FSharp.Core.int64`1" then int64 n |> box
+#endif
     elif typ = typeof<byte> then byte n |> box
     elif typ = typeof<sbyte> then sbyte n |> box
     else failwithf "Cannot interpret integer %A as %s." n typ.Name
@@ -333,6 +338,11 @@ let inline interpretFloatAs typ n =
     if typ = typeof<float32> then float32 n |> box
     elif typ = typeof<float> then float n |> box
     elif typ = typeof<decimal> then decimal n |> box
+#if FABLE_COMPILER
+    elif typ.FullName = "Microsoft.FSharp.Core.float32`1" then float32 n |> box
+    elif typ.FullName = "Microsoft.FSharp.Core.float`1" then float n |> box
+    elif typ.FullName = "Microsoft.FSharp.Core.decimal`1" then decimal n |> box
+#endif
     else failwithf "Cannot interpret float %A as %s." n typ.Name
 
 #if !FABLE_COMPILER

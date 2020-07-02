@@ -1091,6 +1091,28 @@ let binaryServerTests =
                 let! output = binaryServer.echoTimeSpan input
                 test.equal true (input = output)
             }
+        testCaseAsync "IBinaryServer.unitOfMeasure" <|
+            async {
+                let input = 200s<SomeUnit>
+                let! output = binaryServer.echoInt16WithMeasure input
+                test.equal true (input = output)
+
+                let input = 200<SomeUnit>
+                let! output = binaryServer.echoIntWithMeasure input
+                test.equal true (input = output)
+
+                let input = 200L<SomeUnit>
+                let! output = binaryServer.echoInt64WithMeasure input
+                test.equal true (input = output)
+
+                let input = 333.35M<SomeUnit>
+                let! output = binaryServer.echoDecimalWithMeasure input
+                test.equal true (input = output)
+
+                let input = 3.14<SomeUnit>
+                let! output = binaryServer.echoFloatWithMeasure input
+                test.equal true (input = output)
+            }
     ]
 
 let cookieServer =

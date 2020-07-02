@@ -20,6 +20,9 @@ type GenericRecord<'t> = {
     OtherValue : int
 }
 
+[<Measure>]
+type SomeUnit
+
 type HighScore = { Name: string; Score: int }
 
 type String50 = 
@@ -95,6 +98,11 @@ type IBinaryServer = {
     echoBool : bool -> Async<bool>
     echoTimeSpan : TimeSpan -> Async<TimeSpan>
     echoIntOption : int option -> Async<int option>
+    echoIntWithMeasure : int<SomeUnit> -> Async<int<SomeUnit>>
+    echoInt16WithMeasure : int16<SomeUnit> -> Async<int16<SomeUnit>>
+    echoInt64WithMeasure : int64<SomeUnit> -> Async<int64<SomeUnit>>
+    echoDecimalWithMeasure : decimal<SomeUnit> -> Async<decimal<SomeUnit>>
+    echoFloatWithMeasure : float<SomeUnit> -> Async<float<SomeUnit>>
     echoStringOption : string option -> Async<string option>
     echoRecursiveRecord : RecursiveRecord -> Async<RecursiveRecord>
     // Union types, simple and generic
