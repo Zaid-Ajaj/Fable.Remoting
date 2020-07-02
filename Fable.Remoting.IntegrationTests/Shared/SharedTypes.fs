@@ -121,6 +121,7 @@ type IBinaryServer = {
 
     echoResult : Result<int, string> -> Async<Result<int, string>>
     echoBigInteger : bigint -> Async<bigint>
+    echoGenericDictionary : System.Collections.Generic.Dictionary<string, Maybe<int>> -> Async<System.Collections.Generic.Dictionary<string, Maybe<int>>>
     echoGenericMap : Map<string, Maybe<int>> -> Async<Map<string, Maybe<int>>>
     // maps
     echoMap : Map<string, int> -> Async<Map<string, int>>

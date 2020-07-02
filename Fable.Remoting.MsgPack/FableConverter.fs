@@ -7,6 +7,7 @@ open System.Collections.Concurrent
 open System.Collections.Generic
 open FSharp.Reflection
 open System.Numerics
+open System.Collections
 
 module Format =
     [<Literal>]
@@ -247,7 +248,7 @@ module Write =
 
                 packerCache.TryAdd (t, writer) |> ignore
                 writer x s
-            elif FSharpType.IsUnion t then
+            elif FSharpType.IsUnion (t, true)  then
                 if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                     let listType = t.GetGenericArguments () |> Array.head
                     let listSerializer = typedefof<ListSerializer<_>>.MakeGenericType listType
@@ -259,7 +260,7 @@ module Write =
                     writer x s
                 else
                     let writer x (s: Stream) =
-                        let case, vals = FSharpValue.GetUnionFields (x, t)
+                        let case, vals = FSharpValue.GetUnionFields (x, t, true)
                         union s case.Tag vals
 
                     packerCache.TryAdd (t, writer) |> ignore
@@ -419,20 +420,31 @@ type Reader (data: byte[]) =
         readInt 8 BitConverter.ToDouble
 
     member x.ReadMap (len: int, t: Type) =
-#if !FABLE_COMPILER
         let args = t.GetGenericArguments ()
 
         if args.Length <> 2 then
             failwithf "Expecting %s, but the data contains a map." t.Name
-        else
-            // todo cache
-            let mapDeserializer = typedefof<DictionaryDeserializer<_,_>>.MakeGenericType args
-            let mapDeserializeMethod = mapDeserializer.GetMethod "Deserialize"
-            let isDictionary = t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>>
-            
-            mapDeserializeMethod.Invoke (null, [| len; isDictionary; x.Read |]) |> box
+
+#if !FABLE_COMPILER
+        // todo cache
+        let mapDeserializer = typedefof<DictionaryDeserializer<_,_>>.MakeGenericType args
+        let mapDeserializeMethod = mapDeserializer.GetMethod "Deserialize"
+        let isDictionary = t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>>
+        
+        mapDeserializeMethod.Invoke (null, [| len; isDictionary; x.Read |])
 #else
-        failwith "Maps not yet supported."
+        let pairs =
+            [|
+                for _ in 0 .. len - 1 ->
+                    x.Read args.[0] |> box :?> IComparable, x.Read args.[1]
+            |]
+
+        if t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>> then
+            let dict = Dictionary<_, _> len
+            pairs |> Array.iter dict.Add
+            box dict
+        else
+            Map.ofArray pairs |> box
 #endif
 
     member x.ReadRawArray (len: int, elementType: Type) =
@@ -468,14 +480,14 @@ type Reader (data: byte[]) =
             let props = FSharpType.GetRecordFields t
             FSharpValue.MakeRecord (t, props |> Array.map (fun prop -> x.Read prop.PropertyType))
         else
-            if FSharpType.IsUnion t then
+            if FSharpType.IsUnion (t, true) then
 #if !FABLE_COMPILER
                 if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                     x.ReadList (len, t.GetGenericArguments () |> Array.head) |> box
                 else
 #endif
                     let tag = x.Read typeof<int> :?> int
-                    let case = FSharpType.GetUnionCases t |> Array.find (fun y -> y.Tag = tag)
+                    let case = FSharpType.GetUnionCases (t, true) |> Array.find (fun y -> y.Tag = tag)
                     let fields = case.GetFields ()
 
                     let parameters =
@@ -487,7 +499,7 @@ type Reader (data: byte[]) =
                             x.ReadByte () |> ignore
                             fields |> Array.map (fun y -> x.Read y.PropertyType)
 
-                    FSharpValue.MakeUnion (case, parameters)
+                    FSharpValue.MakeUnion (case, parameters, true)
 #if FABLE_COMPILER // Fable does not recognize Option as a union
             elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Option<_>> then
                 let tag = x.ReadByte ()
@@ -549,13 +561,13 @@ type Reader (data: byte[]) =
             let len = x.ReadUInt32 () |> int
             x.ReadArray (len, t)
         // fixmap
-        | _ when b ||| 0b00001111uy = 0b10001111uy -> x.ReadMap (b &&& 0b00001111uy |> int, t) |> box
+        | _ when b ||| 0b00001111uy = 0b10001111uy -> x.ReadMap (b &&& 0b00001111uy |> int, t)
         | Format.map16 ->
             let len = x.ReadUInt16 () |> int
-            x.ReadMap (len, t) |> box
+            x.ReadMap (len, t)
         | Format.map32 ->
             let len = x.ReadUInt32 () |> int
-            x.ReadMap (len, t) |> box
+            x.ReadMap (len, t)
         | Format.bin8 ->
             let len = x.ReadByte () |> int
             x.ReadByteArray len |> box

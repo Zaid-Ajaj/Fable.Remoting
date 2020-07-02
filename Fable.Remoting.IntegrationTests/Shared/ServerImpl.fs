@@ -43,6 +43,7 @@ let serverBinary : IBinaryServer = {
     echoGenericUnionString = Async.result
     echoSimpleUnionType = Async.result
     echoGenericMap = Async.result
+    echoGenericDictionary = Async.result
     echoRecord = Async.result
     echoRemoteWorkEntity = Async.result
     echoAnonymousRecord = Async.result

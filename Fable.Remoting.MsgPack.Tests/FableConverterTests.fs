@@ -98,6 +98,10 @@ let converterTest =
         test "Map32 with dictionary" {
             Map.ofArray [| for i in 1 .. 80_000 -> i, i |] |> Dictionary<_, _> |> serializeDeserializeCompareSequence
         }
+        test "Generic map" {
+            Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> serializeDeserializeCompare
+            Map.ofList [ 5000, Just 5; 1, Nothing ] |> serializeDeserializeCompare
+        }
         test "Binary data bin8, 5 bytes" {
             [| 55uy; 0uy; 255uy |] |> serializeDeserializeCompareWithLength 5
         }

@@ -8,6 +8,7 @@ open Fable.SimpleJson
 open Fable.Mocha
 open System
 open Fable.Remoting.MsgPack
+open System.Collections.Generic
 
 let server =
     Remoting.createApi()
@@ -1027,6 +1028,13 @@ let binaryServerTests =
             async {
                 let input = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ]
                 let! output = binaryServer.echoGenericMap input
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.echoGenericDictionary" <|
+            async {
+                let input = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> Dictionary<_, _>
+                let! output = binaryServer.echoGenericDictionary input
                 test.equal true (input = output)
             }
 
