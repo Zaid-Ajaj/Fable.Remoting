@@ -136,4 +136,7 @@ let converterTest =
             TimeSpan.FromMilliseconds 33. |> serializeDeserializeCompare
             TimeSpan.FromDays -23. |> serializeDeserializeCompare
         }
+        test "Enum" {
+            SomeEnum.Val1 |> serializeDeserializeCompareWithLength 1
+        }
     ]

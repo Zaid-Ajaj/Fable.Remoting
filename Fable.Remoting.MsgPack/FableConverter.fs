@@ -280,6 +280,11 @@ module Write =
 
                 packerCache.TryAdd (t, writer) |> ignore
                 writer x s
+            elif t.IsEnum then
+                let writer (x: obj) (s: Stream) = write (Convert.ChangeType (x, typeof<int64>) :?> int64) s
+
+                packerCache.TryAdd (t, writer) |> ignore
+                writer x s
             else
                 failwithf "Cannot pack %s" t.Name
 
@@ -332,6 +337,11 @@ let inline interpretIntegerAs typ n =
 #endif
     elif typ = typeof<byte> then byte n |> box
     elif typ = typeof<sbyte> then sbyte n |> box
+#if !FABLE_COMPILER
+    elif typ.IsEnum then Enum.ToObject (typ, int64 n)
+#else
+    elif typ.IsEnum then float n |> box
+#endif
     else failwithf "Cannot interpret integer %A as %s." n typ.Name
 
 let inline interpretFloatAs typ n =

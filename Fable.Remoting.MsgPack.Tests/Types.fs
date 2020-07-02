@@ -21,6 +21,14 @@ type Maybe<'t> =
     | Just of 't
     | Nothing
 
+[<Measure>]
+type SomeUnit
+
+type SomeEnum =
+    | Val0 = 0
+    | Val1 = 1
+    | Val2 = 2
+
 type String50 = 
     private String50 of string
 

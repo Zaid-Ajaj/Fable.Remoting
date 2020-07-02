@@ -23,6 +23,11 @@ type GenericRecord<'t> = {
 [<Measure>]
 type SomeUnit
 
+type SomeEnum =
+    | Val0 = 0
+    | Val1 = 1
+    | Val2 = 2
+
 type HighScore = { Name: string; Score: int }
 
 type String50 = 
@@ -96,6 +101,7 @@ type IBinaryServer = {
     echoInteger : int -> Async<int>
     echoString : string -> Async<string>
     echoBool : bool -> Async<bool>
+    echoEnum : SomeEnum -> Async<SomeEnum>
     echoTimeSpan : TimeSpan -> Async<TimeSpan>
     echoIntOption : int option -> Async<int option>
     echoIntWithMeasure : int<SomeUnit> -> Async<int<SomeUnit>>

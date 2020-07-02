@@ -1113,6 +1113,12 @@ let binaryServerTests =
                 let! output = binaryServer.echoFloatWithMeasure input
                 test.equal true (input = output)
             }
+        testCaseAsync "IBinaryServer.enum" <|
+            async {
+                let input = SomeEnum.Val2
+                let! output = binaryServer.echoEnum input
+                test.equal true (input = output)
+            }
     ]
 
 let cookieServer =
