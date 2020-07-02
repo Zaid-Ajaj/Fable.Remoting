@@ -77,6 +77,9 @@ let converterTest =
         test "DateTime" {
             DateTime.Now |> serializeDeserializeCompare
         }
+        test "DateTimeOffset" {
+            DateTimeOffset.Now |> serializeDeserializeCompare
+        }
         test "String16 with non-ASCII characters" {
             "δασςεφЯШзЖ888dsadčšřποιθθψζψ" |> serializeDeserializeCompare
         }

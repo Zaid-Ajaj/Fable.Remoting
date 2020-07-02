@@ -562,6 +562,22 @@ let serverTests =
                 let expected = Map.ofList [ "hello", 5; "there!", 6 ]
                 test.equal true (expected = outputDict)
             }
+
+        testCaseAsync "IServer.datetime" <|
+            async {
+                let input = DateTime.Now
+                let! output = server.echoDateTime input
+
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IServer.datetimeoffset" <|
+            async {
+                let input = DateTimeOffset.Now
+                let! output = server.echoDateTimeOffset input
+
+                test.equal true (input = output)
+            }
     ]
 
 let binaryServerTests =
@@ -1123,6 +1139,22 @@ let binaryServerTests =
             async {
                 let input = SecondString
                 let! output = binaryServer.echoStringEnum input
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.datetime" <|
+            async {
+                let input = DateTime.Now
+                let! output = binaryServer.echoDateTime input
+
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.datetimeoffset" <|
+            async {
+                let input = DateTimeOffset.Now
+                let! output = binaryServer.echoDateTimeOffset input
+
                 test.equal true (input = output)
             }
     ]

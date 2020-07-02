@@ -117,6 +117,8 @@ type IBinaryServer = {
     echoFloatWithMeasure : float<SomeUnit> -> Async<float<SomeUnit>>
     echoStringOption : string option -> Async<string option>
     echoRecursiveRecord : RecursiveRecord -> Async<RecursiveRecord>
+    echoDateTime : DateTime -> Async<DateTime>
+    echoDateTimeOffset : DateTimeOffset -> Async<DateTimeOffset>
     // Union types, simple and generic
     echoGenericUnionInt : Maybe<int> -> Async<Maybe<int>>
     echoGenericUnionString : Maybe<string> -> Async<Maybe<string>>
@@ -198,6 +200,8 @@ type IServer = {
     echoIntOption : int option -> Async<int option>
     echoStringOption : string option -> Async<string option>
     echoRecursiveRecord : RecursiveRecord -> Async<RecursiveRecord>
+    echoDateTime : DateTime -> Async<DateTime>
+    echoDateTimeOffset : DateTimeOffset -> Async<DateTimeOffset>
     // Union types, simple and generic
     echoGenericUnionInt : Maybe<int> -> Async<Maybe<int>>
     echoGenericUnionString : Maybe<string> -> Async<Maybe<string>>

@@ -202,6 +202,11 @@ module Write =
         use sw = new MemoryStream (data)
         sw.CopyTo s
 
+    let inline dateTimeOffset (s: Stream) (dto: DateTimeOffset) =
+        s.WriteByte (Format.fixarr 2uy)
+        int dto.Ticks s
+        int (int64 dto.Offset.TotalMinutes) s
+
     let rec array (s: Stream) (arr: System.Collections.IList) =
         if arr.Count < 16 then
             s.WriteByte (Format.fixarr arr.Count)
@@ -314,10 +319,8 @@ packerCache.TryAdd (typeof<Array>, fun x s -> Write.array s (x :?> Array)) |> ig
 packerCache.TryAdd (typeof<byte[]>, fun x s -> Write.bin (x :?> byte[]) s) |> ignore
 packerCache.TryAdd (typeof<BigInteger>, fun x s -> Write.array s ((x :?> BigInteger).ToByteArray ())) |> ignore
 packerCache.TryAdd (typeof<DateTime>, fun x s -> Write.int (x :?> DateTime).Ticks s) |> ignore
+packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.dateTimeOffset s (x :?> DateTimeOffset)) |> ignore
 packerCache.TryAdd (typeof<TimeSpan>, fun x s -> Write.int (x :?> TimeSpan).Ticks s) |> ignore
-//todo timezone info
-//packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.int (x :?> DateTimeOffset).Ticks s) |> ignore
-//todo units of measure
 
 #endif
 
@@ -558,6 +561,10 @@ type Reader (data: byte[]) =
                 x.ReadRawArray (len, t.GetElementType()) |> box
             elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                 x.ReadList (len, t.GetGenericArguments () |> Array.head) |> box
+            elif t = typeof<DateTimeOffset> then
+                let dateTimeTicks = x.Read typeof<int64> :?> int64
+                let timeSpanMinutes = x.Read typeof<int16> :?> int16
+                DateTimeOffset (dateTimeTicks, TimeSpan.FromMinutes (float timeSpanMinutes)) |> box
             elif t = typeof<bigint> then
 #if !FABLE_COMPILER
                 x.ReadRawArray (len, typeof<byte>) :?> byte[] |> bigint |> box
