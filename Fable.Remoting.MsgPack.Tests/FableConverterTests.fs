@@ -133,8 +133,7 @@ let converterTest =
         }
         test "TimeSpan" {
             TimeSpan.FromMilliseconds 0. |> serializeDeserializeCompare
-            TimeSpan.FromMilliseconds 33. |> serializeDeserializeCompare
-            TimeSpan.FromDays -23. |> serializeDeserializeCompare
+            TimeSpan.FromDays 33. |> serializeDeserializeCompare
         }
         test "Enum" {
             SomeEnum.Val1 |> serializeDeserializeCompareWithLength 1

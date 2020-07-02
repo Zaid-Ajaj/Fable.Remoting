@@ -1083,7 +1083,7 @@ let binaryServerTests =
                 let! output = binaryServer.echoTimeSpan input
                 test.equal true (input = output)
 
-                let input = TimeSpan.FromDays -33.
+                let input = TimeSpan.FromDays -0.3
                 let! output = binaryServer.echoTimeSpan input
                 test.equal true (input = output)
 

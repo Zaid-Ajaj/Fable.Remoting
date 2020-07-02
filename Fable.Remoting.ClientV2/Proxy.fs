@@ -148,14 +148,13 @@ module Proxy =
                     match statusCode with 
                     | 200 ->
                         let rec getReturnType typ =
-                            let _, res = Reflection.FSharpType.GetFunctionElements typ
-
-                            if Reflection.FSharpType.IsFunction res then
+                            if Reflection.FSharpType.IsFunction typ then
+                                let _, res = Reflection.FSharpType.GetFunctionElements typ
                                 getReturnType res
-                            elif res.IsGenericType then
-                                res.GetGenericArguments () |> Array.head
+                            elif typ.IsGenericType then
+                                typ.GetGenericArguments () |> Array.head
                             else
-                                res
+                                typ
                         
                         return MsgPack.Reader(response).Read (getReturnType fieldType)
                     | 500 ->

@@ -82,7 +82,10 @@ module GiraffeUtil =
             let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
             match functionResult with
             | Choice1Of2 output ->
-                Fable.Remoting.MsgPack.Write.write output ctx.Response.Body
+                use ms = new MemoryStream ()
+                Fable.Remoting.MsgPack.Write.write output ms
+                ms.Position <- 0L
+                do! ms.CopyToAsync ctx.Response.Body
                 ctx.Response.StatusCode <- 200
                 ctx.Response.ContentType <- "application/octet-stream"
                 return! next ctx
@@ -189,6 +192,15 @@ module GiraffeUtil =
               // Just invoke the remote function with an empty list of arguments
               | ("GET" | "POST"), SingleArgument(input, _) when input = typeof<unit> ->
                   return! runFunctionBinary func impl options [|  |] next ctx
+
+              // POST routes of type byte[] -> Async<T> and the request body is binary encoded (i.e. application/octet-stream)
+              | "POST", SingleArgument(inputType, _) when inputType = typeof<byte[]> && ctx.Request.ContentType = "application/octet-stream" ->
+                  let requestBodyStream = ctx.Request.Body
+                  use memoryStream = new MemoryStream()
+                  do! requestBodyStream.CopyToAsync(memoryStream)
+                  let inputBytes = memoryStream.ToArray()
+                  let inputArgs = [| box inputBytes |]
+                  return! runFunctionBinary func impl options inputArgs next ctx
 
               // All other generic routes of type T -> Async<U> etc.
               | "POST", _ ->

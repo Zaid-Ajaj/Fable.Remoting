@@ -199,7 +199,15 @@ module SuaveUtil =
               return! success serializedSchema None context   
           | _ -> 
               return! halt context     
-      | Some funcName -> 
+      | Some funcName ->
+          let contentIsBinaryEncoded = 
+              context.request.headers
+              |> List.tryFind (fun (key, _) -> key.ToLowerInvariant() = "content-type")
+              |> Option.map (fun (_, value) -> value)
+              |> function 
+                | Some "application/octet-stream" -> true 
+                | otherwise -> false
+
           let func = Map.find funcName dynamicFunctions
           
           match context.request.method, func.Type with  
@@ -208,6 +216,11 @@ module SuaveUtil =
           
           | (HttpMethod.GET | HttpMethod.POST), SingleArgument(input, _) when input = typeof<unit> ->
               return! runFunctionBinary func impl options [|  |] context   
+
+          | HttpMethod.POST, SingleArgument(input, _) when input = typeof<byte[]> && contentIsBinaryEncoded ->
+              let inputBytes = context.request.rawForm
+              let inputArgs = [| box inputBytes |]
+              return! runFunctionBinary func impl options inputArgs context
 
           | HttpMethod.POST, _ ->      
               let inputJson = System.Text.Encoding.UTF8.GetString(context.request.rawForm)
