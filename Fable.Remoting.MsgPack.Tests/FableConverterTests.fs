@@ -141,4 +141,7 @@ let converterTest =
         test "Enum" {
             SomeEnum.Val1 |> serializeDeserializeCompareWithLength 1
         }
+        test "Guid" {
+            Guid.NewGuid () |> serializeDeserializeCompareWithLength 18
+        }
     ]

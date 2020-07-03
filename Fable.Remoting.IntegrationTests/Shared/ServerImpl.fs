@@ -46,6 +46,7 @@ let serverBinary : IBinaryServer = {
     echoFloatWithMeasure = Async.result
     echoDateTime = Async.result
     echoDateTimeOffset = Async.result
+    echoGuid = Async.result
     echoIntOption = Async.result
     echoStringOption = Async.result
     echoGenericUnionInt = Async.result

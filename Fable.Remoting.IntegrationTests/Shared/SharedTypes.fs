@@ -119,6 +119,7 @@ type IBinaryServer = {
     echoRecursiveRecord : RecursiveRecord -> Async<RecursiveRecord>
     echoDateTime : DateTime -> Async<DateTime>
     echoDateTimeOffset : DateTimeOffset -> Async<DateTimeOffset>
+    echoGuid : Guid -> Async<Guid>
     // Union types, simple and generic
     echoGenericUnionInt : Maybe<int> -> Async<Maybe<int>>
     echoGenericUnionString : Maybe<string> -> Async<Maybe<string>>

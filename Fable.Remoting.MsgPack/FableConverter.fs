@@ -164,6 +164,9 @@ module Write =
                 s.WriteByte Format.int64
                 writeSignedNumber (BitConverter.GetBytes n) s
 
+    let inline byte b (s: Stream) =
+        s.WriteByte b
+
     let inline str (str: string) (s: Stream) =
         let str = Encoding.UTF8.GetBytes str
 
@@ -212,8 +215,8 @@ module Write =
             s.WriteByte (Format.fixarr arr.Count)
         elif arr.Count < 65536 then
             s.WriteByte Format.array16
-            s.WriteByte (arr.Count >>> 8 |> byte)
-            s.WriteByte (byte arr.Count)
+            s.WriteByte (arr.Count >>> 8 |> FSharp.Core.Operators.byte)
+            s.WriteByte (FSharp.Core.Operators.byte arr.Count)
         else
             s.WriteByte Format.array32
             writeUnsigned32bitNumber (uint32 arr.Count) s false
@@ -301,7 +304,7 @@ module Write =
             else
                 failwithf "Cannot pack %s" t.Name
 
-packerCache.TryAdd (typeof<byte>, fun x s -> Write.uint (x :?> byte |> uint64) s) |> ignore
+packerCache.TryAdd (typeof<byte>, fun x s -> Write.byte (x :?> byte) s) |> ignore
 packerCache.TryAdd (typeof<sbyte>, fun x s -> Write.int (x :?> sbyte |> int64) s) |> ignore
 packerCache.TryAdd (typeof<unit>, fun _ s -> Write.nil s) |> ignore
 packerCache.TryAdd (typeof<bool>, fun x s -> Write.bool (x :?> bool) s) |> ignore
@@ -317,7 +320,8 @@ packerCache.TryAdd (typeof<float>, fun x s -> Write.float64 (x :?> float) s) |> 
 packerCache.TryAdd (typeof<decimal>, fun x s -> Write.float64 (x :?> decimal |> float) s) |> ignore
 packerCache.TryAdd (typeof<Array>, fun x s -> Write.array s (x :?> Array)) |> ignore
 packerCache.TryAdd (typeof<byte[]>, fun x s -> Write.bin (x :?> byte[]) s) |> ignore
-packerCache.TryAdd (typeof<BigInteger>, fun x s -> Write.array s ((x :?> BigInteger).ToByteArray ())) |> ignore
+packerCache.TryAdd (typeof<BigInteger>, fun x s -> Write.bin ((x :?> BigInteger).ToByteArray ()) s) |> ignore
+packerCache.TryAdd (typeof<Guid>, fun x s -> Write.bin ((x :?> Guid).ToByteArray ()) s) |> ignore
 packerCache.TryAdd (typeof<DateTime>, fun x s -> Write.int (x :?> DateTime).Ticks s) |> ignore
 packerCache.TryAdd (typeof<DateTimeOffset>, fun x s -> Write.dateTimeOffset s (x :?> DateTimeOffset)) |> ignore
 packerCache.TryAdd (typeof<TimeSpan>, fun x s -> Write.int (x :?> TimeSpan).Ticks s) |> ignore
@@ -423,7 +427,7 @@ type Reader (data: byte[]) =
         pos <- pos + 1
         data.[pos - 1]
 
-    member _.ReadByteArray len =
+    member _.ReadRawBin len =
         pos <- pos + len
         data.[ pos - len .. pos - 1 ]
 
@@ -565,14 +569,18 @@ type Reader (data: byte[]) =
                 let dateTimeTicks = x.Read typeof<int64> :?> int64
                 let timeSpanMinutes = x.Read typeof<int16> :?> int16
                 DateTimeOffset (dateTimeTicks, TimeSpan.FromMinutes (float timeSpanMinutes)) |> box
-            elif t = typeof<bigint> then
-#if !FABLE_COMPILER
-                x.ReadRawArray (len, typeof<byte>) :?> byte[] |> bigint |> box
-#else
-                x.ReadRawArray (len, typeof<byte>) |> box :?> byte[] |> bigint |> box
-#endif
             else
                 failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
+
+    member x.ReadBin (len, t) =
+        if t = typeof<Guid> then
+            x.ReadRawBin len |> Guid |> box
+        elif t = typeof<byte[]> then
+            x.ReadRawBin len |> box
+        elif t = typeof<bigint> then
+            x.ReadRawBin len |> bigint |> box
+        else
+            failwithf "Expecting %s at position %d, but the data contains bin." t.Name pos
 
     member x.Read (t, b) =
         match b with
@@ -616,13 +624,13 @@ type Reader (data: byte[]) =
             x.ReadMap (len, t)
         | Format.bin8 ->
             let len = x.ReadByte () |> int
-            x.ReadByteArray len |> box
+            x.ReadBin (len, t)
         | Format.bin16 ->
             let len = x.ReadUInt16 () |> int
-            x.ReadByteArray len |> box
+            x.ReadBin (len, t)
         | Format.bin32 ->
             let len = x.ReadUInt32 () |> int
-            x.ReadByteArray len |> box
+            x.ReadBin (len, t)
         | _ ->
             failwithf "Position %d, byte %d, expected type %s." pos b t.Name
 

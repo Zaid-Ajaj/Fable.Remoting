@@ -1161,6 +1161,14 @@ let binaryServerTests =
 
                 test.equal true (input = output)
             }
+
+        testCaseAsync "IBinaryServer.guid" <|
+            async {
+                let input = Guid.NewGuid ()
+                let! output = binaryServer.echoGuid input
+
+                test.equal true (input = output)
+            }
     ]
 
 let cookieServer =
