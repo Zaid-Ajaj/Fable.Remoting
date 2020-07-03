@@ -11,7 +11,7 @@ module Remoting =
         BaseUrl = None
         Authorization = None
         RouteBuilder = sprintf ("/%s/%s") 
-        IsBinary = false
+        ResponseSerialization = Json
     }
     
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -30,9 +30,9 @@ module Remoting =
     let withAuthorizationHeader token (options: RemoteBuilderOptions) = 
         { options with Authorization = Some token }
 
-    /// Specifies that the API only uses binary serialization
+    /// Specifies that the API uses binary serialization for responses
     let withBinarySerialization (options: RemoteBuilderOptions) = 
-        { options with IsBinary = true }
+        { options with ResponseSerialization = MessagePack }
 
 type Remoting() = 
     static member buildProxy<'t>(options: RemoteBuilderOptions, [<Inject>] ?resolver: ITypeResolver<'t>) : 't = 

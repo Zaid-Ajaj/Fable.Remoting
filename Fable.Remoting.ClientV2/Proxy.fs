@@ -131,7 +131,8 @@ module Proxy =
                     then RequestBody.Binary (unbox arg0)
                     else RequestBody.Json (Json.stringify inputArguments)
 
-                if options.IsBinary then
+                match options.ResponseSerialization with
+                | MessagePack ->
                     // read as arraybuffer and deserialize
                     let! (response, statusCode) = 
                         if funcNeedParameters 
@@ -167,7 +168,7 @@ module Proxy =
                         let! responseText = Blob.readBlobAsText responseAsBlob
                         let response = { StatusCode = statusCode; ResponseBody = responseText }
                         return! raise (ProxyRequestException(response, sprintf "Http error (%d) while making request to %s" n url, response.ResponseBody))
-                else
+                | Json ->
                     match readAsBinary with 
                     | true -> 
                         // don't deserialize, read as arraybuffer and convert to byte[]
