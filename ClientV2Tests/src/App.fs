@@ -1047,11 +1047,15 @@ let binaryServerTests =
                 test.equal true (input = output)
             }
 
-        testCaseAsync "IBinaryServer.echoGenericDictionary" <|
+        testCaseAsync "IBinaryServer.genericDictionary" <|
             async {
-                let input = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> Dictionary<_, _>
-                let! output = binaryServer.echoGenericDictionary input
-                test.equal true (input = output)
+                let expected = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> Dictionary<_, _>
+                let! actual = binaryServer.genericDictionary ()
+
+                test.equal expected.Count actual.Count
+
+                for k, v in expected |> Seq.map (|KeyValue|) do
+                    test.equal true (actual.[k] = v)
             }
 
         testCaseAsync "IBinaryServer.echoRecursiveRecord" <|

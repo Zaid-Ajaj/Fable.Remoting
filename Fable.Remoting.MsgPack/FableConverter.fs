@@ -478,7 +478,7 @@ type Reader (data: byte[]) =
         let pairs =
             [|
                 for _ in 0 .. len - 1 ->
-                    x.Read args.[0] |> box :?> IComparable, x.Read args.[1]
+                    x.Read args.[0] |> box :?> IStructuralComparable, x.Read args.[1]
             |]
 
         if t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>> then
