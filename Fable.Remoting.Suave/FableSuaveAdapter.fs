@@ -119,7 +119,7 @@ module SuaveUtil =
     }
 
   /// Builds the entire WebPart from implementation record, handles routing and dynamic running of record functions
-  let buildFromImplementation impl options = 
+  let buildFromImplementation impl options runFunction = 
     let typ = impl.GetType()
     let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
     fun (context: HttpContext) -> async {
@@ -175,63 +175,6 @@ module SuaveUtil =
               return! halt context
     }
 
-  /// Builds the entire WebPart from implementation record, handles routing and dynamic running of record functions
-  let buildFromImplementationBinary impl options = 
-    let typ = impl.GetType()
-    let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
-    fun (context: HttpContext) -> async {
-      let foundFunction = 
-        dynamicFunctions 
-        |> Map.tryFindKey (fun funcName _ -> context.request.path = options.RouteBuilder typ.Name funcName) 
-      match foundFunction with 
-      | None -> 
-          match context.request.method, options.Docs with 
-          | HttpMethod.GET, (Some docsUrl, Some docs) when docsUrl = context.request.path -> 
-              let (Documentation(docsName, docsRoutes)) = docs
-              let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
-              let docsApp = DocsApp.embedded docsName docsUrl schema
-              return! html docsApp context
-          | HttpMethod.OPTIONS, (Some docsUrl, Some docs) 
-                when sprintf "/%s/$schema" docsUrl = context.request.path
-                  || sprintf "%s/$schema" docsUrl = context.request.path ->
-              let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
-              let serializedSchema =  schema.ToString(Formatting.None)
-              return! success serializedSchema None context   
-          | _ -> 
-              return! halt context     
-      | Some funcName ->
-          let contentIsBinaryEncoded = 
-              context.request.headers
-              |> List.tryFind (fun (key, _) -> key.ToLowerInvariant() = "content-type")
-              |> Option.map (fun (_, value) -> value)
-              |> function 
-                | Some "application/octet-stream" -> true 
-                | otherwise -> false
-
-          let func = Map.find funcName dynamicFunctions
-          
-          match context.request.method, func.Type with  
-          | (HttpMethod.GET | HttpMethod.POST), NoArguments _ ->  
-              return! runFunctionBinary func impl options [|  |] context  
-          
-          | (HttpMethod.GET | HttpMethod.POST), SingleArgument(input, _) when input = typeof<unit> ->
-              return! runFunctionBinary func impl options [|  |] context   
-
-          | HttpMethod.POST, SingleArgument(input, _) when input = typeof<byte[]> && contentIsBinaryEncoded ->
-              let inputBytes = context.request.rawForm
-              let inputArgs = [| box inputBytes |]
-              return! runFunctionBinary func impl options inputArgs context
-
-          | HttpMethod.POST, _ ->      
-              let inputJson = System.Text.Encoding.UTF8.GetString(context.request.rawForm)
-              let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger
-              match inputArgs with 
-              | Ok inputArgs -> return! runFunctionBinary func impl options inputArgs context
-              | Result.Error error -> return! sendError error options.DiagnosticsLogger context  
-          | _ -> 
-              return! halt context
-    }
-
 module Remoting = 
   
   /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
@@ -240,15 +183,23 @@ module Remoting =
 
   /// Specifies that the API only uses binary serialization
   let withBinarySerialization (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
-    { options with IsBinary = true } 
+    { options with ResponseSerialization = MessagePack } 
 
   /// Builds a WebPart from the given implementation and options  
   let buildWebPart (options: RemotingOptions<HttpContext, 't>) : WebPart = 
     match options.Implementation with 
     | Empty -> SuaveUtil.halt
-    | StaticValue impl -> (if options.IsBinary then SuaveUtil.buildFromImplementationBinary else SuaveUtil.buildFromImplementation) impl options 
-    | FromContext createImplementationFrom -> 
-        fun (context: HttpContext) -> async {
-          let impl = createImplementationFrom context 
-          return! (if options.IsBinary then SuaveUtil.buildFromImplementationBinary else SuaveUtil.buildFromImplementation) impl options context
-        }
+    | StaticValue impl ->
+        match options.ResponseSerialization with
+        | Json -> SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunction
+        | MessagePack -> SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunctionBinary
+    | FromContext createImplementationFrom ->
+        match options.ResponseSerialization with
+        | Json ->
+            fun (context : HttpContext) ->
+                let impl = createImplementationFrom context
+                SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunction context
+        | MessagePack ->
+            fun (context : HttpContext) ->
+                let impl = createImplementationFrom context
+                SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunctionBinary context

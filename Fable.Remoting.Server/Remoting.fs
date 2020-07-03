@@ -11,7 +11,7 @@ module Remoting =
           ErrorHandler = None 
           DiagnosticsLogger = None
           Docs = None, None
-          IsBinary = false }
+          ResponseSerialization = Json }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
     let withRouteBuilder builder options = 
@@ -31,7 +31,7 @@ module Remoting =
 
     /// Specifies that the API only uses binary serialization
     let withBinarySerialization options = 
-        { options with IsBinary = true }
+        { options with ResponseSerialization = MessagePack }
 
     /// Builds the API using the provided static protocol implementation 
     let fromValue (serverImpl: 'implementation) (options: RemotingOptions<'t, 'implementation>)  = 

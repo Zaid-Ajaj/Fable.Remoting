@@ -82,12 +82,12 @@ module GiraffeUtil =
             let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
             match functionResult with
             | Choice1Of2 output ->
+                ctx.Response.StatusCode <- 200
+                ctx.Response.ContentType <- "application/octet-stream"
                 use ms = new MemoryStream ()
                 Fable.Remoting.MsgPack.Write.write output ms
                 ms.Position <- 0L
                 do! ms.CopyToAsync ctx.Response.Body
-                ctx.Response.StatusCode <- 200
-                ctx.Response.ContentType <- "application/octet-stream"
                 return! next ctx
             | Choice2Of2 ex ->
                 ctx.Response.StatusCode <- 500
@@ -97,7 +97,7 @@ module GiraffeUtil =
         }
 
     /// Builds the entire HttpHandler from implementation record, handles routing and dynamic running of record functions
-    let buildFromImplementation impl options =
+    let buildFromImplementation impl options runFunction =
       let typ = impl.GetType()
       let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
       fun (next : HttpFunc) (ctx : HttpContext) -> task {
@@ -157,74 +157,24 @@ module GiraffeUtil =
                 return! skipPipeline
       }
 
-    let buildFromImplementationBinary impl options =
-        let typ = impl.GetType()
-        let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
-        fun (next : HttpFunc) (ctx : HttpContext) -> task {
-          let foundFunction =
-            dynamicFunctions
-            |> Map.tryFindKey (fun funcName _ -> ctx.Request.Path.Value = options.RouteBuilder typ.Name funcName)
-          match foundFunction with
-          | None ->
-              match ctx.Request.Method.ToUpper(), options.Docs with
-              | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
-                  let (Documentation(docsName, docsRoutes)) = docs
-                  let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
-                  let docsApp = DocsApp.embedded docsName docsUrl schema
-                  return! htmlString docsApp next ctx
-              | "OPTIONS", (Some docsUrl, Some docs)
-                  when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
-                    || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
-                  let schema = DynamicRecord.makeDocsSchema typ docs options.RouteBuilder
-                  let serializedSchema = schema.ToString(Formatting.None)
-                  return! text serializedSchema next ctx
-              | _ ->
-                  return! skipPipeline
-          | Some funcName ->
-              let func = Map.find funcName dynamicFunctions
-              match ctx.Request.Method.ToUpper(), func.Type with
-              // GET or POST routes of type the Async<'T>
-              // Just invoke the remote function with an empty list of arguments
-              | ("GET" | "POST"), NoArguments _ ->
-                  return! runFunctionBinary func impl options [|  |] next ctx
-
-              // GET or POST routes of type the unit -> Async<'T>
-              // Just invoke the remote function with an empty list of arguments
-              | ("GET" | "POST"), SingleArgument(input, _) when input = typeof<unit> ->
-                  return! runFunctionBinary func impl options [|  |] next ctx
-
-              // POST routes of type byte[] -> Async<T> and the request body is binary encoded (i.e. application/octet-stream)
-              | "POST", SingleArgument(inputType, _) when inputType = typeof<byte[]> && ctx.Request.ContentType = "application/octet-stream" ->
-                  let requestBodyStream = ctx.Request.Body
-                  use memoryStream = new MemoryStream()
-                  do! requestBodyStream.CopyToAsync(memoryStream)
-                  let inputBytes = memoryStream.ToArray()
-                  let inputArgs = [| box inputBytes |]
-                  return! runFunctionBinary func impl options inputArgs next ctx
-
-              // All other generic routes of type T -> Async<U> etc.
-              | "POST", _ ->
-                  let requestBodyStream = ctx.Request.Body
-                  use streamReader = new StreamReader(requestBodyStream)
-                  let! inputJson = streamReader.ReadToEndAsync()
-                  let inputArgs = DynamicRecord.tryCreateArgsFromJson func inputJson options.DiagnosticsLogger
-                  match inputArgs with
-                  | Ok inputArgs -> return! runFunctionBinary func impl options inputArgs next ctx
-                  | Error error ->
-                      ctx.Response.StatusCode <- 500
-                      return! setJsonBody error options.DiagnosticsLogger next ctx
-              | _ ->
-                  return! skipPipeline
-        }
-
 module Remoting =
 
   /// Builds a HttpHandler from the given implementation and options
   let buildHttpHandler (options: RemotingOptions<HttpContext, 't>) =
     match options.Implementation with
     | Empty -> fun _ _ -> skipPipeline
-    | StaticValue impl -> (if options.IsBinary then GiraffeUtil.buildFromImplementationBinary else GiraffeUtil.buildFromImplementation) impl options
+    | StaticValue impl ->
+        match options.ResponseSerialization with
+        | Json -> GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunction
+        | MessagePack -> GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunctionBinary
     | FromContext createImplementationFrom ->
-        fun (next : HttpFunc) (ctx : HttpContext) ->
-            let impl = createImplementationFrom ctx
-            (if options.IsBinary then GiraffeUtil.buildFromImplementationBinary else GiraffeUtil.buildFromImplementation) impl options next ctx
+        match options.ResponseSerialization with
+        | Json ->
+            fun (next : HttpFunc) (ctx : HttpContext) ->
+                let impl = createImplementationFrom ctx
+                GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunction next ctx
+        | MessagePack ->
+            fun (next : HttpFunc) (ctx : HttpContext) ->
+                let impl = createImplementationFrom ctx
+                GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunctionBinary next ctx
+            

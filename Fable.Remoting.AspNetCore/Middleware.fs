@@ -126,7 +126,30 @@ module internal Middleware =
                return! fail ex routeInfo options next ctx 
         }
 
-    let buildFromImplementation impl options = 
+    let runFunctionBinary func impl options args : HttpHandler = 
+        let logger = options.DiagnosticsLogger
+        fun (next : HttpFunc) (ctx : HttpContext) -> 
+          task {
+              Diagnostics.runPhase logger func.FunctionName
+              let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
+              match functionResult with
+              | Choice.Choice1Of2 output -> 
+                  ctx.Response.StatusCode <- 200
+                  ctx.Response.ContentType <- "application/octet-stream"
+                  use ms = new MemoryStream ()
+                  Fable.Remoting.MsgPack.Write.write output ms
+                  ms.Position <- 0L
+                  do! ms.CopyToAsync ctx.Response.Body
+                  return! next ctx  
+              
+              | Choice.Choice2Of2 ex -> 
+                 ctx.Response.StatusCode <- 500
+                 ctx.Response.ContentType <- "application/json; charset=utf-8"
+                 let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
+                 return! fail ex routeInfo options next ctx 
+          }
+
+    let buildFromImplementation impl options runFunction = 
       let typ = impl.GetType()
       let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
       fun (next : HttpFunc) (ctx : HttpContext) -> task {
@@ -191,11 +214,19 @@ type RemotingMiddleware<'t>(next          : RequestDelegate,
     member __.Invoke (ctx : HttpContext) =
       let handler = 
           match options.Implementation with 
-          | Empty -> Middleware.halt  
-          | StaticValue impl -> Middleware.buildFromImplementation impl options  
-          | FromContext createImplementation -> 
-              let impl = createImplementation ctx 
-              Middleware.buildFromImplementation impl options
+          | Empty -> Middleware.halt
+          | StaticValue impl ->
+              match options.ResponseSerialization with
+              | Json -> Middleware.buildFromImplementation impl options Middleware.runFunction
+              | MessagePack -> Middleware.buildFromImplementation impl options Middleware.runFunctionBinary
+          | FromContext createImplementationFrom ->
+              match options.ResponseSerialization with
+              | Json ->
+                  let impl = createImplementationFrom ctx
+                  Middleware.buildFromImplementation impl options Middleware.runFunction
+              | MessagePack ->
+                  let impl = createImplementationFrom ctx
+                  Middleware.buildFromImplementation impl options Middleware.runFunctionBinary
       let func : HttpFunc = handler (Some >> Task.FromResult)
       task {
           let! result = func ctx
