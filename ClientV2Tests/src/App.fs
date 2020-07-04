@@ -7,7 +7,6 @@ open SharedTypes
 open Fable.SimpleJson
 open Fable.Mocha
 open System
-open Fable.Remoting.MsgPack
 open System.Collections.Generic
 
 let server =
@@ -38,6 +37,8 @@ let datesEqual (x: DateTime) (y: DateTime) =
     test.equal x.Hour y.Hour
     test.equal x.Minute y.Minute
     test.equal x.Second y.Second
+
+let largeRecursiveRecord = createRecursiveRecord 5 7
 
 let serverTests =
     testList "Fable.Remoting" [
@@ -577,6 +578,13 @@ let serverTests =
                 let! output = server.echoDateTimeOffset input
 
                 test.equal true (input = output)
+            }
+        testCaseAsync "IServer.largeRecursiveRecord" <|
+            async {
+                let input = largeRecursiveRecord
+                let! output = server.echoRecursiveRecord input
+
+                test.equal true (input = output) 
             }
     ]
 
@@ -1168,6 +1176,14 @@ let binaryServerTests =
                 let! output = binaryServer.echoGuid input
 
                 test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.largeRecursiveRecord" <|
+            async {
+                let input = largeRecursiveRecord
+                let! output = binaryServer.echoRecursiveRecord input
+
+                test.equal true (input = output) 
             }
     ]
 

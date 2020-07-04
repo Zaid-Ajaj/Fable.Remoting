@@ -88,6 +88,13 @@ type RecursiveRecord = {
     Children : RecursiveRecord list
 }
 
+let rec createRecursiveRecord childCount levels =
+    if levels > 0 then
+        let children = [ 1 .. childCount ] |> List.map (fun _ -> createRecursiveRecord childCount (levels - 1))
+        { Name = "Test name";  Children = children }
+    else
+        { Name = "Leaf"; Children = [] }
+
 type Tree =
     | Leaf of int
     | Branch of Tree * Tree

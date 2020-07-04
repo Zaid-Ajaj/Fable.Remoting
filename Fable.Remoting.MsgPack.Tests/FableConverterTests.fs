@@ -15,7 +15,7 @@ let fail () = Expect.equal false true ""
 
 let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.write value ms
+    MsgPack.Write.object value ms
 
     let deserialized = MsgPack.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
 
@@ -23,7 +23,7 @@ let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
 
 let serializeDeserializeCompareSequence (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.write value ms
+    MsgPack.Write.object value ms
 
     let deserialized = MsgPack.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
 
@@ -31,7 +31,7 @@ let serializeDeserializeCompareSequence (value: 'a) =
 
 let serializeDeserializeCompareWithLength<'a when 'a: equality> expectedLength (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.write value ms
+    MsgPack.Write.object value ms
     let data = ms.ToArray ()
 
     let deserialized = MsgPack.Reader(data).Read typeof<'a> :?> 'a
@@ -116,6 +116,9 @@ let converterTest =
         }
         test "Array32 of long" {
             [| for _ in 1 .. 80_000 -> 5_000_000_000L |] |> serializeDeserializeCompare
+        }
+        test "Array32 of int32" {
+            [| 1 .. 100000 |] |> serializeDeserializeCompare
         }
         test "Recursive record" {
             {

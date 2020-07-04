@@ -85,7 +85,7 @@ module GiraffeUtil =
                 ctx.Response.StatusCode <- 200
                 ctx.Response.ContentType <- "application/octet-stream"
                 use ms = new MemoryStream ()
-                Fable.Remoting.MsgPack.Write.write output ms
+                Fable.Remoting.MsgPack.Write.object output ms
                 ms.Position <- 0L
                 do! ms.CopyToAsync ctx.Response.Body
                 return! next ctx
