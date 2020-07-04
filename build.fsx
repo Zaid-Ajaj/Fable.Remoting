@@ -50,6 +50,8 @@ let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
+let MsgPack = getPath "MsgPack"
+
 let clean projectPath =
     Shell.cleanDirs [
       projectPath </> "bin"
@@ -68,7 +70,6 @@ let publish projectPath = fun _ ->
     let pushCmd = sprintf "nuget push %s -s nuget.org -k %s" nupkg nugetKey
     run projectPath dotnet pushCmd
 
-
 Target.create "PublishClientV2" (publish ClientV2)
 Target.create "PublishJson" (publish Json)
 Target.create "PublishServer" (publish Server)
@@ -76,6 +77,7 @@ Target.create "PublishDotnetClient" (publish DotnetClient)
 Target.create "PublishSuave" (publish Suave)
 Target.create "PublishGiraffe" (publish Giraffe)
 Target.create "PublishAspnetCore" (publish AspNetCore)
+Target.create "PublishMsgPack" (publish MsgPack)
 
 Target.create "CleanGiraffe" <| fun _ ->
     clean (getPath "Giraffe")
@@ -159,7 +161,6 @@ Target.create "ServeDocs" <| fun _ ->
         run "docs" "npm" "run serve"
     }
     |> Async.StartImmediate
-
 
 Target.create "PublishDocs" <| fun _ ->
     run "docs" "npm" "run publish"
