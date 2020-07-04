@@ -373,19 +373,23 @@ type DictionaryDeserializer<'k,'v when 'k: equality and 'k: comparison> () =
 
             box dict
         else
-            [|
-                for _ in 0 .. len - 1 ->
-                    read keyType :?> 'k, read valueType :?> 'v
-            |] |> Map.ofArray |> box
+            let arr = Array.zeroCreate len
+
+            for i in 0 .. len - 1 do
+                arr.[i] <- read keyType :?> 'k, read valueType :?> 'v
+
+            Map.ofArray arr |> box
 
 type ListDeserializer<'a> () =
     static let argType = typeof<'a>
 
     static member Deserialize (len: int, read: Type -> obj) =
-        [
-            for _ in 0 .. len - 1 ->
-                read argType :?> 'a
-        ]
+        let arr = Array.zeroCreate len
+
+        for i in 0 .. len - 1 do
+            arr.[i] <- read argType :?> 'a
+
+        List.ofArray arr
 #endif
 
 type Reader (data: byte[]) =
@@ -475,10 +479,12 @@ type Reader (data: byte[]) =
         mapDeserializeMethod.Invoke (null, [| len; isDictionary; x.Read |])
 #else
         let pairs =
-            [|
-                for _ in 0 .. len - 1 ->
-                    x.Read args.[0] |> box :?> IStructuralComparable, x.Read args.[1]
-            |]
+            let arr = Array.zeroCreate len
+            
+            for i in 0 .. len - 1 do
+                arr.[i] <- x.Read args.[0] |> box :?> IStructuralComparable, x.Read args.[1]
+
+            arr
 
         if t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>> then
             let dict = Dictionary<_, _> len
@@ -497,10 +503,12 @@ type Reader (data: byte[]) =
 
         arr
 #else
-        [|
-            for _ in 0 .. len - 1 ->
-                x.Read elementType
-        |]
+        let arr = Array.zeroCreate len
+
+        for i in 0 .. len - 1 do
+            arr.[i] <- x.Read elementType
+        
+        arr
 #endif
 
     member private x.ReadArray (len, t) =
@@ -513,11 +521,11 @@ type Reader (data: byte[]) =
 
         if FSharpType.IsRecord t then
 #if !FABLE_COMPILER
-            let props = FSharpType.GetRecordFields t
+            let fieldTypes = FSharpType.GetRecordFields t |> Array.map (fun prop -> prop.PropertyType)
             let ctor = FSharpValue.PreComputeRecordConstructor (t, true)
             
             arrayReaderCache.GetOrAdd (t, fun (_, x: Reader) ->
-                ctor (props |> Array.map (fun prop -> x.Read prop.PropertyType))) (len, x)
+            ctor (fieldTypes |> Array.map x.Read)) (len, x)
 #else
             let props = FSharpType.GetRecordFields t
             FSharpValue.MakeRecord (t, props |> Array.map (fun prop -> x.Read prop.PropertyType))
