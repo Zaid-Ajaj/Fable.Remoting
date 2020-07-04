@@ -3,7 +3,7 @@
 - [Introduction](README.md)
 - [Getting Started](src/basics.md)
 
-### Setup Server 
+### Setup Server
 - [Setup Suave](src/suave.md)
 - [Setup Asp.NET Core](src/aspnet-core.md)
 - [Setup Giraffe](src/giraffe.md)
@@ -12,7 +12,7 @@
 ### Setup Client
 - [Setup Fable Client](src/client.md)
 
-### Dotnet Client 
+### Dotnet Client
 - [Getting Started from .NET](src/dotnet-client.md)
 - [C# Support](src/dotnet-csharp.md)
 - [Asp.NET Core Integration Testing](src/dotnet-integration-tests.md)
@@ -25,12 +25,13 @@
 - [Implicit Authentication](src/implicit-authentication.md)
 - [Refreshing Access Tokens](src/refresh-auth-tokens.md)
 - [Accessing Request Context](src/request-context.md)
+- [Binary Serialization](src/binary-serialization.md)
 - [Functional Dependency Injection](src/dependency-injection.md)
 - [Raw Http Communication](src/raw-http.md)
 - [Using Multiple Protocols](src/multiple-protocols.md)
 - [Type-Safe Documentation](src/docs.md)
 - [Logging](src/logging.md)
-- [Binary Serialization](src/binary-serialization.md)
+
 
 
 ### Misc

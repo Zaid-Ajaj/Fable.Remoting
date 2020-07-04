@@ -151,19 +151,19 @@ Target.create "RunGiraffeTests" <| fun _ ->
     run cwd "dotnet" GiraffeTestDll
 
 Target.create "InstallDocs" <| fun _ ->
-    run "docs" "yarn" "install"
+    run "documentation" "npm" "install"
 
 Target.create "BuildDocs" <| fun _ ->
-    run "docs" "npm" "run build"
+    run "documentation" "npm" "run build"
 
 Target.create "ServeDocs" <| fun _ ->
     async {
-        run "docs" "npm" "run serve"
+        run "documentation" "npm" "run serve"
     }
     |> Async.StartImmediate
 
 Target.create "PublishDocs" <| fun _ ->
-    run "docs" "npm" "run publish"
+    run "documentation" "npm" "run publish"
 
 Target.create "Default" (fun _ -> ())
 
