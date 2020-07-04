@@ -7,11 +7,18 @@ open SharedTypes
 open Fable.SimpleJson
 open Fable.Mocha
 open System
+open System.Collections.Generic
 
 let server =
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.buildProxy<IServer>
+
+let binaryServer =
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withBinarySerialization
+    |> Remoting.buildProxy<IBinaryServer>
 
 type test =
     static member equal a b = Expect.equal a b "They are equal"
@@ -30,6 +37,8 @@ let datesEqual (x: DateTime) (y: DateTime) =
     test.equal x.Hour y.Hour
     test.equal x.Minute y.Minute
     test.equal x.Second y.Second
+
+let largeRecursiveRecord = createRecursiveRecord 5 7
 
 let serverTests =
     testList "Fable.Remoting" [
@@ -554,6 +563,628 @@ let serverTests =
                 let expected = Map.ofList [ "hello", 5; "there!", 6 ]
                 test.equal true (expected = outputDict)
             }
+
+        testCaseAsync "IServer.datetime" <|
+            async {
+                let input = DateTime.Now
+                let! output = server.echoDateTime input
+
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IServer.datetimeoffset" <|
+            async {
+                let input = DateTimeOffset.Now
+                let! output = server.echoDateTimeOffset input
+
+                test.equal true (input = output)
+            }
+        testCaseAsync "IServer.largeRecursiveRecord" <|
+            async {
+                let input = largeRecursiveRecord
+                let! output = server.echoRecursiveRecord input
+
+                test.equal true (input = output) 
+            }
+    ]
+
+let binaryServerTests =
+    testList "Fable.Remoting binary" [
+        testCaseAsync "IBinaryServer.getLegth" <|
+            async {
+                let! result = binaryServer.getLength "hello"
+                do test.equal result 5
+            }
+
+        testCaseAsync "IBinaryServer.echoTupleMap" <|
+            async {
+                let! result = binaryServer.echoTupleMap (Map.ofList [(1,1), 1])
+                match Map.toList result with
+                | [ (1,1), 1 ] -> test.pass()
+                | otherwise -> test.failwith "Map<int * int, int> fails"
+            }
+
+        testCaseAsync "IBinaryServer.returnUnit" <|
+            async {
+                let! result = binaryServer.returnUnit()
+                do! Async.Sleep 1000
+                do test.pass()
+            }
+
+        testCaseAsync "IBinaryServer.intToUnit" <|
+            async {
+                let! result = binaryServer.intToUnit 42
+                do! Async.Sleep 100
+                do test.pass()
+            }
+
+        testCaseAsync "IBinaryServer.tupleToUnit" <|
+            async {
+                let! result = binaryServer.tupleToUnit (42, "Hello world")
+                do! Async.Sleep 100
+                do test.pass()
+            }
+
+        testCaseAsync "IBinaryServer.tupleToTuple" <|
+            async {
+                let! (text, number) = binaryServer.tupleToTuple (42, "Hello world")
+                do test.areEqual text "Hello world"
+                do test.areEqual number 42
+            }
+
+        testCaseAsync "IBinaryServer.echoAnonymousRecord" <|
+            async {
+                let! result = binaryServer.echoAnonymousRecord (Just {| name = "John" |})
+                match result with
+                | Just record -> test.equal "John" record.name
+                | otherwise -> test.failwith "Unexpected result"
+            }
+
+        testCaseAsync "IBinaryServer.echoNestedAnonRecord" <|
+            async {
+                let! result = binaryServer.echoNestedAnonRecord (Just {| nested  = {| name = "John" |} |})
+                match result with
+                | Just record -> test.equal "John" record.nested.name
+                | otherwise -> test.failwith "Unexpected result"
+            }
+
+        testCaseAsync "IBinaryServer.binaryContent" <|
+            async {
+                let! result = binaryServer.binaryContent()
+                test.equal 3 result.Length
+                test.equal true (result = [| byte 1; byte 2; byte 3|])
+            }
+
+        testCaseAsync "IBinaryServer.privateConstructor" <| 
+            async {
+                let input = String50.Create "Hello"
+                let! output = binaryServer.privateConstructor input 
+                test.equal "Hello" (output.Read()) 
+            }
+
+        testCaseAsync "IBinaryServer.echoRemoteWorkEntity" <|
+            async {
+                let entity = { RemoteWork = RequiredInput.validOrFail (ValidUserInput (RemoteWork "Fully Remote")) }
+                let! echoedEntity = binaryServer.echoRemoteWorkEntity entity
+                test.equal true (echoedEntity.RemoteWork = RemoteWork "Fully Remote")
+            }
+
+        testCaseAsync "IBinaryServer.binaryContentInOut" <|
+            async {
+                let input = [| byte 1; byte 2; byte 3|]
+                let! output = binaryServer.binaryInputOutput input
+                test.equal 3 output.Length
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.echoInteger" <|
+            async {
+                let! fstResult = binaryServer.echoInteger 20
+                let! sndResult = binaryServer.echoInteger 15
+                do test.equal fstResult 20
+                do test.equal sndResult 15
+            }
+
+        testCaseAsync "IBinaryServer.simpleUnit" <|
+            async {
+                let! result = binaryServer.simpleUnit()
+                do test.equal result 42
+            }
+
+        testCaseAsync "IBinaryServer.echoString" <|
+            async {
+                let! result1 = binaryServer.echoString ""
+                let! result2 = binaryServer.echoString "this one"
+                let! result3 = binaryServer.echoString null
+                do test.equal result1 ""
+                do test.equal result2 "this one"
+                do test.equal true (isNull result3)
+            }
+
+        testCaseAsync "IBinaryServer.echoBool" <|
+            async {
+                let! fstTrue = binaryServer.echoBool true
+                let! fstFalse = binaryServer.echoBool false
+                do test.equal fstTrue true
+                do test.equal fstFalse false
+            }
+
+        testCaseAsync "IBinaryServer.mapRecordAsKey" <|
+            async {
+                let! result = binaryServer.mapRecordAsKey()
+                result
+                |> Map.toList
+                |> function
+                    | [ { Key = 1; Value = "Value" }, 1 ] -> test.pass()
+                    | otherwise -> test.failwith (sprintf "%A" otherwise)
+            }
+
+
+        testCaseAsync "IBinaryServer.echoIntOption" <|
+            async {
+                let! fstResult = binaryServer.echoIntOption (Some 5)
+                let! sndResult = binaryServer.echoIntOption None
+                do test.equal true (fstResult = Some 5)
+                do test.equal true (sndResult = None)
+            }
+
+        testCaseAsync "IBinaryServer.echoStringOption" <|
+            async {
+                let! fstResult = binaryServer.echoStringOption (Some "hello")
+                let! sndResult = binaryServer.echoStringOption None
+                do test.equal true (fstResult = Some "hello")
+                do test.equal true (sndResult = None)
+            }
+
+        testCaseAsync "IBinaryServer.echoPrimitiveLong" <|
+            async {
+                let! fstResult = binaryServer.echoPrimitiveLong (20L)
+                let! sndResult = binaryServer.echoPrimitiveLong 0L
+                let! thirdResult = binaryServer.echoPrimitiveLong -20L
+                do test.equal true (fstResult = 20L)
+                do test.equal true (sndResult = 0L)
+                do test.equal true (thirdResult = -20L)
+            }
+
+        testCaseAsync "IBinaryServer.echoPrimitiveLong with large values" <|
+            async {
+                let! fstResult = binaryServer.echoPrimitiveLong System.Int64.MaxValue
+                let! sndResult = binaryServer.echoPrimitiveLong System.Int64.MinValue
+                do test.equal true (fstResult = System.Int64.MaxValue)
+                do test.equal true (sndResult = System.Int64.MinValue)
+            }
+
+        testCaseAsync "IBinaryServer.echoComplexLong" <|
+            async {
+                let input = { Value = 20L; OtherValue = 10 }
+                let! output = binaryServer.echoComplexLong input
+                do test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.echoOptionalLong" <|
+            async {
+                let! fstResult = binaryServer.echoOptionalLong (Some 20L)
+                let! sndResult = binaryServer.echoOptionalLong None
+                do test.equal true (fstResult = (Some 20L))
+                do test.equal true (sndResult = None)
+            }
+
+        testCaseAsync "IBinaryServer.echoSingleDULong" <|
+            async {
+                let! output = binaryServer.echoSingleDULong (SingleLongCase 20L)
+                do test.equal true (output = (SingleLongCase 20L))
+            }
+
+        testCaseAsync "IBinaryServer.echoLongInGenericUnion" <|
+            async {
+                let! output = binaryServer.echoLongInGenericUnion (Just 20L)
+                let! result = binaryServer.echoLongInGenericUnion Nothing
+                do test.equal true (output = Just 20L)
+                do test.equal true (result = Nothing)
+            }
+
+        testCaseAsync "IBinaryServer.echoSimpleUnionType" <|
+            async {
+                let! result1 = binaryServer.echoSimpleUnionType One
+                let! result2 = binaryServer.echoSimpleUnionType Two
+                do test.equal true (result1 = One)
+                do test.equal true (result2 = Two)
+            }
+
+        testCaseAsync "IBinaryServer.echoGenericUnionInt" <|
+            async {
+                let! result1 = binaryServer.echoGenericUnionInt (Just 5)
+                let! result2 = binaryServer.echoGenericUnionInt (Just 10)
+                let! result3 = binaryServer.echoGenericUnionInt Nothing
+
+                do test.equal true (result1 = Just 5)
+                do test.equal true (result2 = Just 10)
+                do test.equal true (result3 = Nothing)
+            }
+
+        testCaseAsync "IBinaryServer.echoGenericUnionString" <|
+            async {
+                let! result1 = binaryServer.echoGenericUnionString (Just "")
+                let! result2 = binaryServer.echoGenericUnionString (Just null)
+                let! result3 = binaryServer.echoGenericUnionString (Just "you")
+                let! result4 = binaryServer.echoGenericUnionString Nothing
+
+                do test.equal true (result1 = Just "")
+                do test.equal true (result2 = Just null)
+                do test.equal true (result3 = Just "you")
+                do test.equal true (result4 = Nothing)
+            }
+
+
+        testCaseAsync "IBinaryServer.echoRecord" <|
+            async {
+                let record1 = { Prop1 = "hello"; Prop2 = 10; Prop3 = None }
+                let record2 = { Prop1 = ""; Prop2 = 20; Prop3 = Some 10 }
+                let record3 = { Prop1 = null; Prop2 = 30; Prop3 = Some 20  }
+                let! result1 = binaryServer.echoRecord record1
+                let! result2 = binaryServer.echoRecord record2
+                let! result3 = binaryServer.echoRecord record3
+
+                do test.equal true (result1 = record1)
+                do test.equal true (result2 = record2)
+                do test.equal true (result3 = record3)
+            }
+
+
+        testCaseAsync "IBinaryServer.echoHighScores" <|
+            async {
+                let input = [|
+                    { Name = "alfonsogarciacaro"; Score =  100 }
+                    { Name = "theimowski"; Score =  28 }
+                |]
+                let! result = binaryServer.echoHighScores input
+                do test.equal "alfonsogarciacaro" result.[0].Name
+                do test.equal 100 result.[0].Score
+                do test.equal "theimowski" result.[1].Name
+                do test.equal 28 result.[1].Score
+            }
+
+        testCaseAsync "IBinaryServer.echoHighScores without do" <|
+            async {
+                let input = [|
+                    { Name = "alfonsogarciacaro"; Score =  100 }
+                    { Name = "theimowski"; Score =  28 }
+                |]
+                let! result = binaryServer.echoHighScores input
+                test.equal "alfonsogarciacaro" result.[0].Name
+                test.equal 100 result.[0].Score
+                test.equal "theimowski" result.[1].Name
+                test.equal 28 result.[1].Score
+            }
+
+        testCaseAsync "IBinaryServer.echoHighScores" <|
+            async {
+                let! result = binaryServer.getHighScores()
+                do test.equal "alfonsogarciacaro" result.[0].Name
+                do test.equal 100 result.[0].Score
+                do test.equal "theimowski" result.[1].Name
+                do test.equal 28 result.[1].Score
+            }
+
+        testCaseAsync "IBinaryServer.echoHighScores without do" <|
+            async {
+                let! result = binaryServer.getHighScores()
+                test.equal "alfonsogarciacaro" result.[0].Name
+                test.equal 100 result.[0].Score
+                test.equal "theimowski" result.[1].Name
+                test.equal 28 result.[1].Score
+            }
+
+
+        testCaseAsync "IBinaryServer.echoNestedGeneric" <|
+            async {
+                let input : GenericRecord<Maybe<int option>> = {
+                    Value = Just (Some 5)
+                    OtherValue = 2
+                }
+
+                let input2 : GenericRecord<Maybe<int option>> = {
+                    Value = Just (None)
+                    OtherValue = 2
+                }
+                let! result1 = binaryServer.echoNestedGeneric input
+                let! result2 = binaryServer.echoNestedGeneric input2
+                do test.equal true (input = result1)
+                do test.equal true (input2 = result2)
+            }
+
+
+        testCaseAsync "IBinaryServer.echoIntList" <|
+            async {
+                let! output = binaryServer.echoIntList [1 .. 5]
+                do test.equal true (output = [1;2;3;4;5])
+
+                let! echoedList = binaryServer.echoIntList []
+                do test.equal true (List.isEmpty echoedList)
+            }
+
+        testCaseAsync "IBinaryServer.echoSingleCase" <|
+            async {
+                let! output = binaryServer.echoSingleCase (SingleCase 10)
+                match output with
+                | SingleCase 10 -> test.pass()
+                | other -> test.fail()
+            }
+
+        testCaseAsync "IBinaryServer.echoStringList" <|
+            async {
+                let! output = binaryServer.echoStringList ["one"; "two"; null]
+                do test.equal true (output = ["one"; "two"; null])
+
+                let! echoedList = binaryServer.echoStringList []
+                do test.equal true (List.isEmpty echoedList)
+            }
+
+        testCaseAsync "IBinaryServer.echoBoolList" <|
+            async {
+                let! output = binaryServer.echoBoolList [true; false; true]
+                do test.equal true (output = [true; false; true])
+
+                let! echoedList = binaryServer.echoStringList []
+                do test.equal true (List.isEmpty echoedList)
+            }
+
+        testCaseAsync "IBinaryServer.echoListOfListsOfStrings" <|
+            async {
+                let! output = binaryServer.echoListOfListsOfStrings [["1"; "2"]; ["3"; "4";"5"]]
+                do test.equal true (output =  [["1"; "2"]; ["3"; "4";"5"]])
+            }
+
+        testCaseAsync "IBinaryServer.echoResult for Result<int, string>" <|
+            async {
+                let! outputOk = binaryServer.echoResult (Ok 15)
+                match outputOk with
+                | Ok 15 -> test.pass()
+                | otherwise -> test.fail()
+
+                let! outputError = binaryServer.echoResult (Error "hello")
+                match outputError with
+                | Error "hello" -> test.pass()
+                | otherwise -> test.fail()
+            }
+
+        testCaseAsync "IBinaryServer.echoMap" <|
+            async {
+                let input = ["hello", 1] |> Map.ofList
+                let! output = binaryServer.echoMap input
+                match input = output with
+                | true -> test.pass()
+                | false -> test.fail()
+            }
+
+        testCaseAsync "IBinaryServer.echoBigInteger" <|
+            async {
+                let n = 1I
+                let! output = binaryServer.echoBigInteger n
+                test.equal true (output = n)
+
+                let n = 2I
+                let! output = binaryServer.echoBigInteger n
+                test.equal true (output = n)
+
+                let n = -1I
+                let! output = binaryServer.echoBigInteger n
+                test.equal true (output = n)
+
+                let n = -2I
+                let! output = binaryServer.echoBigInteger n
+                test.equal true (output = n)
+
+                let n = 100I
+                let! output = binaryServer.echoBigInteger n
+                test.equal true (output = n)
+            }
+
+        testCaseAsync "IBinaryServer.throwError" <|
+            async {
+                let! result = Async.Catch (binaryServer.throwError())
+                match result with
+                | Choice1Of2 output -> test.fail()
+                | Choice2Of2 error ->
+                    match error with
+                    | :? ProxyRequestException as ex ->
+                        if ex.ResponseText.Contains("Generating custom server error")
+                        then test.pass()
+                        else test.fail()
+                    | otherwise -> test.fail()
+            }
+
+        testCaseAsync "IBinaryServer.throwBinaryError" <|
+            async {
+                let! result = Async.Catch (binaryServer.throwBinaryError())
+                match result with
+                | Choice1Of2 output -> test.fail()
+                | Choice2Of2 error ->
+                    match error with
+                    | :? ProxyRequestException as ex ->
+                        if ex.ResponseText.Contains("Generating custom server error for binary response")
+                        then test.pass()
+                        else test.fail()
+                    | otherwise -> test.fail()
+            }
+
+
+        testCaseAsync "IBinaryServer.mutliArgFunc" <|
+            async {
+                let! output = binaryServer.multiArgFunc "hello" 10 false
+                test.equal 15 output
+
+                let! sndOutput = binaryServer.multiArgFunc "byebye" 5 true
+                test.equal 12 sndOutput
+            }
+
+        testCaseAsync "IBinaryServer.mutliArgFunc partially applied" <|
+            async {
+                let partialFunc = binaryServer.multiArgFunc "hello" 10
+                let! output =  partialFunc false
+                test.equal 15 output
+
+                let otherPartialFunc = binaryServer.multiArgFunc "byebye"
+                let! sndOutput = otherPartialFunc 5 true
+                test.equal 12 sndOutput
+            }
+
+        testCaseAsync "IBinaryServer.pureAsync" <|
+            async {
+                let! output = binaryServer.pureAsync
+                test.equal 42 output
+            }
+
+        testCaseAsync "IBinaryServer.asyncNestedGeneric" <|
+            async {
+                let! result = binaryServer.asyncNestedGeneric
+                test.equal true (result = { OtherValue = 10; Value = Just (Some "value") })
+            }
+
+        testCaseAsync "IBinaryServer.multiArgComplex" <|
+            async {
+                let input = { OtherValue = 10; Value = Just (Some "value") }
+                let! output = binaryServer.multiArgComplex false input
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.echoGenericMap" <|
+            async {
+                let input = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ]
+                let! output = binaryServer.echoGenericMap input
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.genericDictionary" <|
+            async {
+                let expected = Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> Dictionary<_, _>
+                let! actual = binaryServer.genericDictionary ()
+
+                test.equal expected.Count actual.Count
+
+                for k, v in expected |> Seq.map (|KeyValue|) do
+                    test.equal true (actual.[k] = v)
+            }
+
+        testCaseAsync "IBinaryServer.echoRecursiveRecord" <|
+            async {
+                let input = {
+                    Name = "root"
+                    Children = [
+                        { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
+                        { Name = "Child 1"; Children = [ ] }
+                    ]
+                }
+
+                let! output = binaryServer.echoRecursiveRecord input
+                test.equal true (output = input)
+            }
+
+        testCaseAsync "IBinaryServer.echoTree (recursive union)" <|
+            async {
+                let input = Branch(Branch(Leaf 10, Leaf 5), Leaf 5)
+                let! output = binaryServer.echoTree input
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.multiArgComplex partially applied" <|
+            async {
+                let input = { OtherValue = 10; Value = Just (Some "value") }
+                let partialF = fun x -> binaryServer.multiArgComplex false x
+                let! output = partialF input
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.tuplesAndLists" <|
+            async {
+                let inputDict = Map.ofList [ "hello", 5 ]
+                let inputStrings = [ "there!" ]
+                let! outputDict = binaryServer.tuplesAndLists (inputDict, inputStrings)
+
+                let expected = Map.ofList [ "hello", 5; "there!", 6 ]
+                test.equal true (expected = outputDict)
+            }
+
+        testCaseAsync "IBinaryServer.timespans" <|
+            async {
+                let input = TimeSpan.FromTicks 0L
+                let! output = binaryServer.echoTimeSpan input
+                test.equal true (input = output)
+
+                let input = TimeSpan.FromDays -0.3
+                let! output = binaryServer.echoTimeSpan input
+                test.equal true (input = output)
+
+                let input = TimeSpan.FromMilliseconds 999.
+                let! output = binaryServer.echoTimeSpan input
+                test.equal true (input = output)
+            }
+        testCaseAsync "IBinaryServer.unitOfMeasure" <|
+            async {
+                let input = 200s<SomeUnit>
+                let! output = binaryServer.echoInt16WithMeasure input
+                test.equal true (input = output)
+
+                let input = 200<SomeUnit>
+                let! output = binaryServer.echoIntWithMeasure input
+                test.equal true (input = output)
+
+                let input = 200L<SomeUnit>
+                let! output = binaryServer.echoInt64WithMeasure input
+                test.equal true (input = output)
+
+                let input = 333.35M<SomeUnit>
+                let! output = binaryServer.echoDecimalWithMeasure input
+                test.equal true (input = output)
+
+                let input = 3.14<SomeUnit>
+                let! output = binaryServer.echoFloatWithMeasure input
+                test.equal true (input = output)
+            }
+        testCaseAsync "IBinaryServer.enum" <|
+            async {
+                let input = SomeEnum.Val2
+                let! output = binaryServer.echoEnum input
+                test.equal true (input = output)
+            }
+        testCaseAsync "IBinaryServer.stringEnum" <|
+            async {
+                let input = SecondString
+                let! output = binaryServer.echoStringEnum input
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.datetime" <|
+            async {
+                let input = DateTime.Now
+                let! output = binaryServer.echoDateTime input
+
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.datetimeoffset" <|
+            async {
+                let input = DateTimeOffset.Now
+                let! output = binaryServer.echoDateTimeOffset input
+
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.guid" <|
+            async {
+                let input = Guid.NewGuid ()
+                let! output = binaryServer.echoGuid input
+
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.largeRecursiveRecord" <|
+            async {
+                let input = largeRecursiveRecord
+                let! output = binaryServer.echoRecursiveRecord input
+
+                test.equal true (input = output) 
+            }
     ]
 
 let cookieServer =
@@ -617,6 +1248,7 @@ let secureApiTests =
 let alltests =
     testList "All Tests" [
         serverTests
+        binaryServerTests
         cookieServerTests
         secureApiTests
     ]

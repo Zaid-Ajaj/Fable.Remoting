@@ -102,8 +102,24 @@ module SuaveUtil =
           return! fail ex routeInfo options context
     }
 
+  /// Runs the given dynamic function and catches unhandled exceptions, sending them off to the configured error handler, if any. Returns 200 (OK) status code for successful runs and 500  (Internal Server Error) when an exception is thrown 
+  let runFunctionBinary func impl options args : WebPart = 
+    let logger = options.DiagnosticsLogger
+    fun context -> async {
+      Diagnostics.runPhase logger func.FunctionName
+      let! functionResult = Async.Catch (DynamicRecord.invokeAsync func impl args) 
+      match functionResult with
+      | Choice.Choice1Of2 output ->
+          use ms = new System.IO.MemoryStream ()
+          Fable.Remoting.MsgPack.Write.object output ms
+          return! successBytes (ms.ToArray ()) context
+      | Choice.Choice2Of2 ex -> 
+          let routeInfo = { methodName = func.FunctionName; path = context.request.path; httpContext = context }
+          return! fail ex routeInfo options context
+    }
+
   /// Builds the entire WebPart from implementation record, handles routing and dynamic running of record functions
-  let buildFromImplementation impl options = 
+  let buildFromImplementation impl options runFunction = 
     let typ = impl.GetType()
     let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
     fun (context: HttpContext) -> async {
@@ -165,13 +181,25 @@ module Remoting =
   let fromContext (f: HttpContext -> 't) (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
     { options with Implementation = FromContext f } 
 
+  /// Specifies that the API only uses binary serialization
+  let withBinarySerialization (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
+    { options with ResponseSerialization = MessagePack } 
+
   /// Builds a WebPart from the given implementation and options  
   let buildWebPart (options: RemotingOptions<HttpContext, 't>) : WebPart = 
     match options.Implementation with 
     | Empty -> SuaveUtil.halt
-    | StaticValue impl -> SuaveUtil.buildFromImplementation impl options 
-    | FromContext createImplementationFrom -> 
-        fun (context: HttpContext) -> async {
-          let impl = createImplementationFrom context 
-          return! SuaveUtil.buildFromImplementation impl options context
-        }
+    | StaticValue impl ->
+        match options.ResponseSerialization with
+        | Json -> SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunction
+        | MessagePack -> SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunctionBinary
+    | FromContext createImplementationFrom ->
+        match options.ResponseSerialization with
+        | Json ->
+            fun (context : HttpContext) ->
+                let impl = createImplementationFrom context
+                SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunction context
+        | MessagePack ->
+            fun (context : HttpContext) ->
+                let impl = createImplementationFrom context
+                SuaveUtil.buildFromImplementation impl options SuaveUtil.runFunctionBinary context

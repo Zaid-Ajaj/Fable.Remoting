@@ -10,7 +10,8 @@ module Remoting =
           RouteBuilder = sprintf "/%s/%s" 
           ErrorHandler = None 
           DiagnosticsLogger = None
-          Docs = None, None }
+          Docs = None, None
+          ResponseSerialization = Json }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
     let withRouteBuilder builder options = 
@@ -27,6 +28,10 @@ module Remoting =
     /// Ennables you to define a custom error handler for unhandled exceptions thrown by your remote functions. It can also be used for logging purposes or if you wanted to propagate errors back to client.
     let withErrorHandler handler options = 
         { options with ErrorHandler = Some handler }
+
+    /// Specifies that the API only uses binary serialization
+    let withBinarySerialization options = 
+        { options with ResponseSerialization = MessagePack }
 
     /// Builds the API using the provided static protocol implementation 
     let fromValue (serverImpl: 'implementation) (options: RemotingOptions<'t, 'implementation>)  = 

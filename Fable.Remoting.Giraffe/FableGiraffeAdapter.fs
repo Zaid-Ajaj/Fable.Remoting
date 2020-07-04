@@ -73,8 +73,31 @@ module GiraffeUtil =
                 return! fail ex routeInfo options next ctx
         }
 
+    /// Runs the given dynamic function and catches unhandled exceptions, sending them off to the configured error handler, if any. Returns 200 (OK) status code for successful runs and 500  (Internal Server Error) when an exception is thrown
+    let runFunctionBinary func impl options args : HttpHandler =
+      let logger = options.DiagnosticsLogger
+      fun (next : HttpFunc) (ctx : HttpContext) ->
+        task {
+            Diagnostics.runPhase logger func.FunctionName
+            let! functionResult = Async.StartAsTask( (Async.Catch (DynamicRecord.invokeAsync func impl args)), cancellationToken=ctx.RequestAborted)
+            match functionResult with
+            | Choice1Of2 output ->
+                ctx.Response.StatusCode <- 200
+                ctx.Response.ContentType <- "application/octet-stream"
+                use ms = new MemoryStream ()
+                Fable.Remoting.MsgPack.Write.object output ms
+                ms.Position <- 0L
+                do! ms.CopyToAsync ctx.Response.Body
+                return! next ctx
+            | Choice2Of2 ex ->
+                ctx.Response.StatusCode <- 500
+                ctx.Response.ContentType <- "application/json; charset=utf-8"
+                let routeInfo = { methodName = func.FunctionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
+                return! fail ex routeInfo options next ctx
+        }
+
     /// Builds the entire HttpHandler from implementation record, handles routing and dynamic running of record functions
-    let buildFromImplementation impl options =
+    let buildFromImplementation impl options runFunction =
       let typ = impl.GetType()
       let dynamicFunctions = DynamicRecord.createRecordFuncInfo typ
       fun (next : HttpFunc) (ctx : HttpContext) -> task {
@@ -140,8 +163,18 @@ module Remoting =
   let buildHttpHandler (options: RemotingOptions<HttpContext, 't>) =
     match options.Implementation with
     | Empty -> fun _ _ -> skipPipeline
-    | StaticValue impl -> GiraffeUtil.buildFromImplementation impl options
+    | StaticValue impl ->
+        match options.ResponseSerialization with
+        | Json -> GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunction
+        | MessagePack -> GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunctionBinary
     | FromContext createImplementationFrom ->
-        fun (next : HttpFunc) (ctx : HttpContext) ->
-            let impl = createImplementationFrom ctx
-            GiraffeUtil.buildFromImplementation impl options next ctx
+        match options.ResponseSerialization with
+        | Json ->
+            fun (next : HttpFunc) (ctx : HttpContext) ->
+                let impl = createImplementationFrom ctx
+                GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunction next ctx
+        | MessagePack ->
+            fun (next : HttpFunc) (ctx : HttpContext) ->
+                let impl = createImplementationFrom ctx
+                GiraffeUtil.buildFromImplementation impl options GiraffeUtil.runFunctionBinary next ctx
+            

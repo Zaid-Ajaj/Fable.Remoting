@@ -64,6 +64,10 @@ type ProtocolImplementation<'context, 'serverImpl> =
     | StaticValue of 'serverImpl 
     | FromContext of ('context -> 'serverImpl)
 
+type SerializationType =
+    | Json
+    | MessagePack
+
 // an example is a list of arguments and the description of the example
 type Example = obj list * string
 
@@ -84,5 +88,6 @@ type RemotingOptions<'context, 'serverImpl> = {
     RouteBuilder : string -> string -> string 
     ErrorHandler : ErrorHandler<'context> option 
     DiagnosticsLogger : (string -> unit) option 
-    Docs : string option * Option<Documentation> 
+    Docs : string option * Option<Documentation>
+    ResponseSerialization : SerializationType
 }

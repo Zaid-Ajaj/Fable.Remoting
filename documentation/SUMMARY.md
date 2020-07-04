@@ -30,6 +30,7 @@
 - [Using Multiple Protocols](src/multiple-protocols.md)
 - [Type-Safe Documentation](src/docs.md)
 - [Logging](src/logging.md)
+- [Binary Serialization](src/binary-serialization.md)
 
 
 ### Misc

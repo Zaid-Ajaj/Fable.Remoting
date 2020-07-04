@@ -4,6 +4,7 @@ open System
 open Fable.Core
 open Fable.SimpleJson
 open Browser.Types
+open Fable.Remoting
 
 module internal Blob =
     /// Creates a Blob from the given input string
@@ -69,7 +70,7 @@ module Proxy =
             | otherwise -> false 
         | otherwise -> false
 
-    let proxyFetch options typeName (func: RecordField) =
+    let proxyFetch options typeName (func: RecordField) fieldType =
         let funcArgs : (TypeInfo [ ]) = 
             match func.FieldType with  
             | TypeInfo.Async inner -> [| func.FieldType |]
@@ -130,9 +131,9 @@ module Proxy =
                     then RequestBody.Binary (unbox arg0)
                     else RequestBody.Json (Json.stringify inputArguments)
 
-                match readAsBinary with 
-                | true -> 
-                    // don't deserialize, read as arraybuffer and convert to byte[]
+                match options.ResponseSerialization with
+                | MessagePack ->
+                    // read as arraybuffer and deserialize
                     let! (response, statusCode) = 
                         if funcNeedParameters 
                         then 
@@ -146,8 +147,17 @@ module Proxy =
                             |> Http.sendAndReadBinary
                     
                     match statusCode with 
-                    | 200 -> 
-                        return unbox response 
+                    | 200 ->
+                        let rec getReturnType typ =
+                            if Reflection.FSharpType.IsFunction typ then
+                                let _, res = Reflection.FSharpType.GetFunctionElements typ
+                                getReturnType res
+                            elif typ.IsGenericType then
+                                typ.GetGenericArguments () |> Array.head
+                            else
+                                typ
+                        
+                        return MsgPack.Reader(response).Read (getReturnType fieldType)
                     | 500 ->
                         let responseAsBlob = Blob.fromBinaryEncodedText response
                         let! responseText = Blob.readBlobAsText responseAsBlob
@@ -157,25 +167,54 @@ module Proxy =
                         let responseAsBlob = Blob.fromBinaryEncodedText response
                         let! responseText = Blob.readBlobAsText responseAsBlob
                         let response = { StatusCode = statusCode; ResponseBody = responseText }
-                        return! raise (ProxyRequestException(response, sprintf "Http error (%d) while making request to %s" n url, response.ResponseBody)) 
-                | false ->
-                    // make plain RPC request and let it go through the deserialization pipeline
-                    let! response = 
-                        if funcNeedParameters 
-                        then 
-                            Http.post url
-                            |> Http.withBody requestBody
-                            |> Http.withHeaders headers 
-                            |> Http.send 
-                        else  
-                            Http.get url 
-                            |> Http.withHeaders headers  
-                            |> Http.send 
+                        return! raise (ProxyRequestException(response, sprintf "Http error (%d) while making request to %s" n url, response.ResponseBody))
+                | Json ->
+                    match readAsBinary with 
+                    | true -> 
+                        // don't deserialize, read as arraybuffer and convert to byte[]
+                        let! (response, statusCode) = 
+                            if funcNeedParameters 
+                            then 
+                                Http.post url
+                                |> Http.withBody requestBody
+                                |> Http.withHeaders headers 
+                                |> Http.sendAndReadBinary
+                            else 
+                                Http.get url 
+                                |> Http.withHeaders headers  
+                                |> Http.sendAndReadBinary
+                        
+                        match statusCode with 
+                        | 200 -> 
+                            return unbox response 
+                        | 500 ->
+                            let responseAsBlob = Blob.fromBinaryEncodedText response
+                            let! responseText = Blob.readBlobAsText responseAsBlob
+                            let response = { StatusCode = statusCode; ResponseBody = responseText }
+                            return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
+                        | n ->
+                            let responseAsBlob = Blob.fromBinaryEncodedText response
+                            let! responseText = Blob.readBlobAsText responseAsBlob
+                            let response = { StatusCode = statusCode; ResponseBody = responseText }
+                            return! raise (ProxyRequestException(response, sprintf "Http error (%d) while making request to %s" n url, response.ResponseBody)) 
+                    | false ->
+                        // make plain RPC request and let it go through the deserialization pipeline
+                        let! response = 
+                            if funcNeedParameters 
+                            then 
+                                Http.post url
+                                |> Http.withBody requestBody
+                                |> Http.withHeaders headers 
+                                |> Http.send 
+                            else  
+                                Http.get url 
+                                |> Http.withHeaders headers  
+                                |> Http.send 
 
-                    match response.StatusCode with  
-                    | 200 -> 
-                        let parsedJson = SimpleJson.parseNative response.ResponseBody
-                        return Convert.fromJsonAs parsedJson returnType  
-                    | 500 -> return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
-                    | n ->   return! raise (ProxyRequestException(response, sprintf "Http error (%d) from server occured while making request to %s" n url, response.ResponseBody)) 
+                        match response.StatusCode with  
+                        | 200 -> 
+                            let parsedJson = SimpleJson.parseNative response.ResponseBody
+                            return Convert.fromJsonAs parsedJson returnType  
+                        | 500 -> return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody)) 
+                        | n ->   return! raise (ProxyRequestException(response, sprintf "Http error (%d) from server occured while making request to %s" n url, response.ResponseBody)) 
             }

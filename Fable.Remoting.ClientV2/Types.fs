@@ -7,6 +7,10 @@ type RequestBody =
     | Json of string 
     | Binary of byte[] 
 
+type SerializationType =
+    | Json
+    | MessagePack
+
 type HttpRequest = {
     HttpMethod: HttpMethod
     Url: string 
@@ -24,6 +28,7 @@ type RemoteBuilderOptions = {
     BaseUrl  : string option
     Authorization : string option
     RouteBuilder : (string -> string -> string)
+    ResponseSerialization : SerializationType
 }
 
 type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string) = 

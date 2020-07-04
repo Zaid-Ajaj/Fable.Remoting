@@ -58,7 +58,7 @@ module Http =
          
             match req.RequestBody with 
             | Empty -> xhr.send()
-            | Json content -> xhr.send(content)
+            | RequestBody.Json content -> xhr.send(content)
             | Binary content -> xhr.send(content)
 
     [<Emit("new Uint8Array($0)")>]
@@ -89,5 +89,5 @@ module Http =
            
             match req.RequestBody with 
             | Empty -> xhr.send()
-            | Json content -> xhr.send(content)
+            | RequestBody.Json content -> xhr.send(content)
             | Binary content -> xhr.send(content) 

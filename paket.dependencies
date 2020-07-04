@@ -1,6 +1,7 @@
 source https://api.nuget.org/v3/index.json
 
 storage: none
+nuget benchmarkdotnet
 nuget Expecto
 nuget FSharp.Core
 nuget Microsoft.AspNetCore.Server.Kestrel

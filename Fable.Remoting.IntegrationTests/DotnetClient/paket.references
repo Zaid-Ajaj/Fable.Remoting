@@ -1,3 +1,6 @@
 FSharp.Core
 Expecto
 Suave
+
+group Client
+Fable.Core
