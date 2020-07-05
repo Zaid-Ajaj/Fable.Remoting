@@ -108,34 +108,44 @@ module Write =
         write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) s
       
     type DictionarySerializer<'k,'v> () =
-        static member Serialize (obj: IDictionary<'k,'v>, s: Stream, write: obj -> Stream -> unit) =
-            let kvps = obj |> Seq.map (|KeyValue|) |> Seq.toArray
+        static member Serialize (dict: obj, s: obj, write: obj) =
+            let dict = dict :?> IDictionary<'k,'v>
+            let s = s :?> Stream
+            let write = write :?> (obj -> Stream -> unit)
+
+            let length = dict.Count
     
-            if kvps.Length < 16 then
-                s.WriteByte (Format.fixmap kvps.Length)
-            elif kvps.Length < 65536 then
+            if length < 16 then
+                s.WriteByte (Format.fixmap length)
+            elif length < 65536 then
                 s.WriteByte Format.map16
-                s.WriteByte (kvps.Length >>> 8 |> byte)
-                s.WriteByte (byte kvps.Length)
+                s.WriteByte (length >>> 8 |> byte)
+                s.WriteByte (byte length)
             else
                 s.WriteByte Format.map32
-                writeUnsigned32bitNumber (uint32 kvps.Length) s false
+                writeUnsigned32bitNumber (uint32 length) s false
     
-            for k, v in kvps do
-                write k s
-                write v s
+            for kvp in dict do
+                write kvp.Key s
+                write kvp.Value s
     
     type ListSerializer<'a> () =
-        static member Serialize (list: 'a list, s: Stream, write: obj -> Stream -> unit) =
-            if list.Length < 16 then
-                s.WriteByte (Format.fixarr list.Length)
+        static member Serialize (list: obj, s: obj, write: obj) =
+            let list = list :?> 'a list
+            let s = s :?> Stream
+            let write = write :?> (obj -> Stream -> unit)
+
+            let length = list.Length
+
+            if length < 16 then
+                s.WriteByte (Format.fixarr length)
             elif list.Length < 65536 then
                 s.WriteByte Format.array16
-                s.WriteByte (list.Length >>> 8 |> byte)
-                s.WriteByte (byte list.Length)
+                s.WriteByte (length >>> 8 |> byte)
+                s.WriteByte (byte length)
             else
                 s.WriteByte Format.array32
-                writeUnsigned32bitNumber (uint32 list.Length) s false
+                writeUnsigned32bitNumber (uint32 length) s false
     
             for x in list do
                 write x s
@@ -261,9 +271,9 @@ module Write =
                 if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                     let listType = t.GetGenericArguments () |> Array.head
                     let listSerializer = typedefof<ListSerializer<_>>.MakeGenericType listType
-                    let listSerializeMethod = listSerializer.GetMethod "Serialize"
+                    let d = Delegate.CreateDelegate (typeof<Action<obj, obj, obj>>, listSerializer.GetMethod "Serialize") :?> Action<obj, obj, obj>
                     
-                    packerCache.GetOrAdd (t, fun x s -> listSerializeMethod.Invoke (null, [| x; s; object |]) |> ignore) x s
+                    packerCache.GetOrAdd (t, fun x s -> d.Invoke (x, s, object)) x s
                 else
                     let tagReader = FSharpValue.PreComputeUnionTagReader (t, true)
                     let cases = FSharpType.GetUnionCases (t, true)
@@ -280,9 +290,9 @@ module Write =
             elif t.IsGenericType && List.contains (t.GetGenericTypeDefinition ()) [ typedefof<Dictionary<_, _>>; typedefof<Map<_, _>> ] then
                 let mapTypes = t.GetGenericArguments ()
                 let mapSerializer = typedefof<DictionarySerializer<_,_>>.MakeGenericType mapTypes
-                let mapSerializeMethod = mapSerializer.GetMethod "Serialize"
+                let d = Delegate.CreateDelegate (typeof<Action<obj, obj, obj>>, mapSerializer.GetMethod "Serialize") :?> Action<obj, obj, obj>
                 
-                packerCache.GetOrAdd (t, fun x s -> mapSerializeMethod.Invoke (null, [| x; s; object |]) |> ignore) x s
+                packerCache.GetOrAdd (t, fun x s -> d.Invoke (x, s, object)) x s
             elif t.IsEnum then
                 packerCache.GetOrAdd (t, fun x -> object (Convert.ChangeType (x, typeof<int64>) :?> int64)) x s
             else
@@ -389,7 +399,7 @@ type ListDeserializer<'a> () =
         for i in 0 .. len - 1 do
             arr.[i] <- read argType :?> 'a
 
-        List.ofArray arr
+        List.ofArray arr |> box
 #endif
 
 type Reader (data: byte[]) =
@@ -397,6 +407,7 @@ type Reader (data: byte[]) =
 
 #if !FABLE_COMPILER
     static let arrayReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
+    static let mapReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
     static let unionConstructorCache = ConcurrentDictionary<UnionCaseInfo, obj [] -> obj> ()
     static let unionCaseFieldCache = ConcurrentDictionary<Type * int, UnionCaseInfo * Type[]> ()
 #endif
@@ -465,19 +476,24 @@ type Reader (data: byte[]) =
         readInt 8 BitConverter.ToDouble
 
     member private x.ReadMap (len: int, t: Type) =
-        let args = t.GetGenericArguments ()
+#if !FABLE_COMPILER
+        mapReaderCache.GetOrAdd (t, Func<_, _>(fun (t: Type) ->
+            let args = t.GetGenericArguments ()
+            
+            if args.Length <> 2 then
+                failwithf "Expecting %s, but the data contains a map." t.Name
 
+            let mapDeserializer = typedefof<DictionaryDeserializer<_,_>>.MakeGenericType args
+            let isDictionary = t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>>
+            let d = Delegate.CreateDelegate (typeof<Func<int, bool, (Type -> obj), obj>>, mapDeserializer.GetMethod "Deserialize") :?> Func<int, bool, (Type -> obj), obj>
+            
+            fun (len, x: Reader) -> d.Invoke (len, isDictionary, x.Read))) (len, x)
+#else
+        let args = t.GetGenericArguments ()
+        
         if args.Length <> 2 then
             failwithf "Expecting %s, but the data contains a map." t.Name
 
-#if !FABLE_COMPILER
-        // todo cache
-        let mapDeserializer = typedefof<DictionaryDeserializer<_,_>>.MakeGenericType args
-        let mapDeserializeMethod = mapDeserializer.GetMethod "Deserialize"
-        let isDictionary = t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>>
-        
-        mapDeserializeMethod.Invoke (null, [| len; isDictionary; x.Read |])
-#else
         let pairs =
             let arr = Array.zeroCreate len
             
@@ -525,7 +541,7 @@ type Reader (data: byte[]) =
             let ctor = FSharpValue.PreComputeRecordConstructor (t, true)
             
             arrayReaderCache.GetOrAdd (t, fun (_, x: Reader) ->
-            ctor (fieldTypes |> Array.map x.Read)) (len, x)
+                ctor (fieldTypes |> Array.map x.Read)) (len, x)
 #else
             let props = FSharpType.GetRecordFields t
             FSharpValue.MakeRecord (t, props |> Array.map (fun prop -> x.Read prop.PropertyType))
@@ -533,13 +549,11 @@ type Reader (data: byte[]) =
         elif FSharpType.IsUnion (t, true) then
 #if !FABLE_COMPILER
             if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
-                arrayReaderCache.GetOrAdd (t, Func<_, _>(fun (t: Type) ->
-                    let argType = t.GetGenericArguments () |> Array.head
-                    let listDeserializer = typedefof<ListDeserializer<_>>.MakeGenericType argType
-                    let mi = listDeserializer.GetMethod "Deserialize"
-                            
-                    fun (len: int, x: Reader) ->
-                        mi.Invoke (null, [| len; x.Read |]))) (len, x)
+                let argType = t.GetGenericArguments () |> Array.head
+                let listDeserializer = typedefof<ListDeserializer<_>>.MakeGenericType argType
+                let d = Delegate.CreateDelegate (typeof<Func<int, (Type -> obj), obj>>, listDeserializer.GetMethod "Deserialize") :?> Func<int, (Type -> obj), obj>
+
+                arrayReaderCache.GetOrAdd (t, fun (len, (x: Reader)) -> d.Invoke (len, x.Read)) (len, x)
             else
                 arrayReaderCache.GetOrAdd (t, fun (_, x: Reader) ->
                     let tag = x.Read typeof<int> :?> int
@@ -554,7 +568,7 @@ type Reader (data: byte[]) =
                         if fieldTypes.Length = 1 then
                             [| x.Read fieldTypes.[0] |]
                         else
-                            // don't care about this byte, it's going to be a fixarr of length fields.Length
+                            // don't care about this byte, it's going to be a fixarr of length fieldTypes.Length
                             x.ReadByte () |> ignore
                             fieldTypes |> Array.map x.Read
 
@@ -569,7 +583,7 @@ type Reader (data: byte[]) =
                 if fieldTypes.Length = 1 then
                     [| x.Read fieldTypes.[0] |]
                 else
-                    // don't care about this byte, it's going to be a fixarr of length fields.Length
+                    // don't care about this byte, it's going to be a fixarr of length fieldTypes.Length
                     x.ReadByte () |> ignore
                     fieldTypes |> Array.map x.Read
 
