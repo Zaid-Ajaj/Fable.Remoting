@@ -17,7 +17,7 @@ let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
     use ms = new MemoryStream ()
     MsgPack.Write.object value ms
 
-    let deserialized = MsgPack.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
+    let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
 
     equal value deserialized
 
@@ -25,7 +25,7 @@ let serializeDeserializeCompareSequence (value: 'a) =
     use ms = new MemoryStream ()
     MsgPack.Write.object value ms
 
-    let deserialized = MsgPack.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
+    let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
 
     Expect.sequenceEqual value deserialized "Sequences must be equal."
 
@@ -34,7 +34,7 @@ let serializeDeserializeCompareWithLength<'a when 'a: equality> expectedLength (
     MsgPack.Write.object value ms
     let data = ms.ToArray ()
 
-    let deserialized = MsgPack.Reader(data).Read typeof<'a> :?> 'a
+    let deserialized = MsgPack.Read.Reader(data).Read typeof<'a> :?> 'a
 
     equal value deserialized
     Expect.equal data.Length expectedLength (sprintf "The expected and actual payload lengths must match.")

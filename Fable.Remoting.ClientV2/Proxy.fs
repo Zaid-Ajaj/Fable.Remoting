@@ -157,7 +157,7 @@ module Proxy =
                             else
                                 typ
                         
-                        return MsgPack.Reader(response).Read (getReturnType fieldType)
+                        return MsgPack.Read.Reader(response).Read (getReturnType fieldType)
                     | 500 ->
                         let responseAsBlob = Blob.fromBinaryEncodedText response
                         let! responseText = Blob.readBlobAsText responseAsBlob

@@ -1,7 +1,6 @@
 namespace Fable.Remoting.DotnetClient
 
 open Fable.Remoting.Json
-open Fable.Remoting.MsgPack
 open Newtonsoft.Json
 open System.Net.Http
 open System.Threading.Tasks
@@ -20,7 +19,7 @@ module Proxy =
 
     /// Parses a byte array to a .NET type using Message Pack
     let parseAsBinary<'t> (data: byte[]) =
-        Reader(data).Read typeof<'t> :?> 't
+        Fable.Remoting.MsgPack.Read.Reader(data).Read typeof<'t> :?> 't
 
     /// Sends a POST request to the specified url with the arguments of serialized to an input list
     let proxyPost<'t> (functionArguments: obj list) url client auth isBinarySerialization =

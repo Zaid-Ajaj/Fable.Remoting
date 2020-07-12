@@ -38,7 +38,7 @@ let msgPackSerialize value =
     ms
 
 let jsonDeserialize<'a> text = JsonConvert.DeserializeObject<'a> (text, fableConverter)
-let msgPackDeserialize typ data = MsgPack.Reader(data).Read typ
+let msgPackDeserialize typ data = MsgPack.Read.Reader(data).Read typ
 
 [<MemoryDiagnoser>]
 type RecursiveRecordSerialization () =
