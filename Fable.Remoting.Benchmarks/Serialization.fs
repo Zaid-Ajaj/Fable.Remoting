@@ -66,7 +66,6 @@ type RecursiveRecordDeserialization () =
 
     [<Benchmark>]
     member _.MsgPack () =
-        binary'.CopyTo (binary, 0)
         msgPackDeserialize typeof<RecursiveRecord> binary
 
 [<MemoryDiagnoser>]
@@ -95,7 +94,6 @@ type IntMaybeMapDeserialization () =
 
     [<Benchmark>]
     member _.MsgPack () =
-        binary'.CopyTo (binary, 0)
         msgPackDeserialize typeof<Map<int, Maybe<string>>> binary
 
 [<MemoryDiagnoser>]
@@ -124,5 +122,4 @@ type Int64ArrayDeserialization () =
 
     [<Benchmark>]
     member _.MsgPack () =
-        binary'.CopyTo (binary, 0)
         msgPackDeserialize typeof<int64[]> binary

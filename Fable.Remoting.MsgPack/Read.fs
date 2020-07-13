@@ -69,23 +69,16 @@ type DictionaryDeserializer<'k,'v when 'k: equality and 'k: comparison> () =
 
             box dict
         else
-            let arr = Array.zeroCreate len
-
-            for i in 0 .. len - 1 do
-                arr.[i] <- read keyType :?> 'k, read valueType :?> 'v
-
-            Map.ofArray arr |> box
+            Array.init len (fun _ -> read keyType :?> 'k, read valueType :?> 'v)
+            |> Map.ofArray
+            |> box
 
 type ListDeserializer<'a> () =
     static let argType = typeof<'a>
 
     static member Deserialize (len: int, read: Type -> obj) =
-        let arr = Array.zeroCreate len
-
-        for i in 0 .. len - 1 do
-            arr.[i] <- read argType :?> 'a
-
-        List.ofArray arr |> box
+        List.init len (fun _ -> read argType :?> 'a)
+        |> box
 #endif
 
 type Reader (data: byte[]) =

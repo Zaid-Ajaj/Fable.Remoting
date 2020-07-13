@@ -68,7 +68,7 @@ type DictionarySerializer<'k,'v> () =
 
 type ListSerializer<'a> () =
     static member Serialize (list: obj, out: obj, write: obj) =
-        let list = list :?> 'a list |> List.toArray
+        let list = list :?> 'a list
         let out = out :?> Stream
         let write = write :?> (obj -> Stream -> unit)
 
