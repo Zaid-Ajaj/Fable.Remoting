@@ -119,49 +119,49 @@ type Reader (data: byte[]) =
             m (data, pos - len)
 #endif
 
-    member private _.ReadByte () =
+    member _.ReadByte () =
         pos <- pos + 1
         data.[pos - 1]
 
-    member private _.ReadRawBin len =
+    member _.ReadRawBin len =
         pos <- pos + len
         data.[ pos - len .. pos - 1 ]
 
-    member private _.ReadString len =
+    member _.ReadString len =
         pos <- pos + len
         Encoding.UTF8.GetString (data, pos - len, len)
 
-    member private x.ReadUInt8 () =
+    member x.ReadUInt8 () =
         x.ReadByte ()
 
-    member private x.ReadInt8 () =
+    member x.ReadInt8 () =
         x.ReadByte () |> sbyte
 
-    member private _.ReadUInt16 () =
+    member _.ReadUInt16 () =
         readInt 2 BitConverter.ToUInt16
 
-    member private _.ReadInt16 () =
+    member _.ReadInt16 () =
         readInt 2 BitConverter.ToInt16
 
-    member private _.ReadUInt32 () =
+    member _.ReadUInt32 () =
         readInt 4 BitConverter.ToUInt32
 
-    member private _.ReadInt32 () =
+    member _.ReadInt32 () =
         readInt 4 BitConverter.ToInt32
 
-    member private _.ReadUInt64 () =
+    member _.ReadUInt64 () =
         readInt 8 BitConverter.ToUInt64
 
-    member private _.ReadInt64 () =
+    member _.ReadInt64 () =
         readInt 8 BitConverter.ToInt64
 
-    member private _.ReadFloat32 () =
+    member _.ReadFloat32 () =
         readInt 4 BitConverter.ToSingle
 
-    member private _.ReadFloat64 () =
+    member _.ReadFloat64 () =
         readInt 8 BitConverter.ToDouble
 
-    member private x.ReadMap (len: int, t: Type) =
+    member x.ReadMap (len: int, t: Type) =
 #if !FABLE_COMPILER
         mapReaderCache.GetOrAdd (t, Func<_, _>(fun (t: Type) ->
             let args = t.GetGenericArguments ()
@@ -196,7 +196,7 @@ type Reader (data: byte[]) =
             Map.ofArray pairs |> box
 #endif
 
-    member private x.ReadRawArray (len: int, elementType: Type) =
+    member x.ReadRawArray (len: int, elementType: Type) =
 #if !FABLE_COMPILER
         let arr = Array.CreateInstance (elementType, len)
 
@@ -213,7 +213,7 @@ type Reader (data: byte[]) =
         arr
 #endif
 
-    member private x.ReadArray (len, t) =
+    member x.ReadArray (len, t) =
 #if !FABLE_COMPILER
         match arrayReaderCache.TryGetValue t with
         | true, reader ->
@@ -305,7 +305,7 @@ type Reader (data: byte[]) =
         else
             failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 
-    member private x.ReadBin (len, t) =
+    member x.ReadBin (len, t) =
         if t = typeof<Guid> then
             x.ReadRawBin len |> Guid |> box
         elif t = typeof<byte[]> then
