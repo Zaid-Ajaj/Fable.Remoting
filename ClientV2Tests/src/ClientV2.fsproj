@@ -10,6 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Fable.Remoting.ClientV2/Fable.Remoting.Client.fsproj" />
+    <ProjectReference Include="..\..\Fable.Remoting.MsgPack\Fable.Remoting.MsgPack.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

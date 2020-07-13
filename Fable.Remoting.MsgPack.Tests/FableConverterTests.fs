@@ -130,7 +130,7 @@ let converterTest =
             }
             |> serializeDeserializeCompare
         }
-        test "Complex tuple" {
+        ftest "Complex tuple" {
             ((String50.Create "as", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Children = [] }) |> serializeDeserializeCompare
         }
         test "Bigint" {

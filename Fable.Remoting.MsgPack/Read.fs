@@ -2,6 +2,7 @@
 
 open System
 open System.Text
+open System.Collections
 open System.Collections.Concurrent
 open System.Collections.Generic
 open FSharp.Reflection
@@ -284,7 +285,7 @@ type Reader (data: byte[]) =
                 x.ReadByte () |> ignore
                 box null
             else
-                x.Read (t.GetGenericArguments () |> Array.head)
+                x.Read (t.GetGenericArguments () |> Array.head) |> Some |> box
         elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
             let elementType = t.GetGenericArguments () |> Array.head
             [
