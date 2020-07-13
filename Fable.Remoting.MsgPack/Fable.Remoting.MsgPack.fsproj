@@ -17,6 +17,8 @@
     <Compile Include="Write.fs" />
     <Compile Include="Read.fs" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="*.fsproj; *.fs" PackagePath="fable\" />
+  </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
