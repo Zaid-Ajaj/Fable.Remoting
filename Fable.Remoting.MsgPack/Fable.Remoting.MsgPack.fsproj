@@ -13,7 +13,9 @@
     <TargetFrameworks>netstandard2.0;net45;net462;netcoreapp3.1</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="FableConverter.fs" />
+    <Compile Include="Format.fs" />
+    <Compile Include="Write.fs" />
+    <Compile Include="Read.fs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="*.fsproj; *.fs" PackagePath="fable\" />
