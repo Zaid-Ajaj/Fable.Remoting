@@ -449,10 +449,9 @@ and object (x: obj) (t: Type) (out: ResizeArray<byte>) =
                 let opt = x :?> _ option
                 union out (if Option.isNone opt then 0 else 1) elementType [| opt |]) x out
         elif FSharpType.IsUnion (t, true) then
-            let case, _ = FSharpValue.GetUnionFields (x, t, true)
-            let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
             cacheGetOrAdd (t, fun x out ->
                 let case, fields = FSharpValue.GetUnionFields (x, t, true)
+                let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
                 union out case.Tag fieldTypes fields) x out
         elif FSharpType.IsTuple t then
             let fieldTypes = FSharpType.GetTupleElements t
