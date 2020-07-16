@@ -1362,6 +1362,9 @@ let msgPackTests =
             SomeEnum.Val1 |> serializeDeserializeCompareWithLength 1 typeof<SomeEnum>
         testCase "Guid" <| fun () ->
             Guid.NewGuid () |> serializeDeserializeCompareWithLength 18 typeof<Guid>
+        testCase "Results" <| fun () ->
+            Ok 15 |> serializeDeserializeCompare typeof<Result<int, string>>
+            Error "yup" |> serializeDeserializeCompare typeof<Result<int, string>>
     ]
 
 let alltests =
