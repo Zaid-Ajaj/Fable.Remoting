@@ -8,9 +8,9 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;msgpack</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageReleaseNotes>Implement MsgPack serialization in Fable</PackageReleaseNotes>
+    <PackageReleaseNotes>Fix incorrect MsgPack serialization caching</PackageReleaseNotes>
     <TargetFrameworks>netstandard2.0;net45;net462;netcoreapp3.1</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
