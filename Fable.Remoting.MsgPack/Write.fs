@@ -8,7 +8,6 @@ open System.Text
 open FSharp.Reflection
 open System.Numerics
 open FSharp.NativeInterop
-open System
 
 #if !FABLE_COMPILER
 #nowarn "9"
