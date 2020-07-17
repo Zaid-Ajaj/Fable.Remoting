@@ -7,8 +7,12 @@ open System.Collections.Generic
 open System.Text
 open FSharp.Reflection
 open System.Numerics
+open FSharp.NativeInterop
+open System
 
 #if !FABLE_COMPILER
+#nowarn "9"
+
 let packerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
 let unionCaseFieldReaderCache = ConcurrentDictionary<Type, obj -> obj[]> ()
 
@@ -116,22 +120,45 @@ let inline int (n: int64) (out: Stream) =
 let inline byte b (out: Stream) =
     out.WriteByte b
 
-let inline str (str: string) (out: Stream) =
-    let str = Encoding.UTF8.GetBytes str
-
-    if str.Length < 32 then
-        out.WriteByte (Format.fixstr str.Length)
+let strHeader length (out: Stream) =
+    if length < 32 then
+        out.WriteByte (Format.fixstr length)
     else
-        if str.Length < 256 then
+        if length < 256 then
             out.WriteByte Format.Str8
-        elif str.Length < 65536 then
+        elif length < 65536 then
             out.WriteByte Format.Str16
         else
             out.WriteByte Format.Str32
 
-        writeUnsigned32bitNumber (uint32 str.Length) out false
+        writeUnsigned32bitNumber (uint32 length) out false
 
+let str (str: string) (out: Stream) =
+#if NET_CORE
+    let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
+    
+    // allocate space on the stack if the string is not too long
+    if str.Length < 500 then
+        let buffer = Span (NativePtr.stackalloc<byte> maxLength |> NativePtr.toVoidPtr, maxLength)
+        let readLength = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
+
+        strHeader readLength out
+        out.Write (Span.op_Implicit (buffer.Slice (0, readLength)))
+    else
+        let buffer = System.Buffers.ArrayPool.Shared.Rent maxLength
+
+        try
+            let readLength = Encoding.UTF8.GetBytes (str, 0, str.Length, buffer, 0)
+
+            strHeader readLength out
+            out.Write (buffer, 0, readLength)
+        finally
+            System.Buffers.ArrayPool.Shared.Return buffer
+#else
+    let str = Encoding.UTF8.GetBytes str
+    strHeader str.Length out
     out.Write (str, 0, str.Length)
+#endif
 
 let inline float32 (n: float32) (out: Stream) =
     out.WriteByte Format.Float32
