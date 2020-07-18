@@ -287,9 +287,13 @@ type Reader (data: byte[]) =
             ] |> box
 #endif
         elif FSharpType.IsTuple t then
+#if !FABLE_COMPILER
             let elementTypes = FSharpType.GetTupleElements t
             let tupleCtor = FSharpValue.PreComputeTupleConstructor t
             arrayReaderCache.GetOrAdd (t, fun (_, (x: Reader)) -> elementTypes |> Array.map x.Read |> tupleCtor) (len, x)
+#else
+            FSharpValue.MakeTuple (FSharpType.GetTupleElements t |> Array.map x.Read, t)
+#endif
         elif t.IsArray then
             x.ReadRawArray (len, t.GetElementType ()) |> box
         elif t = typeof<DateTimeOffset> then
