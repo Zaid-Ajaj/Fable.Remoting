@@ -276,9 +276,12 @@ and object (x: obj) (out: Stream) =
             // populate packerCache with the element type of the array
             array out (x :?> Array) object
 
-            // and from now on skip type lookup of individual elements
-            let elementTypeSerializer = packerCache.[t.GetElementType ()]
-            packerCache.[t] <- fun x out -> array out (x :?> Array) elementTypeSerializer
+            // and from now on skip type lookup of individual elements (unless t is a union case)
+            if FSharpType.IsUnion t.BaseType then
+                packerCache.[t] <- fun x out -> array out (x :?> Array) object
+            else
+                let elementTypeSerializer = packerCache.[t.GetElementType ()]
+                packerCache.[t] <- fun x out -> array out (x :?> Array) elementTypeSerializer
         elif t.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
             packerCache.GetOrAdd (t, fun x (out: Stream) ->
                 //todo cacheable
@@ -294,9 +297,12 @@ and object (x: obj) (out: Stream) =
                 // populate packerCache with listType
                 d.Invoke (x, out, object)
 
-                // and from now on skip type lookup of individual elements
-                let listTypeSerializer = packerCache.[listType]
-                packerCache.[t] <- fun x out -> d.Invoke (x, out, listTypeSerializer)
+                // and from now on skip type lookup of individual elements (unless t is a union case)
+                if FSharpType.IsUnion t.BaseType then
+                    packerCache.[t] <- fun x out -> d.Invoke (x, out, object)
+                else
+                    let listTypeSerializer = packerCache.[listType]
+                    packerCache.[t] <- fun x out -> d.Invoke (x, out, listTypeSerializer)
             else
                 let tagReader = createUnionTagReaderFunc t
                 let fieldReaders =
@@ -550,6 +556,14 @@ and object (x: obj) (t: Type) (out: ResizeArray<byte>) =
             cacheGetOrAdd (t, fun x out -> map out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
         elif t.IsEnum then
             cacheGetOrAdd (t, fun x -> int (box x :?> int64)) x out
+        elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
+            cacheGetOrAdd (t, fun x out -> int (x :?> int64) out) x out
+        elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
+            cacheGetOrAdd (t, fun x out -> float64 (x :?> decimal |> float) out) x out
+        elif t.FullName = "Microsoft.FSharp.Core.float`1" then
+            cacheGetOrAdd (t, fun x out -> float64 (x :?> float) out) x out
+        elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
+            cacheGetOrAdd (t, fun x out -> float32 (x :?> float32) out) x out
         else
             failwithf "Cannot pack %s" t.Name
 

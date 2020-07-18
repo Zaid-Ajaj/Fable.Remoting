@@ -123,15 +123,16 @@ let converterTest =
         test "Recursive record" {
             {
                 Name = "root"
+                Result = Ok 2
                 Children = [
-                    { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
-                    { Name = "Child 1"; Children = [ ] }
+                    { Name = "Child 1"; Result = Result.Error ""; Children = [ { Name = "Grandchild"; Result = Ok -22; Children = [ ] } ] }
+                    { Name = "Child 1"; Result = Ok 22; Children = [ ] }
                 ]
             }
             |> serializeDeserializeCompare
         }
         test "Complex tuple" {
-            ((String50.Create "as", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Children = [] }) |> serializeDeserializeCompare
+            ((String50.Create "as", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Result = Ok 1; Children = [] }) |> serializeDeserializeCompare
         }
         test "Bigint" {
             -2I |> serializeDeserializeCompare

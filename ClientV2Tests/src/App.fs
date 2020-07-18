@@ -1365,6 +1365,12 @@ let msgPackTests =
         testCase "Results" <| fun () ->
             Ok 15 |> serializeDeserializeCompare typeof<Result<int, string>>
             Error "yup" |> serializeDeserializeCompare typeof<Result<int, string>>
+        testCase "Units of measure" <| fun () ->
+            85<SomeUnit> |> serializeDeserializeCompare typeof<int<SomeUnit>>
+            85L<SomeUnit> |> serializeDeserializeCompare typeof<int64<SomeUnit>>
+            85.44m<SomeUnit> |> serializeDeserializeCompare typeof<decimal<SomeUnit>>
+            85.44f<SomeUnit> |> serializeDeserializeCompare typeof<float32<SomeUnit>>
+            85.44<SomeUnit> |> serializeDeserializeCompare typeof<float<SomeUnit>>
     ]
 
 let alltests =
