@@ -8,12 +8,41 @@ open System.Text
 open FSharp.Reflection
 open System.Numerics
 open FSharp.NativeInterop
+open System.Reflection
+open System.Linq.Expressions
 
 #if !FABLE_COMPILER
 #nowarn "9"
 
 let packerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
 let unionCaseFieldReaderCache = ConcurrentDictionary<Type, obj -> obj[]> ()
+
+let createPropGetterFunc declaringType (prop: PropertyInfo) =
+    let instance = Expression.Parameter (typeof<obj>, "instance")
+    
+    let expr =
+        Expression.Lambda<Func<obj, obj>> (
+            Expression.Convert (
+                Expression.Property (
+                    Expression.Convert (instance, declaringType),
+                    prop),
+                typeof<obj>),
+            instance)
+    expr.Compile ()
+
+let createUnionTagReaderFunc (unionType: Type) =
+    // option does not have the Tag property
+    if unionType.GetGenericTypeDefinition () = typedefof<_ option> then
+        Func<_, _> (fun (unionInstance: obj) -> if isNull unionInstance then 0 else 1)
+    else
+        let prop = unionType.GetProperty ("Tag", BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
+        let instance = Expression.Parameter (typeof<obj>, "instance")
+
+        let expr =
+            Expression.Lambda<Func<obj, int>> (
+                Expression.Property (Expression.Convert (instance, unionType), prop),
+                instance)
+        expr.Compile ()
 
 let inline write32bitNumber b1 b2 b3 b4 (out: Stream) writeFormat =
     if b2 > 0uy || b1 > 0uy then
@@ -176,41 +205,53 @@ let bin (data: byte[]) (out: Stream) =
         out.WriteByte Format.Bin32
 
     writeUnsigned32bitNumber (uint32 data.Length) out false
-
-    use sw = new MemoryStream (data)
-    sw.CopyTo out
+    out.Write (data, 0, data.Length)
 
 let inline dateTimeOffset (out: Stream) (dto: DateTimeOffset) =
     out.WriteByte (Format.fixarr 2uy)
     int dto.Ticks out
     int (int64 dto.Offset.TotalMinutes) out
 
-let rec array (out: Stream) (arr: System.Collections.ICollection) =
-    if arr.Count < 16 then
-        out.WriteByte (Format.fixarr arr.Count)
-    elif arr.Count < 65536 then
+let arrayHeader len (out: Stream) =
+    if len < 16 then
+        out.WriteByte (Format.fixarr len)
+    elif len < 65536 then
         out.WriteByte Format.Array16
-        out.WriteByte (arr.Count >>> 8 |> FSharp.Core.Operators.byte)
-        out.WriteByte (FSharp.Core.Operators.byte arr.Count)
+        out.WriteByte (len >>> 8 |> FSharp.Core.Operators.byte)
+        out.WriteByte (FSharp.Core.Operators.byte len)
     else
         out.WriteByte Format.Array32
-        writeUnsigned32bitNumber (uint32 arr.Count) out false
+        writeUnsigned32bitNumber (uint32 len) out false
+
+let rec array (out: Stream) (arr: System.Collections.ICollection) =
+    arrayHeader arr.Count out
 
     for x in arr do
         object x out
 
+and record (propGetters: Func<obj, obj>[]) (recordInstance: obj) (out: Stream) =
+    arrayHeader propGetters.Length out
+
+    for p in propGetters do
+        let y = p.Invoke recordInstance
+        object y out
+
 and inline tuple (out: Stream) (items: obj[]) =
     array out items
 
-and union (out: Stream) tag (vals: obj[]) =
+and union tag (propGetters: Func<obj, obj>[]) (unionInstance: obj) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
     out.WriteByte (Format.fixposnum tag)
 
     // save 1 byte if the union case has a single parameter
-    if vals.Length <> 1 then
-        array out vals
+    if propGetters.Length <> 1 then
+        arrayHeader propGetters.Length out
+        
+        for p in propGetters do
+            let y = p.Invoke unionInstance
+            object y out
     else
-        object vals.[0] out
+        object (propGetters.[0].Invoke unionInstance) out
 
 and object (x: obj) (out: Stream) =
     if isNull x then nil out else
@@ -222,8 +263,11 @@ and object (x: obj) (out: Stream) =
         writer x out
     | _ ->
         if FSharpType.IsRecord (t, true) then
-            let fieldReader = FSharpValue.PreComputeRecordReader (t, true)
-            packerCache.GetOrAdd (t, fun x (out: Stream) -> fieldReader x |> array out) x out
+            let propGetters =
+                t.GetProperties (BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
+                |> Array.map (createPropGetterFunc t)
+
+            packerCache.GetOrAdd (t, record propGetters) x out
         elif t.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
             packerCache.GetOrAdd (t, fun x (out: Stream) ->
                 //todo cacheable
@@ -238,15 +282,17 @@ and object (x: obj) (out: Stream) =
                 
                 packerCache.GetOrAdd (t, fun x out -> d.Invoke (x, out, object)) x out
             else
-                let tagReader = FSharpValue.PreComputeUnionTagReader (t, true)
-                let cases = FSharpType.GetUnionCases (t, true)
-                let fieldReaders = cases |> Array.map (fun c -> c.Tag, FSharpValue.PreComputeUnionReader (c, true))
+                let tagReader = createUnionTagReaderFunc t
+                let fieldReaders =
+                    FSharpType.GetUnionCases (t, true)
+                    |> Array.map (fun c ->
+                        let casePropGetters = c.GetFields () |> Array.map (fun prop -> createPropGetterFunc prop.DeclaringType prop)
+                        c.Tag, casePropGetters)
 
                 packerCache.GetOrAdd (t, fun x out ->
-                    let tag = tagReader x
-                    let fieldReader = fieldReaders |> Array.find (fun (tag', _) -> tag = tag') |> snd
-                    let fieldValues = fieldReader x
-                    union out tag fieldValues) x out
+                    let tag = tagReader.Invoke x
+                    let fieldReaders = fieldReaders |> Array.find (fun (tag', _) -> tag = tag') |> snd
+                    union tag fieldReaders x out) x out
         elif FSharpType.IsTuple t then
             let tupleReader = FSharpValue.PreComputeTupleReader t
             packerCache.GetOrAdd (t, fun x out -> tupleReader x |> tuple out) x out
