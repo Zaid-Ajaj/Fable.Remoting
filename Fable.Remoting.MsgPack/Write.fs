@@ -17,17 +17,18 @@ open System.Linq.Expressions
 let packerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
 let unionCaseFieldReaderCache = ConcurrentDictionary<Type, obj -> obj[]> ()
 
-let createPropGetterFunc declaringType (prop: PropertyInfo) =
+let createPropGetterFunc (prop: PropertyInfo) =
     let instance = Expression.Parameter (typeof<obj>, "instance")
     
     let expr =
         Expression.Lambda<Func<obj, obj>> (
             Expression.Convert (
                 Expression.Property (
-                    Expression.Convert (instance, declaringType),
+                    Expression.Convert (instance, prop.DeclaringType),
                     prop),
                 typeof<obj>),
             instance)
+
     expr.Compile ()
 
 let createUnionTagReaderFunc (unionType: Type) =
@@ -223,21 +224,24 @@ let arrayHeader len (out: Stream) =
         out.WriteByte Format.Array32
         writeUnsigned32bitNumber (uint32 len) out false
 
-let rec array (out: Stream) (arr: System.Collections.ICollection) =
-    arrayHeader arr.Count out
+let array (out: Stream) (arr: Array) write =
+    arrayHeader arr.Length out
 
     for x in arr do
-        object x out
+        write x out
 
-and record (propGetters: Func<obj, obj>[]) (recordInstance: obj) (out: Stream) =
+let rec record (propGetters: Func<obj, obj>[]) (recordInstance: obj) (out: Stream) =
     arrayHeader propGetters.Length out
 
     for p in propGetters do
         let y = p.Invoke recordInstance
         object y out
 
-and inline tuple (out: Stream) (items: obj[]) =
-    array out items
+and inline tuple (out: Stream) (elements: obj[]) =
+    arrayHeader elements.Length out
+   
+    for x in elements do
+        object x out
 
 and union tag (propGetters: Func<obj, obj>[]) (unionInstance: obj) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
@@ -258,16 +262,23 @@ and object (x: obj) (out: Stream) =
 
     let t = x.GetType ()
 
-    match packerCache.TryGetValue (if t.IsArray && t <> typeof<byte[]> then typeof<Array> else t) with
+    match packerCache.TryGetValue t with
     | true, writer ->
         writer x out
     | _ ->
         if FSharpType.IsRecord (t, true) then
             let propGetters =
                 t.GetProperties (BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
-                |> Array.map (createPropGetterFunc t)
+                |> Array.map createPropGetterFunc
 
             packerCache.GetOrAdd (t, record propGetters) x out
+        elif t.IsArray then
+            // populate packerCache with the element type of the array
+            array out (x :?> Array) object
+
+            // and from now on skip type lookup of individual elements
+            let elementTypeSerializer = packerCache.[t.GetElementType ()]
+            packerCache.[t] <- fun x out -> array out (x :?> Array) elementTypeSerializer
         elif t.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
             packerCache.GetOrAdd (t, fun x (out: Stream) ->
                 //todo cacheable
@@ -280,13 +291,18 @@ and object (x: obj) (out: Stream) =
                 let listSerializer = typedefof<ListSerializer<_>>.MakeGenericType listType
                 let d = Delegate.CreateDelegate (typeof<Action<obj, obj, obj>>, listSerializer.GetMethod "Serialize") :?> Action<obj, obj, obj>
                 
-                packerCache.GetOrAdd (t, fun x out -> d.Invoke (x, out, object)) x out
+                // populate packerCache with listType
+                d.Invoke (x, out, object)
+
+                // and from now on skip type lookup of individual elements
+                let listTypeSerializer = packerCache.[listType]
+                packerCache.[t] <- fun x out -> d.Invoke (x, out, listTypeSerializer)
             else
                 let tagReader = createUnionTagReaderFunc t
                 let fieldReaders =
                     FSharpType.GetUnionCases (t, true)
                     |> Array.map (fun c ->
-                        let casePropGetters = c.GetFields () |> Array.map (fun prop -> createPropGetterFunc prop.DeclaringType prop)
+                        let casePropGetters = c.GetFields () |> Array.map createPropGetterFunc
                         c.Tag, casePropGetters)
 
                 packerCache.GetOrAdd (t, fun x out ->
@@ -321,7 +337,6 @@ packerCache.TryAdd (typeof<UInt64>, fun x out -> uint (x :?> UInt64) out) |> ign
 packerCache.TryAdd (typeof<float32>, fun x out -> float32 (x :?> float32) out) |> ignore
 packerCache.TryAdd (typeof<float>, fun x out -> float64 (x :?> float) out) |> ignore
 packerCache.TryAdd (typeof<decimal>, fun x out -> float64 (x :?> decimal |> float) out) |> ignore
-packerCache.TryAdd (typeof<Array>, fun x out -> array out (x :?> Array)) |> ignore
 packerCache.TryAdd (typeof<byte[]>, fun x out -> bin (x :?> byte[]) out) |> ignore
 packerCache.TryAdd (typeof<BigInteger>, fun x out -> bin ((x :?> BigInteger).ToByteArray ()) out) |> ignore
 packerCache.TryAdd (typeof<Guid>, fun x out -> bin ((x :?> Guid).ToByteArray ()) out) |> ignore
