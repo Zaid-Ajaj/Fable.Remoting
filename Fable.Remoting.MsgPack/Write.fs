@@ -277,7 +277,7 @@ and object (x: obj) (out: Stream) =
             array out (x :?> Array) object
 
             // and from now on skip type lookup of individual elements (unless t is a union case)
-            if FSharpType.IsUnion t.BaseType then
+            if FSharpType.IsUnion (t.GetElementType ()) then
                 packerCache.[t] <- fun x out -> array out (x :?> Array) object
             else
                 let elementTypeSerializer = packerCache.[t.GetElementType ()]
@@ -298,7 +298,7 @@ and object (x: obj) (out: Stream) =
                 d.Invoke (x, out, object)
 
                 // and from now on skip type lookup of individual elements (unless t is a union case)
-                if FSharpType.IsUnion t.BaseType then
+                if FSharpType.IsUnion t then
                     packerCache.[t] <- fun x out -> d.Invoke (x, out, object)
                 else
                     let listTypeSerializer = packerCache.[listType]
