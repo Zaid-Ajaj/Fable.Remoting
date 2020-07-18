@@ -32,7 +32,7 @@ let createPropGetterFunc declaringType (prop: PropertyInfo) =
 
 let createUnionTagReaderFunc (unionType: Type) =
     // option does not have the Tag property
-    if unionType.GetGenericTypeDefinition () = typedefof<_ option> then
+    if unionType.IsGenericType && unionType.GetGenericTypeDefinition () = typedefof<_ option> then
         Func<_, _> (fun (unionInstance: obj) -> if isNull unionInstance then 0 else 1)
     else
         let prop = unionType.GetProperty ("Tag", BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
@@ -168,18 +168,18 @@ let str (str: string) (out: Stream) =
     // allocate space on the stack if the string is not too long
     if str.Length < 500 then
         let buffer = Span (NativePtr.stackalloc<byte> maxLength |> NativePtr.toVoidPtr, maxLength)
-        let readLength = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
+        let bytesWritten = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
 
-        strHeader readLength out
-        out.Write (Span.op_Implicit (buffer.Slice (0, readLength)))
+        strHeader bytesWritten out
+        out.Write (Span.op_Implicit (buffer.Slice (0, bytesWritten)))
     else
         let buffer = System.Buffers.ArrayPool.Shared.Rent maxLength
 
         try
-            let readLength = Encoding.UTF8.GetBytes (str, 0, str.Length, buffer, 0)
+            let bytesWritten = Encoding.UTF8.GetBytes (str, 0, str.Length, buffer, 0)
 
-            strHeader readLength out
-            out.Write (buffer, 0, readLength)
+            strHeader bytesWritten out
+            out.Write (buffer, 0, bytesWritten)
         finally
             System.Buffers.ArrayPool.Shared.Return buffer
 #else
