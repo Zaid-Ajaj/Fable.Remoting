@@ -76,7 +76,18 @@ let inline writeUnsigned32bitNumber (n: UInt32) (out: Stream) =
 
 let inline writeUnsigned64bitNumber (n: UInt64) (out: Stream) =
     write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
-  
+ 
+let arrayHeader length (out: Stream) =
+    if length < 16 then
+        out.WriteByte (Format.fixarr length)
+    elif length < 65536 then
+        out.WriteByte Format.Array16
+        out.WriteByte (length >>> 8 |> byte)
+        out.WriteByte (byte length)
+    else
+        out.WriteByte Format.Array32
+        writeUnsigned32bitNumber (uint32 length) out false
+
 type DictionarySerializer<'k,'v> () =
     static member Serialize (dict: obj, out: obj, write: obj) =
         let dict = dict :?> IDictionary<'k,'v>
@@ -106,19 +117,12 @@ type ListSerializer<'a> () =
         let write = write :?> (obj -> Stream -> unit)
 
         let length = list.Length
-
-        if length < 16 then
-            out.WriteByte (Format.fixarr length)
-        elif list.Length < 65536 then
-            out.WriteByte Format.Array16
-            out.WriteByte (length >>> 8 |> byte)
-            out.WriteByte (byte length)
-        else
-            out.WriteByte Format.Array32
-            writeUnsigned32bitNumber (uint32 length) out false
+        arrayHeader length out        
 
         for x in list do
             write x out
+
+        length
 
 let inline nil (out: Stream) = out.WriteByte Format.Nil
 let inline bool x (out: Stream) = out.WriteByte (if x then Format.True else Format.False)
@@ -163,6 +167,7 @@ let strHeader length (out: Stream) =
         writeUnsigned32bitNumber (uint32 length) out false
 
 let str (str: string) (out: Stream) =
+    if isNull str then nil out else
 #if NET_CORE
     let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
     
@@ -198,6 +203,8 @@ let inline float64 (n: float) (out: Stream) =
     writeSignedNumber (BitConverter.GetBytes n) out
 
 let bin (data: byte[]) (out: Stream) =
+    if isNull data then nil out else
+
     if data.Length < 256 then
         out.WriteByte Format.Bin8
     elif data.Length < 65536 then
@@ -213,49 +220,41 @@ let inline dateTimeOffset (out: Stream) (dto: DateTimeOffset) =
     int dto.Ticks out
     int (int64 dto.Offset.TotalMinutes) out
 
-let arrayHeader len (out: Stream) =
-    if len < 16 then
-        out.WriteByte (Format.fixarr len)
-    elif len < 65536 then
-        out.WriteByte Format.Array16
-        out.WriteByte (len >>> 8 |> FSharp.Core.Operators.byte)
-        out.WriteByte (FSharp.Core.Operators.byte len)
-    else
-        out.WriteByte Format.Array32
-        writeUnsigned32bitNumber (uint32 len) out false
-
-let array (out: Stream) (arr: Array) write =
+let inline array write (arr: Array) (out: Stream) =
+    if isNull arr then nil out else
+    
     arrayHeader arr.Length out
 
     for x in arr do
         write x out
 
-let rec record (propGetters: Func<obj, obj>[]) (recordInstance: obj) (out: Stream) =
-    arrayHeader propGetters.Length out
+let inline record (writersAndPropGetters: ((obj -> Stream -> unit) * Func<obj, obj>)[]) (recordInstance: obj) (out: Stream) =
+    arrayHeader writersAndPropGetters.Length out
 
-    for p in propGetters do
+    for write, p in writersAndPropGetters do
         let y = p.Invoke recordInstance
-        object y out
+        write y out
 
-and inline tuple (out: Stream) (elements: obj[]) =
-    arrayHeader elements.Length out
-   
-    for x in elements do
-        object x out
-
-and union tag (propGetters: Func<obj, obj>[]) (unionInstance: obj) (out: Stream) =
+let union tag (writersAndPropGetters: ((obj -> Stream -> unit) * Func<obj, obj>)[]) (unionInstance: obj) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
     out.WriteByte (Format.fixposnum tag)
 
     // save 1 byte if the union case has a single parameter
-    if propGetters.Length <> 1 then
-        arrayHeader propGetters.Length out
+    if writersAndPropGetters.Length <> 1 then
+        arrayHeader writersAndPropGetters.Length out
         
-        for p in propGetters do
+        for write, p in writersAndPropGetters do
             let y = p.Invoke unionInstance
-            object y out
+            write y out
     else
-        object (propGetters.[0].Invoke unionInstance) out
+        let write, p = writersAndPropGetters.[0]
+        write (p.Invoke unionInstance) out
+
+let rec inline tuple (out: Stream) (elements: obj[]) =
+    arrayHeader elements.Length out
+   
+    for x in elements do
+        object x out
 
 and object (x: obj) (out: Stream) =
     if isNull x then nil out else
@@ -267,54 +266,96 @@ and object (x: obj) (out: Stream) =
         writer x out
     | _ ->
         if FSharpType.IsRecord (t, true) then
+            let props = t.GetProperties (BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
+            let propGetters = props |> Array.map createPropGetterFunc
+
+            // run the serialization, populating packerCache with the element type of the array
+            record (propGetters |> Array.map (fun g -> object, g)) x out
+
+            // and from now on skip type lookup of individual field types
             let propGetters =
-                t.GetProperties (BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
-                |> Array.map createPropGetterFunc
+                Array.zip props propGetters
+                |> Array.map (fun (p, g) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), g)
 
-            packerCache.GetOrAdd (t, record propGetters) x out
+            packerCache.[t] <- record propGetters
         elif t.IsArray then
-            // populate packerCache with the element type of the array
-            array out (x :?> Array) object
+            let x = x :?> Array
 
-            // and from now on skip type lookup of individual elements (unless t is a union case)
-            if FSharpType.IsUnion (t.GetElementType ()) then
-                packerCache.[t] <- fun x out -> array out (x :?> Array) object
-            else
-                let elementTypeSerializer = packerCache.[t.GetElementType ()]
-                packerCache.[t] <- fun x out -> array out (x :?> Array) elementTypeSerializer
+            // run the serialization, populating packerCache with the element type of the array
+            array object x out
+
+            if x.Length > 0 then
+                // and from now on skip type lookup of individual elements
+                let elementType = t.GetElementType ()
+                match packerCache.TryGetValue elementType with
+                | true, writer ->
+                    packerCache.[t] <- fun x -> array writer (x :?> Array)
+                | _ ->
+                    packerCache.[t] <- fun x -> array object (x :?> Array)
+
         elif t.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
             packerCache.GetOrAdd (t, fun x (out: Stream) ->
                 //todo cacheable
                 let case, _ = FSharpValue.GetUnionFields (x, t, true)
                 //todo when overriden with CompiledName
                 str (sprintf "%c%s" (Char.ToLowerInvariant case.Name.[0]) (case.Name.Substring 1)) out) x out
-        elif FSharpType.IsUnion (t, true)  then
+        elif FSharpType.IsUnion (t, true) then
             if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                 let listType = t.GetGenericArguments () |> Array.head
                 let listSerializer = typedefof<ListSerializer<_>>.MakeGenericType listType
-                let d = Delegate.CreateDelegate (typeof<Action<obj, obj, obj>>, listSerializer.GetMethod "Serialize") :?> Action<obj, obj, obj>
+                let d = Delegate.CreateDelegate (typeof<Func<obj, obj, obj, int>>, listSerializer.GetMethod "Serialize") :?> Func<obj, obj, obj, int>
                 
-                // populate packerCache with listType
-                d.Invoke (x, out, object)
+                // run the serialization, populating packerCache with listType
+                let listLength = d.Invoke (x, out, object)
 
-                // and from now on skip type lookup of individual elements (unless t is a union case)
-                if FSharpType.IsUnion t then
-                    packerCache.[t] <- fun x out -> d.Invoke (x, out, object)
-                else
-                    let listTypeSerializer = packerCache.[listType]
-                    packerCache.[t] <- fun x out -> d.Invoke (x, out, listTypeSerializer)
-            else
+                if listLength > 0 then
+                    // and from now on skip type lookup of individual elements
+                    match packerCache.TryGetValue listType with
+                    | true, writer ->
+                        packerCache.[t] <- fun x out -> d.Invoke (x, out, writer) |> ignore
+                    | _ ->
+                        packerCache.[t] <- fun x out -> d.Invoke (x, out, object) |> ignore
+            // when t is the actual union type
+            elif isNull t.DeclaringType || (FSharpType.IsUnion t.DeclaringType |> not) then
                 let tagReader = createUnionTagReaderFunc t
                 let fieldReaders =
                     FSharpType.GetUnionCases (t, true)
                     |> Array.map (fun c ->
-                        let casePropGetters = c.GetFields () |> Array.map createPropGetterFunc
-                        c.Tag, casePropGetters)
+                        let casePropGetters = c.GetFields () |> Array.map (fun p -> object, createPropGetterFunc p)
+                        c, casePropGetters)
 
-                packerCache.GetOrAdd (t, fun x out ->
+                // run the serialization, populating packerCache with listType
+                (
+                    let tag = tagReader.Invoke x
+                    let fieldReaders = fieldReaders |> Array.find (fun (c, _) -> tag = c.Tag) |> snd
+                    union tag fieldReaders x out
+                )
+
+                // and from now on skip type lookup of individual elements
+                let fieldReaders =
+                    fieldReaders
+                    |> Array.map (fun (case, r) ->
+                        let fields = case.GetFields ()
+                        case.Tag, Array.zip fields r |> Array.map (fun (p, r) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), snd r))
+
+                packerCache.[t] <- fun x out ->
                     let tag = tagReader.Invoke x
                     let fieldReaders = fieldReaders |> Array.find (fun (tag', _) -> tag = tag') |> snd
-                    union tag fieldReaders x out) x out
+                    union tag fieldReaders x out
+            // when t is just a specific case type
+            else
+                let case, _ = FSharpValue.GetUnionFields (x, t, true)
+                let fieldProps = case.GetFields ()
+                let fieldReaders = fieldProps |> Array.map (fun p -> object, createPropGetterFunc p)
+
+                let union = union case.Tag
+
+                // run the serialization, populating packerCache with the element type of the array
+                union fieldReaders x out
+
+                // and from now on skip type lookup of individual field types
+                let fieldReaders = Array.zip fieldProps fieldReaders |> Array.map (fun (p, r) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), snd r)
+                packerCache.[t] <- union fieldReaders
         elif FSharpType.IsTuple t then
             let tupleReader = FSharpValue.PreComputeTupleReader t
             packerCache.GetOrAdd (t, fun x out -> tupleReader x |> tuple out) x out

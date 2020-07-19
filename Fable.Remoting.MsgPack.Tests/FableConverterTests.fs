@@ -148,4 +148,21 @@ let converterTest =
         test "Guid" {
             Guid.NewGuid () |> serializeDeserializeCompareWithLength 18
         }
+        test "Value option" {
+            ValueSome "blah" |> serializeDeserializeCompare
+            (ValueNone: int voption) |> serializeDeserializeCompare
+        }
+        test "Union cases with no parameters" {
+            A |> serializeDeserializeCompare
+            B |> serializeDeserializeCompare
+        }
+        test "Option of option" {
+            Some (Some 5) |> serializeDeserializeCompare
+            Some (None: int option) |> serializeDeserializeCompare
+            (None: int option option) |> serializeDeserializeCompare
+        }
+        test "List of unions" {
+            [ Just 4; Nothing ] |> serializeDeserializeCompare
+            [ Just 4; Nothing ] |> serializeDeserializeCompare
+        }
     ]
