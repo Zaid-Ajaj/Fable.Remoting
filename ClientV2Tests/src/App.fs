@@ -1186,22 +1186,9 @@ let binaryServerTests =
                 test.equal true (input = output) 
             }
 
-        testCaseAsync "IBinaryServer.echoStringValueOption" <|
-            async {
-                let input = ValueSome "yupp"
-                let! output = binaryServer.echoStringValueOption input
-
-                test.equal true (input = output) 
-            }
-
         testCaseAsync "IBinaryServer.echoIntOptionOption" <|
             async {
                 let input = Some (Some 55)
-                let! output = binaryServer.echoIntOptionOption input
-
-                test.equal true (input = output)
-                
-                let input = Some None
                 let! output = binaryServer.echoIntOptionOption input
 
                 test.equal true (input = output)
@@ -1401,8 +1388,8 @@ let msgPackTests =
             85.44f<SomeUnit> |> serializeDeserializeCompare typeof<float32<SomeUnit>>
             85.44<SomeUnit> |> serializeDeserializeCompare typeof<float<SomeUnit>>
         testCase "Value option" <| fun () ->
-            ValueSome "blah" |> serializeDeserializeCompare typeof<int voption>
-            ValueNone |> serializeDeserializeCompare typeof<int voption>
+            ValueSome "blah" |> serializeDeserializeCompare typeof<string voption>
+            ValueNone |> serializeDeserializeCompare typeof<string voption>
         testCase "Union cases with no parameters" <| fun () ->
             One |> serializeDeserializeCompare typeof<UnionType>
             Two |> serializeDeserializeCompare typeof<UnionType>

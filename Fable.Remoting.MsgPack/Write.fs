@@ -581,7 +581,8 @@ and object (x: obj) (t: Type) (out: ResizeArray<byte>) =
             let elementType = t.GetGenericArguments ()
             cacheGetOrAdd (t, fun x out ->
                 let opt = x :?> _ option
-                union out (if Option.isNone opt then 0 else 1) elementType [| opt |]) x out
+                let tag, value = if Option.isSome opt then 1, opt.Value else 0, null
+                union out tag elementType [| value |]) x out
         elif FSharpType.IsUnion (t, true) then
             cacheGetOrAdd (t, fun x out ->
                 let case, fields = FSharpValue.GetUnionFields (x, t, true)
