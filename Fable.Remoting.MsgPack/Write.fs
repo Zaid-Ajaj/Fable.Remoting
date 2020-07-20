@@ -76,7 +76,7 @@ let inline writeUnsigned32bitNumber (n: UInt32) (out: Stream) =
 
 let inline writeUnsigned64bitNumber (n: UInt64) (out: Stream) =
     write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
- 
+
 let arrayHeader length (out: Stream) =
     if length < 16 then
         out.WriteByte (Format.fixarr length)

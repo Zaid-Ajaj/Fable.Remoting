@@ -48,6 +48,8 @@ let serverBinary : IBinaryServer = {
     echoDateTimeOffset = Async.result
     echoGuid = Async.result
     echoIntOption = Async.result
+    echoIntOptionOption = Async.result
+    echoStringValueOption = Async.result
     echoStringOption = Async.result
     echoGenericUnionInt = Async.result
     echoGenericUnionString = Async.result
@@ -64,6 +66,7 @@ let serverBinary : IBinaryServer = {
     echoRecursiveRecord = Async.result
     echoIntList = Async.result
     echoStringList = Async.result
+    echoMaybeBoolList = Async.result
     echoBoolList = Async.result
     mapRecordAsKey = fun () -> async { return Map.ofList [ { Key = 1; Value = "Value" }, 1 ] }
     echoListOfListsOfStrings = Async.result

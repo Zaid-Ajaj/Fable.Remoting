@@ -1185,6 +1185,35 @@ let binaryServerTests =
 
                 test.equal true (input = output) 
             }
+
+        testCaseAsync "IBinaryServer.echoStringValueOption" <|
+            async {
+                let input = ValueSome "yupp"
+                let! output = binaryServer.echoStringValueOption input
+
+                test.equal true (input = output) 
+            }
+
+        testCaseAsync "IBinaryServer.echoIntOptionOption" <|
+            async {
+                let input = Some (Some 55)
+                let! output = binaryServer.echoIntOptionOption input
+
+                test.equal true (input = output)
+                
+                let input = Some None
+                let! output = binaryServer.echoIntOptionOption input
+
+                test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.echoMaybeBoolList" <|
+            async {
+                let input = [ Just true; Nothing ]
+                let! output = binaryServer.echoMaybeBoolList input
+
+                test.equal true (input = output) 
+            }
     ]
 
 let cookieServer =
@@ -1371,6 +1400,19 @@ let msgPackTests =
             85.44m<SomeUnit> |> serializeDeserializeCompare typeof<decimal<SomeUnit>>
             85.44f<SomeUnit> |> serializeDeserializeCompare typeof<float32<SomeUnit>>
             85.44<SomeUnit> |> serializeDeserializeCompare typeof<float<SomeUnit>>
+        testCase "Value option" <| fun () ->
+            ValueSome "blah" |> serializeDeserializeCompare typeof<int voption>
+            ValueNone |> serializeDeserializeCompare typeof<int voption>
+        testCase "Union cases with no parameters" <| fun () ->
+            One |> serializeDeserializeCompare typeof<UnionType>
+            Two |> serializeDeserializeCompare typeof<UnionType>
+        testCase "Option of option" <| fun () ->
+            Some (Some 5) |> serializeDeserializeCompare typeof<int option option>
+            Some None |> serializeDeserializeCompare typeof<int option option>
+            None |> serializeDeserializeCompare typeof<int option option>
+        testCase "List of unions" <| fun () ->
+            [ Just 4; Nothing ] |> serializeDeserializeCompare typeof<Maybe<int> list>
+            [ Just 4; Nothing ] |> serializeDeserializeCompare typeof<Maybe<int> list>
     ]
 
 let alltests =
