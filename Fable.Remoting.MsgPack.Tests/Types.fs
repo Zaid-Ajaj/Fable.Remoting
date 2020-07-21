@@ -10,6 +10,7 @@ type Record = {
 
 type RecursiveRecord = {
     Name: string
+    Result: Result<int, string>
     Children : RecursiveRecord list
 }
 

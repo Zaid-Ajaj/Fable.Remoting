@@ -7,10 +7,43 @@ open System.Collections.Generic
 open System.Text
 open FSharp.Reflection
 open System.Numerics
+open FSharp.NativeInterop
+open System.Reflection
+open System.Linq.Expressions
 
 #if !FABLE_COMPILER
+#nowarn "9"
+
 let packerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
 let unionCaseFieldReaderCache = ConcurrentDictionary<Type, obj -> obj[]> ()
+
+let createPropGetterFunc (prop: PropertyInfo) =
+    let instance = Expression.Parameter (typeof<obj>, "instance")
+    
+    let expr =
+        Expression.Lambda<Func<obj, obj>> (
+            Expression.Convert (
+                Expression.Property (
+                    Expression.Convert (instance, prop.DeclaringType),
+                    prop),
+                typeof<obj>),
+            instance)
+
+    expr.Compile ()
+
+let createUnionTagReaderFunc (unionType: Type) =
+    // option does not have the Tag property
+    if unionType.IsGenericType && unionType.GetGenericTypeDefinition () = typedefof<_ option> then
+        Func<_, _> (fun (unionInstance: obj) -> if isNull unionInstance then 0 else 1)
+    else
+        let prop = unionType.GetProperty ("Tag", BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
+        let instance = Expression.Parameter (typeof<obj>, "instance")
+
+        let expr =
+            Expression.Lambda<Func<obj, int>> (
+                Expression.Property (Expression.Convert (instance, unionType), prop),
+                instance)
+        expr.Compile ()
 
 let inline write32bitNumber b1 b2 b3 b4 (out: Stream) writeFormat =
     if b2 > 0uy || b1 > 0uy then
@@ -43,7 +76,18 @@ let inline writeUnsigned32bitNumber (n: UInt32) (out: Stream) =
 
 let inline writeUnsigned64bitNumber (n: UInt64) (out: Stream) =
     write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
-  
+
+let arrayHeader length (out: Stream) =
+    if length < 16 then
+        out.WriteByte (Format.fixarr length)
+    elif length < 65536 then
+        out.WriteByte Format.Array16
+        out.WriteByte (length >>> 8 |> byte)
+        out.WriteByte (byte length)
+    else
+        out.WriteByte Format.Array32
+        writeUnsigned32bitNumber (uint32 length) out false
+
 type DictionarySerializer<'k,'v> () =
     static member Serialize (dict: obj, out: obj, write: obj) =
         let dict = dict :?> IDictionary<'k,'v>
@@ -73,19 +117,12 @@ type ListSerializer<'a> () =
         let write = write :?> (obj -> Stream -> unit)
 
         let length = list.Length
-
-        if length < 16 then
-            out.WriteByte (Format.fixarr length)
-        elif list.Length < 65536 then
-            out.WriteByte Format.Array16
-            out.WriteByte (length >>> 8 |> byte)
-            out.WriteByte (byte length)
-        else
-            out.WriteByte Format.Array32
-            writeUnsigned32bitNumber (uint32 length) out false
+        arrayHeader length out        
 
         for x in list do
             write x out
+
+        length
 
 let inline nil (out: Stream) = out.WriteByte Format.Nil
 let inline bool x (out: Stream) = out.WriteByte (if x then Format.True else Format.False)
@@ -116,22 +153,46 @@ let inline int (n: int64) (out: Stream) =
 let inline byte b (out: Stream) =
     out.WriteByte b
 
-let inline str (str: string) (out: Stream) =
-    let str = Encoding.UTF8.GetBytes str
-
-    if str.Length < 32 then
-        out.WriteByte (Format.fixstr str.Length)
+let strHeader length (out: Stream) =
+    if length < 32 then
+        out.WriteByte (Format.fixstr length)
     else
-        if str.Length < 256 then
+        if length < 256 then
             out.WriteByte Format.Str8
-        elif str.Length < 65536 then
+        elif length < 65536 then
             out.WriteByte Format.Str16
         else
             out.WriteByte Format.Str32
 
-        writeUnsigned32bitNumber (uint32 str.Length) out false
+        writeUnsigned32bitNumber (uint32 length) out false
 
+let str (str: string) (out: Stream) =
+    if isNull str then nil out else
+#if NET_CORE
+    let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
+    
+    // allocate space on the stack if the string is not too long
+    if str.Length < 500 then
+        let buffer = Span (NativePtr.stackalloc<byte> maxLength |> NativePtr.toVoidPtr, maxLength)
+        let bytesWritten = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
+
+        strHeader bytesWritten out
+        out.Write (Span.op_Implicit (buffer.Slice (0, bytesWritten)))
+    else
+        let buffer = System.Buffers.ArrayPool.Shared.Rent maxLength
+
+        try
+            let bytesWritten = Encoding.UTF8.GetBytes (str, 0, str.Length, buffer, 0)
+
+            strHeader bytesWritten out
+            out.Write (buffer, 0, bytesWritten)
+        finally
+            System.Buffers.ArrayPool.Shared.Return buffer
+#else
+    let str = Encoding.UTF8.GetBytes str
+    strHeader str.Length out
     out.Write (str, 0, str.Length)
+#endif
 
 let inline float32 (n: float32) (out: Stream) =
     out.WriteByte Format.Float32
@@ -142,6 +203,8 @@ let inline float64 (n: float) (out: Stream) =
     writeSignedNumber (BitConverter.GetBytes n) out
 
 let bin (data: byte[]) (out: Stream) =
+    if isNull data then nil out else
+
     if data.Length < 256 then
         out.WriteByte Format.Bin8
     elif data.Length < 65536 then
@@ -150,77 +213,149 @@ let bin (data: byte[]) (out: Stream) =
         out.WriteByte Format.Bin32
 
     writeUnsigned32bitNumber (uint32 data.Length) out false
-
-    use sw = new MemoryStream (data)
-    sw.CopyTo out
+    out.Write (data, 0, data.Length)
 
 let inline dateTimeOffset (out: Stream) (dto: DateTimeOffset) =
     out.WriteByte (Format.fixarr 2uy)
     int dto.Ticks out
     int (int64 dto.Offset.TotalMinutes) out
 
-let rec array (out: Stream) (arr: System.Collections.ICollection) =
-    if arr.Count < 16 then
-        out.WriteByte (Format.fixarr arr.Count)
-    elif arr.Count < 65536 then
-        out.WriteByte Format.Array16
-        out.WriteByte (arr.Count >>> 8 |> FSharp.Core.Operators.byte)
-        out.WriteByte (FSharp.Core.Operators.byte arr.Count)
-    else
-        out.WriteByte Format.Array32
-        writeUnsigned32bitNumber (uint32 arr.Count) out false
+let inline array write (arr: Array) (out: Stream) =
+    if isNull arr then nil out else
+    
+    arrayHeader arr.Length out
 
     for x in arr do
-        object x out
+        write x out
 
-and inline tuple (out: Stream) (items: obj[]) =
-    array out items
+let inline record (writersAndPropGetters: ((obj -> Stream -> unit) * Func<obj, obj>)[]) (recordInstance: obj) (out: Stream) =
+    arrayHeader writersAndPropGetters.Length out
 
-and union (out: Stream) tag (vals: obj[]) =
+    for write, p in writersAndPropGetters do
+        let y = p.Invoke recordInstance
+        write y out
+
+let union tag (writersAndPropGetters: ((obj -> Stream -> unit) * Func<obj, obj>)[]) (unionInstance: obj) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
     out.WriteByte (Format.fixposnum tag)
 
     // save 1 byte if the union case has a single parameter
-    if vals.Length <> 1 then
-        array out vals
+    if writersAndPropGetters.Length <> 1 then
+        arrayHeader writersAndPropGetters.Length out
+        
+        for write, p in writersAndPropGetters do
+            let y = p.Invoke unionInstance
+            write y out
     else
-        object vals.[0] out
+        let write, p = writersAndPropGetters.[0]
+        write (p.Invoke unionInstance) out
+
+let rec inline tuple (out: Stream) (elements: obj[]) =
+    arrayHeader elements.Length out
+   
+    for x in elements do
+        object x out
 
 and object (x: obj) (out: Stream) =
     if isNull x then nil out else
 
     let t = x.GetType ()
 
-    match packerCache.TryGetValue (if t.IsArray && t <> typeof<byte[]> then typeof<Array> else t) with
+    match packerCache.TryGetValue t with
     | true, writer ->
         writer x out
     | _ ->
         if FSharpType.IsRecord (t, true) then
-            let fieldReader = FSharpValue.PreComputeRecordReader (t, true)
-            packerCache.GetOrAdd (t, fun x (out: Stream) -> fieldReader x |> array out) x out
+            let props = t.GetProperties (BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
+            let propGetters = props |> Array.map createPropGetterFunc
+
+            // run the serialization, populating packerCache with the element type of the array
+            record (propGetters |> Array.map (fun g -> object, g)) x out
+
+            // and from now on skip type lookup of individual field types
+            let propGetters =
+                Array.zip props propGetters
+                |> Array.map (fun (p, g) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), g)
+
+            packerCache.[t] <- record propGetters
+        elif t.IsArray then
+            let x = x :?> Array
+
+            // run the serialization, populating packerCache with the element type of the array
+            array object x out
+
+            if x.Length > 0 then
+                // and from now on skip type lookup of individual elements
+                let elementType = t.GetElementType ()
+                match packerCache.TryGetValue elementType with
+                | true, writer ->
+                    packerCache.[t] <- fun x -> array writer (x :?> Array)
+                | _ ->
+                    packerCache.[t] <- fun x -> array object (x :?> Array)
+
         elif t.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
             packerCache.GetOrAdd (t, fun x (out: Stream) ->
                 //todo cacheable
                 let case, _ = FSharpValue.GetUnionFields (x, t, true)
                 //todo when overriden with CompiledName
                 str (sprintf "%c%s" (Char.ToLowerInvariant case.Name.[0]) (case.Name.Substring 1)) out) x out
-        elif FSharpType.IsUnion (t, true)  then
+        elif FSharpType.IsUnion (t, true) then
             if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
                 let listType = t.GetGenericArguments () |> Array.head
                 let listSerializer = typedefof<ListSerializer<_>>.MakeGenericType listType
-                let d = Delegate.CreateDelegate (typeof<Action<obj, obj, obj>>, listSerializer.GetMethod "Serialize") :?> Action<obj, obj, obj>
+                let d = Delegate.CreateDelegate (typeof<Func<obj, obj, obj, int>>, listSerializer.GetMethod "Serialize") :?> Func<obj, obj, obj, int>
                 
-                packerCache.GetOrAdd (t, fun x out -> d.Invoke (x, out, object)) x out
-            else
-                let tagReader = FSharpValue.PreComputeUnionTagReader (t, true)
-                let cases = FSharpType.GetUnionCases (t, true)
-                let fieldReaders = cases |> Array.map (fun c -> c.Tag, FSharpValue.PreComputeUnionReader (c, true))
+                // run the serialization, populating packerCache with listType
+                let listLength = d.Invoke (x, out, object)
 
-                packerCache.GetOrAdd (t, fun x out ->
-                    let tag = tagReader x
-                    let fieldReader = fieldReaders |> Array.find (fun (tag', _) -> tag = tag') |> snd
-                    let fieldValues = fieldReader x
-                    union out tag fieldValues) x out
+                if listLength > 0 then
+                    // and from now on skip type lookup of individual elements
+                    match packerCache.TryGetValue listType with
+                    | true, writer ->
+                        packerCache.[t] <- fun x out -> d.Invoke (x, out, writer) |> ignore
+                    | _ ->
+                        packerCache.[t] <- fun x out -> d.Invoke (x, out, object) |> ignore
+            // when t is the actual union type
+            elif isNull t.DeclaringType || (FSharpType.IsUnion t.DeclaringType |> not) then
+                let tagReader = createUnionTagReaderFunc t
+                let fieldReaders =
+                    FSharpType.GetUnionCases (t, true)
+                    |> Array.map (fun c ->
+                        let casePropGetters = c.GetFields () |> Array.map (fun p -> object, createPropGetterFunc p)
+                        c, casePropGetters)
+
+                // run the serialization, populating packerCache with listType
+                (
+                    let tag = tagReader.Invoke x
+                    let fieldReaders = fieldReaders |> Array.find (fun (c, _) -> tag = c.Tag) |> snd
+                    union tag fieldReaders x out
+                )
+
+                // and from now on skip type lookup of individual elements
+                let fieldReaders =
+                    fieldReaders
+                    |> Array.map (fun (case, r) ->
+                        let fields = case.GetFields ()
+                        case.Tag, Array.zip fields r |> Array.map (fun (p, r) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), snd r))
+
+                packerCache.[t] <- fun x out ->
+                    let tag = tagReader.Invoke x
+                    let fieldReaders = fieldReaders |> Array.find (fun (tag', _) -> tag = tag') |> snd
+                    union tag fieldReaders x out
+            // when t is just a specific case type
+            else
+                let case, _ = FSharpValue.GetUnionFields (x, t, true)
+                let fieldProps = case.GetFields ()
+                let fieldReaders = fieldProps |> Array.map (fun p -> object, createPropGetterFunc p)
+
+                let union = union case.Tag
+
+                // run the serialization, populating packerCache with the element type of the array
+                union fieldReaders x out
+
+                // and from now on skip type lookup of individual field types
+                let fieldReaders = Array.zip fieldProps fieldReaders |> Array.map (fun (p, r) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), snd r)
+                packerCache.[t] <- union fieldReaders
         elif FSharpType.IsTuple t then
             let tupleReader = FSharpValue.PreComputeTupleReader t
             packerCache.GetOrAdd (t, fun x out -> tupleReader x |> tuple out) x out
@@ -249,7 +384,6 @@ packerCache.TryAdd (typeof<UInt64>, fun x out -> uint (x :?> UInt64) out) |> ign
 packerCache.TryAdd (typeof<float32>, fun x out -> float32 (x :?> float32) out) |> ignore
 packerCache.TryAdd (typeof<float>, fun x out -> float64 (x :?> float) out) |> ignore
 packerCache.TryAdd (typeof<decimal>, fun x out -> float64 (x :?> decimal |> float) out) |> ignore
-packerCache.TryAdd (typeof<Array>, fun x out -> array out (x :?> Array)) |> ignore
 packerCache.TryAdd (typeof<byte[]>, fun x out -> bin (x :?> byte[]) out) |> ignore
 packerCache.TryAdd (typeof<BigInteger>, fun x out -> bin ((x :?> BigInteger).ToByteArray ()) out) |> ignore
 packerCache.TryAdd (typeof<Guid>, fun x out -> bin ((x :?> Guid).ToByteArray ()) out) |> ignore
@@ -447,7 +581,8 @@ and object (x: obj) (t: Type) (out: ResizeArray<byte>) =
             let elementType = t.GetGenericArguments ()
             cacheGetOrAdd (t, fun x out ->
                 let opt = x :?> _ option
-                union out (if Option.isNone opt then 0 else 1) elementType [| opt |]) x out
+                let tag, value = if Option.isSome opt then 1, opt.Value else 0, null
+                union out tag elementType [| value |]) x out
         elif FSharpType.IsUnion (t, true) then
             cacheGetOrAdd (t, fun x out ->
                 let case, fields = FSharpValue.GetUnionFields (x, t, true)
@@ -463,6 +598,14 @@ and object (x: obj) (t: Type) (out: ResizeArray<byte>) =
             cacheGetOrAdd (t, fun x out -> map out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
         elif t.IsEnum then
             cacheGetOrAdd (t, fun x -> int (box x :?> int64)) x out
+        elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
+            cacheGetOrAdd (t, fun x out -> int (x :?> int64) out) x out
+        elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
+            cacheGetOrAdd (t, fun x out -> float64 (x :?> decimal |> float) out) x out
+        elif t.FullName = "Microsoft.FSharp.Core.float`1" then
+            cacheGetOrAdd (t, fun x out -> float64 (x :?> float) out) x out
+        elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
+            cacheGetOrAdd (t, fun x out -> float32 (x :?> float32) out) x out
         else
             failwithf "Cannot pack %s" t.Name
 

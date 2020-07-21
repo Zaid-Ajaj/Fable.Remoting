@@ -123,15 +123,16 @@ let converterTest =
         test "Recursive record" {
             {
                 Name = "root"
+                Result = Ok 2
                 Children = [
-                    { Name = "Child 1"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
-                    { Name = "Child 1"; Children = [ ] }
+                    { Name = "Child 1"; Result = Result.Error ""; Children = [ { Name = "Grandchild"; Result = Ok -22; Children = [ ] } ] }
+                    { Name = "Child 1"; Result = Ok 22; Children = [ ] }
                 ]
             }
             |> serializeDeserializeCompare
         }
         test "Complex tuple" {
-            ((String50.Create "as", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Children = [] }) |> serializeDeserializeCompare
+            ((String50.Create "as", Some ()), [ 0; 0; 25 ], { Name = ":^)"; Result = Ok 1; Children = [] }) |> serializeDeserializeCompare
         }
         test "Bigint" {
             -2I |> serializeDeserializeCompare
@@ -146,5 +147,22 @@ let converterTest =
         }
         test "Guid" {
             Guid.NewGuid () |> serializeDeserializeCompareWithLength 18
+        }
+        test "Value option" {
+            ValueSome "blah" |> serializeDeserializeCompare
+            (ValueNone: int voption) |> serializeDeserializeCompare
+        }
+        test "Union cases with no parameters" {
+            A |> serializeDeserializeCompare
+            B |> serializeDeserializeCompare
+        }
+        test "Option of option" {
+            Some (Some 5) |> serializeDeserializeCompare
+            Some (None: int option) |> serializeDeserializeCompare
+            (None: int option option) |> serializeDeserializeCompare
+        }
+        test "List of unions" {
+            [ Just 4; Nothing ] |> serializeDeserializeCompare
+            [ Just 4; Nothing ] |> serializeDeserializeCompare
         }
     ]

@@ -33,6 +33,7 @@ let proj file = (sprintf "Fable.Remoting.%s" file) </> (sprintf "Fable.Remoting.
 let testDll file = (sprintf "Fable.Remoting.%s.Tests" file) </> "bin" </> "Release" </> "netcoreapp3.0" </> (sprintf "Fable.Remoting.%s.Tests.dll" file)
 
 let JsonTestsDll = testDll "Json"
+let MsgPackTestsDll = testDll "MsgPack"
 let ServerTestsDll = testDll "Server"
 let SuaveTestDll = testDll "Suave"
 let GiraffeTestDll = testDll "Giraffe"
@@ -176,6 +177,9 @@ Target.create "BuildRunAllTests" <| fun _ ->
     // Json
     run cwd "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")
     run cwd "dotnet" JsonTestsDll
+    // MsgPack
+    run cwd "dotnet" ("build " + proj "MsgPack.Tests" + " --configuration=Release")
+    run cwd "dotnet" MsgPackTestsDll
     // Server
     run cwd "dotnet" ("build " + proj "Server.Tests" + " --configuration=Release")
     run cwd "dotnet" ServerTestsDll
@@ -189,6 +193,7 @@ Target.create "BuildRunAllTests" <| fun _ ->
 Target.create "IntegrationTests" <| fun _ ->
     clean (getPath "Server")
     clean (getPath "Json")
+    clean (getPath "MsgPack")
     clean (getPath "Suave")
     clean (getPath "UITests")
     clean (getPath "Fable.Remoting.ClientV2")
@@ -204,6 +209,7 @@ Target.create "IntegrationTests" <| fun _ ->
 Target.create "IntegrationTestsLive" <| fun _ ->
     clean (getPath "Server")
     clean (getPath "Json")
+    clean (getPath "MsgPack")
     clean (getPath "Suave")
     clean (getPath "UITests")
     clean (getPath "IntegrationTests" </> "Server.Suave")

@@ -117,6 +117,8 @@ type IBinaryServer = {
     echoStringEnum : SomeStringEnum -> Async<SomeStringEnum>
     echoTimeSpan : TimeSpan -> Async<TimeSpan>
     echoIntOption : int option -> Async<int option>
+    echoIntOptionOption : int option option -> Async<int option option>
+    echoStringValueOption : string voption -> Async<string voption>
     echoIntWithMeasure : int<SomeUnit> -> Async<int<SomeUnit>>
     echoInt16WithMeasure : int16<SomeUnit> -> Async<int16<SomeUnit>>
     echoInt64WithMeasure : int64<SomeUnit> -> Async<int64<SomeUnit>>
@@ -142,6 +144,7 @@ type IBinaryServer = {
     echoIntList : int list -> Async<int list>
     echoStringList : string list -> Async<string list>
     echoBoolList : bool list -> Async<bool list>
+    echoMaybeBoolList : Maybe<bool> list -> Async<Maybe<bool> list>
     echoListOfListsOfStrings : string list list -> Async<string list list>
     echoListOfGenericRecords :  GenericRecord<int> list -> Async<GenericRecord<int> list>
 
