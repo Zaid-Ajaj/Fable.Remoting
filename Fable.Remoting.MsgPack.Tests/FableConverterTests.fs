@@ -15,7 +15,7 @@ let fail () = Expect.equal false true ""
 
 let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.object value ms
+    MsgPack.Write.serializeObj value ms
 
     let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
 
@@ -23,7 +23,7 @@ let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
 
 let serializeDeserializeCompareSequence (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.object value ms
+    MsgPack.Write.serializeObj value ms
 
     let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
 
@@ -31,7 +31,7 @@ let serializeDeserializeCompareSequence (value: 'a) =
 
 let serializeDeserializeCompareWithLength<'a when 'a: equality> expectedLength (value: 'a) =
     use ms = new MemoryStream ()
-    MsgPack.Write.object value ms
+    MsgPack.Write.serializeObj value ms
     let data = ms.ToArray ()
 
     let deserialized = MsgPack.Read.Reader(data).Read typeof<'a> :?> 'a
@@ -54,10 +54,10 @@ let converterTest =
             Just [| Nothing; Just 1 |] |> serializeDeserializeCompare 
         }
         test "Record" {
-            { Prop1 = ""; Prop2 = 2; Prop3 = Some 3 } |> serializeDeserializeCompare 
+            { Prop1 = ""; Prop2 = 2; Prop3 = None } |> serializeDeserializeCompare 
         }
         test "None" {
-            None |> serializeDeserializeCompare 
+            (None: string option) |> serializeDeserializeCompare 
         }
         test "Some string works" {
             Some "ddd" |> serializeDeserializeCompare 
@@ -96,7 +96,7 @@ let converterTest =
             Map.ofArray [| for i in 1 .. 295 -> i, (i * i) |] |> serializeDeserializeCompare
         }
         test "Fixmap with dictionary of nothing" {
-            Map.ofArray [| for i in 1 .. 2 -> i, Nothing |] |> Dictionary<_, _> |> serializeDeserializeCompareSequence
+            Map.ofArray [| for i in 1 .. 2 -> i, Nothing |] |> Dictionary<_, Maybe<bool>> |> serializeDeserializeCompareSequence
         }
         test "Map32 with dictionary" {
             Map.ofArray [| for i in 1 .. 80_000 -> i, i |] |> Dictionary<_, _> |> serializeDeserializeCompareSequence
@@ -115,7 +115,7 @@ let converterTest =
             [| for _ in 1 .. 80_000 -> 23uy |] |> serializeDeserializeCompareWithLength 80_005
         }
         test "Array32 of long" {
-            [| for _ in 1 .. 80_000 -> 5_000_000_000L |] |> serializeDeserializeCompare
+            [| for i in 1L .. 80_000L -> 5_000_000_000L * (if i % 2L = 0L then -1L else 1L) |] |> serializeDeserializeCompare
         }
         test "Array32 of int32" {
             [| 1 .. 100000 |] |> serializeDeserializeCompare
@@ -125,8 +125,8 @@ let converterTest =
                 Name = "root"
                 Result = Ok 2
                 Children = [
-                    { Name = "Child 1"; Result = Result.Error ""; Children = [ { Name = "Grandchild"; Result = Ok -22; Children = [ ] } ] }
-                    { Name = "Child 1"; Result = Ok 22; Children = [ ] }
+                    { Name = "Child 1"; Result = Result.Error null; Children = [ { Name = "Grandchild"; Result = Ok -50; Children = [ ] } ] }
+                    { Name = "Child 1"; Result = Result.Error "ss"; Children = [ ] }
                 ]
             }
             |> serializeDeserializeCompare
@@ -164,5 +164,8 @@ let converterTest =
         test "List of unions" {
             [ Just 4; Nothing ] |> serializeDeserializeCompare
             [ Just 4; Nothing ] |> serializeDeserializeCompare
+        }
+        test "null string" {
+            (null: string) |> serializeDeserializeCompare
         }
     ]

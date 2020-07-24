@@ -1265,7 +1265,7 @@ let secureApiTests =
 let inline serializeDeserializeCompare typ (value: 'a) =
 #if FABLE_COMPILER
     let ra = FSharp.Collections.ResizeArray<byte> ()
-    Fable.Remoting.MsgPack.Write.object value typ ra
+    Fable.Remoting.MsgPack.Write.writeObject value typ ra
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
 
@@ -1277,7 +1277,7 @@ let inline serializeDeserializeCompare typ (value: 'a) =
 let inline serializeDeserializeCompareDictionary typ (value: System.Collections.Generic.IDictionary<'a, 'b>) =
 #if FABLE_COMPILER
     let ra = FSharp.Collections.ResizeArray<byte> ()
-    Fable.Remoting.MsgPack.Write.object value typ ra
+    Fable.Remoting.MsgPack.Write.writeObject value typ ra
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> System.Collections.Generic.IDictionary<'a, 'b>
 
@@ -1290,7 +1290,7 @@ let inline serializeDeserializeCompareDictionary typ (value: System.Collections.
 let inline serializeDeserializeCompareWithLength expectedLength typ (value: 'a) =
 #if FABLE_COMPILER
     let ra = FSharp.Collections.ResizeArray<byte> ()
-    Fable.Remoting.MsgPack.Write.object value typ ra
+    Fable.Remoting.MsgPack.Write.writeObject value typ ra
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
 
