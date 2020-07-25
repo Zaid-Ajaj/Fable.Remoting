@@ -65,10 +65,32 @@ let converterTest =
           | SingleLongCase 20L -> pass()
           | otherwise -> fail()
 
-        testCase "String50 with private constructor can be serialized" <| fun ()  -> 
+        testCase "String50 with private constructor can be serialized" <| fun ()  ->
             let serialized = "[\"String50\", \"onur\"]"
-            let deserialized = deserialize<String50> serialized  
+            let deserialized = deserialize<String50> serialized
             Expect.equal (deserialized.Read()) "onur" "Value is deserialized"
+
+        testCase "Deserializing union of records using discriminiator" <| fun () ->
+            let serialized = """
+                [
+                    {
+                        "__typename": "User",
+                        "Id": 42,
+                        "Username": "John"
+                    },
+
+                    {
+                        "__typename": "Bot",
+                        "Identifier": "Sentient Bot"
+                    }
+                ]
+            """
+
+            let deserialized = deserialize<Actor list> serialized
+            let wasFound actor = Expect.isTrue (List.contains actor deserialized) (sprintf "Actor %A was not found" actor)
+            User { Id = 42; Username = "John" } |> wasFound
+            Bot { Identifier = "Sentient Bot" } |> wasFound
+
 
         testCase "Map<int * int, int> can be deserialized" <| fun () ->
             let serialized = "[[[1,1],1]]"
