@@ -1,32 +1,32 @@
 ﻿module Types
 
-open System 
+open System
 
-type Record = { 
+type Record = {
     Prop1 : string
     Prop2 : int
     Prop3 : int option
 }
 
-type Tree<'t> = 
-    | Leaf of 't 
-    | Branch of Tree<'t> * Tree<'t> 
+type Tree<'t> =
+    | Leaf of 't
+    | Branch of Tree<'t> * Tree<'t>
 
-type Maybe<'t> = 
+type Maybe<'t> =
     | Just of 't
     | Nothing
 
-type String50 = 
+type String50 =
     private String50 of string
 
-    with 
-        member this.Read() = 
-            match this with 
+    with
+        member this.Read() =
+            match this with
             | String50 content -> content
 
         static member Create(content: string) = String50 content
 
-type UnionWithDateTime = 
+type UnionWithDateTime =
     | Date of DateTime
     | Int of int
 
@@ -34,9 +34,9 @@ type AB = A | B
 
 type SingleLongCase = SingleLongCase of int64
 
-type IProtocol = { 
-    getLength : string -> Async<int>  
-    echoInteger : int -> Async<int>  
+type IProtocol = {
+    getLength : string -> Async<int>
+    echoInteger : int -> Async<int>
     echoOption : int option -> Async<int>
     echoMonth : System.DateTime -> Async<int>
     echoString : string -> Async<string>
@@ -58,3 +58,9 @@ type Customer = { Id : CustomerId }
 type Color = Red | Blue
 type ColorDU = ColorType of Color
 type ColorRecord = { Color: ColorDU }
+
+type User = { Id: int; Username: string }
+type Bot = { Identifier: string }
+type Actor =
+    | User of User
+    | Bot of Bot

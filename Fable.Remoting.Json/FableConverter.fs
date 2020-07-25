@@ -16,6 +16,7 @@ module ReflectionAdapters =
 #endif
 
 open System
+open System.Linq
 open FSharp.Reflection
 open Newtonsoft.Json
 open System.Reflection
@@ -147,6 +148,12 @@ type FableJsonConverter() =
             | "Fable.Core.StringEnumAttribute" -> Some Kind.StringEnum
             | _ -> None)
         |> defaultArg <| Kind.Union
+
+    let unionOfRecords (t: Type) =
+        FSharpType.GetUnionCases(t, bindingFlags)
+        |> Seq.forall (fun case ->
+            let fields = case.GetFields()
+            fields.Length = 1 && FSharpType.IsRecord(fields.[0].PropertyType))
 
     let getUci t name =
         FSharpType.GetUnionCases(t, true)
@@ -372,20 +379,28 @@ type FableJsonConverter() =
                 let name = serializer.Deserialize(reader, typeof<string>) :?> string
                 FSharpValue.MakeUnion(getUci t name, [||], bindingFlags)
             | JsonToken.StartObject ->
-                advance reader
-                let name = reader.Value :?> string
-                let uci = getUci t name
-                advance reader
-                let itemTypes = uci.GetFields() |> Array.map (fun pi -> pi.PropertyType)
-                if itemTypes.Length > 1
-                then
-                    let values = readElements(reader, itemTypes, serializer)
-                    advance reader
-                    FSharpValue.MakeUnion(uci, List.toArray values, bindingFlags)
+                let content = serializer.Deserialize<JObject> reader
+                if content.Count = 1 && not (content.ContainsKey "__typename") then
+                    let firstProperty = content.Properties().First()
+                    let name = firstProperty.Name
+                    let uci = getUci t name
+
+                    let itemTypes = uci.GetFields() |> Array.map (fun pi -> pi.PropertyType)
+                    if itemTypes.Length > 1
+                    then
+                        let values = readElements(firstProperty.Value.CreateReader(), itemTypes, serializer)
+                        FSharpValue.MakeUnion(uci, List.toArray values, bindingFlags)
+                    else
+                        let value = serializer.Deserialize(firstProperty.Value.CreateReader(), itemTypes.[0])
+                        FSharpValue.MakeUnion(uci, [|value|], bindingFlags)
+                else if content.ContainsKey "__typename" && unionOfRecords t then
+                    let property = content.Property("__typename")
+                    let caseName = property.Value.ToObject<string>()
+                    let uci = getUci t caseName
+                    let value = serializer.Deserialize(content.CreateReader(), uci.GetFields().[0].PropertyType)
+                    FSharpValue.MakeUnion(uci, [| value |], bindingFlags)
                 else
-                    let value = serializer.Deserialize(reader, itemTypes.[0])
-                    advance reader
-                    FSharpValue.MakeUnion(uci, [|value|], bindingFlags)
+                    failwith "Unsupported"
             | JsonToken.Null -> null // for { "union": null }
             | JsonToken.StartArray ->
                 let unionArray = serializer.Deserialize<JToken>(reader) :?> JArray
