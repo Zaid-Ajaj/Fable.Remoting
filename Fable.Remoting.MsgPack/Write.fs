@@ -1,51 +1,24 @@
 ﻿module Fable.Remoting.MsgPack.Write
 
-open System.Collections.Concurrent
 open System.IO
 open System
 open System.Collections.Generic
 open System.Text
 open FSharp.Reflection
-open System.Numerics
 open FSharp.NativeInterop
 open System.Reflection
 open System.Linq.Expressions
+open TypeShape.Core
+open TypeShape.Core.Utils
+open System.Collections.Concurrent
 
 #if !FABLE_COMPILER
 #nowarn "9"
+#nowarn "51"
 
-let packerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
-let unionCaseFieldReaderCache = ConcurrentDictionary<Type, obj -> obj[]> ()
+let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 
-let createPropGetterFunc (prop: PropertyInfo) =
-    let instance = Expression.Parameter (typeof<obj>, "instance")
-    
-    let expr =
-        Expression.Lambda<Func<obj, obj>> (
-            Expression.Convert (
-                Expression.Property (
-                    Expression.Convert (instance, prop.DeclaringType),
-                    prop),
-                typeof<obj>),
-            instance)
-
-    expr.Compile ()
-
-let createUnionTagReaderFunc (unionType: Type) =
-    // option does not have the Tag property
-    if unionType.IsGenericType && unionType.GetGenericTypeDefinition () = typedefof<_ option> then
-        Func<_, _> (fun (unionInstance: obj) -> if isNull unionInstance then 0 else 1)
-    else
-        let prop = unionType.GetProperty ("Tag", BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
-        let instance = Expression.Parameter (typeof<obj>, "instance")
-
-        let expr =
-            Expression.Lambda<Func<obj, int>> (
-                Expression.Property (Expression.Convert (instance, unionType), prop),
-                instance)
-        expr.Compile ()
-
-let inline write32bitNumber b1 b2 b3 b4 (out: Stream) writeFormat =
+let inline write32bitNumberBytes b1 b2 b3 b4 (out: Stream) writeFormat =
     if b2 > 0uy || b1 > 0uy then
         if writeFormat then out.WriteByte Format.Uint32
         out.WriteByte b1
@@ -60,24 +33,50 @@ let inline write32bitNumber b1 b2 b3 b4 (out: Stream) writeFormat =
         if writeFormat then out.WriteByte Format.Uint8
         out.WriteByte b4
 
-let write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (out: Stream) =
+let inline write64bitNumberBytes b1 b2 b3 b4 b5 b6 b7 b8 (out: Stream) =
     if b4 > 0uy || b3 > 0uy || b2 > 0uy || b1 > 0uy then
         out.WriteByte Format.Uint64
         out.WriteByte b1
         out.WriteByte b2
         out.WriteByte b3
         out.WriteByte b4
-        write32bitNumber b5 b6 b7 b8 out false
+        write32bitNumberBytes b5 b6 b7 b8 out false
     else
-        write32bitNumber b5 b6 b7 b8 out true
+        write32bitNumberBytes b5 b6 b7 b8 out true
 
-let inline writeUnsigned32bitNumber (n: UInt32) (out: Stream) =
-    write32bitNumber (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
+let inline write32bitNumber n (out: Stream) =
+    write32bitNumberBytes (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
 
-let inline writeUnsigned64bitNumber (n: UInt64) (out: Stream) =
-    write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
+let inline write64bitNumber n (out: Stream) =
+    write64bitNumberBytes (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
 
-let arrayHeader length (out: Stream) =
+let inline write32bitNumberFull n (out: Stream) =
+    out.WriteByte (n >>> 24 |> byte)
+    out.WriteByte (n >>> 16 |> byte)
+    out.WriteByte (n >>> 8 |> byte)
+    out.WriteByte (byte n)
+
+let inline write64bitNumberFull n (out: Stream) =
+    out.WriteByte (n >>> 56 |> byte)
+    out.WriteByte (n >>> 48 |> byte)
+    out.WriteByte (n >>> 40 |> byte)
+    out.WriteByte (n >>> 32 |> byte)
+    out.WriteByte (n >>> 24 |> byte)
+    out.WriteByte (n >>> 16 |> byte)
+    out.WriteByte (n >>> 8 |> byte)
+    out.WriteByte (byte n)
+
+let inline writeNil (out: Stream) = out.WriteByte Format.Nil
+
+let inline writeBool b (out: Stream) = out.WriteByte (if b then Format.True else Format.False)
+
+let inline writeByte b (out: Stream) =
+    out.WriteByte b
+
+let inline writeSByte (b: sbyte) (out: Stream) =
+    writeByte (byte b) out
+
+let inline writeArrayHeader length (out: Stream) =
     if length < 16 then
         out.WriteByte (Format.fixarr length)
     elif length < 65536 then
@@ -86,74 +85,73 @@ let arrayHeader length (out: Stream) =
         out.WriteByte (byte length)
     else
         out.WriteByte Format.Array32
-        writeUnsigned32bitNumber (uint32 length) out false
+        write32bitNumber length out false
 
-type DictionarySerializer<'k,'v> () =
-    static member Serialize (dict: obj, out: obj, write: obj) =
-        let dict = dict :?> IDictionary<'k,'v>
-        let out = out :?> Stream
-        let write = write :?> (obj -> Stream -> unit)
+let inline writeArray (array: 'a[]) (out: Stream) (elementSerializer: Action<'a, Stream>) =
+    if isNull array then writeNil out else
 
-        let length = dict.Count
+    writeArrayHeader array.Length out
+    for x in array do
+        elementSerializer.Invoke (x, out)
 
-        if length < 16 then
-            out.WriteByte (Format.fixmap length)
-        elif length < 65536 then
-            out.WriteByte Format.Map16
-            out.WriteByte (length >>> 8 |> byte)
-            out.WriteByte (byte length)
-        else
-            out.WriteByte Format.Map32
-            writeUnsigned32bitNumber (uint32 length) out false
+let inline writeList (list: 'a list) (out: Stream) (elementSerializer: Action<'a, Stream>) =
+    writeArrayHeader list.Length out
+    for x in list do
+        elementSerializer.Invoke (x, out)
 
-        for kvp in dict do
-            write kvp.Key out
-            write kvp.Value out
+let inline writeMapHeader length (out: Stream) =
+    if length < 16 then
+        out.WriteByte (Format.fixmap length)
+    elif length < 65536 then
+        out.WriteByte Format.Map16
+        out.WriteByte (length >>> 8 |> byte)
+        out.WriteByte (byte length)
+    else
+        out.WriteByte Format.Map32
+        write32bitNumber length out false
 
-type ListSerializer<'a> () =
-    static member Serialize (list: obj, out: obj, write: obj) =
-        let list = list :?> 'a list
-        let out = out :?> Stream
-        let write = write :?> (obj -> Stream -> unit)
+let inline writeDict (dict: Dictionary<'key, 'value>) (out: Stream) (keyWriter: Action<'key, Stream>) (valueWriter: Action<'value, Stream>) =
+    writeMapHeader dict.Count out
+    for kvp in dict do
+        keyWriter.Invoke (kvp.Key, out)
+        valueWriter.Invoke (kvp.Value, out)
 
-        let length = list.Length
-        arrayHeader length out        
+// we could use just one function accepting IDictionary for both Map and Dictionary, but Map.iter is significantly faster than a foreach and doesn't allocate
+let inline writeMap (map: Map<'key, 'value>) (out: Stream) (keyWriter: Action<'key, Stream>) (valueWriter: Action<'value, Stream>) =
+    writeMapHeader map.Count out
+    map |> Map.iter (fun k v ->
+        keyWriter.Invoke (k, out)
+        valueWriter.Invoke (v, out))
 
-        for x in list do
-            write x out
-
-        length
-
-let inline nil (out: Stream) = out.WriteByte Format.Nil
-let inline bool x (out: Stream) = out.WriteByte (if x then Format.True else Format.False)
-
-let inline writeSignedNumber bytes (out: Stream) =
-    if BitConverter.IsLittleEndian then
-        Array.Reverse bytes
-
-    out.Write (bytes, 0, bytes.Length)
-
-let inline uint (n: UInt64) (out: Stream) =
+let inline writeUInt64 (n: UInt64) (out: Stream) =
     if n < 128UL then
         out.WriteByte (Format.fixposnum n)
     else
-        writeUnsigned64bitNumber n out
+        write64bitNumber n out
 
-let inline int (n: int64) (out: Stream) =
+let inline writeInt64 (n: int64) (out: Stream) =
     if n >= 0L then
-        uint (uint64 n) out 
+        writeUInt64 (uint64 n) out 
+    elif n > -32L then
+        out.WriteByte (Format.fixnegnum n)
     else
-        if n > -32L then
-            out.WriteByte (Format.fixnegnum n)
-        else
-            //todo length optimization
-            out.WriteByte Format.Int64
-            writeSignedNumber (BitConverter.GetBytes n) out
+        out.WriteByte Format.Int64
+        write64bitNumberFull n out
 
-let inline byte b (out: Stream) =
-    out.WriteByte b
+let inline writeSingle (n: float32) (out: Stream) =
+    let mutable n = n
+    out.WriteByte Format.Float32
+    write32bitNumberFull (NativePtr.toNativeInt &&n |> NativePtr.ofNativeInt |> NativePtr.read<uint32>) out
+    
+let inline writeDouble (n: float) (out: Stream) =
+    let mutable n = n
+    out.WriteByte Format.Float64
+    write64bitNumberFull (NativePtr.toNativeInt &&n |> NativePtr.ofNativeInt |> NativePtr.read<uint64>) out
 
-let strHeader length (out: Stream) =
+let inline writeDecimal (n: decimal) out =
+    writeDouble (float n) out
+
+let inline writeStringHeader length (out: Stream) =
     if length < 32 then
         out.WriteByte (Format.fixstr length)
     else
@@ -164,10 +162,10 @@ let strHeader length (out: Stream) =
         else
             out.WriteByte Format.Str32
 
-        writeUnsigned32bitNumber (uint32 length) out false
+        write32bitNumber length out false
 
-let str (str: string) (out: Stream) =
-    if isNull str then nil out else
+let writeString (str: string) (out: Stream) =
+    if isNull str then writeNil out else
 #if NET_CORE
     let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
     
@@ -176,7 +174,7 @@ let str (str: string) (out: Stream) =
         let buffer = Span (NativePtr.stackalloc<byte> maxLength |> NativePtr.toVoidPtr, maxLength)
         let bytesWritten = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
 
-        strHeader bytesWritten out
+        writeStringHeader bytesWritten out
         out.Write (Span.op_Implicit (buffer.Slice (0, bytesWritten)))
     else
         let buffer = System.Buffers.ArrayPool.Shared.Rent maxLength
@@ -184,26 +182,18 @@ let str (str: string) (out: Stream) =
         try
             let bytesWritten = Encoding.UTF8.GetBytes (str, 0, str.Length, buffer, 0)
 
-            strHeader bytesWritten out
+            writeStringHeader bytesWritten out
             out.Write (buffer, 0, bytesWritten)
         finally
             System.Buffers.ArrayPool.Shared.Return buffer
 #else
     let str = Encoding.UTF8.GetBytes str
-    strHeader str.Length out
+    writeStringHeader str.Length out
     out.Write (str, 0, str.Length)
 #endif
 
-let inline float32 (n: float32) (out: Stream) =
-    out.WriteByte Format.Float32
-    writeSignedNumber (BitConverter.GetBytes n) out
-    
-let inline float64 (n: float) (out: Stream) =
-    out.WriteByte Format.Float64
-    writeSignedNumber (BitConverter.GetBytes n) out
-
-let bin (data: byte[]) (out: Stream) =
-    if isNull data then nil out else
+let writeBin (data: byte[]) (out: Stream) =
+    if isNull data then writeNil out else
 
     if data.Length < 256 then
         out.WriteByte Format.Bin8
@@ -212,194 +202,213 @@ let bin (data: byte[]) (out: Stream) =
     else
         out.WriteByte Format.Bin32
 
-    writeUnsigned32bitNumber (uint32 data.Length) out false
+    write32bitNumber data.Length out false
     out.Write (data, 0, data.Length)
 
-let inline dateTimeOffset (out: Stream) (dto: DateTimeOffset) =
+let inline writeDateTime (dt: DateTime) out =
+    writeInt64 dt.Ticks out
+
+let inline writeDateTimeOffset (dto: DateTimeOffset) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
-    int dto.Ticks out
-    int (int64 dto.Offset.TotalMinutes) out
+    writeInt64 dto.Ticks out
+    writeInt64 (int64 dto.Offset.TotalMinutes) out
 
-let inline array write (arr: Array) (out: Stream) =
-    if isNull arr then nil out else
-    
-    arrayHeader arr.Length out
+let inline writeTimeSpan (ts: TimeSpan) out =
+    writeInt64 ts.Ticks out
 
-    for x in arr do
-        write x out
+let inline writeGuid (g: Guid) out =
+    writeBin (g.ToByteArray ()) out
 
-let inline record (writersAndPropGetters: ((obj -> Stream -> unit) * Func<obj, obj>)[]) (recordInstance: obj) (out: Stream) =
-    arrayHeader writersAndPropGetters.Length out
+let inline writeBigInteger (i: bigint) out =
+    writeBin (i.ToByteArray ()) out
 
-    for write, p in writersAndPropGetters do
-        let y = p.Invoke recordInstance
-        write y out
+// todo necessary to take the underlying type into account?
+let inline writeEnum (enum: 'enum when 'enum: enum<'underlying>) out =
+    writeInt64 (Convert.ChangeType (enum, typeof<int64>) :?> int64) out
 
-let union tag (writersAndPropGetters: ((obj -> Stream -> unit) * Func<obj, obj>)[]) (unionInstance: obj) (out: Stream) =
+let inline writeRecord record out (fieldSerializers: Action<'a, Stream>[]) =
+    writeArrayHeader fieldSerializers.Length out
+    for f in fieldSerializers do
+        f.Invoke (record, out)
+
+let inline writeUnion union (out: Stream) (caseSerializers: Action<'a, Stream>[][]) tagReader =
+    let tag = tagReader union
+    let fieldSerializers = caseSerializers.[tag]
+
     out.WriteByte (Format.fixarr 2uy)
     out.WriteByte (Format.fixposnum tag)
 
     // save 1 byte if the union case has a single parameter
-    if writersAndPropGetters.Length <> 1 then
-        arrayHeader writersAndPropGetters.Length out
+    if fieldSerializers.Length <> 1 then
+        // todo one byte less for no args too (change fixarr above)
+        writeArrayHeader fieldSerializers.Length out
         
-        for write, p in writersAndPropGetters do
-            let y = p.Invoke unionInstance
-            write y out
+        for serializer in fieldSerializers do
+            serializer.Invoke (union, out)
     else
-        let write, p = writersAndPropGetters.[0]
-        write (p.Invoke unionInstance) out
+        let serializer = fieldSerializers.[0]
+        serializer.Invoke (union, out)
 
-let rec inline tuple (out: Stream) (elements: obj[]) =
-    arrayHeader elements.Length out
-   
-    for x in elements do
-        object x out
+let inline writeStringEnum union out (caseNames: string[]) tagReader =
+    writeString caseNames.[tagReader union] out
 
-and object (x: obj) (out: Stream) =
-    if isNull x then nil out else
+let inline writeTuple tuple (out: Stream) (elementSerializers: Action<'a, Stream>[]) =
+    writeArrayHeader elementSerializers.Length out
+    for s in elementSerializers do
+        s.Invoke (tuple, out)
 
-    let t = x.GetType ()
+let rec makeSerializer<'T> (): Action<'T, Stream> =
+    let ctx = new TypeGenerationContext ()
+    serializerCached<'T> ctx
 
-    match packerCache.TryGetValue t with
-    | true, writer ->
-        writer x out
-    | _ ->
-        if FSharpType.IsRecord (t, true) then
-            let props = t.GetProperties (BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance)
-            let propGetters = props |> Array.map createPropGetterFunc
+and private serializerCached<'T> (ctx: TypeGenerationContext): Action<'T, Stream> =
+    let delay (c: Cell<Action<'T, Stream>>): Action<'T, Stream> =
+        Action<'T, Stream>(fun x out -> c.Value.Invoke (x, out))
 
-            // run the serialization, populating packerCache with the element type of the array
-            record (propGetters |> Array.map (fun g -> object, g)) x out
+    match ctx.InitOrGetCachedValue<Action<'T, Stream>> delay with
+    | Cached (value, _) -> value
+    | NotCached x ->
+        let serializer = makeSerializerAux<'T> ctx
+        ctx.Commit x serializer
 
-            // and from now on skip type lookup of individual field types
-            let propGetters =
-                Array.zip props propGetters
-                |> Array.map (fun (p, g) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), g)
+and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Stream> =
+    let w (p: Action<'a, Stream>) = unbox<Action<'T, Stream>> p
 
-            packerCache.[t] <- record propGetters
-        elif t.IsArray then
-            let x = x :?> Array
+    let makeMemberVisitor (m: IShapeReadOnlyMember<'T>) =
+        m.Accept {
+            new IReadOnlyMemberVisitor<'T, Action<'T, Stream>> with
+                member _.Visit (field: ReadOnlyMember<'T, 'a>) =
+                    let s = serializerCached<'a> ctx
+                    Action<_, _> (fun (x: 'T) out -> s.Invoke (field.Get x, out)) |> w
+        }
 
-            // run the serialization, populating packerCache with the element type of the array
-            array object x out
-
-            if x.Length > 0 then
-                // and from now on skip type lookup of individual elements
-                let elementType = t.GetElementType ()
-                match packerCache.TryGetValue elementType with
-                | true, writer ->
-                    packerCache.[t] <- fun x -> array writer (x :?> Array)
-                | _ ->
-                    packerCache.[t] <- fun x -> array object (x :?> Array)
-
-        elif t.CustomAttributes |> Seq.exists (fun x -> x.AttributeType.Name = "StringEnumAttribute") then
-            packerCache.GetOrAdd (t, fun x (out: Stream) ->
-                //todo cacheable
-                let case, _ = FSharpValue.GetUnionFields (x, t, true)
-                //todo when overriden with CompiledName
-                str (sprintf "%c%s" (Char.ToLowerInvariant case.Name.[0]) (case.Name.Substring 1)) out) x out
-        elif FSharpType.IsUnion (t, true) then
-            if t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
-                let listType = t.GetGenericArguments () |> Array.head
-                let listSerializer = typedefof<ListSerializer<_>>.MakeGenericType listType
-                let d = Delegate.CreateDelegate (typeof<Func<obj, obj, obj, int>>, listSerializer.GetMethod "Serialize") :?> Func<obj, obj, obj, int>
-                
-                // run the serialization, populating packerCache with listType
-                let listLength = d.Invoke (x, out, object)
-
-                if listLength > 0 then
-                    // and from now on skip type lookup of individual elements
-                    match packerCache.TryGetValue listType with
-                    | true, writer ->
-                        packerCache.[t] <- fun x out -> d.Invoke (x, out, writer) |> ignore
-                    | _ ->
-                        packerCache.[t] <- fun x out -> d.Invoke (x, out, object) |> ignore
-            // when t is the actual union type
-            elif isNull t.DeclaringType || (FSharpType.IsUnion t.DeclaringType |> not) then
-                let tagReader = createUnionTagReaderFunc t
-                let fieldReaders =
-                    FSharpType.GetUnionCases (t, true)
-                    |> Array.map (fun c ->
-                        let casePropGetters = c.GetFields () |> Array.map (fun p -> object, createPropGetterFunc p)
-                        c, casePropGetters)
-
-                // run the serialization, populating packerCache with listType
-                (
-                    let tag = tagReader.Invoke x
-                    let fieldReaders = fieldReaders |> Array.find (fun (c, _) -> tag = c.Tag) |> snd
-                    union tag fieldReaders x out
-                )
-
-                // and from now on skip type lookup of individual elements
-                let fieldReaders =
-                    fieldReaders
-                    |> Array.map (fun (case, r) ->
-                        let fields = case.GetFields ()
-                        case.Tag, Array.zip fields r |> Array.map (fun (p, r) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), snd r))
-
-                packerCache.[t] <- fun x out ->
-                    let tag = tagReader.Invoke x
-                    let fieldReaders = fieldReaders |> Array.find (fun (tag', _) -> tag = tag') |> snd
-                    union tag fieldReaders x out
-            // when t is just a specific case type
-            else
-                let case, _ = FSharpValue.GetUnionFields (x, t, true)
-                let fieldProps = case.GetFields ()
-                let fieldReaders = fieldProps |> Array.map (fun p -> object, createPropGetterFunc p)
-
-                let union = union case.Tag
-
-                // run the serialization, populating packerCache with the element type of the array
-                union fieldReaders x out
-
-                // and from now on skip type lookup of individual field types
-                let fieldReaders = Array.zip fieldProps fieldReaders |> Array.map (fun (p, r) -> (match packerCache.TryGetValue p.PropertyType with true, writer -> writer | _ -> object), snd r)
-                packerCache.[t] <- union fieldReaders
-        elif FSharpType.IsTuple t then
-            let tupleReader = FSharpValue.PreComputeTupleReader t
-            packerCache.GetOrAdd (t, fun x out -> tupleReader x |> tuple out) x out
-        elif t.IsGenericType && List.contains (t.GetGenericTypeDefinition ()) [ typedefof<Dictionary<_, _>>; typedefof<Map<_, _>> ] then
-            let mapTypes = t.GetGenericArguments ()
-            let mapSerializer = typedefof<DictionarySerializer<_,_>>.MakeGenericType mapTypes
-            let d = Delegate.CreateDelegate (typeof<Action<obj, obj, obj>>, mapSerializer.GetMethod "Serialize") :?> Action<obj, obj, obj>
-            
-            packerCache.GetOrAdd (t, fun x out -> d.Invoke (x, out, object)) x out
-        elif t.IsEnum then
-            packerCache.GetOrAdd (t, fun x -> int (Convert.ChangeType (x, typeof<int64>) :?> int64)) x out
+    match shapeof<'T> with
+    | Shape.Unit -> Action<_, _> (fun () -> writeNil) |> w
+    | Shape.Bool -> Action<_, _> writeBool |> w
+    | Shape.Byte -> Action<_, _> writeByte |> w
+    | Shape.SByte -> Action<_, _> writeSByte |> w
+    | Shape.String -> Action<_, _> writeString |> w
+    | Shape.Int16 -> Action<_, _> (fun (i: int16) out -> writeInt64 (int64 i) out) |> w
+    | Shape.Int32 -> Action<_, _> (fun (i: int32) out -> writeInt64 (int64 i) out) |> w
+    | Shape.Int64 -> Action<_, _> writeInt64 |> w
+    | Shape.UInt16 -> Action<_, _> (fun (i: uint16) out -> writeUInt64 (uint64 i) out) |> w
+    | Shape.UInt32 -> Action<_, _> (fun (i: uint32) out -> writeUInt64 (uint64 i) out) |> w
+    | Shape.UInt64 -> Action<_, _> writeUInt64 |> w
+    | Shape.Single -> Action<_, _> writeSingle |> w
+    | Shape.Double -> Action<_, _> writeDouble |> w
+    | Shape.Decimal -> Action<_, _> writeDecimal |> w
+    | Shape.BigInt -> Action<_, _> writeBigInteger |> w
+    | Shape.DateTime -> Action<_, _> writeDateTime |> w
+    | Shape.DateTimeOffset -> Action<_, _> writeDateTimeOffset |> w
+    | Shape.TimeSpan -> Action<_, _> writeTimeSpan |> w
+    | Shape.Guid -> Action<_, _> writeGuid |> w
+    | Shape.Array s when s.Rank = 1 ->
+        s.Element.Accept {
+            new ITypeVisitor<Action<'T, Stream>> with
+                member _.Visit<'a> () =
+                    if typeof<'a> = typeof<byte> then
+                        Action<_, _> writeBin |> w
+                    else
+                        let s = serializerCached<'a> ctx
+                        Action<_, _> (fun x out -> writeArray x out s) |> w
+        }
+    | Shape.FSharpMap m ->
+        m.Accept {
+            new IFSharpMapVisitor<Action<'T, Stream>> with
+                member _.Visit<'key, 'value when 'key: comparison> () =
+                    let keyWriter = serializerCached<'key> ctx
+                    let valueWriter = serializerCached<'value> ctx
+                    Action<_, _> (fun x out -> writeMap x out keyWriter valueWriter) |> w
+        }
+    | Shape.Dictionary d ->
+        d.Accept {
+            new IDictionaryVisitor<Action<'T, Stream>> with
+                member _.Visit<'key, 'value when 'key: equality> () =
+                    let keyWriter = serializerCached<'key> ctx
+                    let valueWriter = serializerCached<'value> ctx
+                    Action<_, _> (fun x out -> writeDict x out keyWriter valueWriter) |> w
+        }
+    | Shape.FSharpList s ->
+        s.Element.Accept {
+            new ITypeVisitor<Action<'T, Stream>> with
+                member _.Visit<'a> () =
+                    let s = serializerCached<'a> ctx
+                    Action<_, _> (fun x out -> writeList x out s) |> w
+        }
+    | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
+        let fieldSerializers = shape.Fields |> Array.map makeMemberVisitor
+        Action<_, _> (fun (record: 'T) out -> writeRecord record out fieldSerializers) |> w
+    | Shape.FSharpUnion (:? ShapeFSharpUnion<'T> as shape) ->
+        if typeof<'T>.CustomAttributes |> Seq.exists (fun a -> a.AttributeType.Name = "StringEnumAttribute") then
+            let caseNames = shape.UnionCases |> Array.map (fun c -> sprintf "%c%s" (Char.ToLowerInvariant c.CaseInfo.Name.[0]) (c.CaseInfo.Name.Substring 1))
+            Action<_, _> (fun (union: 'T) out -> writeStringEnum union out caseNames shape.GetTag) |> w
         else
-            failwithf "Cannot pack %s" t.Name
+            let caseSerializers = shape.UnionCases |> Array.map (fun c -> Array.map makeMemberVisitor c.Fields)
+            Action<_, _> (fun (union: 'T) out -> writeUnion union out caseSerializers shape.GetTag) |> w
+    | Shape.Enum e ->
+        e.Accept {
+            new IEnumVisitor<Action<'T, Stream>> with
+                member _.Visit<'enum, 'underlying when 'enum: enum<'underlying> and 'enum: struct and 'enum :> ValueType and 'enum : (new : unit -> 'enum)> () =
+                    Action<_, _> (fun (e: 'enum) out -> writeEnum e out) |> w
+        }
+    | Shape.Tuple (:? ShapeTuple<'T> as shape) ->
+        let elementSerializers = shape.Elements |> Array.map makeMemberVisitor
+        Action<_, _> (fun (tuple: 'T) out -> writeTuple tuple out elementSerializers) |> w
+    | _ ->
+        failwithf "Cannot serialize %s." typeof<'T>.Name
 
-packerCache.TryAdd (typeof<byte>, fun x out -> byte (x :?> byte) out) |> ignore
-packerCache.TryAdd (typeof<sbyte>, fun x out -> int (x :?> sbyte |> int64) out) |> ignore
-packerCache.TryAdd (typeof<unit>, fun _ out -> nil out) |> ignore
-packerCache.TryAdd (typeof<bool>, fun x out -> bool (x :?> bool) out) |> ignore
-packerCache.TryAdd (typeof<string>, fun x out -> str (x :?> string) out) |> ignore
-packerCache.TryAdd (typeof<int>, fun x out -> int (x :?> int |> int64) out) |> ignore
-packerCache.TryAdd (typeof<int16>, fun x out -> int (x :?> int16 |> int64) out) |> ignore
-packerCache.TryAdd (typeof<int64>, fun x out -> int (x :?> int64) out) |> ignore
-packerCache.TryAdd (typeof<UInt32>, fun x out -> uint (x :?> UInt32 |> uint64) out) |> ignore
-packerCache.TryAdd (typeof<UInt16>, fun x out -> uint (x :?> UInt16 |> uint64) out) |> ignore
-packerCache.TryAdd (typeof<UInt64>, fun x out -> uint (x :?> UInt64) out) |> ignore
-packerCache.TryAdd (typeof<float32>, fun x out -> float32 (x :?> float32) out) |> ignore
-packerCache.TryAdd (typeof<float>, fun x out -> float64 (x :?> float) out) |> ignore
-packerCache.TryAdd (typeof<decimal>, fun x out -> float64 (x :?> decimal |> float) out) |> ignore
-packerCache.TryAdd (typeof<byte[]>, fun x out -> bin (x :?> byte[]) out) |> ignore
-packerCache.TryAdd (typeof<BigInteger>, fun x out -> bin ((x :?> BigInteger).ToByteArray ()) out) |> ignore
-packerCache.TryAdd (typeof<Guid>, fun x out -> bin ((x :?> Guid).ToByteArray ()) out) |> ignore
-packerCache.TryAdd (typeof<DateTime>, fun x out -> int (x :?> DateTime).Ticks out) |> ignore
-packerCache.TryAdd (typeof<DateTimeOffset>, fun x out -> dateTimeOffset out (x :?> DateTimeOffset)) |> ignore
-packerCache.TryAdd (typeof<TimeSpan>, fun x out -> int (x :?> TimeSpan).Ticks out) |> ignore
+// TypeShape requires generic types at compile time, but DynamicRecord only works with object values so it's impossible to pass the generic type to makeSerializer
+// Therefore serialization delegates are constructed on demand by compilation at runtime
+let makeSerializerObj (t: Type) =
+    let makeSerializerMi = this.GetMethod("makeSerializer", Reflection.BindingFlags.Public ||| Reflection.BindingFlags.Static).MakeGenericMethod t
+    let specializedActionType = typedefof<Action<_, _>>.MakeGenericType [| t; typeof<Stream> |]
+
+    let instance = Expression.Parameter (typeof<obj>, "instance")
+    let stream = Expression.Parameter (typeof<Stream>, "stream")
+    let serializer = Expression.Variable specializedActionType
+    
+    let expr =
+        Expression.Lambda<Func<Action<obj, Stream>>> (
+            Expression.Block (
+                [ serializer ],
+                // create the serializer here
+                Expression.Assign (serializer, Expression.Call (makeSerializerMi, [])),
+                // return a delegate for serialization with the specialized serializer embedded and cast obj to the right type
+                Expression.Lambda<Action<obj, Stream>> (
+                    Expression.Invoke (serializer, Expression.Convert (instance, t), stream),
+                    [ instance; stream ]
+                )
+            ),
+            []
+        )
+
+    expr.Compile().Invoke ()
+
+let private serializerCache = ConcurrentDictionary<Type, Action<obj, Stream>> ()
+
+let serializeObj (x: obj) (out: Stream) =
+    if isNull x then
+        writeNil out
+    else
+        let t = x.GetType ()
+
+        match serializerCache.TryGetValue t with
+        | true, serializer ->
+            serializer.Invoke (x, out)
+        | _ ->
+            let serializer = makeSerializerObj t
+            serializerCache.[t] <- serializer
+            serializer.Invoke (x, out)
 
 #else
 
-let packerCache = Dictionary<Type, obj -> ResizeArray<byte> -> unit> ()
+let serializerCache = Dictionary<Type, obj -> ResizeArray<byte> -> unit> ()
 
 let cacheGetOrAdd (typ, f) =
-    match packerCache.TryGetValue typ with
+    match serializerCache.TryGetValue typ with
     | true, f -> f
     | _ ->
-        packerCache.Add (typ, f)
+        serializerCache.Add (typ, f)
         f
 
 let inline write32bitNumber b1 b2 b3 b4 (out: ResizeArray<byte>) writeFormat =
@@ -434,8 +443,8 @@ let inline writeUnsigned32bitNumber (n: UInt32) (out: ResizeArray<byte>) =
 let inline writeUnsigned64bitNumber (n: UInt64) (out: ResizeArray<byte>) =
     write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
  
-let inline nil (out: ResizeArray<byte>) = out.Add Format.Nil
-let inline bool x (out: ResizeArray<byte>) = out.Add (if x then Format.True else Format.False)
+let inline writeNil (out: ResizeArray<byte>) = out.Add Format.Nil
+let inline writeBool x (out: ResizeArray<byte>) = out.Add (if x then Format.True else Format.False)
 
 let writeSignedNumber bytes (out: ResizeArray<byte>) =
     if BitConverter.IsLittleEndian then
@@ -443,15 +452,15 @@ let writeSignedNumber bytes (out: ResizeArray<byte>) =
     else
         out.AddRange bytes
 
-let uint (n: UInt64) (out: ResizeArray<byte>) =
+let writeUInt64 (n: UInt64) (out: ResizeArray<byte>) =
     if n < 128UL then
         out.Add (Format.fixposnum n)
     else
         writeUnsigned64bitNumber n out
 
-let int (n: int64) (out: ResizeArray<byte>) =
+let writeInt64 (n: int64) (out: ResizeArray<byte>) =
     if n >= 0L then
-        uint (uint64 n) out 
+        writeUInt64 (uint64 n) out 
     else
         if n > -32L then
             out.Add (Format.fixnegnum n)
@@ -460,10 +469,10 @@ let int (n: int64) (out: ResizeArray<byte>) =
             out.Add Format.Int64
             writeSignedNumber (BitConverter.GetBytes n) out
 
-let inline byte b (out: ResizeArray<byte>) =
+let inline writeByte b (out: ResizeArray<byte>) =
     out.Add b
 
-let inline str (str: string) (out: ResizeArray<byte>) =
+let inline writeString (str: string) (out: ResizeArray<byte>) =
     let str = Encoding.UTF8.GetBytes str
 
     if str.Length < 32 then
@@ -480,15 +489,15 @@ let inline str (str: string) (out: ResizeArray<byte>) =
 
     out.AddRange str
 
-let float32 (n: float32) (out: ResizeArray<byte>) =
+let writeSingle (n: float32) (out: ResizeArray<byte>) =
     out.Add Format.Float32
     writeSignedNumber (BitConverter.GetBytes n) out
     
-let float64 (n: float) (out: ResizeArray<byte>) =
+let writeDouble (n: float) (out: ResizeArray<byte>) =
     out.Add Format.Float64
     writeSignedNumber (BitConverter.GetBytes n) out
 
-let bin (data: byte[]) (out: ResizeArray<byte>) =
+let writeBin (data: byte[]) (out: ResizeArray<byte>) =
     if data.Length < 256 then
         out.Add Format.Bin8
     elif data.Length < 65536 then
@@ -500,12 +509,12 @@ let bin (data: byte[]) (out: ResizeArray<byte>) =
 
     out.AddRange data
 
-let inline dateTimeOffset (out: ResizeArray<byte>) (dto: DateTimeOffset) =
+let inline writeDateTimeOffset (out: ResizeArray<byte>) (dto: DateTimeOffset) =
     out.Add (Format.fixarr 2uy)
-    int dto.Ticks out
-    int (int64 dto.Offset.TotalMinutes) out
+    writeInt64 dto.Ticks out
+    writeInt64 (int64 dto.Offset.TotalMinutes) out
 
-let arrayHeader len (out: ResizeArray<byte>) =
+let writeArrayHeader len (out: ResizeArray<byte>) =
     if len < 16 then
         out.Add (Format.fixarr len)
     elif len < 65536 then
@@ -516,13 +525,13 @@ let arrayHeader len (out: ResizeArray<byte>) =
         out.Add Format.Array32
         writeUnsigned32bitNumber (uint32 len) out false
 
-let rec array (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
-    arrayHeader arr.Count out
+let rec writeArray (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
+    writeArrayHeader arr.Count out
 
     for x in arr do
-        object x t out
+        writeObject x t out
 
-and map (out: ResizeArray<byte>) keyType valueType (dict: IDictionary<obj, obj>) =
+and writeMap (out: ResizeArray<byte>) keyType valueType (dict: IDictionary<obj, obj>) =
     let length = dict.Count
 
     if length < 16 then
@@ -536,98 +545,98 @@ and map (out: ResizeArray<byte>) keyType valueType (dict: IDictionary<obj, obj>)
         writeUnsigned32bitNumber (uint32 length) out false
 
     for kvp in dict do
-        object kvp.Key keyType out
-        object kvp.Value valueType out
+        writeObject kvp.Key keyType out
+        writeObject kvp.Value valueType out
 
-and inline record (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
-    arrayHeader vals.Length out
+and inline writeRecord (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
+    writeArrayHeader vals.Length out
 
     for i in 0 .. vals.Length - 1 do
-        object vals.[i] types.[i] out
+        writeObject vals.[i] types.[i] out
 
-and inline tuple (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
-    record out types vals
+and inline writeTuple (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
+    writeRecord out types vals
 
-and union (out: ResizeArray<byte>) tag (types: Type[]) (vals: obj[]) =
+and writeUnion (out: ResizeArray<byte>) tag (types: Type[]) (vals: obj[]) =
     out.Add (Format.fixarr 2uy)
     out.Add (Format.fixposnum tag)
 
     // save 1 byte if the union case has a single parameter
     if vals.Length <> 1 then
-        arrayHeader vals.Length out
+        writeArrayHeader vals.Length out
 
         for i in 0 .. vals.Length - 1 do
-            object vals.[i] types.[i] out
+            writeObject vals.[i] types.[i] out
     else
-        object vals.[0] types.[0] out
+        writeObject vals.[0] types.[0] out
 
-and object (x: obj) (t: Type) (out: ResizeArray<byte>) =
-    if isNull x then nil out else
+and writeObject (x: obj) (t: Type) (out: ResizeArray<byte>) =
+    if isNull x then writeNil out else
 
-    match packerCache.TryGetValue t with
+    match serializerCache.TryGetValue t with
     | true, writer ->
         writer x out
     | _ ->
         if FSharpType.IsRecord (t, true) then
             let fieldTypes = FSharpType.GetRecordFields (t, true) |> Array.map (fun x -> x.PropertyType)
-            cacheGetOrAdd (t, fun x out -> record out fieldTypes (FSharpValue.GetRecordFields (x, true))) x out
+            cacheGetOrAdd (t, fun x out -> writeRecord out fieldTypes (FSharpValue.GetRecordFields (x, true))) x out
         elif t.IsArray then
             let elementType = t.GetElementType ()
-            cacheGetOrAdd (t, fun x out -> array out elementType (x :?> System.Collections.ICollection)) x out
+            cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
         elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
             let elementType = t.GetGenericArguments () |> Array.head
-            cacheGetOrAdd (t, fun x out -> array out elementType (x :?> System.Collections.ICollection)) x out
+            cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
         elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ option> then
             let elementType = t.GetGenericArguments ()
             cacheGetOrAdd (t, fun x out ->
                 let opt = x :?> _ option
                 let tag, value = if Option.isSome opt then 1, opt.Value else 0, null
-                union out tag elementType [| value |]) x out
+                writeUnion out tag elementType [| value |]) x out
         elif FSharpType.IsUnion (t, true) then
             cacheGetOrAdd (t, fun x out ->
                 let case, fields = FSharpValue.GetUnionFields (x, t, true)
                 let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
-                union out case.Tag fieldTypes fields) x out
+                writeUnion out case.Tag fieldTypes fields) x out
         elif FSharpType.IsTuple t then
             let fieldTypes = FSharpType.GetTupleElements t
-            cacheGetOrAdd (t, fun x out -> tuple out fieldTypes (FSharpValue.GetTupleFields x)) x out
+            cacheGetOrAdd (t, fun x out -> writeTuple out fieldTypes (FSharpValue.GetTupleFields x)) x out
         elif t.IsGenericType && List.contains (t.GetGenericTypeDefinition ()) [ typedefof<Dictionary<_, _>>; typedefof<Map<_, _>> ] then
             let mapTypes = t.GetGenericArguments ()
             let keyType = mapTypes.[0]
             let valueType = mapTypes.[1]
-            cacheGetOrAdd (t, fun x out -> map out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
+            cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
         elif t.IsEnum then
-            cacheGetOrAdd (t, fun x -> int (box x :?> int64)) x out
+            cacheGetOrAdd (t, fun x -> writeInt64 (box x :?> int64)) x out
         elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
-            cacheGetOrAdd (t, fun x out -> int (x :?> int64) out) x out
+            cacheGetOrAdd (t, fun x out -> writeInt64 (x :?> int64) out) x out
         elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
-            cacheGetOrAdd (t, fun x out -> float64 (x :?> decimal |> float) out) x out
+            cacheGetOrAdd (t, fun x out -> writeDouble (x :?> decimal |> float) out) x out
         elif t.FullName = "Microsoft.FSharp.Core.float`1" then
-            cacheGetOrAdd (t, fun x out -> float64 (x :?> float) out) x out
+            cacheGetOrAdd (t, fun x out -> writeDouble (x :?> float) out) x out
         elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
-            cacheGetOrAdd (t, fun x out -> float32 (x :?> float32) out) x out
+            cacheGetOrAdd (t, fun x out -> writeSingle (x :?> float32) out) x out
         else
-            failwithf "Cannot pack %s" t.Name
+            failwithf "Cannot serialize %s." t.Name
 
-packerCache.Add (typeof<byte>, fun x out -> byte (x :?> byte) out)
-packerCache.Add (typeof<sbyte>, fun x out -> int (x :?> sbyte |> int64) out)
-packerCache.Add (typeof<unit>, fun _ out -> nil out)
-packerCache.Add (typeof<bool>, fun x out -> bool (x :?> bool) out)
-packerCache.Add (typeof<string>, fun x out -> str (x :?> string) out)
-packerCache.Add (typeof<int>, fun x out -> int (x :?> int |> int64) out)
-packerCache.Add (typeof<int16>, fun x out -> int (x :?> int16 |> int64) out)
-packerCache.Add (typeof<int64>, fun x out -> int (x :?> int64) out)
-packerCache.Add (typeof<UInt32>, fun x out -> uint (x :?> UInt32 |> uint64) out)
-packerCache.Add (typeof<UInt16>, fun x out -> uint (x :?> UInt16 |> uint64) out)
-packerCache.Add (typeof<UInt64>, fun x out -> uint (x :?> UInt64) out)
-packerCache.Add (typeof<float32>, fun x out -> float32 (x :?> float32) out)
-packerCache.Add (typeof<float>, fun x out -> float64 (x :?> float) out)
-packerCache.Add (typeof<decimal>, fun x out -> float64 (x :?> decimal |> float) out)
-packerCache.Add (typeof<byte[]>, fun x out -> bin (x :?> byte[]) out)
-packerCache.Add (typeof<BigInteger>, fun x out -> bin ((x :?> BigInteger).ToByteArray ()) out)
-packerCache.Add (typeof<Guid>, fun x out -> bin ((x :?> Guid).ToByteArray ()) out)
-packerCache.Add (typeof<DateTime>, fun x out -> int (x :?> DateTime).Ticks out)
-packerCache.Add (typeof<DateTimeOffset>, fun x out -> dateTimeOffset out (x :?> DateTimeOffset))
-packerCache.Add (typeof<TimeSpan>, fun x out -> int (x :?> TimeSpan).Ticks out)
+serializerCache.Add (typeof<byte>, fun x out -> writeByte (x :?> byte) out)
+serializerCache.Add (typeof<sbyte>, fun x out -> writeInt64 (x :?> sbyte |> int64) out)
+serializerCache.Add (typeof<unit>, fun _ out -> writeNil out)
+serializerCache.Add (typeof<bool>, fun x out -> writeBool (x :?> bool) out)
+serializerCache.Add (typeof<string>, fun x out -> writeString (x :?> string) out)
+serializerCache.Add (typeof<int>, fun x out -> writeInt64 (x :?> int |> int64) out)
+serializerCache.Add (typeof<int16>, fun x out -> writeInt64 (x :?> int16 |> int64) out)
+serializerCache.Add (typeof<int64>, fun x out -> writeInt64 (x :?> int64) out)
+serializerCache.Add (typeof<UInt32>, fun x out -> writeUInt64 (x :?> UInt32 |> uint64) out)
+serializerCache.Add (typeof<UInt16>, fun x out -> writeUInt64 (x :?> UInt16 |> uint64) out)
+serializerCache.Add (typeof<UInt64>, fun x out -> writeUInt64 (x :?> UInt64) out)
+serializerCache.Add (typeof<float32>, fun x out -> writeSingle (x :?> float32) out)
+serializerCache.Add (typeof<float>, fun x out -> writeDouble (x :?> float) out)
+serializerCache.Add (typeof<decimal>, fun x out -> writeDouble (x :?> decimal |> float) out)
+serializerCache.Add (typeof<byte[]>, fun x out -> writeBin (x :?> byte[]) out)
+serializerCache.Add (typeof<bigint>, fun x out -> writeBin ((x :?> bigint).ToByteArray ()) out)
+serializerCache.Add (typeof<Guid>, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
+serializerCache.Add (typeof<DateTime>, fun x out -> writeInt64 (x :?> DateTime).Ticks out)
+serializerCache.Add (typeof<DateTimeOffset>, fun x out -> writeDateTimeOffset out (x :?> DateTimeOffset))
+serializerCache.Add (typeof<TimeSpan>, fun x out -> writeInt64 (x :?> TimeSpan).Ticks out)
 
 #endif

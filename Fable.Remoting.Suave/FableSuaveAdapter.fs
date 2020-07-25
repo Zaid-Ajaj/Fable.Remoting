@@ -111,7 +111,7 @@ module SuaveUtil =
       match functionResult with
       | Choice.Choice1Of2 output ->
           use ms = new System.IO.MemoryStream ()
-          Fable.Remoting.MsgPack.Write.object output ms
+          Fable.Remoting.MsgPack.Write.serializeObj output ms
           return! successBytes (ms.ToArray ()) context
       | Choice.Choice2Of2 ex -> 
           let routeInfo = { methodName = func.FunctionName; path = context.request.path; httpContext = context }
