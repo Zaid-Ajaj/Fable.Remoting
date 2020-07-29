@@ -35,12 +35,12 @@ type SomeStringEnum =
 
 type HighScore = { Name: string; Score: int }
 
-type String50 = 
+type String50 =
     private String50 of string
 
-    with 
-        member this.Read() = 
-            match this with 
+    with
+        member this.Read() =
+            match this with
             | String50 content -> content
 
         static member Create(content: string) = String50 content
@@ -87,6 +87,13 @@ type RecursiveRecord = {
     Name: string
     Children : RecursiveRecord list
 }
+
+type SomeOtherDU =
+    | SomeOtherCase
+
+type MyDU =
+    | SomeCase
+    | CustomCase of Set<SomeOtherDU>
 
 let rec createRecursiveRecord childCount levels =
     if levels > 0 then
@@ -217,6 +224,7 @@ type IServer = {
     echoGenericUnionInt : Maybe<int> -> Async<Maybe<int>>
     echoGenericUnionString : Maybe<string> -> Async<Maybe<string>>
     echoSimpleUnionType : UnionType -> Async<UnionType>
+    echoUnionOfOtherUnions : MyDU -> Async<MyDU>
     echoTree : Tree -> Async<Tree>
     // Records, simple and generic
     echoRecord : Record -> Async<Record>

@@ -116,11 +116,11 @@ let serverTests =
                 test.equal true (result = [| byte 1; byte 2; byte 3|])
             }
 
-        testCaseAsync "IServer.privateConstructor" <| 
+        testCaseAsync "IServer.privateConstructor" <|
             async {
                 let input = String50.Create "Hello"
-                let! output = server.privateConstructor input 
-                test.equal "Hello" (output.Read()) 
+                let! output = server.privateConstructor input
+                test.equal "Hello" (output.Read())
             }
 
         testCaseAsync "IServer.echoRemoteWorkEntity" <|
@@ -160,6 +160,12 @@ let serverTests =
                 do test.equal result1 ""
                 do test.equal result2 "this one"
                 do test.equal true (isNull result3)
+            }
+
+        testCaseAsync "IServer.echoUnionOfOtherUnions" <|
+            async {
+                let! result = server.echoUnionOfOtherUnions (MyDU.CustomCase (set [SomeOtherDU.SomeOtherCase]))
+                do test.equal result (MyDU.CustomCase (set [SomeOtherDU.SomeOtherCase]))
             }
 
         testCaseAsync "IServer.echoBool" <|
@@ -584,7 +590,7 @@ let serverTests =
                 let input = largeRecursiveRecord
                 let! output = server.echoRecursiveRecord input
 
-                test.equal true (input = output) 
+                test.equal true (input = output)
             }
     ]
 
@@ -655,11 +661,11 @@ let binaryServerTests =
                 test.equal true (result = [| byte 1; byte 2; byte 3|])
             }
 
-        testCaseAsync "IBinaryServer.privateConstructor" <| 
+        testCaseAsync "IBinaryServer.privateConstructor" <|
             async {
                 let input = String50.Create "Hello"
-                let! output = binaryServer.privateConstructor input 
-                test.equal "Hello" (output.Read()) 
+                let! output = binaryServer.privateConstructor input
+                test.equal "Hello" (output.Read())
             }
 
         testCaseAsync "IBinaryServer.echoRemoteWorkEntity" <|
@@ -1183,7 +1189,7 @@ let binaryServerTests =
                 let input = largeRecursiveRecord
                 let! output = binaryServer.echoRecursiveRecord input
 
-                test.equal true (input = output) 
+                test.equal true (input = output)
             }
 
         testCaseAsync "IBinaryServer.echoIntOptionOption" <|
@@ -1199,7 +1205,7 @@ let binaryServerTests =
                 let input = [ Just true; Nothing ]
                 let! output = binaryServer.echoMaybeBoolList input
 
-                test.equal true (input = output) 
+                test.equal true (input = output)
             }
     ]
 
