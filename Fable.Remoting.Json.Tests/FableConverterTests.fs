@@ -71,6 +71,12 @@ let converterTest =
             | Token "Hello there" -> pass()
             | otherwise -> fail()
 
+        testCase "Deserializing single case union of string from Fable runtime representation" <| fun () ->
+            let serialized = "{\"tag\":0, \"name\": \"Token\", \"fields\": [\"Hello there\"] }"
+            match deserialize<Token> serialized with
+            | Token "Hello there" -> pass()
+            | otherwise -> fail()
+
         testCase "Single case union with long round trip" <| fun () ->
           let serialized = serialize (SingleLongCase 20L)
           match deserialize<SingleLongCase> serialized with

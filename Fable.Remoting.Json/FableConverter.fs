@@ -399,6 +399,18 @@ type FableJsonConverter() =
                     let uci = getUci t caseName
                     let value = serializer.Deserialize(content.CreateReader(), uci.GetFields().[0].PropertyType)
                     FSharpValue.MakeUnion(uci, [| value |], bindingFlags)
+                else if content.Count = 3 && content.ContainsKey "tag" && content.ContainsKey "name" && content.ContainsKey "fields" then
+                    let property = content.Property("name")
+                    let caseName = property.Value.ToObject<string>()
+                    let uci = getUci t caseName
+                    let itemTypes = uci.GetFields() |> Array.map (fun pi -> pi.PropertyType)
+                    if itemTypes.Length > 1
+                    then
+                        let values = readElements(content.["fields"].CreateReader(), itemTypes, serializer)
+                        FSharpValue.MakeUnion(uci, List.toArray values, bindingFlags)
+                    else
+                        let value = serializer.Deserialize(content.["fields"].[0].CreateReader(), itemTypes.[0])
+                        FSharpValue.MakeUnion(uci, [|value|], bindingFlags)
                 else
                     failwith "Unsupported"
             | JsonToken.Null -> null // for { "union": null }
