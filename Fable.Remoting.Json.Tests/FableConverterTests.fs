@@ -59,6 +59,18 @@ let converterTest =
           | { Id = CustomerId(5) } -> pass()
           | otherwise -> fail()
 
+        testCase "Deserializing single case union of string from object" <| fun () ->
+            let serialized = "{ \"Token\": \"Hello there\" }"
+            match deserialize<Token> serialized with
+            | Token "Hello there" -> pass()
+            | otherwise -> fail()
+
+        testCase "Deserializing single case union of string from array" <| fun () ->
+            let serialized = "[\"Token\", \"Hello there\"]"
+            match deserialize<Token> serialized with
+            | Token "Hello there" -> pass()
+            | otherwise -> fail()
+
         testCase "Single case union with long round trip" <| fun () ->
           let serialized = serialize (SingleLongCase 20L)
           match deserialize<SingleLongCase> serialized with

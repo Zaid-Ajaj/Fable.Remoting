@@ -138,6 +138,12 @@ let serverTests =
                 test.equal true (input = output)
             }
 
+        testCaseAsync "IServer.echoToken" <|
+            async {
+                let! output = server.echoToken (Token "Hello there")
+                test.equal output (Token "Hello there")
+            }
+
         testCaseAsync "ISever.echoInteger" <|
             async {
                 let! fstResult = server.echoInteger 20

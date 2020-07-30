@@ -95,6 +95,8 @@ type MyDU =
     | SomeCase
     | CustomCase of Set<SomeOtherDU>
 
+type Token = Token of string
+
 let rec createRecursiveRecord childCount levels =
     if levels > 0 then
         let children = [ 1 .. childCount ] |> List.map (fun _ -> createRecursiveRecord childCount (levels - 1))
@@ -225,6 +227,7 @@ type IServer = {
     echoGenericUnionString : Maybe<string> -> Async<Maybe<string>>
     echoSimpleUnionType : UnionType -> Async<UnionType>
     echoUnionOfOtherUnions : MyDU -> Async<MyDU>
+    echoToken : Token -> Async<Token>
     echoTree : Tree -> Async<Tree>
     // Records, simple and generic
     echoRecord : Record -> Async<Record>

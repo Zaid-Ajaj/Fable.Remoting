@@ -132,6 +132,7 @@ let server : IServer  = {
     echoDateTimeOffset = Async.result
     echoIntOption = Async.result
     echoUnionOfOtherUnions = Async.result
+    echoToken = Async.result
     echoStringOption = Async.result
     echoGenericUnionInt = Async.result
     echoGenericUnionString = Async.result
