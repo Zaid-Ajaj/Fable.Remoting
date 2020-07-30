@@ -34,6 +34,8 @@ type AB = A | B
 
 type SingleLongCase = SingleLongCase of int64
 
+type Token = Token of string
+
 type IProtocol = {
     getLength : string -> Async<int>
     echoInteger : int -> Async<int>
