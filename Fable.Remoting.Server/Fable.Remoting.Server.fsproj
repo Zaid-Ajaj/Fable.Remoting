@@ -22,6 +22,7 @@
         <Compile Include="Patterns.fs" />
         <Compile Include="Documentation.fs" />
         <Compile Include="DynamicRecord.fs" />
+        <Compile Include="Proxy.fs" />
         <Compile Include="DocsApp.fs" />
         <Compile Include="Remoting.fs" />
         <Compile Include="Reader.fs" />
@@ -30,6 +31,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
+        <ProjectReference Include="..\Fable.Remoting.MsgPack\Fable.Remoting.MsgPack.fsproj" />
     </ItemGroup>
 
     <Import Project="..\.paket\Paket.Restore.targets" />
