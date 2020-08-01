@@ -9,7 +9,7 @@
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
         <Version>4.5.0</Version>
-        <TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
