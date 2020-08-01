@@ -396,7 +396,10 @@ type FableJsonConverter() =
                 else if content.ContainsKey "__typename" && unionOfRecords t then
                     let property = content.Property("__typename")
                     let caseName = property.Value.ToObject<string>()
-                    let uci = getUci t caseName
+                    let uci =
+                        FSharpType.GetUnionCases(t, true)
+                        |> Array.find (fun uci -> uci.Name.ToUpper() = caseName.ToUpper())
+
                     let value = serializer.Deserialize(content.CreateReader(), uci.GetFields().[0].PropertyType)
                     FSharpValue.MakeUnion(uci, [| value |], bindingFlags)
                 else if content.Count = 3 && content.ContainsKey "tag" && content.ContainsKey "name" && content.ContainsKey "fields" then

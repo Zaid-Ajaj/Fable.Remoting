@@ -1,4 +1,4 @@
-# Fable.Remoting 
+# Fable.Remoting
 
 [![Build Status](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting.svg?branch=master)](https://travis-ci.org/Zaid-Ajaj/Fable.Remoting) [![Build status](https://ci.appveyor.com/api/projects/status/euhwktyycm2wvvi4?svg=true)](https://ci.appveyor.com/project/Zaid-Ajaj/fable-remoting)
 
@@ -25,7 +25,7 @@ let greetinApi = {
 }
 
 // Expose the implementation as a HTTP service
-let webApp = 
+let webApp =
   Remoting.createApi()
   |> Remoting.fromValue greetinApi
 ```
@@ -33,11 +33,11 @@ let webApp =
 ### Call the functions from the *client*
 ```fs
 // get a typed-proxy for the service
-let greetingApi = 
+let greetingApi =
   Remoting.createApi()
   |> Remoting.buildProxy<IGreetingApi>
 
-// Start using the service  
+// Start using the service
 async {
   let! message = greetingApi.greet "World"
   printfn "%s" message // Hello, World
@@ -58,30 +58,19 @@ The library runs everywhere on the backend: As Suave `WebPart`, as Giraffe/Satur
 > "Fable.Remoting solves the age-old problem of keeping your front-end code in sync with your backend code at compile time, and in a language as enjoyable to use as F#" - [David Falkner](https://twitter.com/ardave2002)
 
 ## Quick Start
-Use the [SAFE Template](https://github.com/SAFE-Stack/SAFE-template) where Fable.Remoting is a scaffolding option:
+Use the [SAFE Simplified template](https://github.com/Zaid-Ajaj/SAFE.Simplified) where Fable.Remoting is already set up and ready to go
 
-```sh
-# install the template
-dotnet new -i SAFE.Template
-
-# scaffold a new Fable/Saturn project with Fable.Remoting
-dotnet new SAFE --communication remoting
-
-# Or use Giraffe as your server
-dotnet new SAFE --server giraffe --communication remoting
-
-# Or use Suave as your server
-dotnet new SAFE --server suave --communication remoting
-```
 ## Available Packages:
 
-| Library  | Version |
-| ------------- | ------------- |
-| Fable.Remoting.Client  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client) |
-| Fable.Remoting.Suave  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)  |
-| Fable.Remoting.Giraffe  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)  |
-| Fable.Remoting.AspNetCore  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AspNetCore.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AspNetCore)  |
-| Fable.Remoting.DotnetClient  | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.DotnetClient.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.DotnetClient)  |
+| Library                     | Version                                                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fable.Remoting.Client       | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client)             |
+| Fable.Remoting.Json         | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Json.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Json)                 |
+| Fable.Remoting.Server       | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Server.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Server)             |
+| Fable.Remoting.Suave        | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)               |
+| Fable.Remoting.Giraffe      | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)           |
+| Fable.Remoting.AspNetCore   | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AspNetCore.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AspNetCore)     |
+| Fable.Remoting.DotnetClient | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.DotnetClient.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.DotnetClient) |
 
 ## Scaffold from scratch - Suave
 Create a new F# console app:
@@ -117,7 +106,7 @@ Then provide an implementation for `IStudentApi` on the server:
 ```fs
 open SharedTypes
 
-let getStudents() = 
+let getStudents() =
   async {
     return [
         { Name = "Mike";  Age = 23; }
@@ -126,19 +115,19 @@ let getStudents() =
     ]
   }
 
-let findStudentByName name = 
+let findStudentByName name =
   async {
-    let! students = getStudents() 
+    let! students = getStudents()
     let student = List.tryFind (fun student -> student.Name = name) students
-    return student 
+    return student
   }
 
 let studentApi : IStudentApi = {
     studentByName = findStudentByName
-    allStudents = getStudents 
+    allStudents = getStudents
 }
 ```
-Now that we have the implementation `studentApi`, you can expose it as a web service from different web frameworks. We start with [Suave](https://github.com/SuaveIO/suave)  
+Now that we have the implementation `studentApi`, you can expose it as a web service from different web frameworks. We start with [Suave](https://github.com/SuaveIO/suave)
 
 
 Install the library from Nuget using Paket:
@@ -152,10 +141,10 @@ open Suave
 open Fable.Remotion.Server
 open Fable.Remoting.Suave
 
-let webApp : WebPart = 
+let webApp : WebPart =
     Remoting.createApi()
     |> Remoting.fromValue studentApi
-    |> Remoting.buildWebPart 
+    |> Remoting.buildWebPart
 
 // start the web server
 startWebServer defaultConfig webApp
@@ -176,20 +165,20 @@ let webApp =
 ```
 You can enable diagnostic logging from Fable.Remoting.Server (recommended) to see how the library is doing it's magic behind the scenes :)
 ```fs
-let webApp = 
+let webApp =
     Remoting.createApi()
     |> Remoting.fromValue studentApi
     |> Remoting.withDiagnosticsLogger (printfn "%s")
-    |> Remoting.buildWebPart 
+    |> Remoting.buildWebPart
 ```
-### AspNetCore Middleware 
+### AspNetCore Middleware
 Install the package from Nuget using paket
 ```
 paket add Fable.Remoting.AspNetCore --project /path/to/Project.fsproj
 ```
-Now you can configure your remote handler as AspNetCore middleware 
+Now you can configure your remote handler as AspNetCore middleware
 ```fs
-let webApp = 
+let webApp =
     Remoting.createApi()
     |> Remoting.fromValue studentApi
 
@@ -220,10 +209,10 @@ open Giraffe
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 
-let webApp : HttpHandler = 
+let webApp : HttpHandler =
     Remoting.createApi()
     |> Remoting.fromValue studentApi
-    |> Remoting.buildHttpHandler 
+    |> Remoting.buildHttpHandler
 
 let configureApp (app : IApplicationBuilder) =
     // Add Giraffe to the ASP.NET Core pipeline
@@ -253,10 +242,10 @@ open Saturn
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 
-let webApp : HttpHandler = 
+let webApp : HttpHandler =
     Remoting.createApi()
     |> Remoting.fromValue studentApi
-    |> Remoting.buildHttpHandler 
+    |> Remoting.buildHttpHandler
 
 let app = application {
     url "http://127.0.0.1:8083/"

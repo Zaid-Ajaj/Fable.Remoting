@@ -109,6 +109,26 @@ let converterTest =
             User { Id = 42; Username = "John" } |> wasFound
             Bot { Identifier = "Sentient Bot" } |> wasFound
 
+        testCase "Deserializing union of records using lowe case discriminiator" <| fun () ->
+            let serialized = """
+                [
+                    {
+                        "__typename": "user",
+                        "Id": 42,
+                        "Username": "John"
+                    },
+
+                    {
+                        "__typename": "bot",
+                        "Identifier": "Sentient Bot"
+                    }
+                ]
+            """
+
+            let deserialized = deserialize<Actor list> serialized
+            let wasFound actor = Expect.isTrue (List.contains actor deserialized) (sprintf "Actor %A was not found" actor)
+            User { Id = 42; Username = "John" } |> wasFound
+            Bot { Identifier = "Sentient Bot" } |> wasFound
 
         testCase "Map<int * int, int> can be deserialized" <| fun () ->
             let serialized = "[[[1,1],1]]"
