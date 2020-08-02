@@ -30,10 +30,13 @@ module Remoting =
         { options with ErrorHandler = Some handler }
 
     /// Specifies that the API only uses binary serialization
-    let withBinarySerialization options = 
+    let withBinarySerialization (options: RemotingOptions<'t, 'implementation>) = 
         { options with ResponseSerialization = MessagePack }
+
+    /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
+    let fromContext (f: 'ctx -> 't) (options: RemotingOptions<'ctx, 't>) = 
+        { options with Implementation = FromContext f }
 
     /// Builds the API using the provided static protocol implementation 
     let fromValue (serverImpl: 'implementation) (options: RemotingOptions<'t, 'implementation>)  = 
-        DynamicRecord.checkProtocolDefinition serverImpl
         { options with Implementation = StaticValue serverImpl }

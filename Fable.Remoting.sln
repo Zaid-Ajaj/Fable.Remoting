@@ -33,7 +33,9 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.MsgPack", "F
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.MsgPack.Tests", "Fable.Remoting.MsgPack.Tests\Fable.Remoting.MsgPack.Tests.fsproj", "{1406B2AD-4774-45D2-88A8-BA732F1939DD}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Benchmarks", "Fable.Remoting.Benchmarks\Fable.Remoting.Benchmarks.fsproj", "{216BC149-81ED-43E5-9778-4042A8151884}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.Benchmarks", "Fable.Remoting.Benchmarks\Fable.Remoting.Benchmarks.fsproj", "{216BC149-81ED-43E5-9778-4042A8151884}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.AspNetCore", "Fable.Remoting.AspNetCore\Fable.Remoting.AspNetCore.fsproj", "{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -237,6 +239,18 @@ Global
 		{216BC149-81ED-43E5-9778-4042A8151884}.Release|x64.Build.0 = Release|Any CPU
 		{216BC149-81ED-43E5-9778-4042A8151884}.Release|x86.ActiveCfg = Release|Any CPU
 		{216BC149-81ED-43E5-9778-4042A8151884}.Release|x86.Build.0 = Release|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Debug|x64.Build.0 = Debug|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Debug|x86.Build.0 = Debug|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|x64.ActiveCfg = Release|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|x64.Build.0 = Release|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|x86.ActiveCfg = Release|Any CPU
+		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

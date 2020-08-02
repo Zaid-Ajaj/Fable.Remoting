@@ -14,7 +14,9 @@ module SuaveUtil =
 
   let setResponseBody (asyncResult: obj) (logger: Option<string -> unit>) =
     fun (ctx: HttpContext) -> async {
-      let json = DynamicRecord.serialize asyncResult 
+      use ms = new MemoryStream ()
+      jsonSerialize asyncResult ms
+      let json = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
       Diagnostics.outputPhase logger json  
       return Some { ctx with response = { ctx.response with content = outputContent json  } } 
     }
@@ -69,7 +71,7 @@ module SuaveUtil =
           | Propagate error -> return! sendError (Errors.propagated error) logger context 
     }
 
-  let buildFromImplementation2<'impl> (impl: 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
+  let buildFromImplementation<'impl> (impl: 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
       let proxy = makeApiProxy options
       
       fun (ctx: HttpContext) -> async {
@@ -88,13 +90,15 @@ module SuaveUtil =
 
           match! proxy props with
           | Success isBinaryOutput ->
-              if isBinaryOutput && isRemotingProxy then
-                  return! setBinaryResponseBody (ms.ToArray ()) 200 "application/octet-stream" ctx
-              elif options.ResponseSerialization = SerializationType.Json then
-                  return! setBinaryResponseBody (ms.ToArray ()) 200 "application/json; charset=utf-8" ctx
-              else
-                  //todo better mime type?
-                  return! setBinaryResponseBody (ms.ToArray ()) 200 "application/octet-stream" ctx
+              let mimeType =
+                  if isBinaryOutput && isRemotingProxy then
+                      "application/octet-stream"
+                  elif options.ResponseSerialization = SerializationType.Json then
+                      "application/json; charset=utf-8"
+                  else
+                      "application/msgpack"
+
+              return! setBinaryResponseBody (ms.ToArray ()) 200 mimeType ctx
           | Exception (e, functionName) ->
               let routeInfo = { methodName = functionName; path = ctx.request.path; httpContext = ctx }
               return! fail e routeInfo options ctx
@@ -102,13 +106,13 @@ module SuaveUtil =
               match ctx.request.method, options.Docs with 
               | HttpMethod.GET, (Some docsUrl, Some docs) when docsUrl = ctx.request.path -> 
                   let (Documentation(docsName, docsRoutes)) = docs
-                  let schema = DynamicRecord.makeDocsSchema typeof<'impl> docs options.RouteBuilder
+                  let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                   let docsApp = DocsApp.embedded docsName docsUrl schema
                   return! html docsApp ctx
               | HttpMethod.OPTIONS, (Some docsUrl, Some docs) 
                     when sprintf "/%s/$schema" docsUrl = ctx.request.path
                       || sprintf "%s/$schema" docsUrl = ctx.request.path ->
-                  let schema = DynamicRecord.makeDocsSchema typeof<'impl> docs options.RouteBuilder
+                  let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                   let serializedSchema =  schema.ToString(Formatting.None)
                   return! success serializedSchema None ctx   
               | _ -> 
@@ -116,21 +120,13 @@ module SuaveUtil =
       }
 
 module Remoting = 
-  
-  /// Builds the API using a function that takes the incoming Http context and returns a protocol implementation. You can use the Http context to read information about the incoming request and also use the Http context to resolve dependencies using the underlying dependency injection mechanism.
-  let fromContext (f: HttpContext -> 't) (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
-    { options with Implementation = FromContext f } 
-
-  /// Specifies that the API only uses binary serialization
-  let withBinarySerialization (options: RemotingOptions<HttpContext, 't>) : RemotingOptions<HttpContext, 't> = 
-    { options with ResponseSerialization = MessagePack } 
 
   /// Builds a WebPart from the given implementation and options  
   let buildWebPart (options: RemotingOptions<HttpContext, 't>) =
       match options.Implementation with
       | Empty -> SuaveUtil.halt
-      | StaticValue impl -> SuaveUtil.buildFromImplementation2 impl options
+      | StaticValue impl -> SuaveUtil.buildFromImplementation impl options
       | FromContext createImplementationFrom ->
           fun (ctx : HttpContext) ->
               let impl = createImplementationFrom ctx
-              SuaveUtil.buildFromImplementation2 impl options ctx
+              SuaveUtil.buildFromImplementation impl options ctx
