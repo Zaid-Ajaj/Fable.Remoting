@@ -1,13 +1,14 @@
-﻿module Fable.Remoting.Proxy
+﻿module Fable.Remoting.Server.Proxy
 
 open Fable.Remoting.Json
 open Newtonsoft.Json
 open TypeShape.Core
-open Fable.Remoting.Server
+open Fable.Remoting
 open System
 open Newtonsoft.Json.Linq
 open System.IO
 open System.Collections.Concurrent
+open System.Text
 
 let private fableConverter = new FableJsonConverter() :> JsonConverter
 
@@ -18,9 +19,11 @@ let private fableSerializer =
     serializer.Converters.Add fableConverter
     serializer
 
+let private jsonEncoding = UTF8Encoding false
+
 let jsonSerialize (o: 'a) (stream: Stream) =
-    use sw = new StreamWriter (stream)
-    use writer = new JsonTextWriter (sw)
+    use sw = new StreamWriter (stream, jsonEncoding, 1024, true)
+    use writer = new JsonTextWriter (sw, CloseOutput = false)
     fableSerializer.Serialize (writer, o)
 
 let private msgPackSerializerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
@@ -64,7 +67,7 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
 
                         let! res = s
 
-                        if isBinaryOutput && makeProps.ResponseSerialization = SerializationType.Json then
+                        if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
                             let data = box res :?> byte[]
                             props.Output.Write (data, 0, data.Length)
                         elif makeProps.ResponseSerialization = SerializationType.Json then
@@ -109,13 +112,16 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
         shape.Accept { new IReadOnlyMemberVisitor<'impl, InvocationProps<'impl> -> Async<InvocationResult>> with
             member _.Visit (shape: ReadOnlyMember<'impl, 'field>) =
                 let fieldProxy = makeEndpointProxy<'field> { FieldName = shape.MemberInfo.Name; RecordName = typeof<'impl>.Name; ResponseSerialization = options.ResponseSerialization; FlattenedTypes = flattenedTypes }
+                let isNoArg = flattenedTypes.Length = 1 || (flattenedTypes.Length = 2 && flattenedTypes.[0] = typeof<unit>)
 
                 wrap (fun (props: InvocationProps<'impl>) -> async {
                     try
-                        if props.IsContentBinaryEncoded then
+                        if props.HttpVerb <> "POST" && not (isNoArg && props.HttpVerb = "GET") then
+                            return InvalidHttpVerb
+                        elif props.IsContentBinaryEncoded then
                             use ms = new MemoryStream ()
                             do! props.Input.CopyToAsync ms |> Async.AwaitTask
-                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); HttpVerb = props.HttpVerb; Output = props.Output; ArgumentCount = 1 } 
+                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); Output = props.Output; ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent } 
                             return! fieldProxy (shape.Get props.Implementation) props'
                         else
                             use sr = new StreamReader (props.Input)
@@ -128,10 +134,10 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                                     let token = JsonConvert.DeserializeObject<JToken> (text, settings)
                                     if token.Type <> JTokenType.Array then
                                         failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" shape.MemberInfo.Name (flattenedTypes.Length - 1)
-                                    else
-                                        token :?> JArray |> Seq.toList
+                                    
+                                    token :?> JArray |> Seq.toList
 
-                            let props' = { Arguments = Choice2Of2 args; HttpVerb = props.HttpVerb; Output = props.Output; ArgumentCount = args.Length } 
+                            let props' = { Arguments = Choice2Of2 args; Output = props.Output; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent } 
                             return! fieldProxy (shape.Get props.Implementation) props'
                     with e ->
                         return InvocationResult.Exception (e, shape.MemberInfo.Name) }) }

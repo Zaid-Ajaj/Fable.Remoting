@@ -196,11 +196,9 @@ Target.create "IntegrationTests" <| fun _ ->
     clean (getPath "MsgPack")
     clean (getPath "Suave")
     clean (getPath "UITests")
-    clean (getPath "Fable.Remoting.ClientV2")
-    clean (getPath "ClientV2Tests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
-    Shell.cleanDirs [ getPath "ClientV2Tests" </> ".fable" ]
+
     run "ClientV2Tests" "npm" "install"
     run "ClientV2Tests" "npm" "run build"
     run "UITests" "dotnet" "restore --no-cache"

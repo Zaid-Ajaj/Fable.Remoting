@@ -5,7 +5,7 @@ open Suave.Operators
 open Fable.Remoting.Server
 open Newtonsoft.Json
 open System.IO
-open Fable.Remoting.Proxy
+open Fable.Remoting.Server.Proxy
 
 module SuaveUtil = 
   
@@ -86,7 +86,7 @@ module SuaveUtil =
                 | Some "application/octet-stream" -> true 
                 | otherwise -> false
           let props = { Implementation = impl; EndpointName = ctx.request.path; Input = inp; Output = ms; HttpVerb = ctx.request.rawMethod.ToUpper ();
-              IsContentBinaryEncoded = isContentBinaryEncoded }
+              IsContentBinaryEncoded = isContentBinaryEncoded; IsProxyHeaderPresent = isRemotingProxy }
 
           match! proxy props with
           | Success isBinaryOutput ->
@@ -102,6 +102,8 @@ module SuaveUtil =
           | Exception (e, functionName) ->
               let routeInfo = { methodName = functionName; path = ctx.request.path; httpContext = ctx }
               return! fail e routeInfo options ctx
+          | InvalidHttpVerb ->
+              return! halt ctx
           | EndpointNotFound ->
               match ctx.request.method, options.Docs with 
               | HttpMethod.GET, (Some docsUrl, Some docs) when docsUrl = ctx.request.path -> 

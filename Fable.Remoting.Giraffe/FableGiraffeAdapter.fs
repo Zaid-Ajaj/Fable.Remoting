@@ -7,7 +7,7 @@ open System.IO
 open Fable.Remoting.Server
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Newtonsoft.Json
-open Fable.Remoting.Proxy
+open Fable.Remoting.Server.Proxy
 
 module GiraffeUtil =
     let setJsonBody (response: obj) (logger: Option<string -> unit>) : HttpHandler =
@@ -39,20 +39,21 @@ module GiraffeUtil =
         
         fun (next: HttpFunc) (ctx: HttpContext) -> task {
             use ms = new MemoryStream ()
-            let props = { Implementation = impl; EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; Output = ms;
+            let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
+            let props = { Implementation = impl; EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; Output = ms; IsProxyHeaderPresent = isProxyHeaderPresent;
                 HttpVerb = ctx.Request.Method.ToUpper (); IsContentBinaryEncoded = ctx.Request.ContentType = "application/octet-stream" }
 
             match! proxy props with
             | Success isBinaryOutput ->
                 ctx.Response.StatusCode <- 200
 
-                if isBinaryOutput && ctx.Request.Headers.ContainsKey "x-remoting-proxy" then
-                    ctx.Response.ContentType <- "application/json; charset=utf-8"
-                elif options.ResponseSerialization = SerializationType.Json then
+                if isBinaryOutput && isProxyHeaderPresent then
                     ctx.Response.ContentType <- "application/octet-stream"
+                elif options.ResponseSerialization = SerializationType.Json then
+                    ctx.Response.ContentType <- "application/json; charset=utf-8"
                 else
                     ctx.Response.ContentType <- "application/msgpack"
-
+                
                 ms.Position <- 0L
                 do! ms.CopyToAsync ctx.Response.Body
                 return! next ctx
@@ -60,6 +61,8 @@ module GiraffeUtil =
                 ctx.Response.StatusCode <- 500
                 let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
                 return! fail e routeInfo options next ctx
+            | InvalidHttpVerb ->
+                return! skipPipeline
             | EndpointNotFound ->
                 match ctx.Request.Method.ToUpper(), options.Docs with
                 | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
