@@ -1,40 +1,21 @@
 namespace Fable.Remoting.Server
 
 open System 
-open System.Reflection 
+open FSharp.Reflection
+open TypeShape.Core
+open System.IO
+open Newtonsoft.Json.Linq
 
-type IAsyncBoxer =
-    abstract BoxAsyncResult : obj -> Async<obj>
-
-type AsyncBoxer<'T>() =
-    interface IAsyncBoxer with
-        member __.BoxAsyncResult(boxedAsync: obj) : Async<obj> =
-            match boxedAsync with
-            | :? Async<'T> as unboxedAsyncOfGenericValueT ->
-                async {
-                    // this is of type 'T
-                    let! unwrappedGenericValueTfromAsync  = unboxedAsyncOfGenericValueT
-                    return box unwrappedGenericValueTfromAsync
-                }
-            | otherValue -> failwithf "Invalid boxed value of type '%s'" (otherValue.GetType().FullName) 
-
+[<RequireQualifiedAccess>]
+module TypeInfo = 
+    let rec flattenFuncTypes (typeDef: Type) = 
+        [| if FSharpType.IsFunction typeDef 
+           then let (domain, range) = FSharpType.GetFunctionElements typeDef 
+                yield! flattenFuncTypes domain 
+                yield! flattenFuncTypes range
+           else yield typeDef |]
 
 type ParsingArgumentsError = { ParsingArgumentsError: string }
-
-/// Distinguish between records fields that are simple async values and fields that are functions with input and output
-type RecordFunctionType = 
-    | NoArguments of output: Type
-    | SingleArgument of input: Type * output: Type 
-    | ManyArguments of input: Type list * output: Type
-
-/// Combines information about dynamic functions
-type RecordFunctionInfo = {
-    FunctionName: string 
-    Type: RecordFunctionType
-    PropertyInfo: PropertyInfo 
-}
-
-type ProtocolImplementationMetadata = Type * RecordFunctionInfo list
 
 /// Route information that is propagated to error handler when exceptions are thrown
 type RouteInfo<'ctx> = {
@@ -55,9 +36,6 @@ type ErrorResult =
 
 type ErrorHandler<'context> = System.Exception -> RouteInfo<'context> -> ErrorResult
 
-type IoCContainer = 
-    abstract Resolve<'t> : unit -> 't  
-
 /// A protocol implementation can be a static value provided or it can be generated from the Http context on every request.
 type ProtocolImplementation<'context, 'serverImpl> = 
     | Empty 
@@ -67,6 +45,43 @@ type ProtocolImplementation<'context, 'serverImpl> =
 type SerializationType =
     | Json
     | MessagePack
+
+type IShapeFSharpAsync =
+    abstract Element: TypeShape
+
+type ShapeFSharpAsync<'T> () =
+    interface IShapeFSharpAsync with
+        member _.Element = shapeof<'T> :> _
+
+type InvocationPropsInt = {
+    Arguments: Choice<byte[], JToken list>
+    ArgumentCount: int
+    Output: Stream
+    IsProxyHeaderPresent: bool
+}
+
+type InvocationProps<'impl> = {
+    Input: Stream
+    Implementation: 'impl
+    EndpointName: string
+    HttpVerb: string
+    Output: Stream
+    IsContentBinaryEncoded: bool
+    IsProxyHeaderPresent: bool
+}
+
+type MakeEndpointProps = {
+    FieldName: string
+    RecordName: string
+    ResponseSerialization: SerializationType
+    FlattenedTypes: Type[]
+}
+
+type InvocationResult =
+    | Success of isBinaryOutput: bool
+    | EndpointNotFound
+    | InvalidHttpVerb
+    | Exception of exn * functionName: string
 
 // an example is a list of arguments and the description of the example
 type Example = obj list * string

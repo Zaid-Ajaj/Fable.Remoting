@@ -19,8 +19,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
-        <ProjectReference Include="..\Fable.Remoting.MsgPack\Fable.Remoting.MsgPack.fsproj" />
         <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
     </ItemGroup>
 
