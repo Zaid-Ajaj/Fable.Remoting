@@ -121,7 +121,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                         elif props.IsContentBinaryEncoded then
                             use ms = new MemoryStream ()
                             do! props.Input.CopyToAsync ms |> Async.AwaitTask
-                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); Output = props.Output; ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent } 
+                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); Output = props.Output; ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
                             return! fieldProxy (shape.Get props.Implementation) props'
                         else
                             use sr = new StreamReader (props.Input)
@@ -134,10 +134,10 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                                     let token = JsonConvert.DeserializeObject<JToken> (text, settings)
                                     if token.Type <> JTokenType.Array then
                                         failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" shape.MemberInfo.Name (flattenedTypes.Length - 1)
-                                    
+
                                     token :?> JArray |> Seq.toList
 
-                            let props' = { Arguments = Choice2Of2 args; Output = props.Output; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent } 
+                            let props' = { Arguments = Choice2Of2 args; Output = props.Output; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
                             return! fieldProxy (shape.Get props.Implementation) props'
                     with e ->
                         return InvocationResult.Exception (e, shape.MemberInfo.Name) }) }

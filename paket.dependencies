@@ -1,3 +1,4 @@
+version 5.249.0
 source https://api.nuget.org/v3/index.json
 
 storage: none
