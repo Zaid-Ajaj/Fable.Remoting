@@ -40,7 +40,6 @@ let invoke<'out, 'impl> (funcName: string) (record: 'impl) (input: Choice<obj[],
 
     let proxy = makeApiProxy options
     use inp = new MemoryStream ()
-    use out = new MemoryStream ()
 
     let inputBytes =
         match input with
@@ -49,8 +48,8 @@ let invoke<'out, 'impl> (funcName: string) (record: 'impl) (input: Choice<obj[],
     inp.Write (inputBytes, 0, inputBytes.Length)
     inp.Position <- 0L
 
-    match proxy { Implementation = record; Input = inp; Output = out; EndpointName = funcName; HttpVerb = "POST"; IsContentBinaryEncoded = false; IsProxyHeaderPresent = true } |> Async.RunSynchronously with
-    | Success _ -> JsonConvert.DeserializeObject<'out>(System.Text.Encoding.UTF8.GetString (out.ToArray ()), converter)
+    match proxy { Implementation = record; Input = inp; EndpointName = funcName; HttpVerb = "POST"; IsContentBinaryEncoded = false; IsProxyHeaderPresent = true } |> Async.RunSynchronously with
+    | Success (_, output) -> JsonConvert.DeserializeObject<'out>(System.Text.Encoding.UTF8.GetString (output.ToArray ()), converter)
     | InvocationResult.Exception (e, _) -> raise e
     | InvalidHttpVerb -> failwithf "Function %s does not expect POST" funcName
     | EndpointNotFound -> failwithf "Function %s was not found" funcName

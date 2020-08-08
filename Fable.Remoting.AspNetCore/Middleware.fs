@@ -88,17 +88,18 @@ module internal Middleware =
                 | Propagate error -> return! setBody (Errors.propagated error) logger next ctx  
         }
 
-    let buildFromImplementation<'impl> (impl: 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
+    let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
         
         fun (next: HttpFunc) (ctx: HttpContext) -> task {
-            use ms = new MemoryStream ()
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
-            let props = { Implementation = impl; EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; Output = ms; IsProxyHeaderPresent = isProxyHeaderPresent;
+            let impl = implBuilder ctx
+            let props = { Implementation = impl; EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
                 HttpVerb = ctx.Request.Method.ToUpper (); IsContentBinaryEncoded = ctx.Request.ContentType = "application/octet-stream" }
 
             match! proxy props with
-            | Success isBinaryOutput ->
+            | Success (isBinaryOutput, output) ->
+                use output = output
                 ctx.Response.StatusCode <- 200
 
                 if isBinaryOutput && isProxyHeaderPresent then
@@ -108,8 +109,7 @@ module internal Middleware =
                 else
                     ctx.Response.ContentType <- "application/msgpack"
 
-                ms.Position <- 0L
-                do! ms.CopyToAsync ctx.Response.Body
+                do! output.CopyToAsync ctx.Response.Body
                 return! next ctx
             | Exception (e, functionName) ->
                 ctx.Response.StatusCode <- 500
@@ -135,26 +135,23 @@ module internal Middleware =
         }
 
 type RemotingMiddleware<'t>(next          : RequestDelegate,
-                            options       : RemotingOptions<HttpContext, 't>) =
+                            handler       : HttpFunc) =
     
     do if isNull next then nullArg "next"
-    member __.Invoke (ctx : HttpContext) =
-      let handler = 
-          match options.Implementation with 
-          | Empty -> Middleware.halt
-          | StaticValue impl ->
-              Middleware.buildFromImplementation impl options
-          | FromContext createImplementationFrom ->
-              let impl = createImplementationFrom ctx
-              Middleware.buildFromImplementation impl options
-      let func : HttpFunc = handler (Some >> Task.FromResult)
-      task {
-          let! result = func ctx
-          if (result.IsNone) then return! next.Invoke ctx
-      }
+
+    member __.Invoke (ctx : HttpContext) = task {
+        let! result = handler ctx
+        if (result.IsNone) then return! next.Invoke ctx
+    }
 
 [<AutoOpen>]
 module AppBuilderExtensions = 
     type IApplicationBuilder with
       member this.UseRemoting(options:RemotingOptions<HttpContext, 't>) =
-          this.UseMiddleware<RemotingMiddleware<'t>> options |> ignore
+          let handler = 
+              match options.Implementation with 
+              | Empty -> Middleware.halt
+              | StaticValue impl -> Middleware.buildFromImplementation (fun _ -> impl) options
+              | FromContext createImplementationFrom -> Middleware.buildFromImplementation createImplementationFrom options
+
+          this.UseMiddleware<RemotingMiddleware<'t>> (handler (Some >> Task.FromResult)) |> ignore
