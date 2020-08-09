@@ -198,7 +198,7 @@ Target.create "IntegrationTests" <| fun _ ->
     clean (getPath "UITests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
-
+    run ("ClientV2Tests" </> "src") "dotnet" "restore"
     run "ClientV2Tests" "npm" "install"
     run "ClientV2Tests" "npm" "run build"
     run "UITests" "dotnet" "restore --no-cache"

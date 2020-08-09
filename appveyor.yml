@@ -8,14 +8,12 @@ environment:
   nodejs_version: "10.10.0"
 
 cache:
- - "%LOCALAPPDATA%\\Yarn"
+  - "%LOCALAPPDATA%\\Yarn"
 
 # Install scripts. (runs after repo cloning)
 install:
   # install latest dotnet core 3 preview
   - cmd: choco install dotnetcore-sdk --pre
-  - cmd: dotnet tool install -g fake-cli
-  - cmd: dotnet tool install -g paket
   # Get the latest stable version of Node.js
   - ps: Install-Product node $env:nodejs_version
   # # Update npm
@@ -23,10 +21,11 @@ install:
   # # See https://github.com/npm/npm/issues/18380
   # - npm install -g npm@6.1.0
 
-os: Visual Studio 2017
+os: Visual Studio 2019
 
 build_script:
-  - cmd: fake build -t BuildRunAllTests
-  - cmd: fake build -t IntegrationTests
+  - cmd: dotnet tool restore
+  - cmd: dotnet fake build -t BuildRunAllTests
+  - cmd: dotnet fake build -t IntegrationTests
 
 test: off

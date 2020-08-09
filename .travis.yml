@@ -21,11 +21,10 @@ before_install:
   - nvm use 10.12.0
   - sudo snap alias dotnet-sdk.dotnet dotnet
   - dotnet --version
-  - dotnet tool install -g fake-cli
-  - dotnet tool install -g paket
+  - dotnet tool restore
 
 script:
   - echo "Running tests"
-  - fake build -t BuildRunAllTests
-  - paket restore --project ./UITests/UITests.fsproj
-  - fake build -t IntegrationTests
+  - dotnet fake build -t BuildRunAllTests
+  - dotnet paket restore --project ./UITests/UITests.fsproj
+  - dotnet fake build -t IntegrationTests
