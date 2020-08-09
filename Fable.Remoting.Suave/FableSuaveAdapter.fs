@@ -71,13 +71,13 @@ module SuaveUtil =
           | Propagate error -> return! sendError (Errors.propagated error) logger context 
     }
 
-  let buildFromImplementation<'impl> (impl: 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
+  let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
       let proxy = makeApiProxy options
       
       fun (ctx: HttpContext) -> async {
-          use ms = new MemoryStream ()
           use inp = new MemoryStream (ctx.request.rawForm)
           let isRemotingProxy = ctx.request.headers |> List.exists (fun x -> fst x = "x-remoting-proxy")
+          let impl = implBuilder ctx
           let isContentBinaryEncoded = 
               ctx.request.headers
               |> List.tryFind (fun (key, _) -> key.ToLowerInvariant() = "content-type")
@@ -85,11 +85,12 @@ module SuaveUtil =
               |> function 
                 | Some "application/octet-stream" -> true 
                 | otherwise -> false
-          let props = { Implementation = impl; EndpointName = ctx.request.path; Input = inp; Output = ms; HttpVerb = ctx.request.rawMethod.ToUpper ();
+          let props = { Implementation = impl; EndpointName = ctx.request.path; Input = inp; HttpVerb = ctx.request.rawMethod.ToUpper ();
               IsContentBinaryEncoded = isContentBinaryEncoded; IsProxyHeaderPresent = isRemotingProxy }
 
           match! proxy props with
-          | Success isBinaryOutput ->
+          | Success (isBinaryOutput, output) ->
+              use output = output
               let mimeType =
                   if isBinaryOutput && isRemotingProxy then
                       "application/octet-stream"
@@ -98,7 +99,7 @@ module SuaveUtil =
                   else
                       "application/msgpack"
 
-              return! setBinaryResponseBody (ms.ToArray ()) 200 mimeType ctx
+              return! setBinaryResponseBody (output.ToArray ()) 200 mimeType ctx
           | Exception (e, functionName) ->
               let routeInfo = { methodName = functionName; path = ctx.request.path; httpContext = ctx }
               return! fail e routeInfo options ctx
@@ -127,8 +128,5 @@ module Remoting =
   let buildWebPart (options: RemotingOptions<HttpContext, 't>) =
       match options.Implementation with
       | Empty -> SuaveUtil.halt
-      | StaticValue impl -> SuaveUtil.buildFromImplementation impl options
-      | FromContext createImplementationFrom ->
-          fun (ctx : HttpContext) ->
-              let impl = createImplementationFrom ctx
-              SuaveUtil.buildFromImplementation impl options ctx
+      | StaticValue impl -> SuaveUtil.buildFromImplementation (fun _ -> impl) options
+      | FromContext createImplementationFrom -> SuaveUtil.buildFromImplementation createImplementationFrom options

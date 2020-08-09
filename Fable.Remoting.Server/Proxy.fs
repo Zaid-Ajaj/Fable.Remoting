@@ -66,16 +66,18 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
                         | _ -> ()
 
                         let! res = s
+                        let output = new MemoryStream ()
 
                         if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
                             let data = box res :?> byte[]
-                            props.Output.Write (data, 0, data.Length)
+                            output.Write (data, 0, data.Length)
                         elif makeProps.ResponseSerialization = SerializationType.Json then
-                            jsonSerialize res props.Output
+                            jsonSerialize res output
                         else
-                            msgPackSerialize res props.Output
+                            msgPackSerialize res output
 
-                        return Success isBinaryOutput
+                        output.Position <- 0L
+                        return Success (isBinaryOutput, output)
                     })
         }
     | Shape.FSharpFunc func ->
@@ -121,7 +123,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                         elif props.IsContentBinaryEncoded then
                             use ms = new MemoryStream ()
                             do! props.Input.CopyToAsync ms |> Async.AwaitTask
-                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); Output = props.Output; ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
+                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
                             return! fieldProxy (shape.Get props.Implementation) props'
                         else
                             use sr = new StreamReader (props.Input)
@@ -137,7 +139,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
 
                                     token :?> JArray |> Seq.toList
 
-                            let props' = { Arguments = Choice2Of2 args; Output = props.Output; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
+                            let props' = { Arguments = Choice2Of2 args; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
                             return! fieldProxy (shape.Get props.Implementation) props'
                     with e ->
                         return InvocationResult.Exception (e, shape.MemberInfo.Name) }) }

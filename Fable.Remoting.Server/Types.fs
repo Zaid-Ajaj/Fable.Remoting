@@ -56,7 +56,6 @@ type ShapeFSharpAsync<'T> () =
 type InvocationPropsInt = {
     Arguments: Choice<byte[], JToken list>
     ArgumentCount: int
-    Output: Stream
     IsProxyHeaderPresent: bool
 }
 
@@ -65,7 +64,6 @@ type InvocationProps<'impl> = {
     Implementation: 'impl
     EndpointName: string
     HttpVerb: string
-    Output: Stream
     IsContentBinaryEncoded: bool
     IsProxyHeaderPresent: bool
 }
@@ -78,7 +76,7 @@ type MakeEndpointProps = {
 }
 
 type InvocationResult =
-    | Success of isBinaryOutput: bool
+    | Success of isBinaryOutput: bool * output: MemoryStream
     | EndpointNotFound
     | InvalidHttpVerb
     | Exception of exn * functionName: string
