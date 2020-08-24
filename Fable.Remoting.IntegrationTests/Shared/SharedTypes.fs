@@ -67,6 +67,39 @@ module RequiredInput =
         | InvalidUserInput _ -> failwith "Input is not valid!"
         | ValidUserInput x   -> x
 
+type CommandLabel = CommandLabel of string
+type ClientId = ClientId of string
+type RobotIdToken = RobotId of string
+type FeedbackChannelIfOutOfSync = FeedbackChannelIfOutOfSync of ClientId
+type OperationErrorMessage = string option
+type RequesterIdentifier =
+    | IOwnRobot of RobotIdToken * FeedbackChannelIfOutOfSync
+    | IWantResponsesOn of ClientId
+
+type Address = Address of int
+
+[<Struct>]
+type CoordCartesian = {
+    x: float
+    y: float
+    z: float
+    w: float
+    p: float
+    r: float
+}
+
+type CartesianConfig = CartesianConfig of string
+
+type Position =
+    | Cartesian of CoordCartesian * CartesianConfig
+    | NotSet
+
+[<RequireQualifiedAccess>]
+module Requests =
+    type Command =
+        | PositionSet of Address * Position
+        | RawCommand of string
+
 type ISimpleServer = {
     getLength : string -> Async<int>
 }
@@ -286,6 +319,10 @@ type IServer = {
     echoLongInGenericUnion : Maybe<int64> -> Async<Maybe<int64>>
     echoAnonymousRecord : Maybe<{| name: string |}> -> Async<Maybe<{| name: string |}>>
     echoNestedAnonRecord : Maybe<{| nested: {| name: string |} |}> -> Async<Maybe<{| nested: {| name: string |} |}>>
+
+    // misc
+    command: CommandLabel * RequesterIdentifier * Requests.Command -> Async<OperationErrorMessage>
+    echoPosition : Position -> Async<Position>
 }
 
 let routeBuilder typeName methodName =

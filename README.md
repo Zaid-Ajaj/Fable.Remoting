@@ -64,6 +64,7 @@ Use the [SAFE Simplified template](https://github.com/Zaid-Ajaj/SAFE.Simplified)
 
 | Library                     | Version                                                                                                                                             |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fable.Remoting.MsgPack      | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.MsgPack.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.MsgPack)           |
 | Fable.Remoting.Client       | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Client.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Client)             |
 | Fable.Remoting.Json         | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Json.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Json)                 |
 | Fable.Remoting.Server       | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Server.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Server)             |

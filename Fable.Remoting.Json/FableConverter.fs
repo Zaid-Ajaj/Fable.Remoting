@@ -386,10 +386,20 @@ type FableJsonConverter() =
                     let uci = getUci t name
 
                     let itemTypes = uci.GetFields() |> Array.map (fun pi -> pi.PropertyType)
-                    if itemTypes.Length > 1
-                    then
-                        let values = readElements(firstProperty.Value.CreateReader(), itemTypes, serializer)
-                        FSharpValue.MakeUnion(uci, List.toArray values, bindingFlags)
+                    if itemTypes.Length > 1 then
+                        // Then assume we have an array containing
+                        // the elements of the union case
+                        let items =
+                            firstProperty.Value
+                            |> unbox<JArray>
+                            |> Seq.toArray
+
+                        let values =
+                            itemTypes
+                            |> Array.zip items
+                            |> Array.map (fun (item, itemType) -> serializer.Deserialize(item.CreateReader(), itemType))
+
+                        FSharpValue.MakeUnion(uci, values, bindingFlags)
                     else
                         let value = serializer.Deserialize(firstProperty.Value.CreateReader(), itemTypes.[0])
                         FSharpValue.MakeUnion(uci, [|value|], bindingFlags)
@@ -459,22 +469,3 @@ type FableJsonConverter() =
               mapDeserializeMethod.Invoke(null, [| t; mapLiteral.CreateReader(); serializer |])
         | true, _ ->
             serializer.Deserialize(reader, t)
-
-// // See https://github.com/fable-compiler/Fable/issues/450#issuecomment-251000889
-// type SerializationBinder() =
-//     inherit System.Runtime.Serialization.SerializationBinder()
-//     let findType name =
-//         System.AppDomain.CurrentDomain.GetAssemblies()
-//         |> Seq.tryPick(fun a ->
-//             a.GetTypes()
-//             |> Seq.tryPick(fun t -> if t.FullName.Replace("+", ".") = name then Some t else None))
-//     let getType name =
-//         serializationBinderTypes.GetOrAdd(name, findType >> Option.toObj)
-
-//     override x.BindToType(assemblyName:string, typeName:string) =
-//         if not <| isNull assemblyName
-//         then base.BindToType(assemblyName, typeName)
-//         else getType typeName
-//     override x.BindToName(typ:Type, assemblyName:byref<string>, typeName:byref<string>) =
-//         assemblyName <- null
-//         typeName <- typ.FullName.Replace("+", ".")

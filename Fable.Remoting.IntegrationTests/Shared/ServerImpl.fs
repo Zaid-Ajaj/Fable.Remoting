@@ -190,4 +190,9 @@ let server : IServer  = {
     echoOptionalLong =  Async.result
     echoSingleDULong = Async.result
     echoLongInGenericUnion = Async.result
+    command = fun (label, id, command) -> async {
+        return Some "Operation error"
+    }
+
+    echoPosition = Async.result
 }

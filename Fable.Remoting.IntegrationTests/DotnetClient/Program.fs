@@ -4,7 +4,7 @@ open System
 open SharedTypes
 open Fable.Remoting.Server
 open Fable.Remoting.Suave
-open Fable.Remoting.DotnetClient 
+open Fable.Remoting.DotnetClient
 open Expecto
 open Expecto.Logging
 open Suave
@@ -14,26 +14,26 @@ open Suave.Filters
 open ServerImpl
 open System.Threading
 
-let fableWebPart = 
+let fableWebPart =
     Remoting.createApi()
     |> Remoting.fromValue server
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
     |> Remoting.buildWebPart
 
-let webApp = 
+let webApp =
   choose [ GET >=> browseHome
            fableWebPart ]
 
-let cts = new CancellationTokenSource() 
-let suaveConfig = 
+let cts = new CancellationTokenSource()
+let suaveConfig =
     { defaultConfig with
         bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" 9090 ]
         bufferSize = 2048
         cancellationToken = cts.Token }
 
 let listening, server = startWebServerAsync suaveConfig webApp
-Async.Start server 
+Async.Start server
 printfn "Web server started"
 printfn "Getting server ready to listen for reqeusts"
 listening
@@ -44,53 +44,53 @@ printfn "Server listening to requests"
 
 let proxy = Proxy.create<IServer> (sprintf "http://localhost:9090/api/%s/%s")
 
-let dotnetClientTests = 
+let dotnetClientTests =
     testList "Dotnet Client tests" [
 
         testCaseAsync "IServer.getLength" <| async {
-            let! result =  proxy.call <@ fun server -> server.getLength "hello" @> 
+            let! result =  proxy.call <@ fun server -> server.getLength "hello" @>
             Expect.equal 5 result "Length returned is correct"
         }
 
         testCaseAsync "IServer.getLength expression from outside" <| async {
             let value = "value from outside"
-            let! result =  proxy.call <@ fun server -> server.getLength value @> 
+            let! result =  proxy.call <@ fun server -> server.getLength value @>
             Expect.equal 18 result "Length returned is correct"
         }
 
         testCaseAsync "IServer.echoInteger" <| async {
-            let! firstResult = proxy.call <@ fun server -> server.echoInteger 20 @> 
-            let! secondResult = proxy.call <@ fun server -> server.echoInteger 0 @> 
+            let! firstResult = proxy.call <@ fun server -> server.echoInteger 20 @>
+            let! secondResult = proxy.call <@ fun server -> server.echoInteger 0 @>
             Expect.equal 20 firstResult "result is echoed correctly"
             Expect.equal 0 secondResult "result is echoed correctly"
         }
 
         testCaseAsync "IServer.simpleUnit" <| async {
-            let! result =  proxy.call <@ fun server -> server.simpleUnit () @> 
+            let! result =  proxy.call <@ fun server -> server.simpleUnit () @>
             Expect.equal 42 result "result is correct"
         }
 
         testCaseAsync "IServer.echoBool" <| async {
             let! one = proxy.call <@ fun server -> server.echoBool true @>
-            let! two = proxy.call <@ fun server -> server.echoBool false  @> 
+            let! two = proxy.call <@ fun server -> server.echoBool false  @>
             Expect.equal one true "Bool result is correct"
             Expect.equal two false "Bool result is correct"
         }
 
         testCaseAsync "IServer.echoIntOption" <| async {
-            let! one =  proxy.call <@ fun server -> server.echoIntOption (Some 20) @> 
-            let! two =  proxy.call <@ fun server -> server.echoIntOption None @> 
-            
+            let! one =  proxy.call <@ fun server -> server.echoIntOption (Some 20) @>
+            let! two =  proxy.call <@ fun server -> server.echoIntOption None @>
+
             Expect.equal one (Some 20) "Option<int> returned is correct"
             Expect.equal two None "Option<int> returned is correct"
         }
 
         testCaseAsync "IServer.echoIntOption from outside" <| async {
             let first = Some 20
-            let second : Option<int> = None 
-            let! one =  proxy.call <@ fun server -> server.echoIntOption first @> 
-            let! two =  proxy.call <@ fun server -> server.echoIntOption second @> 
-            
+            let second : Option<int> = None
+            let! one =  proxy.call <@ fun server -> server.echoIntOption first @>
+            let! two =  proxy.call <@ fun server -> server.echoIntOption second @>
+
             Expect.equal one (Some 20) "Option<int> returned is correct"
             Expect.equal two None "Option<int> returned is correct"
         }
@@ -104,7 +104,7 @@ let dotnetClientTests =
 
         testCaseAsync "IServer.echoStringOption from outside" <| async {
             let first = Some "value"
-            let second : Option<string> = None 
+            let second : Option<string> = None
             let! one = proxy.call <@ fun server -> server.echoStringOption first @>
             let! two = proxy.call <@ fun server -> server.echoStringOption second @>
             Expect.equal one (Some "value") "Option<string> returned is correct"
@@ -120,32 +120,32 @@ let dotnetClientTests =
 
         testCaseAsync "IServer.echoSimpleUnionType from outside" <| async {
             let first = One
-            let second = Two 
+            let second = Two
             let! result1 = proxy.call <@ fun server -> server.echoSimpleUnionType first @>
             let! result2 = proxy.call <@ fun server -> server.echoSimpleUnionType second @>
             Expect.equal true (result1 = One) "SimpleUnion returned is correct"
             Expect.equal true (result2 = Two) "SimpleUnion returned is correct"
         }
 
-        testCaseAsync "IServer.echoGenericUnionInt" <| async { 
+        testCaseAsync "IServer.echoGenericUnionInt" <| async {
             let! result1 = proxy.call <@ fun server -> server.echoGenericUnionInt (Just 5) @>
             let! result2 = proxy.call <@ fun server -> server.echoGenericUnionInt (Just 10) @>
             let! result3 = proxy.call <@ fun server -> server.echoGenericUnionInt Nothing @>
 
             Expect.equal true (result1 = Just 5) "GenericUnionInt returned is correct"
             Expect.equal true (result2 = Just 10) "GenericUnionInt returned is correct"
-            Expect.equal true (result3 = Nothing) "GenericUnionInt returned is correct"         
+            Expect.equal true (result3 = Nothing) "GenericUnionInt returned is correct"
         }
 
-        testCaseAsync "IServer.echoGenericUnionString" <| async { 
+        testCaseAsync "IServer.echoGenericUnionString" <| async {
             let! result1 = proxy.call <@ fun server -> server.echoGenericUnionString (Just "") @>
             let! result2 = proxy.call <@ fun server -> server.echoGenericUnionString (Just null) @>
             let! result3 = proxy.call <@ fun server -> server.echoGenericUnionString Nothing @>
 
             Expect.equal true (result1 = Just "") "GenericUnionString returned is correct"
             Expect.equal true (result2 = Just null) "GenericUnionString returned is correct"
-            Expect.equal true (result3 = Nothing) "GenericUnionString returned is correct"         
-        }    
+            Expect.equal true (result3 = Nothing) "GenericUnionString returned is correct"
+        }
 
         testCaseAsync "IServer.echoRecord" <| async {
             let record1 = { Prop1 = "hello"; Prop2 = 10; Prop3 = None }
@@ -158,9 +158,9 @@ let dotnetClientTests =
             Expect.equal true (result1 = record1) "Record returned is correct"
             Expect.equal true (result2 = record2) "Record returned is correct"
             Expect.equal true (result3 = record3) "Record returned is correct"
-        }    
+        }
 
-        testCaseAsync "IServer.echoNestedGeneric from outside" <| async { 
+        testCaseAsync "IServer.echoNestedGeneric from outside" <| async {
             let input : GenericRecord<Maybe<int option>> = {
                 Value = Just (Some 5)
                 OtherValue = 2
@@ -178,7 +178,7 @@ let dotnetClientTests =
         }
 
         // Inline values cannot always be compiled, so define first and reference from inside the quotation expression
-        testCaseAsync "IServer.echoNestedGeneric inline in expression" <| async { 
+        testCaseAsync "IServer.echoNestedGeneric inline in expression" <| async {
             let! result1 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (Some 5); OtherValue = 2 }  @>
             let! result2 = proxy.call <@ fun server -> server.echoNestedGeneric { Value = Just (None); OtherValue = 2 } @>
             Expect.equal true ({ Value = Just (Some 5); OtherValue = 2 } = result1) "Nested generic record is correct"
@@ -189,9 +189,9 @@ let dotnetClientTests =
             let inputList = [1 .. 5]
             let! output = proxy.call <@ fun server -> server.echoIntList inputList @>
             Expect.equal output [1;2;3;4;5] "The echoed list is correct"
-            let emptyList : int list = [ ] 
+            let emptyList : int list = [ ]
             let! echoedList = proxy.call <@ fun server -> server.echoIntList emptyList @>
-            Expect.equal true (List.isEmpty echoedList) "The echoed list is correct"          
+            Expect.equal true (List.isEmpty echoedList) "The echoed list is correct"
         }
 
         testCaseAsync "IServer.echoSingleCase" <| async {
@@ -203,7 +203,7 @@ let dotnetClientTests =
             let input = ["one"; "two"; null]
             let! output = proxy.call <@ fun server -> server.echoStringList input @>
             Expect.equal input output "Echoed list is correct"
-            let emptyList : string list = []  
+            let emptyList : string list = []
             let! echoedList = proxy.call <@ fun server -> server.echoStringList emptyList @>
             Expect.equal true (List.isEmpty echoedList) "Echoed list is empty"
         }
@@ -212,18 +212,18 @@ let dotnetClientTests =
             let input = [true; false; true]
             let! output = proxy.call <@ fun server -> server.echoBoolList input @>
             Expect.equal output input "Echoed list is correct"
-            let emptyList : bool list = [] 
+            let emptyList : bool list = []
             let! echoedList = proxy.call <@ fun server -> server.echoBoolList emptyList @>
             Expect.equal true (List.isEmpty echoedList) "Echoed list is empty"
-        }        
-        
+        }
+
         testCaseAsync "IServer.echoListOfListsOfStrings" <| async {
             let input = [["1"; "2"]; ["3"; "4";"5"]]
             let! output = proxy.call <@ fun server -> server.echoListOfListsOfStrings input @>
             Expect.equal input output "Echoed list is correct"
-        }   
+        }
 
-        testCaseAsync "IServer.echoResult for Result<int, string>" <| async { 
+        testCaseAsync "IServer.echoResult for Result<int, string>" <| async {
             let! output = proxy.call <@ fun server -> server.echoResult (Ok 15) @>
             Expect.equal output (Ok 15) "Result is correct"
 
@@ -238,11 +238,11 @@ let dotnetClientTests =
         }
 
         testCaseAsync "IServer.throwError using callSafely" <| async {
-            let! result = proxy.callSafely <@ fun server -> server.throwError() @> 
-            match result with 
+            let! result = proxy.callSafely <@ fun server -> server.throwError() @>
+            match result with
             | Ok value -> failwithf "Got value %A where an error was expected" value
-            | Result.Error ex -> 
-                match ex with 
+            | Result.Error ex ->
+                match ex with
                 | :? Http.ProxyRequestException -> Expect.isTrue true "Works"
                 | other -> Expect.isTrue false "Should not happen"
         }
@@ -260,32 +260,48 @@ let dotnetClientTests =
             Expect.equal 42 result "Pure async without parameters works"
         }
 
-        testCaseAsync "IServer.asyncNestedGeneric" <| async { 
+        testCaseAsync "IServer.asyncNestedGeneric" <| async {
             let! result = proxy.call <@ fun server -> server.asyncNestedGeneric @>
             Expect.equal { OtherValue = 10; Value = Just (Some "value") } result "Returned value is correct"
         }
 
-        testCaseAsync "IServer.echoBigInteger" <| async { 
+        testCaseAsync "IServer.echoBigInteger" <| async {
             let input = 1I
             let! output = proxy.call <@ fun server -> server.echoBigInteger input @>
-            Expect.equal input output "Big int is equal"  
+            Expect.equal input output "Big int is equal"
         }
 
         testCaseAsync "IServer.tuplesAndLists" <| async {
             let inputDict = Map.ofList [ "hello", 5 ]
             let inputStrings = [ "there!" ]
             let! output = proxy.call <@ fun server -> server.tuplesAndLists (inputDict, inputStrings) @>
-            let expected = Map.ofList [ "hello", 5; "there!", 6 ] 
+            let expected = Map.ofList [ "hello", 5; "there!", 6 ]
             Expect.equal output expected "Echoed map is correct"
+        }
+
+        testCaseAsync "IServer.command" <| async {
+            let label = CommandLabel "Initializing programs"
+            let identifier = IWantResponsesOn (ClientId "dDY_ftBDlUWjemgjP6leWw")
+            let address = Address 2
+            let position = Cartesian({x = 0.0;y = 10.0; z = 6.0; w = 0.0; p = 0.0; r = -90.0}, CartesianConfig "N U T, 0, 0, 0")
+            let command = Requests.PositionSet(address, position)
+            let! output = proxy.call (fun server -> server.command(label, identifier, command))
+            Expect.equal output (Some "Operation error") "Output has gone through"
+        }
+
+        testCaseAsync "IServer.echoPosition" <| async {
+            let position = Cartesian({x = 0.0;y = 10.0; z = 6.0; w = 0.0; p = 0.0; r = -90.0}, CartesianConfig "N U T, 0, 0, 0")
+            let! output = proxy.call (fun server -> server.echoPosition(position))
+            Expect.equal output position "Output has gone through"
         }
     ]
 
-let testConfig =  { Expecto.Tests.defaultConfig with 
+let testConfig =  { Expecto.Tests.defaultConfig with
                         parallelWorkers = 1
                         verbosity = LogLevel.Debug }
-                        
+
 [<EntryPoint>]
-let main argv = 
+let main argv =
     let testResult = runTests testConfig dotnetClientTests
     // quit server
     cts.Cancel()

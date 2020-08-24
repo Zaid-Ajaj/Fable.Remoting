@@ -591,12 +591,31 @@ let serverTests =
 
                 test.equal true (input = output)
             }
+
         testCaseAsync "IServer.largeRecursiveRecord" <|
             async {
                 let input = largeRecursiveRecord
                 let! output = server.echoRecursiveRecord input
 
                 test.equal true (input = output)
+            }
+
+        testCaseAsync "IServer.echoPosition" <|
+            async {
+                let position = Cartesian({x = 0.0;y = 10.0; z = 6.0; w = 0.0; p = 0.0; r = -90.0}, CartesianConfig "N U T, 0, 0, 0")
+                let! output = server.echoPosition position
+                test.equal true (position = output)
+            }
+
+        testCaseAsync "IServer.command" <|
+            async {
+                let label = CommandLabel "Initializing programs"
+                let identifier = IWantResponsesOn (ClientId "dDY_ftBDlUWjemgjP6leWw")
+                let address = Address 2
+                let position = Cartesian({x = 0.0;y = 10.0; z = 6.0; w = 0.0; p = 0.0; r = -90.0}, CartesianConfig "N U T, 0, 0, 0")
+                let command = Requests.PositionSet(address, position)
+                let! output = server.command(label, identifier, command)
+                test.equal true (output = Some "Operation error")
             }
     ]
 
