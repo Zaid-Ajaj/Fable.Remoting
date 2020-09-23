@@ -105,6 +105,17 @@ let converterTest =
             Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> serializeDeserializeCompare
             Map.ofList [ 5000, Just 5; 1, Nothing ] |> serializeDeserializeCompare
         }
+        test "Set16" {
+            Set.ofArray [| for i in 1 .. 295 -> i |] |> serializeDeserializeCompare
+        }
+        test "Set32" {
+            Set.ofArray [| for i in 1 .. 80_000 -> i |] |> serializeDeserializeCompareSequence
+        }
+        test "Generic set" {
+            Set.ofList [ {| something = 5; somethnigElse = 10 |} ] |> serializeDeserializeCompare
+            Set.ofList [ {| something = 5; somethnigElse = 10 |}; {| something = 5; somethnigElse = 11 |} ] |> serializeDeserializeCompare
+            Set.ofList [ {| something = 6; somethnigElse = 10 |}; {| something = 5; somethnigElse = 10 |} ] |> serializeDeserializeCompare
+        }
         test "Binary data bin8, 5 bytes" {
             [| 55uy; 0uy; 255uy |] |> serializeDeserializeCompareWithLength 5
         }

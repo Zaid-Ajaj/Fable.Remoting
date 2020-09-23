@@ -110,6 +110,11 @@ let inline writeMapHeader length (out: Stream) =
         out.WriteByte Format.Map32
         write32bitNumber length out false
 
+let inline writeSet (set: Set<'a>) (out: Stream) (elementSerializer: Action<'a, Stream>) =
+    writeArrayHeader set.Count out
+    for x in set do
+        elementSerializer.Invoke (x, out)
+
 let inline writeDict (dict: Dictionary<'key, 'value>) (out: Stream) (keyWriter: Action<'key, Stream>) (valueWriter: Action<'value, Stream>) =
     writeMapHeader dict.Count out
     for kvp in dict do
@@ -319,6 +324,13 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
                     let keyWriter = serializerCached<'key> ctx
                     let valueWriter = serializerCached<'value> ctx
                     Action<_, _> (fun x out -> writeMap x out keyWriter valueWriter) |> w
+        }
+    | Shape.FSharpSet s ->
+        s.Accept {
+            new IFSharpSetVisitor<Action<'T, Stream>> with
+                member _.Visit<'a when 'a: comparison> () =
+                    let s = serializerCached<'a> ctx
+                    Action<_, _> (fun x out -> writeSet x out s) |> w
         }
     | Shape.Dictionary d ->
         d.Accept {
@@ -605,6 +617,9 @@ and writeObject (x: obj) (t: Type) (out: ResizeArray<byte>) =
             let keyType = mapTypes.[0]
             let valueType = mapTypes.[1]
             cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
+        elif t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Set<_>> then
+            let elementType = t.GetGenericArguments () |> Array.head
+            cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
         elif t.IsEnum then
             cacheGetOrAdd (t, fun x -> writeInt64 (box x :?> int64)) x out
         elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
