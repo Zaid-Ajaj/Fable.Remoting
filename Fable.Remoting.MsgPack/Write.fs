@@ -617,23 +617,22 @@ module Fable =
                 cacheGetOrAdd (t, fun x -> writeInt64 (box x :?> int64)) x out
             elif t.IsGenericType then
                 let tDef = t.GetGenericTypeDefinition()
-            
+                let genArgs = t.GetGenericArguments ()
+
                 if tDef = typedefof<_ list> then
-                    let elementType = t.GetGenericArguments () |> Array.head
+                    let elementType = genArgs |> Array.head
                     cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
                 elif tDef = typedefof<_ option> then
-                    let elementType = t.GetGenericArguments ()
                     cacheGetOrAdd (t, fun x out ->
                         let opt = x :?> _ option
                         let tag, value = if Option.isSome opt then 1, opt.Value else 0, null
-                        writeUnion out tag elementType [| value |]) x out
+                        writeUnion out tag genArgs [| value |]) x out
                 elif tDef = typedefof<Dictionary<_, _>> || tDef = typedefof<Map<_, _>> then
-                    let mapTypes = t.GetGenericArguments ()
-                    let keyType = mapTypes.[0]
-                    let valueType = mapTypes.[1]
+                    let keyType = genArgs.[0]
+                    let valueType = genArgs.[1]
                     cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
                 elif tDef = typedefof<Set<_>> then
-                    let elementType = t.GetGenericArguments () |> Array.head
+                    let elementType = genArgs |> Array.head
                     cacheGetOrAdd (t, fun x out -> writeSet out elementType (x :?> System.Collections.ICollection)) x out
                 else 
                     failwithf "Cannot serialize %s." t.Name
