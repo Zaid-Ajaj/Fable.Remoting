@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>6.7.0</Version>
+        <Version>6.8.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update SimpleJson dependency</PackageReleaseNotes>
+        <PackageReleaseNotes>Support for generic sets with MsgPack</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1</TargetFrameworks>
     </PropertyGroup>
     <ItemGroup>
