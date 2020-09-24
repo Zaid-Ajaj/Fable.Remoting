@@ -27,7 +27,11 @@ module.exports = function (evn, argv) {
     port: 8081, // where to the run dev-server
     proxy: {
       '/api/*': { // tell webpack-dev-server to re-route all requests from client to the server
-        target: "http://localhost:8080",// assuming the suave server is hosted op port 8080
+        target: "http://localhost:8397",// assuming the suave server is hosted op port 8080
+        changeOrigin: true
+      },
+      '/IAuthServer/*': {
+        target: "http://localhost:8397",// assuming the suave server is hosted op port 8080
         changeOrigin: true
       }
     }

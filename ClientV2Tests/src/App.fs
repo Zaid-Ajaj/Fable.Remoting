@@ -51,7 +51,7 @@ let serverTests =
                 | [ "http://api.example.com/IMusicStore/getLength" ] -> test.pass()
                 | otherwise -> test.fail()
 
-        testCaseAsync "IServer.getLegth" <|
+        testCaseAsync "IServer.getLength" <|
             async {
                 let! result = server.getLength "hello"
                 do test.equal result 5
@@ -63,6 +63,14 @@ let serverTests =
                 match Map.toList result with
                 | [ (1,1), 1 ] -> test.pass()
                 | otherwise -> test.failwith "Map<int * int, int> fails"
+            }
+
+        testCaseAsync "IServer.echoTupleSet" <|
+            async {
+                let! result = server.echoTupleSet (Set.ofList [(1,1)])
+                match Set.toList result with
+                | [ (1,1) ] -> test.pass()
+                | otherwise -> test.failwith "Set<int * int> fails"
             }
 
         testCaseAsync "IServer.returnUnit" <|
@@ -192,6 +200,15 @@ let serverTests =
                     | otherwise -> test.failwith (sprintf "%A" otherwise)
             }
 
+        testCaseAsync "IServer.setRecordAsValue" <|
+            async {
+                let! result = server.setRecordAsValue()
+                result
+                |> Set.toList
+                |> function
+                    | [ { Key = 1; Value = "Value" } ] -> test.pass()
+                    | otherwise -> test.failwith (sprintf "%A" otherwise)
+            }
 
         testCaseAsync "IServer.echoIntOption" <|
             async {
@@ -430,6 +447,15 @@ let serverTests =
                 | false -> test.fail()
             }
 
+        testCaseAsync "IServer.echoSet" <|
+            async {
+                let input = ["hello"] |> Set.ofList
+                let! output = server.echoSet input
+                match input = output with
+                | true -> test.pass()
+                | false -> test.fail()
+            }
+
         testCaseAsync "IServer.echoBigInteger" <|
             async {
                 let n = 1I
@@ -635,6 +661,14 @@ let binaryServerTests =
                 | otherwise -> test.failwith "Map<int * int, int> fails"
             }
 
+        testCaseAsync "IServer.echoTupleSet" <|
+            async {
+                let! result = server.echoTupleSet (Set.ofList [(1,1)])
+                match Set.toList result with
+                | [ (1,1) ] -> test.pass()
+                | otherwise -> test.failwith "Set<int * int> fails"
+            }
+
         testCaseAsync "IBinaryServer.returnUnit" <|
             async {
                 let! result = binaryServer.returnUnit()
@@ -750,6 +784,15 @@ let binaryServerTests =
                     | otherwise -> test.failwith (sprintf "%A" otherwise)
             }
 
+        testCaseAsync "IServer.setRecordAsValue" <|
+            async {
+                let! result = server.setRecordAsValue()
+                result
+                |> Set.toList
+                |> function
+                    | [ { Key = 1; Value = "Value" } ] -> test.pass()
+                    | otherwise -> test.failwith (sprintf "%A" otherwise)
+            }
 
         testCaseAsync "IBinaryServer.echoIntOption" <|
             async {
@@ -983,6 +1026,15 @@ let binaryServerTests =
             async {
                 let input = ["hello", 1] |> Map.ofList
                 let! output = binaryServer.echoMap input
+                match input = output with
+                | true -> test.pass()
+                | false -> test.fail()
+            }
+
+        testCaseAsync "IServer.echoSet" <|
+            async {
+                let input = ["hello"] |> Set.ofList
+                let! output = server.echoSet input
                 match input = output with
                 | true -> test.pass()
                 | false -> test.fail()
@@ -1294,42 +1346,30 @@ let secureApiTests =
 
 
 let inline serializeDeserializeCompare typ (value: 'a) =
-#if FABLE_COMPILER
     let ra = FSharp.Collections.ResizeArray<byte> ()
-    Fable.Remoting.MsgPack.Write.writeObject value typ ra
+    Fable.Remoting.MsgPack.Write.Fable.writeObject value typ ra
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
 
     test.equal value deserialized
-#else
-    ()
-#endif
 
 let inline serializeDeserializeCompareDictionary typ (value: System.Collections.Generic.IDictionary<'a, 'b>) =
-#if FABLE_COMPILER
     let ra = FSharp.Collections.ResizeArray<byte> ()
-    Fable.Remoting.MsgPack.Write.writeObject value typ ra
+    Fable.Remoting.MsgPack.Write.Fable.writeObject value typ ra
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> System.Collections.Generic.IDictionary<'a, 'b>
 
     for key in value.Keys do
         test.equal value.[key] deserialized.[key]
-#else
-    ()
-#endif
 
 let inline serializeDeserializeCompareWithLength expectedLength typ (value: 'a) =
-#if FABLE_COMPILER
     let ra = FSharp.Collections.ResizeArray<byte> ()
-    Fable.Remoting.MsgPack.Write.writeObject value typ ra
+    Fable.Remoting.MsgPack.Write.Fable.writeObject value typ ra
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
 
     test.equal value deserialized
     test.equal ra.Count expectedLength
-#else
-    ()
-#endif
 
 let msgPackTests =
     testList "Message Pack serialization tests" [
@@ -1378,6 +1418,15 @@ let msgPackTests =
         testCase "Generic map" <| fun () ->
             Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> serializeDeserializeCompare typeof<Map<string, Maybe<int>>>
             Map.ofList [ 5000, Just 5; 1, Nothing ] |> serializeDeserializeCompare typeof<Map<int, Maybe<int>>>
+        testCase "Set16" <| fun () ->
+            Set.ofArray [| for i in 1 .. 295 -> i |] |> serializeDeserializeCompare typeof<Set<int>>
+        testCase "Set32" <| fun () ->
+            Set.ofArray [| for i in 1 .. 80_000 -> i |] |> serializeDeserializeCompare typeof<Set<int>>
+        testCase "Generic set" <| fun () ->
+            Set.ofList [ 
+                { Name = "root"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
+                { Name = "root"; Children = [ { Name = "Grandchild2"; Children = [ ] } ] }
+            ] |> serializeDeserializeCompare typeof<Set<RecursiveRecord>>
         testCase "Binary data bin8, 5 bytes" <| fun () ->
             [| 55uy; 0uy; 255uy |] |> serializeDeserializeCompareWithLength 5 typeof<byte[]>
         testCase "Binary data bin16, 303 bytes" <| fun () ->

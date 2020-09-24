@@ -237,6 +237,12 @@ let dotnetClientTests =
             Expect.equal input output "Map is echoed correctly"
         }
 
+        testCaseAsync "IServer.echoSet" <| async {
+            let input = ["hello"] |> Set.ofList
+            let! output = proxy.call <@ fun server -> server.echoSet input @>
+            Expect.equal input output "Set is echoed correctly"
+        }
+
         testCaseAsync "IServer.throwError using callSafely" <| async {
             let! result = proxy.callSafely <@ fun server -> server.throwError() @>
             match result with

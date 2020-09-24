@@ -202,6 +202,12 @@ type IBinaryServer = {
     echoMap : Map<string, int> -> Async<Map<string, int>>
     echoTupleMap : Map<int * int, int> -> Async<Map<int * int, int>>
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
+
+    // sets
+    echoSet : Set<string> -> Async<Set<string>>
+    echoTupleSet : Set<int * int> -> Async<Set<int * int>>
+    setRecordAsValue: unit -> Async<Set<RecordAsKey>>
+
     // errors
     throwError : unit -> Async<string>
     throwBinaryError : unit -> Async<byte[]>
@@ -286,6 +292,12 @@ type IServer = {
     echoMap : Map<string, int> -> Async<Map<string, int>>
     echoTupleMap : Map<int * int, int> -> Async<Map<int * int, int>>
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
+
+    // sets
+    echoSet : Set<string> -> Async<Set<string>>
+    echoTupleSet : Set<int * int> -> Async<Set<int * int>>
+    setRecordAsValue: unit -> Async<Set<RecordAsKey>>
+
     // errors
     throwError : unit -> Async<string>
     throwBinaryError : unit -> Async<byte[]>
