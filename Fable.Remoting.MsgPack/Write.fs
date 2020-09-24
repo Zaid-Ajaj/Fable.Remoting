@@ -110,6 +110,11 @@ let inline writeMapHeader length (out: Stream) =
         out.WriteByte Format.Map32
         write32bitNumber length out false
 
+let inline writeSet (set: Set<'a>) (out: Stream) (elementSerializer: Action<'a, Stream>) =
+    writeArrayHeader set.Count out
+    for x in set do
+        elementSerializer.Invoke (x, out)
+
 let inline writeDict (dict: Dictionary<'key, 'value>) (out: Stream) (keyWriter: Action<'key, Stream>) (valueWriter: Action<'value, Stream>) =
     writeMapHeader dict.Count out
     for kvp in dict do
@@ -320,6 +325,13 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
                     let valueWriter = serializerCached<'value> ctx
                     Action<_, _> (fun x out -> writeMap x out keyWriter valueWriter) |> w
         }
+    | Shape.FSharpSet s ->
+        s.Accept {
+            new IFSharpSetVisitor<Action<'T, Stream>> with
+                member _.Visit<'a when 'a: comparison> () =
+                    let s = serializerCached<'a> ctx
+                    Action<_, _> (fun x out -> writeSet x out s) |> w
+        }
     | Shape.Dictionary d ->
         d.Accept {
             new IDictionaryVisitor<Action<'T, Stream>> with
@@ -400,243 +412,268 @@ let serializeObj (x: obj) (out: Stream) =
             serializerCache.[t] <- serializer
             serializer.Invoke (x, out)
 
-#else
+#endif
 
-let serializerCache = Dictionary<Type, obj -> ResizeArray<byte> -> unit> ()
+module Fable =
+    let private serializerCache = Dictionary<Type, obj -> ResizeArray<byte> -> unit> ()
 
-let cacheGetOrAdd (typ, f) =
-    match serializerCache.TryGetValue typ with
-    | true, f -> f
-    | _ ->
-        serializerCache.Add (typ, f)
-        f
+    let private cacheGetOrAdd (typ, f) =
+        match serializerCache.TryGetValue typ with
+        | true, f -> f
+        | _ ->
+            serializerCache.Add (typ, f)
+            f
 
-let inline write32bitNumber b1 b2 b3 b4 (out: ResizeArray<byte>) writeFormat =
-    if b2 > 0uy || b1 > 0uy then
-        if writeFormat then out.Add Format.Uint32
-        out.Add b1
-        out.Add b2
-        out.Add b3
-        out.Add b4
-    elif (b3 > 0uy) then
-        if writeFormat then out.Add Format.Uint16
-        out.Add b3
-        out.Add b4
-    else
-        if writeFormat then out.Add Format.Uint8
-        out.Add b4
+    let inline private write32bitNumber b1 b2 b3 b4 (out: ResizeArray<byte>) writeFormat =
+        if b2 > 0uy || b1 > 0uy then
+            if writeFormat then out.Add Format.Uint32
+            out.Add b1
+            out.Add b2
+            out.Add b3
+            out.Add b4
+        elif (b3 > 0uy) then
+            if writeFormat then out.Add Format.Uint16
+            out.Add b3
+            out.Add b4
+        else
+            if writeFormat then out.Add Format.Uint8
+            out.Add b4
 
-let write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (out: ResizeArray<byte>) =
-    if b4 > 0uy || b3 > 0uy || b2 > 0uy || b1 > 0uy then
-        out.Add Format.Uint64
-        out.Add b1
-        out.Add b2
-        out.Add b3
-        out.Add b4
-        write32bitNumber b5 b6 b7 b8 out false
-    else
-        write32bitNumber b5 b6 b7 b8 out true
+    let private write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (out: ResizeArray<byte>) =
+        if b4 > 0uy || b3 > 0uy || b2 > 0uy || b1 > 0uy then
+            out.Add Format.Uint64
+            out.Add b1
+            out.Add b2
+            out.Add b3
+            out.Add b4
+            write32bitNumber b5 b6 b7 b8 out false
+        else
+            write32bitNumber b5 b6 b7 b8 out true
 
-let inline writeUnsigned32bitNumber (n: UInt32) (out: ResizeArray<byte>) =
-    write32bitNumber (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
+    let inline private writeUnsigned32bitNumber (n: UInt32) (out: ResizeArray<byte>) =
+        write32bitNumber (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
 
-let inline writeUnsigned64bitNumber (n: UInt64) (out: ResizeArray<byte>) =
-    write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
+    let inline private writeUnsigned64bitNumber (n: UInt64) (out: ResizeArray<byte>) =
+        write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
  
-let inline writeNil (out: ResizeArray<byte>) = out.Add Format.Nil
-let inline writeBool x (out: ResizeArray<byte>) = out.Add (if x then Format.True else Format.False)
+    let inline private writeNil (out: ResizeArray<byte>) = out.Add Format.Nil
+    let inline private writeBool x (out: ResizeArray<byte>) = out.Add (if x then Format.True else Format.False)
 
-let writeSignedNumber bytes (out: ResizeArray<byte>) =
-    if BitConverter.IsLittleEndian then
-        Array.rev bytes |> out.AddRange
-    else
-        out.AddRange bytes
-
-let writeUInt64 (n: UInt64) (out: ResizeArray<byte>) =
-    if n < 128UL then
-        out.Add (Format.fixposnum n)
-    else
-        writeUnsigned64bitNumber n out
-
-let writeInt64 (n: int64) (out: ResizeArray<byte>) =
-    if n >= 0L then
-        writeUInt64 (uint64 n) out 
-    else
-        if n > -32L then
-            out.Add (Format.fixnegnum n)
+    let private writeSignedNumber bytes (out: ResizeArray<byte>) =
+        if BitConverter.IsLittleEndian then
+            Array.rev bytes |> out.AddRange
         else
-            //todo length optimization
-            out.Add Format.Int64
-            writeSignedNumber (BitConverter.GetBytes n) out
+            out.AddRange bytes
 
-let inline writeByte b (out: ResizeArray<byte>) =
-    out.Add b
-
-let inline writeString (str: string) (out: ResizeArray<byte>) =
-    let str = Encoding.UTF8.GetBytes str
-
-    if str.Length < 32 then
-        out.Add (Format.fixstr str.Length)
-    else
-        if str.Length < 256 then
-            out.Add Format.Str8
-        elif str.Length < 65536 then
-            out.Add Format.Str16
+    let private writeUInt64 (n: UInt64) (out: ResizeArray<byte>) =
+        if n < 128UL then
+            out.Add (Format.fixposnum n)
         else
-            out.Add Format.Str32
+            writeUnsigned64bitNumber n out
 
-        writeUnsigned32bitNumber (uint32 str.Length) out false
+    let private writeInt64 (n: int64) (out: ResizeArray<byte>) =
+        if n >= 0L then
+            writeUInt64 (uint64 n) out 
+        else
+            if n > -32L then
+                out.Add (Format.fixnegnum n)
+            else
+                //todo length optimization
+                out.Add Format.Int64
+                writeSignedNumber (BitConverter.GetBytes n) out
 
-    out.AddRange str
+    let inline private writeByte b (out: ResizeArray<byte>) =
+        out.Add b
 
-let writeSingle (n: float32) (out: ResizeArray<byte>) =
-    out.Add Format.Float32
-    writeSignedNumber (BitConverter.GetBytes n) out
+    let inline private writeString (str: string) (out: ResizeArray<byte>) =
+        let str = Encoding.UTF8.GetBytes str
+
+        if str.Length < 32 then
+            out.Add (Format.fixstr str.Length)
+        else
+            if str.Length < 256 then
+                out.Add Format.Str8
+            elif str.Length < 65536 then
+                out.Add Format.Str16
+            else
+                out.Add Format.Str32
+
+            writeUnsigned32bitNumber (uint32 str.Length) out false
+
+        out.AddRange str
+
+    let private writeSingle (n: float32) (out: ResizeArray<byte>) =
+        out.Add Format.Float32
+        writeSignedNumber (BitConverter.GetBytes n) out
     
-let writeDouble (n: float) (out: ResizeArray<byte>) =
-    out.Add Format.Float64
-    writeSignedNumber (BitConverter.GetBytes n) out
+    let private writeDouble (n: float) (out: ResizeArray<byte>) =
+        out.Add Format.Float64
+        writeSignedNumber (BitConverter.GetBytes n) out
 
-let writeBin (data: byte[]) (out: ResizeArray<byte>) =
-    if data.Length < 256 then
-        out.Add Format.Bin8
-    elif data.Length < 65536 then
-        out.Add Format.Bin16
-    else
-        out.Add Format.Bin32
+    let private writeBin (data: byte[]) (out: ResizeArray<byte>) =
+        if data.Length < 256 then
+            out.Add Format.Bin8
+        elif data.Length < 65536 then
+            out.Add Format.Bin16
+        else
+            out.Add Format.Bin32
 
-    writeUnsigned32bitNumber (uint32 data.Length) out false
+        writeUnsigned32bitNumber (uint32 data.Length) out false
 
-    out.AddRange data
+        out.AddRange data
 
-let inline writeDateTimeOffset (out: ResizeArray<byte>) (dto: DateTimeOffset) =
-    out.Add (Format.fixarr 2uy)
-    writeInt64 dto.Ticks out
-    writeInt64 (int64 dto.Offset.TotalMinutes) out
+    let inline private writeDateTimeOffset (out: ResizeArray<byte>) (dto: DateTimeOffset) =
+        out.Add (Format.fixarr 2uy)
+        writeInt64 dto.Ticks out
+        writeInt64 (int64 dto.Offset.TotalMinutes) out
 
-let writeArrayHeader len (out: ResizeArray<byte>) =
-    if len < 16 then
-        out.Add (Format.fixarr len)
-    elif len < 65536 then
-        out.Add Format.Array16
-        out.Add (len >>> 8 |> FSharp.Core.Operators.byte)
-        out.Add (FSharp.Core.Operators.byte len)
-    else
-        out.Add Format.Array32
-        writeUnsigned32bitNumber (uint32 len) out false
+    let private writeArrayHeader len (out: ResizeArray<byte>) =
+        if len < 16 then
+            out.Add (Format.fixarr len)
+        elif len < 65536 then
+            out.Add Format.Array16
+            out.Add (len >>> 8 |> FSharp.Core.Operators.byte)
+            out.Add (FSharp.Core.Operators.byte len)
+        else
+            out.Add Format.Array32
+            writeUnsigned32bitNumber (uint32 len) out false
 
-let rec writeArray (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
-    writeArrayHeader arr.Count out
+    let rec private writeArray (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
+        writeArrayHeader arr.Count out
 
-    for x in arr do
-        writeObject x t out
+        for x in arr do
+            writeObject x t out
 
-and writeMap (out: ResizeArray<byte>) keyType valueType (dict: IDictionary<obj, obj>) =
-    let length = dict.Count
+    and private writeMap (out: ResizeArray<byte>) keyType valueType (dict: IDictionary<obj, obj>) =
+        let length = dict.Count
 
-    if length < 16 then
-        out.Add (Format.fixmap length)
-    elif length < 65536 then
-        out.Add Format.Map16
-        out.Add (length >>> 8 |> FSharp.Core.Operators.byte)
-        out.Add (FSharp.Core.Operators.byte length)
-    else
-        out.Add Format.Map32
-        writeUnsigned32bitNumber (uint32 length) out false
+        if length < 16 then
+            out.Add (Format.fixmap length)
+        elif length < 65536 then
+            out.Add Format.Map16
+            out.Add (length >>> 8 |> FSharp.Core.Operators.byte)
+            out.Add (FSharp.Core.Operators.byte length)
+        else
+            out.Add Format.Map32
+            writeUnsigned32bitNumber (uint32 length) out false
 
-    for kvp in dict do
-        writeObject kvp.Key keyType out
-        writeObject kvp.Value valueType out
+        for kvp in dict do
+            writeObject kvp.Key keyType out
+            writeObject kvp.Value valueType out
 
-and inline writeRecord (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
-    writeArrayHeader vals.Length out
+    and private writeSet (out: ResizeArray<byte>) t (set: System.Collections.ICollection) =
+        writeArrayHeader set.Count out
 
-    for i in 0 .. vals.Length - 1 do
-        writeObject vals.[i] types.[i] out
+        for x in set do
+            writeObject x t out
 
-and inline writeTuple (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
-    writeRecord out types vals
-
-and writeUnion (out: ResizeArray<byte>) tag (types: Type[]) (vals: obj[]) =
-    out.Add (Format.fixarr 2uy)
-    out.Add (Format.fixposnum tag)
-
-    // save 1 byte if the union case has a single parameter
-    if vals.Length <> 1 then
+    and inline private writeRecord (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
         writeArrayHeader vals.Length out
 
         for i in 0 .. vals.Length - 1 do
             writeObject vals.[i] types.[i] out
-    else
-        writeObject vals.[0] types.[0] out
 
-and writeObject (x: obj) (t: Type) (out: ResizeArray<byte>) =
-    if isNull x then writeNil out else
+    and inline private writeTuple (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
+        writeRecord out types vals
 
-    match serializerCache.TryGetValue t with
-    | true, writer ->
-        writer x out
-    | _ ->
-        if FSharpType.IsRecord (t, true) then
-            let fieldTypes = FSharpType.GetRecordFields (t, true) |> Array.map (fun x -> x.PropertyType)
-            cacheGetOrAdd (t, fun x out -> writeRecord out fieldTypes (FSharpValue.GetRecordFields (x, true))) x out
-        elif t.IsArray then
-            let elementType = t.GetElementType ()
-            cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
-        elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ list> then
-            let elementType = t.GetGenericArguments () |> Array.head
-            cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
-        elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<_ option> then
-            let elementType = t.GetGenericArguments ()
-            cacheGetOrAdd (t, fun x out ->
-                let opt = x :?> _ option
-                let tag, value = if Option.isSome opt then 1, opt.Value else 0, null
-                writeUnion out tag elementType [| value |]) x out
-        elif FSharpType.IsUnion (t, true) then
-            cacheGetOrAdd (t, fun x out ->
-                let case, fields = FSharpValue.GetUnionFields (x, t, true)
-                let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
-                writeUnion out case.Tag fieldTypes fields) x out
-        elif FSharpType.IsTuple t then
-            let fieldTypes = FSharpType.GetTupleElements t
-            cacheGetOrAdd (t, fun x out -> writeTuple out fieldTypes (FSharpValue.GetTupleFields x)) x out
-        elif t.IsGenericType && List.contains (t.GetGenericTypeDefinition ()) [ typedefof<Dictionary<_, _>>; typedefof<Map<_, _>> ] then
-            let mapTypes = t.GetGenericArguments ()
-            let keyType = mapTypes.[0]
-            let valueType = mapTypes.[1]
-            cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
-        elif t.IsEnum then
-            cacheGetOrAdd (t, fun x -> writeInt64 (box x :?> int64)) x out
-        elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
-            cacheGetOrAdd (t, fun x out -> writeInt64 (x :?> int64) out) x out
-        elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
-            cacheGetOrAdd (t, fun x out -> writeDouble (x :?> decimal |> float) out) x out
-        elif t.FullName = "Microsoft.FSharp.Core.float`1" then
-            cacheGetOrAdd (t, fun x out -> writeDouble (x :?> float) out) x out
-        elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
-            cacheGetOrAdd (t, fun x out -> writeSingle (x :?> float32) out) x out
+    and private writeUnion (out: ResizeArray<byte>) tag (types: Type[]) (vals: obj[]) =
+        out.Add (Format.fixarr 2uy)
+        out.Add (Format.fixposnum tag)
+
+        // save 1 byte if the union case has a single parameter
+        if vals.Length <> 1 then
+            writeArrayHeader vals.Length out
+
+            for i in 0 .. vals.Length - 1 do
+                writeObject vals.[i] types.[i] out
         else
-            failwithf "Cannot serialize %s." t.Name
+            writeObject vals.[0] types.[0] out
 
-serializerCache.Add (typeof<byte>, fun x out -> writeByte (x :?> byte) out)
-serializerCache.Add (typeof<sbyte>, fun x out -> writeInt64 (x :?> sbyte |> int64) out)
-serializerCache.Add (typeof<unit>, fun _ out -> writeNil out)
-serializerCache.Add (typeof<bool>, fun x out -> writeBool (x :?> bool) out)
-serializerCache.Add (typeof<string>, fun x out -> writeString (x :?> string) out)
-serializerCache.Add (typeof<int>, fun x out -> writeInt64 (x :?> int |> int64) out)
-serializerCache.Add (typeof<int16>, fun x out -> writeInt64 (x :?> int16 |> int64) out)
-serializerCache.Add (typeof<int64>, fun x out -> writeInt64 (x :?> int64) out)
-serializerCache.Add (typeof<UInt32>, fun x out -> writeUInt64 (x :?> UInt32 |> uint64) out)
-serializerCache.Add (typeof<UInt16>, fun x out -> writeUInt64 (x :?> UInt16 |> uint64) out)
-serializerCache.Add (typeof<UInt64>, fun x out -> writeUInt64 (x :?> UInt64) out)
-serializerCache.Add (typeof<float32>, fun x out -> writeSingle (x :?> float32) out)
-serializerCache.Add (typeof<float>, fun x out -> writeDouble (x :?> float) out)
-serializerCache.Add (typeof<decimal>, fun x out -> writeDouble (x :?> decimal |> float) out)
-serializerCache.Add (typeof<byte[]>, fun x out -> writeBin (x :?> byte[]) out)
-serializerCache.Add (typeof<bigint>, fun x out -> writeBin ((x :?> bigint).ToByteArray ()) out)
-serializerCache.Add (typeof<Guid>, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
-serializerCache.Add (typeof<DateTime>, fun x out -> writeInt64 (x :?> DateTime).Ticks out)
-serializerCache.Add (typeof<DateTimeOffset>, fun x out -> writeDateTimeOffset out (x :?> DateTimeOffset))
-serializerCache.Add (typeof<TimeSpan>, fun x out -> writeInt64 (x :?> TimeSpan).Ticks out)
+    and writeObject (x: obj) (t: Type) (out: ResizeArray<byte>) =
+        #if !FABLE_COMPILER
+        raise (NotSupportedException "This function is meant to be used in Fable, please use serializeObj or makeSerializer.")
+        #else
+        if isNull x then writeNil out else
 
-#endif
+        match serializerCache.TryGetValue t with
+        | true, writer ->
+            writer x out
+        | _ ->
+            if FSharpType.IsRecord (t, true) then
+                let fieldTypes = FSharpType.GetRecordFields (t, true) |> Array.map (fun x -> x.PropertyType)
+                cacheGetOrAdd (t, fun x out -> writeRecord out fieldTypes (FSharpValue.GetRecordFields (x, true))) x out
+            elif t.IsArray then
+                let elementType = t.GetElementType ()
+                cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
+            elif FSharpType.IsUnion (t, true) then
+                cacheGetOrAdd (t, fun x out ->
+                    let case, fields = FSharpValue.GetUnionFields (x, t, true)
+                    let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
+                    writeUnion out case.Tag fieldTypes fields) x out
+            elif FSharpType.IsTuple t then
+                let fieldTypes = FSharpType.GetTupleElements t
+                cacheGetOrAdd (t, fun x out -> writeTuple out fieldTypes (FSharpValue.GetTupleFields x)) x out
+            elif t.IsEnum then
+                cacheGetOrAdd (t, fun x -> writeInt64 (box x :?> int64)) x out
+            elif t.IsGenericType then
+                let tDef = t.GetGenericTypeDefinition()
+                let genArgs = t.GetGenericArguments ()
+
+                if tDef = typedefof<_ list> then
+                    let elementType = genArgs |> Array.head
+                    cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
+                elif tDef = typedefof<_ option> then
+                    cacheGetOrAdd (t, fun x out ->
+                        let opt = x :?> _ option
+                        let tag, value = if Option.isSome opt then 1, opt.Value else 0, null
+                        writeUnion out tag genArgs [| value |]) x out
+                elif tDef = typedefof<Dictionary<_, _>> || tDef = typedefof<Map<_, _>> then
+                    let keyType = genArgs.[0]
+                    let valueType = genArgs.[1]
+                    cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
+                elif tDef = typedefof<Set<_>> then
+                    let elementType = genArgs |> Array.head
+                    cacheGetOrAdd (t, fun x out -> writeSet out elementType (x :?> System.Collections.ICollection)) x out
+                else 
+                    failwithf "Cannot serialize %s." t.Name
+            elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
+                cacheGetOrAdd (t, fun x out -> writeInt64 (x :?> int64) out) x out
+            elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
+                cacheGetOrAdd (t, fun x out -> writeDouble (x :?> decimal |> float) out) x out
+            elif t.FullName = "Microsoft.FSharp.Core.float`1" then
+                cacheGetOrAdd (t, fun x out -> writeDouble (x :?> float) out) x out
+            elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
+                cacheGetOrAdd (t, fun x out -> writeSingle (x :?> float32) out) x out
+            else
+                failwithf "Cannot serialize %s." t.Name
+        #endif
+
+    let inline writeType<'T> (x: 'T) (out: ResizeArray<byte>) =
+        #if !FABLE_COMPILER
+        raise (NotSupportedException "This function is meant to be used in Fable, please use serializeObj or makeSerializer.")
+        #else
+        writeObject x typeof<'T> out
+        #endif
+
+    #if FABLE_COMPILER
+    serializerCache.Add (typeof<byte>, fun x out -> writeByte (x :?> byte) out)
+    serializerCache.Add (typeof<sbyte>, fun x out -> writeInt64 (x :?> sbyte |> int64) out)
+    serializerCache.Add (typeof<unit>, fun _ out -> writeNil out)
+    serializerCache.Add (typeof<bool>, fun x out -> writeBool (x :?> bool) out)
+    serializerCache.Add (typeof<string>, fun x out -> writeString (x :?> string) out)
+    serializerCache.Add (typeof<int>, fun x out -> writeInt64 (x :?> int |> int64) out)
+    serializerCache.Add (typeof<int16>, fun x out -> writeInt64 (x :?> int16 |> int64) out)
+    serializerCache.Add (typeof<int64>, fun x out -> writeInt64 (x :?> int64) out)
+    serializerCache.Add (typeof<UInt32>, fun x out -> writeUInt64 (x :?> UInt32 |> uint64) out)
+    serializerCache.Add (typeof<UInt16>, fun x out -> writeUInt64 (x :?> UInt16 |> uint64) out)
+    serializerCache.Add (typeof<UInt64>, fun x out -> writeUInt64 (x :?> UInt64) out)
+    serializerCache.Add (typeof<float32>, fun x out -> writeSingle (x :?> float32) out)
+    serializerCache.Add (typeof<float>, fun x out -> writeDouble (x :?> float) out)
+    serializerCache.Add (typeof<decimal>, fun x out -> writeDouble (x :?> decimal |> float) out)
+    serializerCache.Add (typeof<byte[]>, fun x out -> writeBin (x :?> byte[]) out)
+    serializerCache.Add (typeof<bigint>, fun x out -> writeBin ((x :?> bigint).ToByteArray ()) out)
+    serializerCache.Add (typeof<Guid>, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
+    serializerCache.Add (typeof<DateTime>, fun x out -> writeInt64 (x :?> DateTime).Ticks out)
+    serializerCache.Add (typeof<DateTimeOffset>, fun x out -> writeDateTimeOffset out (x :?> DateTimeOffset))
+    serializerCache.Add (typeof<TimeSpan>, fun x out -> writeInt64 (x :?> TimeSpan).Ticks out)
+    #endif

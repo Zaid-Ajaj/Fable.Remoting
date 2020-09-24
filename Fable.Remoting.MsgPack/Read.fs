@@ -79,6 +79,18 @@ type ListDeserializer<'a> () =
     static member Deserialize (len: int, read: Type -> obj) =
         List.init len (fun _ -> read argType :?> 'a)
         |> box
+
+type SetDeserializer<'a when 'a : comparison> () =
+    static let argType = typeof<'a>
+
+    static member Deserialize (len: int, read: Type -> obj) =
+        let mutable set = Set.empty
+
+        for _ in 0 .. len - 1 do
+            set <- set.Add (read argType :?> 'a)
+
+        set
+        |> box
 #endif
 
 type Reader (data: byte[]) =
@@ -87,6 +99,7 @@ type Reader (data: byte[]) =
 #if !FABLE_COMPILER
     static let arrayReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
     static let mapReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
+    static let setReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
     static let unionConstructorCache = ConcurrentDictionary<UnionCaseInfo, obj [] -> obj> ()
     static let unionCaseFieldCache = ConcurrentDictionary<Type * int, UnionCaseInfo * Type[]> ()
 #endif
@@ -187,6 +200,32 @@ type Reader (data: byte[]) =
             box dict
         else
             Map.ofArray pairs |> box
+#endif
+
+    member x.ReadSet (len: int, t: Type) =
+#if !FABLE_COMPILER
+        setReaderCache.GetOrAdd (t, Func<_, _>(fun (t: Type) ->
+            let args = t.GetGenericArguments ()
+            
+            if args.Length <> 1 then
+                failwithf "Expecting %s, but the data contains a set." t.Name
+
+            let setDeserializer = typedefof<SetDeserializer<_>>.MakeGenericType args
+            let d = Delegate.CreateDelegate (typeof<Func<int, (Type -> obj), obj>>, setDeserializer.GetMethod "Deserialize") :?> Func<int, (Type -> obj), obj>
+            
+            fun (len, x: Reader) -> d.Invoke (len, x.Read))) (len, x)
+#else
+        let args = t.GetGenericArguments ()
+        
+        if args.Length <> 1 then
+            failwithf "Expecting %s, but the data contains a set." t.Name
+
+        let mutable set = Set.empty
+
+        for _ in 0 .. len - 1 do
+            set <- set.Add(x.Read args.[0] |> box :?> IStructuralComparable)
+
+        box set
 #endif
 
     member x.ReadRawArray (len: int, elementType: Type) =
@@ -300,6 +339,8 @@ type Reader (data: byte[]) =
             let dateTimeTicks = x.Read typeof<int64> :?> int64
             let timeSpanMinutes = x.Read typeof<int16> :?> int16
             DateTimeOffset (dateTimeTicks, TimeSpan.FromMinutes (float timeSpanMinutes)) |> box
+        elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Set<_>> then
+            x.ReadSet(len, t)
         else
             failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 

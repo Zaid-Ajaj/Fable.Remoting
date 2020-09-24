@@ -214,8 +214,12 @@ Target.create "IntegrationTestsLive" <| fun _ ->
     clean "ClientV2Tests"
 
     run "ClientV2Tests" "npm" "install"
-    run "ClientV2Tests" "npm" "build"
     run "UITests" "dotnet" "restore --no-cache"
-    run "UITests" "dotnet" "run"
+
+    [ async { return run "ClientV2Tests" "npm" "run start"}
+      async { return run "UITests" "dotnet" "run" } ]
+    |> Async.Parallel
+    |> Async.Ignore
+    |> Async.RunSynchronously
 
 Target.runOrDefault "BuildRunAllTests"

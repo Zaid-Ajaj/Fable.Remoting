@@ -69,6 +69,7 @@ let serverBinary : IBinaryServer = {
     echoMaybeBoolList = Async.result
     echoBoolList = Async.result
     mapRecordAsKey = fun () -> async { return Map.ofList [ { Key = 1; Value = "Value" }, 1 ] }
+    setRecordAsValue = fun () -> async { return Set.ofList [ { Key = 1; Value = "Value" } ] }
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
     tuplesAndLists = fun (dict, xs) ->
@@ -92,6 +93,8 @@ let serverBinary : IBinaryServer = {
     throwBinaryError = fun () -> async { return! failwith "Generating custom server error for binary response" }
     echoMap = Async.result
     echoTupleMap = Async.result
+    echoSet = Async.result
+    echoTupleSet = Async.result
     multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
     overriddenFunction = fun str -> async { return! failwith str }
     customStatusCode = fun () -> async {return "No content"}
@@ -150,6 +153,7 @@ let server : IServer  = {
     echoStringList = Async.result
     echoBoolList = Async.result
     mapRecordAsKey = fun () -> async { return Map.ofList [ { Key = 1; Value = "Value" }, 1 ] }
+    setRecordAsValue = fun () -> async { return Set.ofList [ { Key = 1; Value = "Value" } ] }
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
     tuplesAndLists = fun (dict, xs) ->
@@ -173,6 +177,8 @@ let server : IServer  = {
     throwBinaryError = fun () -> async { return! failwith "Generating custom server error for binary response" }
     echoMap = Async.result
     echoTupleMap = Async.result
+    echoSet = Async.result
+    echoTupleSet = Async.result
     multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
     overriddenFunction = fun str -> async { return! failwith str }
     customStatusCode = fun () -> async {return "No content"}
