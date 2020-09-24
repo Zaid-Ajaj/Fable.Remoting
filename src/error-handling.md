@@ -68,7 +68,7 @@ type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string
     member this.StatusCode = response.StatusCode
     member this.ResponseText = reponseText 
 ```
-When an error is unhanlded by the application (i.e. there was no error handler on the server) the `ResponseText` gives a generic error message to the client:
+When an error is unhandled by the application (i.e. there was no error handler on the server) the `ResponseText` gives a generic error message to the client:
 ```json
 { 
     "error": "Error occured while running the function 'throwError'", 
