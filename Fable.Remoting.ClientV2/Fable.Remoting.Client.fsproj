@@ -7,13 +7,14 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>6.8.0</Version>
+        <Version>6.12.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Support for generic sets with MsgPack</PackageReleaseNotes>
+        <PackageReleaseNotes>Byte[] AsDataUrl() extension methods and proper data Url cleanup</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1</TargetFrameworks>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Types.fs" />
+        <Compile Include="Extensions.fs" />
         <Compile Include="Http.fs" />
         <Compile Include="Proxy.fs" />
         <Compile Include="Remoting.fs" />
