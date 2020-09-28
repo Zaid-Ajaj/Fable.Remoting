@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <title>Modeling Authentication · GitBook</title>
+        <title>File Upload And Download · GitBook</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
         <meta name="generator" content="GitBook 3.2.3">
@@ -53,10 +53,10 @@
     <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
 
     
-    <link rel="next" href="implicit-authentication.html" />
+    <link rel="next" href="multiple-protocols.html" />
     
     
-    <link rel="prev" href="error-handling.html" />
+    <link rel="prev" href="raw-http.html" />
     
 
     </head>
@@ -282,7 +282,7 @@
             
         </li>
     
-        <li class="chapter active" data-level="5.3" data-path="modeling-authentication.html">
+        <li class="chapter " data-level="5.3" data-path="modeling-authentication.html">
             
                 <a href="modeling-authentication.html">
             
@@ -373,7 +373,7 @@
             
         </li>
     
-        <li class="chapter " data-level="5.10" data-path="upload-and-download.html">
+        <li class="chapter active" data-level="5.10" data-path="upload-and-download.html">
             
                 <a href="upload-and-download.html">
             
@@ -514,7 +514,7 @@
     <!-- Title -->
     <h1>
         <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href=".." >Modeling Authentication</a>
+        <a href=".." >File Upload And Download</a>
     </h1>
 </div>
 
@@ -529,57 +529,53 @@
     
                                 <section class="normal markdown-section">
                                 
-                                <h1 id="modeling-authentication">Modeling Authentication</h1>
-<p>When it comes to web applications, authentication and authorization are usually implemented in terms of cookies and headers of requests and responses, this is not the case when using <code>Fable.Remoting</code> to implement security features. This is because we are only using stateless pure functions and thus we need to <em>&quot;forget&quot;</em> about HTTP (headers/cookies/session state) when modeling authentication and authorization for our application.  </p>
+                                <h1 id="file-upload-and-download">File Upload And Download</h1>
+<p>With Fable.Remoting, it is really simple to upload and download files and other binary content and it goes like this:</p>
+<ul>
+<li>Use <code>byte[]</code> as input of a remoting function for <em>upload</em> <code>Upload : byte[] -&gt; Async&lt;unit&gt;</code></li>
+<li>Use <code>Async&lt;byte[]&gt;</code> as output of a remoting function to <em>download</em> <code>Download : string -&gt; Async&lt;byte[]&gt;</code></li>
+</ul>
 <blockquote>
-<p>Note: the following modeling technique is the <em>recommended</em> implementation of auth when using Fable.Remoting. However, it is not the only way and it is still possible to use Http  mechanisms (headers/cookies) to secure your end points, see <a href="implicit-authentication.html">Implicit Authentication</a>.</p>
+<p>When using <code>byte[]</code> as input or output, the data transport is automatically optimized for binary content and will bypass the JSON serialization phase entirely.</p>
 </blockquote>
-<p>The following API models a book store interface with some of the functions requiring the user to be logged in and other functions to publicly available. We use stateless tokens that we pass around to authenticate or authorize the users:</p>
-<pre><code class="lang-fs"><span class="hljs-comment">// Shared.fs</span>
+<p>However, that is of course not the full story, because first of all, how do you get a <code>byte[]</code> from a file coming through the browser for upload. For downloading, once you get <code>byte[]</code> from the backend, how do you save it as a file on the user system?</p>
+<h3 id="from-file-to-byte">From <code>File</code> to <code>byte[]</code></h3>
+<p>When you use an <code>&lt;input type=&quot;file&quot; /&gt;</code> from the browser, you can obtain a <code>File</code> instance of the selected file which you can upload to the backend. The <code>Fable.Remoting.Client</code> package includes an extension function called <code>ReadAsByteArray()</code> which does what it says: converts the file into raw <code>byte[]</code> that can be used as input for uploading:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">open</span> Fable.Remoting.Client
+<span class="hljs-keyword">open</span> Browser.Types
 
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">SecurityToken</span> </span>= SecurityToken <span class="hljs-keyword">of</span> string
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">LoginInfo</span> </span>= { Username: string; Password: string }
-
-<span class="hljs-comment">// possible errors when logging in</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">LoginError</span> </span>= 
-    | UserDoesNotExist
-    | PasswordIncorrect
-    | AccountBanned
-
-<span class="hljs-comment">// a request with a token</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">SecureRequest</span>&lt;<span class="hljs-title">&apos;t</span>&gt; </span>= { Token : SecurityToken; Content : <span class="hljs-symbol">&apos;t</span> }
-
-<span class="hljs-comment">// possible authentication/authorization errors     </span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">AuthenticationError</span> </span>= 
-   | UserTokenExpired
-   | TokenInvalid
-   | UserDoesNotHaveAccess
-
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">BookId</span> </span>= BookId <span class="hljs-keyword">of</span> int
-<span class="hljs-comment">// domain model</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">Book</span> </span>= { Id: BookId; Title: string; <span class="hljs-comment">(* other propeties *)</span> }
-
-<span class="hljs-comment">// things that could happen when requesting to remove a book</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">BookRemovalResult</span> </span>= 
-    | BookSuccessfullyRemoved
-    | BookDoesNotExist
-
-<span class="hljs-comment">// the book store protocol</span>
-<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">IBookStoreApi</span> </span>= {
-    <span class="hljs-comment">// login to acquire an auth token   </span>
-    login : LoginInfo -&gt; Async&lt;Result&lt;SecurityToken, LoginError&gt;&gt;
-    <span class="hljs-comment">// &quot;public&quot; function: no auth needed</span>
-    searchBooksByTitle : string -&gt; Async&lt;list&lt;Book&gt;&gt; 
-    <span class="hljs-comment">// secure function, requires a token</span>
-    booksOnWishlist : SecurityToken -&gt; Async&lt;Result&lt;list&lt;Book&gt;, AuthenticationError&gt;&gt;, 
-    <span class="hljs-comment">// secure function, requires a token and a book id</span>
-    removeBookFromWishlist : SecureRequest&lt;BookId&gt; -&gt; Async&lt;Result&lt;BookRemovalResult, AuthenticationError&gt;&gt;
-    <span class="hljs-comment">// etc . . . </span>
+<span class="hljs-keyword">let</span> upload (file: File) = async {
+    <span class="hljs-keyword">let!</span> fileBytes = file.ReadAsByteArray()
+    <span class="hljs-keyword">let!</span> output = BackendApi.Upload(fileBytes)
+    <span class="hljs-keyword">return</span> output
 }
 </code></pre>
-<p>Just by looking at the types you can tell what the application does. Implementing such interface on the server requires that you generate an authorization/authentication token when invoking the <code>login</code> function, <a href="https://jwt.io/" target="_blank">JSON Web Tokens</a> are good match for this type of scenario&apos;s and then use the resulting token in subsequent requests. There is no <em>implicit</em> logged in user nor some &quot;user context&quot;, everything is stateless and explicit. </p>
-<p>The drawback of this approach is that you have to validate the auth token yourself for every secure function. </p>
+<h3 id="downloading-and-saving-files">Downloading and Saving Files</h3>
+<p>When you receive <code>byte[]</code> from the backend (for a download), you can call the <code>SaveFileAs(fileName: string) : unit</code> extension function on the binary data to save it as a file on the users system:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">open</span> Fable.Remoting.Client
+
+<span class="hljs-keyword">let</span> download (fileName: string) = async {
+    <span class="hljs-keyword">let!</span> downloadedFile = BackendApi.Download(fileName)
+    downloadedFile.SaveFileAs(fileName)
+}
+</code></pre>
+<p>The <code>SaveFileAs</code> funcion detects the mime-type/content-type automatically based on the file extension of the file input. Alternatively, you can provide your own content type if you wish as follows:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">let</span> download (fileName: string) = async {
+    <span class="hljs-keyword">let!</span> downloadedFile = BackendApi.Download(fileName)
+    downloadedFile.SaveFileAs(fileName, <span class="hljs-string">&quot;images/png&quot;</span>)
+}
+</code></pre>
+<h3 id="data-urls-from-byte">Data URLs From <code>byte[]</code></h3>
+<p><code>Fable.Remoting.Client</code> includes another extension function for <code>byte[]</code> which converts it to a <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs" target="_blank">Data URI</a> as follows. This is useful for example if you are returning images from the backend and you want to show them easily:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">open</span> Fable.Remoting.Client
+
+<span class="hljs-comment">// data</span>
+<span class="hljs-keyword">let</span> imageData : byte[] = ...
+<span class="hljs-keyword">let</span> dataUrl = imageData.AsDataUrl()
+
+<span class="hljs-comment">// view</span>
+Html.img [ prop.src dataUrl ]
+</code></pre>
 
                                 
                                 </section>
@@ -607,12 +603,12 @@
 
             
                 
-                <a href="error-handling.html" class="navigation navigation-prev " aria-label="Previous page: Error Handling">
+                <a href="raw-http.html" class="navigation navigation-prev " aria-label="Previous page: Raw Http Communication">
                     <i class="fa fa-angle-left"></i>
                 </a>
                 
                 
-                <a href="implicit-authentication.html" class="navigation navigation-next " aria-label="Next page: Implicit Authentication">
+                <a href="multiple-protocols.html" class="navigation navigation-next " aria-label="Next page: Using Multiple Protocols">
                     <i class="fa fa-angle-right"></i>
                 </a>
                 
@@ -623,7 +619,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Modeling Authentication","level":"5.3","depth":1,"next":{"title":"Implicit Authentication","level":"5.4","depth":1,"path":"src/implicit-authentication.md","ref":"src/implicit-authentication.md","articles":[]},"previous":{"title":"Error Handling","level":"5.2","depth":1,"path":"src/error-handling.md","ref":"src/error-handling.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/modeling-authentication.md","mtime":"2019-09-09T21:18:01.004Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2020-09-28T00:12:18.208Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"File Upload And Download","level":"5.10","depth":1,"next":{"title":"Using Multiple Protocols","level":"5.11","depth":1,"path":"src/multiple-protocols.md","ref":"src/multiple-protocols.md","articles":[]},"previous":{"title":"Raw Http Communication","level":"5.9","depth":1,"path":"src/raw-http.md","ref":"src/raw-http.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/upload-and-download.md","mtime":"2020-09-28T00:11:55.489Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2020-09-28T00:12:18.208Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
