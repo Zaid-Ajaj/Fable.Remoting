@@ -28,6 +28,7 @@
 - [Binary Serialization](src/binary-serialization.md)
 - [Functional Dependency Injection](src/dependency-injection.md)
 - [Raw Http Communication](src/raw-http.md)
+- [File Upload And Download](src/upload-and-download.md)
 - [Using Multiple Protocols](src/multiple-protocols.md)
 - [Type-Safe Documentation](src/docs.md)
 - [Logging](src/logging.md)
