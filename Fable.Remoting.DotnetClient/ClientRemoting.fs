@@ -81,32 +81,34 @@ module ClientRemoting =
             fun f g h -> Proxy.proxyPost<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization
 
     type RemoteBuilderOptions = private {
-        routeBuilder: string -> string -> string
-        baseUri: Uri
-        client: HttpClient option
-        authToken: string option
-        isBinarySerialization: bool
-        customHeaders: (string * string) list
+        RouteBuilder: (string -> string -> string) option
+        BaseUri: Uri
+        Client: HttpClient option
+        AuthorizationToken: string option
+        IsBinarySerialization: bool
+        CustomHeaders: (string * string) list
     }
 
     // Warning: if routeBuilder returns a path with a leading /, it will override any subpath inside baseUrl
-    let createApi (baseUrl: string) (routeBuilder: string -> string -> string) =
+    let createApi (baseUrl: string) =
         {
-            routeBuilder = routeBuilder
-            baseUri = Uri(baseUrl)
-            client = None
-            authToken = None
-            isBinarySerialization = false
-            customHeaders = []
+            RouteBuilder = None
+            BaseUri = Uri(baseUrl)
+            Client = None
+            AuthorizationToken = None
+            IsBinarySerialization = false
+            CustomHeaders = []
         }
 
-    let withAuthorizationHeader token options = { options with authToken = Some token }
+    let withRouteBuilder (routeBuilder: string -> string -> string) options = { options with RouteBuilder = Some routeBuilder }
 
-    let withBinarySerialization options = { options with isBinarySerialization = true }
+    let withAuthorizationHeader token options = { options with AuthorizationToken = Some token }
 
-    let withHttpClient client options = { options with client = Some client }
+    let withBinarySerialization options = { options with IsBinarySerialization = true }
 
-    let withCustomHeader (headers: (string * string) list) options = { options with customHeaders = headers @ options.customHeaders }
+    let withHttpClient client options = { options with Client = Some client }
+
+    let withCustomHeader (headers: (string * string) list) options = { options with CustomHeaders = headers @ options.CustomHeaders }
 
     let buildProxy<'t> (options: RemoteBuilderOptions) : 't =
         let isFSharpRecordType (t: Type) =
@@ -117,11 +119,12 @@ module ClientRemoting =
         let t = typeof<'t>
         if not <| isFSharpRecordType t then failwithf "Type %s is not an F# record type" t.Name
 
-        let client = defaultArg options.client (new HttpClient())
+        let client = defaultArg options.Client (new HttpClient())
+        let routeBuilder = defaultArg options.RouteBuilder (fun x y -> sprintf "%s/%s" x y)
 
-        options.customHeaders |> List.iter (fun (name, value) -> client.DefaultRequestHeaders.Add(name, value))
+        options.CustomHeaders |> List.iter (fun (name, value) -> client.DefaultRequestHeaders.Add(name, value))
 
-        match options.authToken with
+        match options.AuthorizationToken with
         | Some token -> client.DefaultRequestHeaders.Add("Authorization", token)
         | _ -> ()
 
@@ -146,12 +149,12 @@ module ClientRemoting =
                     )
                     |> Seq.toArray
 
-                let route = Uri(options.baseUri, options.routeBuilder t.Name param.Name) |> string
+                let route = Uri(options.BaseUri, routeBuilder t.Name param.Name) |> string
                 if Array.length argTypes = 1 then
                     typedefof<ParameterlessServiceCall<_>>
                         .MakeGenericType(argTypes.[0])
                         .GetMethod("_Invoke", BindingFlags.NonPublic ||| BindingFlags.Static)
-                        .Invoke(null, [| route; client; options.authToken; options.isBinarySerialization |])
+                        .Invoke(null, [| route; client; options.AuthorizationToken; options.IsBinarySerialization |])
                 else
                     let callerType =
                         match Array.length argTypes with
@@ -165,7 +168,7 @@ module ClientRemoting =
                         | 9 -> typedefof<ServiceCallerFunc9<_,_,_,_,_,_,_,_,_>>.MakeGenericType(argTypes)
                         | _ -> failwith "RPC methods with at most 8 curried arguments are supported"
 
-                    Activator.CreateInstance(callerType, route, client, options.authToken, options.isBinarySerialization)
+                    Activator.CreateInstance(callerType, route, client, options.AuthorizationToken, options.IsBinarySerialization)
             )
 
         ctor.Invoke(parameters) :?> 't
