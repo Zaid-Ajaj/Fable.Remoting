@@ -6,23 +6,14 @@ open System.Text
 [<RequireQualifiedAccess>]
 module Http = 
 
-    type Authorisation = 
-        | Token of string
-        | NoToken 
-
     type ProxyRequestException(response: HttpResponseMessage, errorMsg, reponseText: string) = 
         inherit System.Exception(errorMsg)
         member __.Response = response 
         member __.StatusCode = response.StatusCode
         member __.ResponseText = reponseText 
 
-    let makePostRequest (client: HttpClient) (url : string) (requestBody : string) auth : Async<string> = 
+    let makePostRequest (client: HttpClient) (url : string) (requestBody : string) : Async<string> = 
         let contentType = "application/json"
-        match auth with 
-        | Token authToken -> 
-            // Add it to client
-            client.DefaultRequestHeaders.Add("Authorization", authToken)
-        | NoToken -> () 
 
         async {
             use postContent = new StringContent(requestBody, Encoding.UTF8, contentType)
@@ -39,13 +30,8 @@ module Http =
             else return raise ( ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, responseText))
         }
 
-    let makePostRequestBinaryResponse (client: HttpClient) (url : string) (requestBody : string) auth : Async<byte[]> = 
+    let makePostRequestBinaryResponse (client: HttpClient) (url : string) (requestBody : string) : Async<byte[]> = 
         let contentType = "application/json"
-        match auth with 
-        | Token authToken -> 
-            // Add it to client
-            client.DefaultRequestHeaders.Add("Authorization", authToken)
-        | NoToken -> () 
 
         async {
             use postContent = new StringContent(requestBody, Encoding.UTF8, contentType)
