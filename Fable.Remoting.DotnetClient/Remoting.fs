@@ -5,7 +5,7 @@ open System
 open System.Net.Http
 open System.Reflection
 
-module ClientRemoting =
+module Remoting =
 
     type private ParameterlessServiceCall<'a>() =
         static member _Invoke(route: string, client: HttpClient, isBinarySerialization) : Async<'a> =
@@ -67,7 +67,7 @@ module ClientRemoting =
 
         override _.Invoke a =
             fun b c d e f g -> Proxy.proxyPost<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization
-            
+
         override _.Invoke(a, b, c, d, e) =
             fun f g -> Proxy.proxyPost<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization
 
@@ -76,11 +76,11 @@ module ClientRemoting =
 
         override _.Invoke a =
             fun b c d e f g h -> Proxy.proxyPost<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization
-        
+
         override _.Invoke(a, b, c, d, e) =
             fun f g h -> Proxy.proxyPost<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization
 
-    type RemoteBuilderOptions = private {
+    type RemoteBuilderOptions = {
         RouteBuilder: (string -> string -> string) option
         BaseUri: Uri
         Client: HttpClient option
@@ -89,6 +89,9 @@ module ClientRemoting =
         CustomHeaders: (string * string) list
     }
 
+    /// <summary>
+    /// Creates the initial configration for building a proxy using the base url of the backend
+    /// </summary>
     let createApi (baseUrl: string) =
         {
             RouteBuilder = None
@@ -101,14 +104,29 @@ module ClientRemoting =
 
     let withRouteBuilder (routeBuilder: string -> string -> string) options = { options with RouteBuilder = Some routeBuilder }
 
+    /// <summary>
+    /// Appends an Authorization header in the HttpClient used by the generated proxy
+    /// </summary>
     let withAuthorizationHeader token options = { options with AuthorizationToken = Some token }
 
+    /// <summary>
+    /// Enables the binary serialization protocol which uses the binary msgpack format for data transport instead of Json
+    /// </summary>
     let withBinarySerialization options = { options with IsBinarySerialization = true }
 
+    /// <summary>
+    /// Overrides the HttpClient client used by the generated proxy
+    /// </summary>
     let withHttpClient client options = { options with Client = Some client }
 
-    let withCustomHeader (headers: (string * string) list) options = { options with CustomHeaders = headers @ options.CustomHeaders }
+    /// <summary>
+    /// Adds custom headers for each request send by the HttpClient of the generated proxy
+    /// </summary>
+    let withCustomHeaders (headers: (string * string) list) options = { options with CustomHeaders = headers @ options.CustomHeaders }
 
+    /// <summary>
+    /// Generates an instance of the protocol F# record using the provided options
+    /// </summary>
     let buildProxy<'t> (options: RemoteBuilderOptions) : 't =
         let isFSharpRecordType (t: Type) =
             match t.GetCustomAttributes<CompilationMappingAttribute>() |> Seq.toList with

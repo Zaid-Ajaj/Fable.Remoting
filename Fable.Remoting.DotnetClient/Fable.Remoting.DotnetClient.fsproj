@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Description>Dotnet client proxy that is compatible with Fable.Remoting web servers</Description>
+        <Description>Dotnet F# client proxy that is compatible with Fable.Remoting web servers</Description>
         <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
         <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>3.8.0</Version>
+        <Version>3.9.0</Version>
         <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
@@ -15,7 +15,7 @@
         <Compile Include="Http.fs" />
         <Compile Include="Patterns.fs" />
         <Compile Include="Proxy.fs" />
-        <Compile Include="ClientRemoting.fs" />
+        <Compile Include="Remoting.fs" />
     </ItemGroup>
 
     <!-- Need to conditionally bring in references for the .NET Framework 4.5 target -->
