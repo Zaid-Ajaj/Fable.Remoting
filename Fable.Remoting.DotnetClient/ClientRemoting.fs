@@ -127,7 +127,9 @@ module ClientRemoting =
         | Some token -> client.DefaultRequestHeaders.Add("Authorization", token)
         | _ -> ()
 
-        let ctor = t.GetConstructors() |> Seq.exactlyOne
+        match t.GetConstructors() |> Seq.tryExactlyOne with
+        | None -> failwith "Your record type has more than one constructor, probably because you made it [<CLIMutable>]"
+        | Some ctor ->
         let parameters =
             ctor.GetParameters()
             |> Array.map (fun param ->
