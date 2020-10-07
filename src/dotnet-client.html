@@ -530,50 +530,69 @@
                                 <section class="normal markdown-section">
                                 
                                 <h1 id="fableremoting-for-net-clients">Fable.Remoting for .NET Clients</h1>
-<p>Although Fable.Remoting is initially implemented for communication between a .NET backend and a Fable frontend, the RPC story wouldn&apos;t be complete with a strongly typed dotnet client that can talk to the same backend using the protocol definition, that why we have built one.  </p>
+<p>Although Fable.Remoting is initially implemented for communication between a .NET backend and a Fable frontend, the RPC story wouldn&apos;t be complete with a strongly typed dotnet client that can talk to the same backend using the protocol definition, that why we have built one.</p>
 <p>In fact, you can use the dotnet client with a dotnet server without a Fable project involved, think client-server interactions purely in F#. This has proven to make <a href="dotnet-integration-tests.html">integration testing</a> extremely simple through this client.</p>
-<h3 id="installation">Installation</h3>
-<p>Install the library from <a href="https://www.nuget.org/packages/Fable.Remoting.DotnetClient/" target="_blank">Nuget</a>: </p>
+<h2 id="installation">Installation</h2>
+<p>Install the library from <a href="https://www.nuget.org/packages/Fable.Remoting.DotnetClient/" target="_blank">Nuget</a>:</p>
 <pre><code class="lang-bash">paket add Fable.Remoting.DotnetClient --project /path/to/App.fsproj
-<span class="hljs-comment"># or </span>
+<span class="hljs-comment"># or</span>
 dotnet add package Fable.Remoting.DotnetClient
 </code></pre>
-<h3 id="using-the-library">Using the library</h3>
-<p>As you would expect, you need to reference the shared types and protocols to your client project: </p>
+<h2 id="using-the-library">Using the library</h2>
+<h3 id="the-new-way">The new way</h3>
+<p>As you would expect, you need to reference the shared types and protocols to your client project:</p>
 <pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;..\Shared\SharedTypes.fs&quot;</span> /&gt;</span>
 </code></pre>
-<p>Now the code is similar the Fable client API with a couple of differences: </p>
+<p>With the new <code>Remoting</code> API, the code is almost completely similar to the Fable client API, with only minor differences in proxy setup:</p>
+<pre><code class="lang-fs"><span class="hljs-keyword">open</span> Fable.Remoting.DotnetClient
+<span class="hljs-keyword">open</span> SharedTypes
+
+<span class="hljs-keyword">let</span> server =
+    Remoting.createApi <span class="hljs-string">&quot;http://backend.api.io/v1&quot;</span> <span class="hljs-comment">// Also note the base URI is no longer optional.</span>
+    |&gt; Remoting.buildProxy&lt;IServer&gt;
+
+async {
+    <span class="hljs-keyword">let!</span> length = server.getLength <span class="hljs-string">&quot;hello&quot;</span>
+    <span class="hljs-keyword">return</span> length
+}
+</code></pre>
+<p>To make the proxy generation logic work, your protocol record must be immutable, i.e. not marked as <code>[&lt;CLIMutable&gt;]</code>.</p>
+<h3 id="the-old-way-using-proxy-quotations-still-supported">The old way using proxy quotations (still supported)</h3>
+<p>As you would expect, you need to reference the shared types and protocols to your client project:</p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">&quot;..\Shared\SharedTypes.fs&quot;</span> /&gt;</span>
+</code></pre>
+<p>Now the code is similar the Fable client API with a couple of differences:</p>
 <pre><code class="lang-fs"><span class="hljs-keyword">open</span> Fable.Remoting.DotnetClient
 <span class="hljs-keyword">open</span> SharedTypes
 
 <span class="hljs-comment">// specifies how the routes should be generated</span>
 <span class="hljs-keyword">let</span> routes = sprintf <span class="hljs-string">&quot;http://backend.api.io/v1/%s/%s&quot;</span>
 
-<span class="hljs-comment">// proxy: Proxy&lt;IServer&gt; </span>
-<span class="hljs-keyword">let</span> proxy = Proxy.create&lt;IServer&gt; routes 
+<span class="hljs-comment">// proxy: Proxy&lt;IServer&gt;</span>
+<span class="hljs-keyword">let</span> proxy = Proxy.create&lt;IServer&gt; routes
 
-async { 
+async {
     <span class="hljs-comment">// length : int</span>
     <span class="hljs-keyword">let!</span> length = proxy.call &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.getLength <span class="hljs-string">&quot;hello&quot;</span> @&gt;
-    <span class="hljs-comment">// 5 </span>
-    <span class="hljs-keyword">return</span> length 
+    <span class="hljs-comment">// 5</span>
+    <span class="hljs-keyword">return</span> length
 }
 </code></pre>
-<p>The major difference is the use of quotations, which simplified and implementation process greatly and keeps the solution entirely type-safe without <a href="https://stackoverflow.com/questions/50131906/f-how-to-create-an-async-function-dynamically-based-on-return-type/50135445" target="_blank">fighting with the run-time</a> with boxing/unboxing hacks to get types right. </p>
+<p>The major difference is the use of quotations, which simplified and implementation process greatly and keeps the solution entirely type-safe without <a href="https://stackoverflow.com/questions/50131906/f-how-to-create-an-async-function-dynamically-based-on-return-type/50135445" target="_blank">fighting with the run-time</a> with boxing/unboxing hacks to get types right.</p>
 <h3 id="proxycallsafely">Proxy.callSafely</h3>
 <p>Alongside the <code>proxy.call</code> approach, there is also <code>proxy.callSafely</code> which is the same but will return <code>Async&lt;Result&lt;&apos;t, Exception&gt;&gt;</code> to catch any exception that occurs along the request:</p>
 <pre><code class="lang-fs">async {
-    <span class="hljs-keyword">let!</span> result = proxy.callSafely &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.throwError() @&gt; 
-    <span class="hljs-keyword">match</span> result <span class="hljs-keyword">with</span> 
-    | Ok value -&gt; <span class="hljs-comment">(* will not match *)</span> 
-    | Error ex -&gt; 
-        | <span class="hljs-keyword">match</span> ex <span class="hljs-keyword">with</span> 
-        | :? Http.ProxyRequestException <span class="hljs-keyword">as</span> requestException -&gt; 
-            <span class="hljs-keyword">let</span> statusCode = requestException.StatusCode 
+    <span class="hljs-keyword">let!</span> result = proxy.callSafely &lt;@ <span class="hljs-keyword">fun</span> server -&gt; server.throwError() @&gt;
+    <span class="hljs-keyword">match</span> result <span class="hljs-keyword">with</span>
+    | Ok value -&gt; <span class="hljs-comment">(* will not match *)</span>
+    | Error ex -&gt;
+        | <span class="hljs-keyword">match</span> ex <span class="hljs-keyword">with</span>
+        | :? Http.ProxyRequestException <span class="hljs-keyword">as</span> requestException -&gt;
+            <span class="hljs-keyword">let</span> statusCode = requestException.StatusCode
             <span class="hljs-keyword">let</span> response = requestException.Response
             <span class="hljs-keyword">let</span> responseText = requestException.ResponseText
             <span class="hljs-comment">(* do stuff with the exception information *)</span>
-        | otherException -&gt; 
+        | otherException -&gt;
             <span class="hljs-comment">(* Usually network errors happen here *)</span>
 }
 </code></pre>
@@ -620,7 +639,7 @@ async {
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"4.1","depth":1,"next":{"title":"C# Support","level":"4.2","depth":1,"path":"src/dotnet-csharp.md","ref":"src/dotnet-csharp.md","articles":[]},"previous":{"title":"Setup Fable Client","level":"3.1","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2019-09-09T21:18:00.987Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2020-09-28T00:12:18.208Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Getting Started from .NET","level":"4.1","depth":1,"next":{"title":"C# Support","level":"4.2","depth":1,"path":"src/dotnet-csharp.md","ref":"src/dotnet-csharp.md","articles":[]},"previous":{"title":"Setup Fable Client","level":"3.1","depth":1,"path":"src/client.md","ref":"src/client.md","articles":[]},"dir":"ltr"},"config":{"gitbook":"*","theme":"default","variables":{},"plugins":["enhanced-katex"],"pluginsConfig":{"enhanced-katex":{},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"styles":{"website":"styles/website.css"}},"file":{"path":"src/dotnet-client.md","mtime":"2020-10-07T18:06:06.079Z","type":"markdown"},"gitbook":{"version":"3.2.3","time":"2020-10-07T18:07:03.987Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>
