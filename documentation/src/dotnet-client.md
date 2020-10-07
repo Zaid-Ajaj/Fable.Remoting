@@ -4,7 +4,7 @@ Although Fable.Remoting is initially implemented for communication between a .NE
 
 In fact, you can use the dotnet client with a dotnet server without a Fable project involved, think client-server interactions purely in F#. This has proven to make [integration testing](dotnet-integration-tests.md) extremely simple through this client.
 
-### Installation 
+## Installation 
 Install the library from [Nuget](https://www.nuget.org/packages/Fable.Remoting.DotnetClient/): 
 ```bash
 paket add Fable.Remoting.DotnetClient --project /path/to/App.fsproj
@@ -12,7 +12,34 @@ paket add Fable.Remoting.DotnetClient --project /path/to/App.fsproj
 dotnet add package Fable.Remoting.DotnetClient
 ```  
 
-### Using the library 
+## Using the library
+
+### The new way
+
+As you would expect, you need to reference the shared types and protocols to your client project: 
+```xml
+<Compile Include="..\Shared\SharedTypes.fs" />
+```
+With the new `ClientRemoting` API, the code is almost completely similar to the Fable client API, with only minor differences in proxy setup:
+```fs
+open Fable.Remoting.DotnetClient
+open SharedTypes
+
+let proxy =
+    // Note the builder is called ClientRemoting instead of just Remoting.
+    // This is to keep it unambiguous from the server-side Remoting API.
+    ClientRemoting.createApi "http://backend.api.io/v1" // Also note the base URI is no longer optional.
+    |> ClientRemoting.buildProxy<IServer>
+
+    async {
+        let! length = server.getLength "hello"
+        return length
+    }
+```
+
+To make the proxy generation logic work, your protocol record must be immutable, i.e. not marked as `[<CLIMutable>]`.
+
+### The old way
 
 As you would expect, you need to reference the shared types and protocols to your client project: 
 ```xml

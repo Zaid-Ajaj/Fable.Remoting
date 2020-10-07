@@ -305,6 +305,38 @@ devServer: {
 ```
 That's it!
 
+## Dotnet Client
+You can also use client functionality in non-fable projects, such as a console application.
+
+Install `Fable.Remoting.DotnetClient` from nuget using Paket:
+```
+paket add Fable.Remoting.DotnetClient --project /path/to/Project.fsproj
+```
+Reference the shared types in your client project
+```
+<Compile Include="path/to/SharedTypes.fs" />
+```
+Start using the library:
+```fs
+open Fable.Remoting.DotnetClient
+open SharedTypes
+
+// studentApi : IStudentApi
+let studentApi =
+    ClientRemoting.createApi "http://localhost:8085/api/"
+    |> ClientRemoting.buildProxy<IStudentApi>
+
+async {
+  // students : Student[]
+  let! students = studentApi.allStudents()
+  for student in students do
+    // student : Student
+    printfn "Student %s is %d years old" student.Name student.Age
+}
+|> Async.StartImmediate
+```
+That's it!
+
 
 ## Adding a new route
  - Add another record field function to `IStudentApi`
