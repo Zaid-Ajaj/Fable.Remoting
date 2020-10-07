@@ -89,7 +89,6 @@ module ClientRemoting =
         CustomHeaders: (string * string) list
     }
 
-    // Warning: if routeBuilder returns a path with a leading /, it will override any subpath inside baseUrl
     let createApi (baseUrl: string) =
         {
             RouteBuilder = None
@@ -149,7 +148,7 @@ module ClientRemoting =
                     )
                     |> Seq.toArray
 
-                let route = Uri(options.BaseUri, routeBuilder t.Name param.Name) |> string
+                let route = Uri(options.BaseUri, (routeBuilder t.Name param.Name).TrimStart('/')) |> string
                 if Array.length argTypes = 1 then
                     typedefof<ParameterlessServiceCall<_>>
                         .MakeGenericType(argTypes.[0])
