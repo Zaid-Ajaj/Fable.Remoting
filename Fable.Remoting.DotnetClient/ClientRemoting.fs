@@ -155,7 +155,7 @@ module ClientRemoting =
                     typedefof<ParameterlessServiceCall<_>>
                         .MakeGenericType(argTypes.[0])
                         .GetMethod("_Invoke", BindingFlags.NonPublic ||| BindingFlags.Static)
-                        .Invoke(null, [| route; client; options.AuthorizationToken; options.IsBinarySerialization |])
+                        .Invoke(null, [| route; client; options.IsBinarySerialization |])
                 else
                     let callerType =
                         match Array.length argTypes with
@@ -169,7 +169,7 @@ module ClientRemoting =
                         | 9 -> typedefof<ServiceCallerFunc9<_,_,_,_,_,_,_,_,_>>.MakeGenericType(argTypes)
                         | _ -> failwith "RPC methods with at most 8 curried arguments are supported"
 
-                    Activator.CreateInstance(callerType, route, client, options.AuthorizationToken, options.IsBinarySerialization)
+                    Activator.CreateInstance(callerType, route, client, options.IsBinarySerialization)
             )
 
         ctor.Invoke(parameters) :?> 't
