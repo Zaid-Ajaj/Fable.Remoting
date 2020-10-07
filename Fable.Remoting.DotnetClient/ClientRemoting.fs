@@ -112,7 +112,7 @@ module ClientRemoting =
     let buildProxy<'t> (options: RemoteBuilderOptions) : 't =
         let isFSharpRecordType (t: Type) =
             match t.GetCustomAttributes<CompilationMappingAttribute>() |> Seq.toList with
-            | [ attr ] -> attr.SourceConstructFlags.HasFlag SourceConstructFlags.RecordType
+            | [ attr ] -> attr.SourceConstructFlags = SourceConstructFlags.RecordType
             | _ -> false
 
         let t = typeof<'t>
