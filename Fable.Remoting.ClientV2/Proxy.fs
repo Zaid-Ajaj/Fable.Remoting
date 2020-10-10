@@ -103,7 +103,6 @@ module Proxy =
             | otherwise -> true
 
         fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 ->
-
             let inputArguments =
                if funcNeedParameters
                then Array.take argumentCount [| box arg0;box arg1;box arg2;box arg3; box arg4; box arg5; box arg6; box arg7 |]
@@ -126,19 +125,22 @@ module Proxy =
                     | None -> () ]
 
                 let requestBody =
-                    if binaryInput then 
+                    if binaryInput then
                         RequestBody.Binary (unbox arg0)
-                    else 
-                        match inputArgumentTypes.Length with 
-                        | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) -> 
+                    else
+                        match inputArgumentTypes.Length with
+                        | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->
                             let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
-                            RequestBody.Json (Convert.serialize inputArguments.[0] typeInfo)
-                        | 1 -> 
+                            let requestBodyJson = Convert.serialize inputArguments.[0] typeInfo
+                            RequestBody.Json requestBodyJson
+                        | 1 ->
                             // for array-like types, use an explicit array surranding the input array argument
-                            RequestBody.Json (Convert.serialize [| inputArguments.[0] |] (TypeInfo.Array (fun _ -> inputArgumentTypes.[0])))
-                        | n -> 
+                            let requestBodyJson = Convert.serialize [| inputArguments.[0] |] (TypeInfo.Array (fun _ -> inputArgumentTypes.[0]))
+                            RequestBody.Json requestBodyJson
+                        | n ->
                             let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
-                            RequestBody.Json (Convert.serialize inputArguments typeInfo)
+                            let requestBodyJson = Convert.serialize inputArguments typeInfo
+                            RequestBody.Json requestBodyJson
 
                 match options.ResponseSerialization with
                 | MessagePack ->
@@ -165,7 +167,7 @@ module Proxy =
                                 typ.GetGenericArguments () |> Array.head
                             else
                                 typ
-                                 
+
                         return MsgPack.Read.Reader(response).Read (getReturnType fieldType)
                     | 500 ->
                         let responseAsBlob = Blob.fromBinaryEncodedText response

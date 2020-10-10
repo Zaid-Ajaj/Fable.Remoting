@@ -1300,18 +1300,17 @@ let cookieServerTests =
         async {
             // Cookie not set yet
             let! firstCall = cookieServer.checkCookie ()
-            test.equal false firstCall
+            Expect.equal false firstCall "First call should return false"
 
             // Cookie should now be set and sent back to server
             let! secondCall = cookieServer.checkCookie ()
-            test.equal true secondCall
+            Expect.equal true secondCall "Second call should return true"
 
             // Cookie should not be visible to javascript (HttpOnly)
             let notInJs = not (currentDocumentCookie.Contains("httpOnly-test-cookie"))
-            test.equal true notInJs
+            Expect.equal true notInJs "Cookie not visible to the document"
         }
   ]
-
 
 let resolveAccessToken n =
     async {
@@ -1423,7 +1422,7 @@ let msgPackTests =
         testCase "Set32" <| fun () ->
             Set.ofArray [| for i in 1 .. 80_000 -> i |] |> serializeDeserializeCompare typeof<Set<int>>
         testCase "Generic set" <| fun () ->
-            Set.ofList [ 
+            Set.ofList [
                 { Name = "root"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
                 { Name = "root"; Children = [ { Name = "Grandchild2"; Children = [ ] } ] }
             ] |> serializeDeserializeCompare typeof<Set<RecursiveRecord>>
