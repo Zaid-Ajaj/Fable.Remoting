@@ -2,7 +2,8 @@
     "private": true,
     "scripts": {
         "build": "webpack-cli --mode production",
-        "start": "webpack-dev-server"
+        "start": "webpack-dev-server",
+        "build-nagareyama": "dotnet fable src && webpack-cli --mode production --config webpack.nagareyama.js"
     },
     "devDependencies": {
         "@babel/core": "^7.6.0",

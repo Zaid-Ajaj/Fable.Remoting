@@ -198,9 +198,25 @@ Target.create "IntegrationTests" <| fun _ ->
     clean (getPath "UITests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
+    Shell.cleanDirs [ getPath "IntegrationTests" </> "client-dist" ]
     run ("ClientV2Tests" </> "src") "dotnet" "restore"
     run "ClientV2Tests" "npm" "install"
     run "ClientV2Tests" "npm" "run build"
+    run "UITests" "dotnet" "restore --no-cache"
+    run "UITests" "dotnet" "run --headless"
+
+Target.create "IntegrationTestsNagareyama" <| fun _ ->
+    clean (getPath "Server")
+    clean (getPath "Json")
+    clean (getPath "MsgPack")
+    clean (getPath "Suave")
+    clean (getPath "UITests")
+    clean (getPath "IntegrationTests" </> "Server.Suave")
+    Shell.cleanDirs [ getPath "IntegrationTests" </> "client-dist" ]
+    clean "ClientV2Tests"
+    run ("ClientV2Tests" </> "src") "dotnet" "restore"
+    run "ClientV2Tests" "npm" "install"
+    run "ClientV2Tests" "npm" "run build-nagareyama"
     run "UITests" "dotnet" "restore --no-cache"
     run "UITests" "dotnet" "run --headless"
 
@@ -216,10 +232,7 @@ Target.create "IntegrationTestsLive" <| fun _ ->
     run "ClientV2Tests" "npm" "install"
     run "UITests" "dotnet" "restore --no-cache"
 
-    [ async { return run "ClientV2Tests" "npm" "run start"}
-      async { return run "UITests" "dotnet" "run" } ]
-    |> Async.Parallel
-    |> Async.Ignore
-    |> Async.RunSynchronously
+    run "ClientV2Tests" "npm" "run build"
+    run "UITests" "dotnet" "run"
 
 Target.runOrDefault "BuildRunAllTests"

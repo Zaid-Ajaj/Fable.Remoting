@@ -244,3 +244,4 @@ paket-files/
 documentation/_book/
 documentation/_book
 .fable
+*.fs.js

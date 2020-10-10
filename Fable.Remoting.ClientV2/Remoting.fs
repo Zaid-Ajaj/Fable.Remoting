@@ -39,7 +39,7 @@ type Remoting() =
         let resolvedType = resolver.Value.ResolveType()
         let schemaType = createTypeInfo resolvedType
         match schemaType with 
-        | Record getFields ->
+        | TypeInfo.Record getFields ->
             let (fields, recordType) = getFields() 
             let proxy = obj() 
             let fieldTypes = Reflection.FSharpType.GetRecordFields recordType |> Array.map (fun prop -> prop.Name, prop.PropertyType)
@@ -77,9 +77,9 @@ type Remoting() =
                     | _ -> failwith "Only up to 8 arguments are supported" 
                 let argumentCount = 
                     match field.FieldType with 
-                    | Async _  -> 0 
-                    | Promise _  -> 0 
-                    | Func getArgs -> Array.length (getArgs()) - 1
+                    | TypeInfo.Async _  -> 0 
+                    | TypeInfo.Promise _  -> 0 
+                    | TypeInfo.Func getArgs -> Array.length (getArgs()) - 1
                     | _ -> 0 
                 let normalizedProxyFetch = normalize argumentCount
                 Proxy.setProp field.FieldName normalizedProxyFetch proxy

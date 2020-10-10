@@ -106,8 +106,10 @@ module Proxy =
 
             let inputArguments =
                if funcNeedParameters
-               then List.take argumentCount [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7 ]
-               else [ ]
+               then Array.take argumentCount [| box arg0;box arg1;box arg2;box arg3; box arg4; box arg5; box arg6; box arg7 |]
+               else [| |]
+
+            let inputArgumentTypes = Array.take argumentCount funcArgs
 
             let contentType =
                 if binaryInput
@@ -124,9 +126,19 @@ module Proxy =
                     | None -> () ]
 
                 let requestBody =
-                    if binaryInput
-                    then RequestBody.Binary (unbox arg0)
-                    else RequestBody.Json (Json.stringify inputArguments)
+                    if binaryInput then 
+                        RequestBody.Binary (unbox arg0)
+                    else 
+                        match inputArgumentTypes.Length with 
+                        | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) -> 
+                            let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
+                            RequestBody.Json (Convert.serialize inputArguments.[0] typeInfo)
+                        | 1 -> 
+                            // for array-like types, use an explicit array surranding the input array argument
+                            RequestBody.Json (Convert.serialize [| inputArguments.[0] |] (TypeInfo.Array (fun _ -> inputArgumentTypes.[0])))
+                        | n -> 
+                            let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
+                            RequestBody.Json (Convert.serialize inputArguments typeInfo)
 
                 match options.ResponseSerialization with
                 | MessagePack ->
@@ -153,7 +165,7 @@ module Proxy =
                                 typ.GetGenericArguments () |> Array.head
                             else
                                 typ
-
+                                 
                         return MsgPack.Read.Reader(response).Read (getReturnType fieldType)
                     | 500 ->
                         let responseAsBlob = Blob.fromBinaryEncodedText response
