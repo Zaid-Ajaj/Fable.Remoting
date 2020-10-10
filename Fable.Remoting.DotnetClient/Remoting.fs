@@ -4,6 +4,7 @@ open FSharp.Core.OptimizedClosures
 open System
 open System.Net.Http
 open System.Reflection
+open Microsoft.FSharp.Reflection
 
 module Remoting =
 
@@ -128,13 +129,8 @@ module Remoting =
     /// Generates an instance of the protocol F# record using the provided options
     /// </summary>
     let buildProxy<'t> (options: RemoteBuilderOptions) : 't =
-        let isFSharpRecordType (t: Type) =
-            match t.GetCustomAttributes<CompilationMappingAttribute>() |> Seq.toList with
-            | [ attr ] -> attr.SourceConstructFlags = SourceConstructFlags.RecordType
-            | _ -> false
-
         let t = typeof<'t>
-        if not <| isFSharpRecordType t then failwithf "Type %s is not an F# record type" t.Name
+        if not <| FSharpType.IsRecord t then failwithf "Type %s is not an F# record type" t.Name
 
         let client = defaultArg options.Client (new HttpClient())
         let routeBuilder = defaultArg options.RouteBuilder (fun x y -> sprintf "%s/%s" x y)
@@ -145,13 +141,10 @@ module Remoting =
         | Some token -> client.DefaultRequestHeaders.Add("Authorization", token)
         | _ -> ()
 
-        match t.GetConstructors() |> Seq.tryExactlyOne with
-        | None -> failwith "Your record type has more than one constructor, probably because you made it [<CLIMutable>]"
-        | Some ctor ->
         let parameters =
-            ctor.GetParameters()
+            FSharpType.GetRecordFields t
             |> Array.map (fun param ->
-                let funcType = param.ParameterType
+                let funcType = param.PropertyType
                 let argTypes =
                     Some funcType |> Seq.unfold (fun t ->
                         match t with
@@ -190,4 +183,4 @@ module Remoting =
                     Activator.CreateInstance(callerType, route, client, options.IsBinarySerialization)
             )
 
-        ctor.Invoke(parameters) :?> 't
+        FSharpValue.MakeRecord(t, parameters) :?> 't
