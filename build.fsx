@@ -198,7 +198,7 @@ Target.create "IntegrationTests" <| fun _ ->
     clean (getPath "UITests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
     clean "ClientV2Tests"
-    Shell.cleanDirs [ getPath "IntegrationTests" </> "client-dist" ]
+    Shell.rm (getPath "IntegrationTests" </> "client-dist" </> "bundle.js")
     run ("ClientV2Tests" </> "src") "dotnet" "restore"
     run "ClientV2Tests" "npm" "install"
     run "ClientV2Tests" "npm" "run build"
@@ -212,7 +212,7 @@ Target.create "IntegrationTestsNagareyama" <| fun _ ->
     clean (getPath "Suave")
     clean (getPath "UITests")
     clean (getPath "IntegrationTests" </> "Server.Suave")
-    Shell.cleanDirs [ getPath "IntegrationTests" </> "client-dist" ]
+    Shell.rm (getPath "IntegrationTests" </> "client-dist" </> "bundle.js")
     clean "ClientV2Tests"
     run ("ClientV2Tests" </> "src") "dotnet" "restore"
     run "ClientV2Tests" "npm" "install"
