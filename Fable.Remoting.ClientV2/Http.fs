@@ -90,4 +90,4 @@ module Http =
             match req.RequestBody with
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
-            | Binary content -> xhr.send(createUInt8Array(content))
+            | Binary content -> xhr.send(content)

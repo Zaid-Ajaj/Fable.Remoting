@@ -1347,9 +1347,7 @@ let secureApiTests =
 let inline serializeDeserializeCompare typ (value: 'a) =
     let ra = FSharp.Collections.ResizeArray<byte> ()
     Fable.Remoting.MsgPack.Write.Fable.writeObject value typ ra
-
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
-
     Expect.equal value deserialized "Values are equal after roundtrip"
 
 let inline serializeDeserializeCompareDictionary typ (value: System.Collections.Generic.IDictionary<'a, 'b>) =
@@ -1400,39 +1398,66 @@ let msgPackTests =
             Some "ddd" |> serializeDeserializeCompare typeof<string option>
         testCase "Long serialized as fixnum" <| fun () ->
             20L |> serializeDeserializeCompare typeof<int64>
+
         testCase "Long serialized as int16, 3 bytes" <| fun () ->
             60_000L |> serializeDeserializeCompareWithLength 3 typeof<int64>
+
         testCase "Array of 3 bools, 4 bytes" <| fun () ->
             [| false; true; true |] |> serializeDeserializeCompareWithLength 4 typeof<bool[]>
+
         testCase "List of fixnums, 5 bytes" <| fun () ->
             [ 0; 2; 100; 10 ] |> serializeDeserializeCompareWithLength 5 typeof<int list>
+
         testCase "DateTime" <| fun () ->
             DateTime.Now |> serializeDeserializeCompare typeof<DateTime>
+
         testCase "DateTimeOffset" <| fun () ->
             DateTimeOffset.Now |> serializeDeserializeCompare typeof<DateTimeOffset>
+
         testCase "String16 with non-ASCII characters" <| fun () ->
             "δασςεφЯШзЖ888dsadčšřποιθθψζψ" |> serializeDeserializeCompare typeof<string>
+
         testCase "Fixstr with non-ASCII characters" <| fun () ->
             "δ" |> serializeDeserializeCompare typeof<string>
+
         testCase "String32 with non-ASCII characters" <| fun () ->
             String.init 70_000 (fun _ -> "ΰ") |> serializeDeserializeCompare typeof<string>
+
         testCase "Negative long" <| fun () ->
             -5889845622625456789L |> serializeDeserializeCompare typeof<int64>
+
         testCase "Decimal" <| fun () ->
             3.1415926535m |> serializeDeserializeCompare typeof<decimal>
+
         testCase "Map16 with map" <| fun () ->
             Map.ofArray [| for i in 1 .. 295 -> i, (i * i) |] |> serializeDeserializeCompare typeof<Map<int, int>>
+
         testCase "Fixmap with dictionary of nothing" <| fun () ->
             Map.ofArray [| for i in 1 .. 2 -> i, Nothing |] |> Dictionary<_, _> |> serializeDeserializeCompareDictionary typeof<Dictionary<int, Maybe<obj>>>
+
         testCase "Map32 with dictionary" <| fun () ->
             Map.ofArray [| for i in 1 .. 80_000 -> i, i |] |> Dictionary<_, _> |> serializeDeserializeCompareDictionary typeof<Dictionary<int, int>>
+
         testCase "Generic map" <| fun () ->
             Map.ofList [ "firstKey", Just 5; "secondKey", Nothing ] |> serializeDeserializeCompare typeof<Map<string, Maybe<int>>>
             Map.ofList [ 5000, Just 5; 1, Nothing ] |> serializeDeserializeCompare typeof<Map<int, Maybe<int>>>
+
         testCase "Set16" <| fun () ->
             Set.ofArray [| for i in 1 .. 295 -> i |] |> serializeDeserializeCompare typeof<Set<int>>
+
+        testCase "Generating large sets works" <| fun _ ->
+            let largeSet = Set.ofArray [| for i in 1 .. 80_000 -> i |]
+            Expect.equal largeSet.Count 80_000 "Checking set count works"
+
+        testCase "Comparing large sets works" <| fun _ ->
+            let largeSetA = Set.ofArray [| for i in 1 .. 80_000 -> i |]
+            let largeSetB = Set.ofArray [| for i in 1 .. 80_000 -> i |]
+
+            Expect.equal largeSetA largeSetB "The sets are equal"
+
         testCase "Set32" <| fun () ->
             Set.ofArray [| for i in 1 .. 80_000 -> i |] |> serializeDeserializeCompare typeof<Set<int>>
+
         testCase "Generic set" <| fun () ->
             Set.ofList [
                 { Name = "root"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }

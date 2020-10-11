@@ -58,23 +58,23 @@ type Remoting() =
                         | 3 ->
                             let proxyF a b c = fn a b c null null null null null
                             unbox (System.Func<_,_,_,_> proxyF)
-                        | 4 -> box (fun a b c d ->
-                            let args = Proxy.arguments()
-                            fn a b c d null null null null)
-                        | 5 -> box (fun a b c d e ->
-                            let args = Proxy.arguments()
-                            fn a b c d e null null null)
-                        | 6 -> box (fun a b c d e f ->
-                            let args = Proxy.arguments()
-                            fn a b c d e f null null)
-                        | 7 -> box (fun a ->
-                            let args = Proxy.arguments()
-                            fn args.[0] args.[1] args.[2] args.[3] args.[4] args.[5] args.[6] null)
-                        | 8 -> box (fun a ->
-                            let args = Proxy.arguments()
-                            fn args.[0] args.[1] args.[2] args.[3] args.[4] args.[5] args.[6] args.[7])
+                        | 4 ->
+                            let proxyF a b c d = fn a b c d null null null null
+                            unbox (System.Func<_,_,_,_,_> proxyF)
+                        | 5 ->
+                            let proxyF a b c d e = fn a b c d e null null null
+                            unbox (System.Func<_,_,_,_,_,_> proxyF)
+                        | 6 ->
+                            let proxyF a b c d e f = fn a b c d e f null null
+                            unbox (System.Func<_,_,_,_,_,_,_> proxyF)
+                        | 7 ->
+                            let proxyF a b c d e f g = fn a b c d e f g null
+                            unbox (System.Func<_,_,_,_,_,_,_,_> proxyF)
+                        | 8 ->
+                            let proxyF a b c d e f g h = fn a b c d e f g h
+                            unbox (System.Func<_,_,_,_,_,_,_,_,_> proxyF)
                         | _ ->
-                            failwith "Only up to 8 arguments are supported"
+                            failwithf "Cannot generate proxy function for %s. Only up to 8 arguments are supported. Consider using a record type as input" field.FieldName
 
                     let argumentCount =
                         match field.FieldType with
@@ -89,5 +89,5 @@ type Remoting() =
             let proxy = FSharpValue.MakeRecord(recordType, recordFields)
             unbox proxy
         | _ ->
-            failwithf "Exepected type %s to be a valid protocol definition" resolvedType.FullName
+            failwithf "Cannot build proxy. Exepected type %s to be a valid protocol definition" resolvedType.FullName
 
