@@ -1350,7 +1350,7 @@ let inline serializeDeserializeCompare typ (value: 'a) =
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
 
-    test.equal value deserialized
+    Expect.equal value deserialized "Values are equal after roundtrip"
 
 let inline serializeDeserializeCompareDictionary typ (value: System.Collections.Generic.IDictionary<'a, 'b>) =
     let ra = FSharp.Collections.ResizeArray<byte> ()
@@ -1367,13 +1367,25 @@ let inline serializeDeserializeCompareWithLength expectedLength typ (value: 'a) 
 
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
 
-    test.equal value deserialized
-    test.equal ra.Count expectedLength
+    Expect.equal value deserialized "Values are equal after roundtrip"
+    Expect.equal ra.Count expectedLength "Written and read bytes are the same"
 
 let msgPackTests =
     testList "Message Pack serialization tests" [
+        testCase "Dictionary with type as key works" <| fun _ ->
+            let cache = Dictionary<Type, int>()
+            cache.Add(typeof<int>, 1)
+            cache.Add(typeof<string>, 2)
+            cache.Add(typeof<int64>, 3)
+
+            Expect.equal 3 cache.Count "There are three elements in the dictionary"
+            Expect.equal cache.[typeof<int>] 1 "Indexing int types works with dictionary"
+            Expect.equal cache.[typeof<string>] 2 "Indexing string types works with dictionary"
+            Expect.equal cache.[typeof<int64>] 3 "Indexing int64 types works with dictionary"
+
         testCase "Unit" <| fun () ->
             () |> serializeDeserializeCompare typeof<unit>
+
         testCase "Fixed negative number, single byte" <| fun () ->
             -20 |> serializeDeserializeCompareWithLength 1 typeof<int>
         testCase "Maybe" <| fun () ->
