@@ -38,6 +38,12 @@ module Http =
     /// Appends a request with string body content
     let withBody body (req: HttpRequest) = { req with RequestBody = body }
 
+    [<Emit("new Uint8Array($0)")>]
+    let internal createUInt8Array (x: obj) : byte[] = jsNative
+
+    [<Emit "$0 instanceof Uint8Array">]
+    let internal isUInt8Array (data: byte[]) : bool = jsNative
+
     /// Sends the request to the server and asynchronously returns a response
     let send (req: HttpRequest) =
         Async.FromContinuations <| fun (resolve, _, _) ->
@@ -59,10 +65,10 @@ module Http =
             match req.RequestBody with
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
-            | Binary content -> xhr.send(content)
-
-    [<Emit("new Uint8Array($0)")>]
-    let internal createUInt8Array (x: obj) : byte[] = jsNative
+            | Binary content ->
+                if isUInt8Array content
+                then xhr.send(content)
+                else xhr.send(createUInt8Array content)
 
     let sendAndReadBinary (req: HttpRequest) =
         Async.FromContinuations <| fun (resolve, _, _) ->
@@ -90,4 +96,7 @@ module Http =
             match req.RequestBody with
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
-            | Binary content -> xhr.send(content)
+            | Binary content ->
+                if isUInt8Array content
+                then xhr.send(content)
+                else xhr.send(createUInt8Array content)
