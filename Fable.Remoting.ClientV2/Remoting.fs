@@ -89,5 +89,5 @@ type Remoting() =
             let proxy = FSharpValue.MakeRecord(recordType, recordFields)
             unbox proxy
         | _ ->
-            failwithf "Cannot build proxy. Exepected type %s to be a valid protocol definition" resolvedType.FullName
+            failwithf "Cannot build proxy. Exepected type %s to be a valid protocol definition which is a record of functions" resolvedType.FullName
 

@@ -14,7 +14,7 @@ module internal Blob =
     /// Asynchronously reads the blob data content as string
     let readBlobAsText (blob: Blob) : Async<string> =
         Async.FromContinuations <| fun (resolve, _, _) ->
-            let reader = createFileReader()
+            let reader = InternalUtilities.createFileReader()
             reader.onload <- fun _ ->
                 if reader.readyState = FileReaderState.DONE
                 then resolve (unbox reader.result)
