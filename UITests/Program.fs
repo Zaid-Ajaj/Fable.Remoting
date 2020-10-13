@@ -137,7 +137,7 @@ let main argv =
     if not (Array.contains "--headless" argv)
     then
       printfn "Starting web server..."
-      startWebServer suaveConfig testWebApp
+      startWebServer { suaveConfig with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 5000 ] } testWebApp
       0
     else
     printfn "Starting Integration Tests"

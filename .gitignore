@@ -29,7 +29,7 @@ ionide
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
-client-dist
+client-dist/bundle.js
 # NUNIT
 *.VisualState.xml
 TestResult.xml
@@ -244,3 +244,4 @@ paket-files/
 documentation/_book/
 documentation/_book
 .fable
+*.fs.js

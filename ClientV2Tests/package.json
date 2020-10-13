@@ -2,14 +2,16 @@
     "private": true,
     "scripts": {
         "build": "webpack-cli --mode production",
-        "start": "webpack-dev-server"
+        "start": "webpack-dev-server",
+        "build-nagareyama": "dotnet fable src && webpack-cli --mode production --config webpack.nagareyama.js",
+        "start-nagareyama": "webpack-dev-server --config webpack.nagareyama.js"
     },
     "devDependencies": {
         "@babel/core": "^7.6.0",
         "@babel/polyfill": "^7.6.0",
         "@babel/preset-env": "^7.6.0",
         "babel-loader": "8.0.0",
-        "fable-compiler": "^2.10.2",
+        "fable-compiler": "^2.13.0",
         "fable-loader": "^2.1.9",
         "webpack": "^4.39.3",
         "webpack-cli": "^3.3.8",

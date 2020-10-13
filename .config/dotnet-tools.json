@@ -13,6 +13,12 @@
       "commands": [
         "fake"
       ]
+    },
+    "fable": {
+      "version": "3.0.0-nagareyama-alpha-010",
+      "commands": [
+        "fable"
+      ]
     }
   }
 }

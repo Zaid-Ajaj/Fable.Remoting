@@ -37,6 +37,22 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.Benchmarks",
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.AspNetCore", "Fable.Remoting.AspNetCore\Fable.Remoting.AspNetCore.fsproj", "{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "UITests", "UITests\UITests.fsproj", "{D2B88D66-4810-4EF7-AD6F-D47145D8D479}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8FF2D848-6091-4206-B06C-922029DEFED1}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		.travis.yml = .travis.yml
+		appveyor.yml = appveyor.yml
+		build.cmd = build.cmd
+		build.fsx = build.fsx
+		build.sh = build.sh
+		LICENSE = LICENSE
+		paket.dependencies = paket.dependencies
+		paket.lock = paket.lock
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -251,6 +267,18 @@ Global
 		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|x64.Build.0 = Release|Any CPU
 		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|x86.ActiveCfg = Release|Any CPU
 		{5FFF6B88-18DC-4B25-8CAA-CB38F9B964AE}.Release|x86.Build.0 = Release|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Debug|x64.Build.0 = Debug|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Debug|x86.Build.0 = Debug|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Release|x64.ActiveCfg = Release|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Release|x64.Build.0 = Release|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Release|x86.ActiveCfg = Release|Any CPU
+		{D2B88D66-4810-4EF7-AD6F-D47145D8D479}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -14,7 +14,7 @@ module internal Blob =
     /// Asynchronously reads the blob data content as string
     let readBlobAsText (blob: Blob) : Async<string> =
         Async.FromContinuations <| fun (resolve, _, _) ->
-            let reader = createFileReader()
+            let reader = InternalUtilities.createFileReader()
             reader.onload <- fun _ ->
                 if reader.readyState = FileReaderState.DONE
                 then resolve (unbox reader.result)
@@ -103,11 +103,12 @@ module Proxy =
             | otherwise -> true
 
         fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 ->
-
             let inputArguments =
                if funcNeedParameters
-               then List.take argumentCount [ box arg0;box arg1;box arg2;box arg3;box arg4;box arg5;box arg6;box arg7 ]
-               else [ ]
+               then Array.take argumentCount [| box arg0;box arg1;box arg2;box arg3; box arg4; box arg5; box arg6; box arg7 |]
+               else [| |]
+
+            let inputArgumentTypes = Array.take argumentCount funcArgs
 
             let contentType =
                 if binaryInput
@@ -124,9 +125,22 @@ module Proxy =
                     | None -> () ]
 
                 let requestBody =
-                    if binaryInput
-                    then RequestBody.Binary (unbox arg0)
-                    else RequestBody.Json (Json.stringify inputArguments)
+                    if binaryInput then
+                        RequestBody.Binary (unbox arg0)
+                    else
+                        match inputArgumentTypes.Length with
+                        | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->
+                            let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
+                            let requestBodyJson = Convert.serialize inputArguments.[0] typeInfo
+                            RequestBody.Json requestBodyJson
+                        | 1 ->
+                            // for array-like types, use an explicit array surranding the input array argument
+                            let requestBodyJson = Convert.serialize [| inputArguments.[0] |] (TypeInfo.Array (fun _ -> inputArgumentTypes.[0]))
+                            RequestBody.Json requestBodyJson
+                        | n ->
+                            let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
+                            let requestBodyJson = Convert.serialize inputArguments typeInfo
+                            RequestBody.Json requestBodyJson
 
                 match options.ResponseSerialization with
                 | MessagePack ->

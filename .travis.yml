@@ -1,7 +1,7 @@
 language: csharp
 dist: xenial
 sudo: required
-dotnet: 3.0.100
+dotnet: 3.1.300
 mono: none
 addons:
   snaps:
@@ -28,3 +28,4 @@ script:
   - dotnet fake build -t BuildRunAllTests
   - dotnet paket restore --project ./UITests/UITests.fsproj
   - dotnet fake build -t IntegrationTests
+  - dotnet fake build -t IntegrationTestsNagareyama
