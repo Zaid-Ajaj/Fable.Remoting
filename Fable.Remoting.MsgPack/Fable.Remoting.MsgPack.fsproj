@@ -8,9 +8,9 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;msgpack</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.6.0</Version>
+    <Version>1.6.1</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageReleaseNotes>Use string as key for the serializerCache</PackageReleaseNotes>
+    <PackageReleaseNotes>Fix unknown import when compiling using Fable 3</PackageReleaseNotes>
     <TargetFrameworks>netstandard2.0;net45;netcoreapp3.1</TargetFrameworks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1' ">
