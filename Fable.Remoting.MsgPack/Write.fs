@@ -7,12 +7,13 @@ open System.Text
 open FSharp.Reflection
 open FSharp.NativeInterop
 open System.Reflection
-open System.Linq.Expressions
-open TypeShape.Core
-open TypeShape.Core.Utils
 open System.Collections.Concurrent
 
 #if !FABLE_COMPILER
+open System.Linq.Expressions
+open TypeShape.Core
+open TypeShape.Core.Utils
+
 #nowarn "9"
 #nowarn "51"
 
