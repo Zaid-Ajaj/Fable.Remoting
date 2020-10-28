@@ -93,8 +93,7 @@ module internal Middleware =
         
         fun (next: HttpFunc) (ctx: HttpContext) -> task {
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
-            let impl = implBuilder ctx
-            let props = { Implementation = impl; EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
+            let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
                 HttpVerb = ctx.Request.Method.ToUpper (); IsContentBinaryEncoded = ctx.Request.ContentType = "application/octet-stream" }
 
             match! proxy props with

@@ -77,7 +77,6 @@ module SuaveUtil =
       fun (ctx: HttpContext) -> async {
           use inp = new MemoryStream (ctx.request.rawForm)
           let isRemotingProxy = ctx.request.headers |> List.exists (fun x -> fst x = "x-remoting-proxy")
-          let impl = implBuilder ctx
           let isContentBinaryEncoded = 
               ctx.request.headers
               |> List.tryFind (fun (key, _) -> key.ToLowerInvariant() = "content-type")
@@ -85,7 +84,7 @@ module SuaveUtil =
               |> function 
                 | Some "application/octet-stream" -> true 
                 | otherwise -> false
-          let props = { Implementation = impl; EndpointName = ctx.request.path; Input = inp; HttpVerb = ctx.request.rawMethod.ToUpper ();
+          let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.request.path; Input = inp; HttpVerb = ctx.request.rawMethod.ToUpper ();
               IsContentBinaryEncoded = isContentBinaryEncoded; IsProxyHeaderPresent = isRemotingProxy }
 
           match! proxy props with
