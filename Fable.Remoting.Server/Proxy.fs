@@ -124,7 +124,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                             use ms = new MemoryStream ()
                             do! props.Input.CopyToAsync ms |> Async.AwaitTask
                             let props' = { Arguments = Choice1Of2 (ms.ToArray ()); ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
-                            return! fieldProxy (shape.Get props.Implementation) props'
+                            return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                         else
                             use sr = new StreamReader (props.Input)
                             let! text = sr.ReadToEndAsync () |> Async.AwaitTask
@@ -140,7 +140,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                                     token :?> JArray |> Seq.toList
 
                             let props' = { Arguments = Choice2Of2 args; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
-                            return! fieldProxy (shape.Get props.Implementation) props'
+                            return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                     with e ->
                         return InvocationResult.Exception (e, shape.MemberInfo.Name) }) }
 

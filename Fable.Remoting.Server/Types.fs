@@ -61,7 +61,7 @@ type InvocationPropsInt = {
 
 type InvocationProps<'impl> = {
     Input: Stream
-    Implementation: 'impl
+    ImplementationBuilder: unit -> 'impl
     EndpointName: string
     HttpVerb: string
     IsContentBinaryEncoded: bool
