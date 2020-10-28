@@ -15,7 +15,7 @@
       ]
     },
     "fable": {
-      "version": "3.0.0-nagareyama-alpha-010",
+      "version": "3.0.0-nagareyama-beta-004",
       "commands": [
         "fable"
       ]
