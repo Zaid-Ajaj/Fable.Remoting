@@ -16,7 +16,7 @@ type IGreetingApi = {
 ### Implement the interface on the *server*
 
 ```fs
-let greetinApi = {
+let greetingApi = {
   greet = fun name ->
     async {
       let greeting = sprintf "Hello, %s" name
@@ -27,7 +27,7 @@ let greetinApi = {
 // Expose the implementation as a HTTP service
 let webApp =
   Remoting.createApi()
-  |> Remoting.fromValue greetinApi
+  |> Remoting.fromValue greetingApi
 ```
 
 ### Call the functions from the *client*
