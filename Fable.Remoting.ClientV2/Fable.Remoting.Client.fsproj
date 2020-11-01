@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.0.2</Version>
+        <Version>7.0.3</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update Fable.SimpleJson dependency</PackageReleaseNotes>
+        <PackageReleaseNotes>Update Fable.SimpleJson dependency to v3.16.2 for proper string escaping</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1</TargetFrameworks>
     </PropertyGroup>
     <ItemGroup>
