@@ -11,6 +11,7 @@ module Remoting =
         CustomHeaders = [ ]
         BaseUrl = None
         Authorization = None
+        WithCredentials = false
         RouteBuilder = sprintf ("/%s/%s")
         ResponseSerialization = Json
     }
@@ -30,6 +31,10 @@ module Remoting =
     /// Sets the authorization header of every request from the proxy
     let withAuthorizationHeader token (options: RemoteBuilderOptions) =
         { options with Authorization = Some token }
+
+    /// Sets the withCredentials option on the XHR request, which is useful for CORS scenarios
+    let withCredentials withCredentials (options: RemoteBuilderOptions) =
+        { options with WithCredentials = withCredentials }
 
     /// Specifies that the API uses binary serialization for responses
     let withBinarySerialization (options: RemoteBuilderOptions) =

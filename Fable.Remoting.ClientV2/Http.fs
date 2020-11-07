@@ -10,6 +10,7 @@ module Http =
         HttpMethod = GET
         Url = "/"
         Headers = [ ]
+        WithCredentials = false
         RequestBody = Empty
     }
 
@@ -33,6 +34,10 @@ module Http =
 
     /// Appends a request with headers as key-value pairs
     let withHeaders headers (req: HttpRequest) = { req with Headers = headers  }
+    
+    /// Sets the withCredentials option on the XHR request, useful for CORS requests
+    let withCredentials withCredentials (req: HttpRequest) =
+        { req with WithCredentials = withCredentials }
 
     /// Appends a request with string body content
     let withBody body (req: HttpRequest) = { req with RequestBody = body }
@@ -49,6 +54,8 @@ module Http =
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do
                 xhr.setRequestHeader(key, value)
+
+            xhr.withCredentials <- true
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
@@ -74,6 +81,8 @@ module Http =
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do
                 xhr.setRequestHeader(key, value)
+
+            xhr.withCredentials <- true
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
