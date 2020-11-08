@@ -82,7 +82,7 @@ module Http =
             for (key, value) in req.Headers do
                 xhr.setRequestHeader(key, value)
 
-            xhr.withCredentials <- true
+            xhr.withCredentials <- req.WithCredentials
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
