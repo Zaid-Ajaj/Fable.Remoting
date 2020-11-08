@@ -15,7 +15,8 @@ type HttpRequest = {
     HttpMethod: HttpMethod
     Url: string 
     Headers: (string * string) list  
-    RequestBody : RequestBody 
+    RequestBody : RequestBody
+    WithCredentials : bool
 }
  
 type HttpResponse = {
@@ -27,6 +28,7 @@ type RemoteBuilderOptions = {
     CustomHeaders : (string * string) list
     BaseUrl  : string option
     Authorization : string option
+    WithCredentials : bool
     RouteBuilder : (string -> string -> string)
     ResponseSerialization : SerializationType
 }
