@@ -82,6 +82,7 @@ let serverBinary : IBinaryServer = {
     echoResult = Async.result
     echoSingleCase = Async.result
     echoHighScores = Async.result
+    echoArray3tuples = Async.result
     getHighScores = fun () -> async {
         return [|
             { Name = "alfonsogarciacaro"; Score =  100 }

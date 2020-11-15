@@ -325,6 +325,8 @@ type Reader (data: byte[]) =
                     x.Read elementType
             ] |> box
 #endif
+        elif t.IsArray then
+            x.ReadRawArray (len, t.GetElementType ()) |> box
         elif FSharpType.IsTuple t then
 #if !FABLE_COMPILER
             let elementTypes = FSharpType.GetTupleElements t
@@ -333,8 +335,6 @@ type Reader (data: byte[]) =
 #else
             FSharpValue.MakeTuple (FSharpType.GetTupleElements t |> Array.map x.Read, t)
 #endif
-        elif t.IsArray then
-            x.ReadRawArray (len, t.GetElementType ()) |> box
         elif t = typeof<DateTimeOffset> then
             let dateTimeTicks = x.Read typeof<int64> :?> int64
             let timeSpanMinutes = x.Read typeof<int16> :?> int16
