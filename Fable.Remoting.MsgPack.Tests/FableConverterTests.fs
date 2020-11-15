@@ -179,4 +179,7 @@ let converterTest =
         test "null string" {
             (null: string) |> serializeDeserializeCompare
         }
+        test "Array of 3-tuples" {
+            [| (1L, ":)", DateTime.Now); (4L, ":<", DateTime.Now) |] |> serializeDeserializeCompare
+        }
     ]

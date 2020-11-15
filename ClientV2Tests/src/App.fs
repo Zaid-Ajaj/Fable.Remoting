@@ -1284,6 +1284,14 @@ let binaryServerTests =
 
                 test.equal true (input = output)
             }
+
+        testCaseAsync "IBinaryServer.array3tuples" <|
+            async {
+                let input = [| (1L, ":)", DateTime.Now); (4L, ":<", DateTime.Now) |]
+                let! output = binaryServer.echoArray3tuples input
+
+                test.equal true (input = output)
+            }
     ]
 
 let cookieServer =
@@ -1516,6 +1524,8 @@ let msgPackTests =
         testCase "List of unions" <| fun () ->
             [ Just 4; Nothing ] |> serializeDeserializeCompare typeof<Maybe<int> list>
             [ Just 4; Nothing ] |> serializeDeserializeCompare typeof<Maybe<int> list>
+        testCase "Array of 3-tuples" <| fun () ->
+            [| (1L, ":)", DateTime.Now); (4L, ":<", DateTime.Now) |] |> serializeDeserializeCompare typeof<(int64 * string * DateTime)[]>
     ]
 
 let alltests =

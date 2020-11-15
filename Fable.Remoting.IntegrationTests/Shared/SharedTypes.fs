@@ -192,6 +192,7 @@ type IBinaryServer = {
 
     // arrays
     echoHighScores : HighScore array -> Async<HighScore array>
+    echoArray3tuples : (int64 * string * DateTime) array -> Async<(int64 * string * DateTime) array>
     getHighScores : unit -> Async<HighScore array>
 
     echoResult : Result<int, string> -> Async<Result<int, string>>
