@@ -28,6 +28,8 @@ type TestRec = {
     intSeq: seq<int> -> Async<int>
     simpleRecordMethod: SimpleRecord -> Async<SimpleRecord>
     multiArgFunc : string -> int -> bool -> Async<int>
+    formatDate : DateTime -> Async<string>
+    formatTimestamp : DateTimeOffset -> Async<string>
 }
 
 let converter = FableJsonConverter()
@@ -66,6 +68,8 @@ let proxyTests =
         intSeq = fun xs -> async { return Seq.sum xs }
         simpleRecordMethod = fun record -> async { return { record with Int = record.Int + 10 } }
         multiArgFunc = fun str n b -> async { return str.Length + n + (if b then 1 else 0) }
+        formatDate = fun date -> async { return date.ToString() }
+        formatTimestamp = fun timestamp -> async { return timestamp.ToString("o") }
     }
 
     testList "Proxy tests" [
@@ -254,8 +258,38 @@ let threadSafeCell =
             Expect.equal 1 magicNumbers.Count "Adding numbers was called once"
         }
     ]
+
+let docs = Docs.createFor<TestRec>()
+
+let docsTests = testList "Docs tests" [
+    test "API with DateTime as input works" {
+        let example =
+            docs.route <@ fun api -> api.formatDate @>
+            |> docs.alias "Format Date"
+            |> docs.description "Formats the given date"
+            |> docs.example <@ fun api -> api.formatDate (DateTime.Now) @>
+            |> docs.example <@ fun api -> api.formatDate (DateTime(2020, 1, 1)) @>
+
+        Expect.equal example.Route (Some "formatDate") "The name of the route is correct"
+        Expect.equal example.Description (Some "Formats the given date") "The description of the route is correct"
+        Expect.equal example.Examples.Length 2 "There are two examples"
+    }
+
+    test "API with DateTimeOffset as input works" {
+        let example =
+            docs.route <@ fun api -> api.formatTimestamp @>
+            |> docs.description "Formats the given timestamp"
+            |> docs.example <@ fun api -> api.formatTimestamp (DateTimeOffset.Now) @>
+
+        Expect.equal example.Route (Some "formatTimestamp") "The name of the route is correct"
+        Expect.equal example.Description (Some "Formats the given timestamp") "The description of the route is correct"
+        Expect.equal example.Examples.Length 1 "There is one examples"
+    }
+]
+
 let allTests =
     testList "All Tests " [
         proxyTests
         threadSafeCell
+        docsTests
     ]

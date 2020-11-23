@@ -4,137 +4,165 @@ open Quotations.Patterns
 open FSharp.Reflection
 
 module Patterns =
-    let (| AsyncField |_|) = function 
-        | PropertyGet (Some (_), method, []) -> 
+    let (| AsyncField |_|) = function
+        | PropertyGet (Some (_), method, []) ->
             Some(method.Name)
-        | _ -> None 
-    let (| NoArgs |_|) = function 
-        | Lambda(_, AsyncField(methodName)) -> 
+        | _ -> None
+    let (| NoArgs |_|) = function
+        | Lambda(_, AsyncField(methodName)) ->
             Some (methodName, [ ])
         | _ -> None
 
-    let rec (|UnionValue|_|) = function 
-        | NewUnionCase(info, [ ]) -> 
+    let rec (|UnionValue|_|) = function
+        | NewUnionCase(info, [ ]) ->
             FSharpValue.MakeUnion(info, [|  |]) |> Some
-        | NewUnionCase(info, [ ProvidedValue(value) ]) -> 
+        | NewUnionCase(info, [ ProvidedValue(value) ]) ->
             FSharpValue.MakeUnion(info, [| value |]) |> Some
-        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2); ]) -> 
+        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2); ]) ->
             FSharpValue.MakeUnion(info, [| arg1; arg2; |]) |> Some
-        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3) ]) -> 
+        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3) ]) ->
             FSharpValue.MakeUnion(info, [| arg1; arg2; arg3 |]) |> Some
-        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4) ]) -> 
+        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4) ]) ->
             FSharpValue.MakeUnion(info, [| arg1; arg2; arg3; arg4 |]) |> Some
-        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4); ProvidedValue(arg5) ]) -> 
+        | NewUnionCase(info, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4); ProvidedValue(arg5) ]) ->
             FSharpValue.MakeUnion(info, [| arg1; arg2; arg3; arg4; arg4 |]) |> Some
         | _ -> None
 
-    and (|RecordValue|_|) = function 
-        | NewRecord(recordType, [ ProvidedValue(field) ]) -> 
+    and (|RecordValue|_|) = function
+        | NewRecord(recordType, [ ProvidedValue(field) ]) ->
             FSharpValue.MakeRecord(recordType, [| field |]) |> Some
-        | NewRecord(recordType, [ ProvidedValue(arg1); ProvidedValue(arg2); ]) -> 
+        | NewRecord(recordType, [ ProvidedValue(arg1); ProvidedValue(arg2); ]) ->
             FSharpValue.MakeRecord(recordType, [| arg1; arg2; |]) |> Some
-        | NewRecord(recordType, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ]) -> 
+        | NewRecord(recordType, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ]) ->
             FSharpValue.MakeRecord(recordType, [| arg1; arg2; arg3 |]) |> Some
-        | NewRecord(recordType, [ ProvidedValue(arg1); ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4) ]) -> 
+        | NewRecord(recordType, [ ProvidedValue(arg1); ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4) ]) ->
             FSharpValue.MakeRecord(recordType, [| arg1; arg2; arg3; arg4 |]) |> Some
-        | NewRecord(recordType, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4); ProvidedValue(arg5) ]) -> 
+        | NewRecord(recordType, [ ProvidedValue(arg1);  ProvidedValue(arg2);  ProvidedValue(arg3); ProvidedValue(arg4); ProvidedValue(arg5) ]) ->
             FSharpValue.MakeRecord(recordType, [| arg1; arg2; arg3; arg4; arg4 |]) |> Some
         | _ -> None
 
-    and (|Tuples|_|) = function 
+    and (|Tuples|_|) = function
         | NewTuple [ProvidedValue(arg1); ProvidedValue(arg2)]  ->
             Some (box [arg1; arg2])
         | NewTuple [ProvidedValue(arg1); ProvidedValue(arg2); ProvidedValue(arg3)]  ->
-            Some (box [arg1; arg2; arg3]) 
+            Some (box [arg1; arg2; arg3])
         | NewTuple [ProvidedValue(arg1); ProvidedValue(arg2); ProvidedValue(arg3); ProvidedValue(arg4)]  ->
             Some (box [arg1; arg2; arg3; arg4])
         | NewTuple [ProvidedValue(arg1); ProvidedValue(arg2); ProvidedValue(arg3); ProvidedValue(arg4); ProvidedValue(arg5)]  ->
             Some (box [arg1; arg2; arg3; arg4; arg5])
         | _ -> None
-    and (| ProvidedValue |_|) = function 
-        | Value(value, _ ) -> Some value 
+
+    and (|PropertyGetter|_|) = function
+        | PropertyGet (Some (ValueWithName(value, valueType, name)), propInfo, []) ->
+            Some (propInfo.GetValue(value))
+        | PropertyGet (Some (ProvidedValue(value)), propInfo, []) ->
+            Some (propInfo.GetValue(value))
+        | PropertyGet (None, propInfo, []) ->
+            Some(propInfo.GetMethod.Invoke(propInfo.DeclaringType, [||]))
+        | otherwise ->
+            None
+
+    and (|NewObjectValue|_|) = function
+        | NewObject(ctorInfo, [ ]) ->
+            System.Activator.CreateInstance(ctorInfo.DeclaringType) |> Some
+        | NewObject(ctorInfo, [ ProvidedValue(arg1); ProvidedValue(arg2) ]) ->
+            System.Activator.CreateInstance(ctorInfo.DeclaringType, arg1, arg2) |> Some
+        | NewObject(ctorInfo, [ ProvidedValue(arg1); ProvidedValue(arg2); ProvidedValue(arg3) ]) ->
+            System.Activator.CreateInstance(ctorInfo.DeclaringType, arg1, arg2, arg3) |> Some
+        | NewObject(ctorInfo, [ ProvidedValue(arg1); ProvidedValue(arg2); ProvidedValue(arg3); ProvidedValue(arg4) ]) ->
+            System.Activator.CreateInstance(ctorInfo.DeclaringType, arg1, arg2, arg3, arg4) |> Some
+        | NewObject(ctorInfo, [ ProvidedValue(arg1); ProvidedValue(arg2); ProvidedValue(arg3); ProvidedValue(arg4); ProvidedValue(arg5) ]) ->
+            System.Activator.CreateInstance(ctorInfo.DeclaringType, arg1, arg2, arg3, arg4, arg5) |> Some
+        | NewObject(ctorInfo, [ ProvidedValue(arg1); ProvidedValue(arg2); ProvidedValue(arg3); ProvidedValue(arg4); ProvidedValue(arg5); ProvidedValue(arg6) ]) ->
+            System.Activator.CreateInstance(ctorInfo.DeclaringType, arg1, arg2, arg3, arg4, arg5, arg6) |> Some
+        | _ -> None
+    and (| ProvidedValue |_|) = function
+        | Value(value, _ ) -> Some value
         | ValueWithName(value, _, _) -> Some value
         | UnionValue value -> Some value
         | RecordValue value -> Some value
         | Tuples value -> Some value
-        | _ -> None
-    let (| OneArg |_|) = function 
+        | NewObjectValue value -> Some value
+        | PropertyGetter value -> Some value
+        | otherwise -> None
+    let (| OneArg |_|) = function
         | Application (AsyncField(methodName), ProvidedValue(value)) ->
             Some (methodName, [ value ])
-        | _ -> None 
-    let (| TwoArgs |_|) = function 
+        | otherwise ->
+            None
+    let (| TwoArgs |_|) = function
         | Application (OneArg(methodName, args) , ProvidedValue(arg)) ->
-            Some (methodName, [ yield! args; yield arg ]) 
-        | _ -> None 
-    let (| ThreeArgs |_|) = function 
+            Some (methodName, [ yield! args; yield arg ])
+        | _ -> None
+    let (| ThreeArgs |_|) = function
         | Application (TwoArgs(methodName, args) , ProvidedValue(arg)) ->
-            Some (methodName, [ yield! args; yield arg ]) 
-        | _ -> None 
-    let (| FourArgs |_|) = function 
+            Some (methodName, [ yield! args; yield arg ])
+        | _ -> None
+    let (| FourArgs |_|) = function
         | Application (ThreeArgs(methodName, args) , ProvidedValue(arg)) ->
-            Some (methodName, [ yield! args; yield arg ]) 
-        | _ -> None 
-    let (| FiveArgs |_|) = function 
+            Some (methodName, [ yield! args; yield arg ])
+        | _ -> None
+    let (| FiveArgs |_|) = function
         | Application (FourArgs(methodName, args) , ProvidedValue(arg)) ->
-            Some (methodName, [ yield! args; yield arg ]) 
-        | _ -> None 
+            Some (methodName, [ yield! args; yield arg ])
+        | _ -> None
 
-    let (| SixArgs |_|) = function 
+    let (| SixArgs |_|) = function
         | Application (FiveArgs(methodName, args) , ProvidedValue(arg)) ->
-            Some (methodName, [ yield! args; yield arg ]) 
-        | _ -> None 
+            Some (methodName, [ yield! args; yield arg ])
+        | _ -> None
 
-    let (| SevenArgs |_|) = function 
+    let (| SevenArgs |_|) = function
         | Application (SixArgs(methodName, args) , ProvidedValue(arg)) ->
-            Some (methodName, [ yield! args; yield arg ]) 
-        | _ -> None 
-    let (| EightArgs |_|) = function 
+            Some (methodName, [ yield! args; yield arg ])
+        | _ -> None
+    let (| EightArgs |_|) = function
         | Application (SevenArgs(methodName, args) , ProvidedValue(arg)) ->
-            Some (methodName, [ yield! args; yield arg ]) 
-        | _ -> None 
-    let (| OneArgLambda |_|) = function 
+            Some (methodName, [ yield! args; yield arg ])
+        | _ -> None
+    let (| OneArgLambda |_|) = function
         | Lambda(_, OneArg(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None 
-    let (| TwoArgLambda |_|) = function 
+        | _ -> None
+    let (| TwoArgLambda |_|) = function
         | Lambda(_, TwoArgs(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None     
-    let (| ThreeArgLambda |_|) = function 
+        | _ -> None
+    let (| ThreeArgLambda |_|) = function
         | Lambda(_, ThreeArgs(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None 
-    let (| FourArgLambda |_|) = function 
+        | _ -> None
+    let (| FourArgLambda |_|) = function
         | Lambda(_, FourArgs(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None 
-    let (| FiveArgLambda |_|) = function 
+        | _ -> None
+    let (| FiveArgLambda |_|) = function
         | Lambda(_, FiveArgs(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None 
-    let (| SixArgLambda |_|) = function 
+        | _ -> None
+    let (| SixArgLambda |_|) = function
         | Lambda(_, SixArgs(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None 
+        | _ -> None
 
-    let (| SevenArgLambda |_|) = function 
+    let (| SevenArgLambda |_|) = function
         | Lambda(_, SevenArgs(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None 
-    let (| EightArgLambda |_|) = function 
-        | Lambda(_, OneArg(methodName, args)) ->
+        | _ -> None
+    let (| EightArgLambda |_|) = function
+        | Lambda(_, EightArgs(methodName, args)) ->
             Some (methodName, args)
-        | _ -> None 
+        | _ -> None
 
 
-    let (|ProxyLambda|_|) = function 
-        | NoArgs (methodName, args) 
+    let (|ProxyLambda|_|) = function
+        | NoArgs (methodName, args)
         | OneArgLambda (methodName, args)
         | TwoArgLambda (methodName, args)
-        | ThreeArgLambda (methodName, args) 
+        | ThreeArgLambda (methodName, args)
         | FourArgLambda (methodName, args)
-        | FiveArgLambda (methodName, args) 
+        | FiveArgLambda (methodName, args)
         | SixArgLambda (methodName, args)
         | SevenArgLambda (methodName, args)
-        | EightArgLambda (methodName, args) -> Some (methodName, args) 
+        | EightArgLambda (methodName, args) -> Some (methodName, args)
         | _ -> None
