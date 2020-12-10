@@ -194,9 +194,9 @@ let converterTest =
             MsgPack.Write.serializeObj t ms
 
             let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<System.Data.DataTable> :?> System.Data.DataTable
-            Expect.equal deserialized.Columns.Count t.Columns.Count    "column count"
-            Expect.equal deserialized.Rows.Count t.Rows.Count          "row count"
-            Expect.equal deserialized.TableName t.TableName            "table name"
+            Expect.equal deserialized.Columns.Count   t.Columns.Count  "column count"
+            Expect.equal deserialized.Rows.Count      t.Rows.Count     "row count"
+            Expect.equal deserialized.TableName       t.TableName      "table name"
             Expect.equal deserialized.Rows.[0].["a"]  t.Rows.[0].["a"] "table.[0,'a']"
             Expect.equal deserialized.Rows.[0].["b"]  t.Rows.[0].["b"] "table.[0,'b']"
             Expect.equal deserialized.Rows.[1].["a"]  t.Rows.[1].["a"] "table.[1,'a']"

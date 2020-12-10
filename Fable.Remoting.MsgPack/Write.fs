@@ -230,15 +230,13 @@ let inline writeBigInteger (i: bigint) out =
 
 #if !FABLE_COMPILER
 let inline writeDataTable (dt: System.Data.DataTable) out =
-  if String.IsNullOrWhiteSpace dt.TableName then
-    failwithf "datatable must have TableName property set"
-  do
     use bytes = new MemoryStream()
     let formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter()
     formatter.Serialize(bytes, dt)
     bytes.Close()
     writeBin (bytes.ToArray()) out
 #endif
+
 // todo necessary to take the underlying type into account?
 let inline writeEnum (enum: 'enum when 'enum: enum<'underlying>) out =
     writeInt64 (Convert.ChangeType (enum, typeof<int64>) :?> int64) out
