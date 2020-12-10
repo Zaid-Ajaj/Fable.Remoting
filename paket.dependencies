@@ -2,11 +2,12 @@ version 5.249.0
 source https://api.nuget.org/v3/index.json
 
 storage: none
+lowest_matching: true
 nuget benchmarkdotnet
 nuget Expecto
-nuget FSharp.Core
-nuget Microsoft.AspNetCore.Server.Kestrel
-nuget Microsoft.AspNetCore.TestHost
+nuget FSharp.Core ~> 4.7.2
+nuget Microsoft.AspNetCore.Server.Kestrel ~> 2.2
+nuget Microsoft.AspNetCore.TestHost ~> 3.1
 nuget Newtonsoft.Json
 nuget NUnit
 nuget PuppeteerSharp
@@ -25,8 +26,17 @@ group Build
     nuget Fake.DotNet.Cli
     nuget Fake.IO.FileSystem
 
+group LatestNet5
+    source https://api.nuget.org/v3/index.json
+    framework: net5
+    storage: none
+    lowest_matching: true
+    nuget Giraffe 5.0.0-rc-6
+    nuget FSharp.Core ~> 5.0
+
 group Client
     source https://api.nuget.org/v3/index.json
+    lowest_matching: true
     nuget Fable.Mocha
     nuget Fable.SimpleJson
     nuget Fable.Browser.XMLHttpRequest

@@ -49,6 +49,7 @@ let Json = getPath "Json"
 let Server = getPath "Server"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
+let GiraffeNET5 = getPath "GiraffeNET5"
 let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
 let MsgPack = getPath "MsgPack"
@@ -77,6 +78,7 @@ Target.create "PublishServer" (publish Server)
 Target.create "PublishDotnetClient" (publish DotnetClient)
 Target.create "PublishSuave" (publish Suave)
 Target.create "PublishGiraffe" (publish Giraffe)
+Target.create "PublishGiraffeNET5" (publish GiraffeNET5)
 Target.create "PublishAspnetCore" (publish AspNetCore)
 Target.create "PublishMsgPack" (publish MsgPack)
 

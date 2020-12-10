@@ -8,14 +8,14 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.14.0</Version>
-        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <Version>5.0.0-rc-6</Version>
+        <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="SharedReader.fs" />
-        <Compile Include="FableGiraffeAdapter.fs" />
+        <Compile Include="../Fable.Remoting.Giraffe/SharedReader.fs" />
+        <Compile Include="../Fable.Remoting.Giraffe/FableGiraffeAdapter.fs" />
     </ItemGroup>
 
     <ItemGroup>
