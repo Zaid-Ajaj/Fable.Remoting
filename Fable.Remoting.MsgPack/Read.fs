@@ -7,6 +7,7 @@ open System.Collections.Concurrent
 open System.Collections.Generic
 open FSharp.Reflection
 open System.Reflection
+open System.IO
 
 let interpretStringAs (typ: Type) str =
 #if FABLE_COMPILER
@@ -351,6 +352,11 @@ type Reader (data: byte[]) =
             x.ReadRawBin len |> box
         elif t = typeof<bigint> then
             x.ReadRawBin len |> bigint |> box
+        elif t = typeof<System.Data.DataTable> then
+            let data = x.ReadRawBin len
+            let stream = new MemoryStream(data)
+            let formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+            formatter.Deserialize(stream) :?> System.Data.DataTable |> box
         else
             failwithf "Expecting %s at position %d, but the data contains bin." t.Name pos
 

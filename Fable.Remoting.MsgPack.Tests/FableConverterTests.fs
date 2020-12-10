@@ -182,4 +182,19 @@ let converterTest =
         test "Array of 3-tuples" {
             [| (1L, ":)", DateTime.Now); (4L, ":<", DateTime.Now) |] |> serializeDeserializeCompare
         }
+        test "datatable" {
+            let t = new System.Data.DataTable()
+            t.TableName <- "myname"
+            t.Columns.Add("a", typeof<int>) |> ignore
+            t.Columns.Add("b", typeof<string>) |> ignore
+            t.Rows.Add(1, "11111")  |> ignore
+            t.Rows.Add(2, "222222") |> ignore
+            use ms = new MemoryStream ()
+            MsgPack.Write.serializeObj t ms
+
+            let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<System.Data.DataTable> :?> System.Data.DataTable
+            Expect.equal deserialized.Columns.Count t.Columns.Count "column count"
+            Expect.equal deserialized.Rows.Count t.Rows.Count       "row count"
+            Expect.equal deserialized.TableName t.TableName         "table name"
+        }
     ]
