@@ -14,12 +14,10 @@ os: Visual Studio 2019 Preview
 
 # Install scripts. (runs after repo cloning)
 install:
-  # install latest dotnet core 3 preview
-  - cmd: choco install dotnetcore-sdk --pre
+  # install latest dotnet 5 sdk
+  - cmd: choco install dotnet-sdk --version 5.0.100
   # Get the latest stable version of Node.js
   - ps: Install-Product node $env:nodejs_version
-  - ps: Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
-  - ps: ./dotnet-install.ps1 --Version 5.0.101 -InstallDir 'C:\Program Files\dotnet'
 
   # # Update npm
   # # There seems to be issues with npm 5.4 in Windows
