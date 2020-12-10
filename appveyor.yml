@@ -5,23 +5,26 @@ build:
   verbosity: detailed
 
 environment:
-  nodejs_version: "10.10.0"
+  nodejs_version: "12.16.1"
 
 cache:
   - "%LOCALAPPDATA%\\Yarn"
 
+os: Visual Studio 2019 Preview
+
 # Install scripts. (runs after repo cloning)
 install:
   # install latest dotnet core 3 preview
-  - cmd: choco install dotnetcore-sdk --pre
+  - cmd: choco install dotnetcore-sdk 3.1.404
   # Get the latest stable version of Node.js
   - ps: Install-Product node $env:nodejs_version
+  - ps: Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
+  - ps: ./dotnet-install.ps1 --Version 5.0.101 -InstallDir 'C:\Program Files\dotnet'
+
   # # Update npm
   # # There seems to be issues with npm 5.4 in Windows
   # # See https://github.com/npm/npm/issues/18380
   # - npm install -g npm@6.1.0
-
-os: Visual Studio 2019
 
 build_script:
   - cmd: dotnet tool restore
