@@ -5,39 +5,37 @@ open Microsoft.AspNetCore.Http
 open Giraffe
 open System.IO
 open Fable.Remoting.Server
-open FSharp.Control.Tasks.V2.ContextInsensitive
 open Newtonsoft.Json
 open Fable.Remoting.Server.Proxy
 
 module GiraffeUtil =
     let setJsonBody (response: obj) (logger: Option<string -> unit>) : HttpHandler =
         fun (next : HttpFunc) (ctx : HttpContext) ->
-            task {
-                use ms = new MemoryStream ()
-                jsonSerialize response ms
-                let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
-                Diagnostics.outputPhase logger responseBody
-                ctx.Response.ContentType <- "application/json; charset=utf-8"
-                return! setBodyFromString responseBody next ctx
-            }
+            use ms = new MemoryStream ()
+            jsonSerialize response ms
+            let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
+            Diagnostics.outputPhase logger responseBody
+            ctx.Response.ContentType <- "application/json; charset=utf-8"
+            setBodyFromString responseBody next ctx
 
     /// Handles thrown exceptions
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
-      let logger = options.DiagnosticsLogger
-      fun (next : HttpFunc) (ctx : HttpContext) ->
-        task {
+        let logger = options.DiagnosticsLogger
+        fun (next : HttpFunc) (ctx : HttpContext) ->
             match options.ErrorHandler with
-            | None -> return! setJsonBody (Errors.unhandled routeInfo.methodName) logger next ctx
+            | None -> setJsonBody (Errors.unhandled routeInfo.methodName) logger next ctx
             | Some errorHandler ->
                 match errorHandler ex routeInfo with
-                | Ignore -> return! setJsonBody (Errors.ignored routeInfo.methodName) logger next ctx
-                | Propagate error -> return! setJsonBody (Errors.propagated error) logger next ctx
-        }
+                | Ignore -> setJsonBody (Errors.ignored routeInfo.methodName) logger next ctx
+                | Propagate error -> setJsonBody (Errors.propagated error) logger next ctx
+
+    /// Used to halt the forwarding of the Http context
+    let halt: HttpContext option = None
 
     let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
         
-        fun (next: HttpFunc) (ctx: HttpContext) -> task {
+        fun (next: HttpFunc) (ctx: HttpContext) -> Async.StartAsTask (async {
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
             let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = SubRouting.getNextPartOfPath ctx; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
                 HttpVerb = ctx.Request.Method.ToUpper (); IsContentBinaryEncoded = ctx.Request.ContentType = "application/octet-stream" }
@@ -54,30 +52,30 @@ module GiraffeUtil =
                 else
                     ctx.Response.ContentType <- "application/msgpack"
                 
-                do! output.CopyToAsync ctx.Response.Body
-                return! next ctx
+                do! output.CopyToAsync ctx.Response.Body |> Async.AwaitTask
+                return! next ctx |> Async.AwaitTask
             | Exception (e, functionName) ->
                 ctx.Response.StatusCode <- 500
                 let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
-                return! fail e routeInfo options next ctx
+                return! fail e routeInfo options next ctx |> Async.AwaitTask
             | InvalidHttpVerb ->
-                return! skipPipeline
+                return halt
             | EndpointNotFound ->
                 match ctx.Request.Method.ToUpper(), options.Docs with
                 | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
                     let (Documentation(docsName, docsRoutes)) = docs
                     let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                     let docsApp = DocsApp.embedded docsName docsUrl schema
-                    return! htmlString docsApp next ctx
+                    return! htmlString docsApp next ctx |> Async.AwaitTask
                 | "OPTIONS", (Some docsUrl, Some docs)
                     when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
                       || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
                     let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                     let serializedSchema = schema.ToString(Formatting.None)
-                    return! text serializedSchema next ctx
+                    return! text serializedSchema next ctx |> Async.AwaitTask
                 | _ ->
-                    return! skipPipeline
-        }
+                    return halt
+        })
 
 module Remoting =
 
@@ -87,4 +85,3 @@ module Remoting =
     | Empty -> fun _ _ -> skipPipeline
     | StaticValue impl -> GiraffeUtil.buildFromImplementation (fun _ -> impl) options
     | FromContext createImplementationFrom -> GiraffeUtil.buildFromImplementation createImplementationFrom options
-            
