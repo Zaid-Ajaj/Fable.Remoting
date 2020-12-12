@@ -351,6 +351,13 @@ type Reader (data: byte[]) =
             x.ReadRawBin len |> box
         elif t = typeof<bigint> then
             x.ReadRawBin len |> bigint |> box
+#if !FABLE_COMPILER
+        elif t = typeof<System.Data.DataTable> then
+            let data = x.ReadRawBin len
+            let stream = new System.IO.MemoryStream(data)
+            let formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+            formatter.Deserialize(stream) :?> System.Data.DataTable |> box
+#endif
         else
             failwithf "Expecting %s at position %d, but the data contains bin." t.Name pos
 
