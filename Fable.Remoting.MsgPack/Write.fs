@@ -19,13 +19,6 @@ open TypeShape.Core.Utils
 
 let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 
-let (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
-  let tableTy =  typeof<System.Data.DataTable>
-  if s.Type = tableTy || s.Type.IsInstanceOfType tableTy then
-    Some s
-  else
-    None
-
 let inline write32bitNumberBytes b1 b2 b3 b4 (out: Stream) writeFormat =
     if b2 > 0uy || b1 > 0uy then
         if writeFormat then out.WriteByte Format.Uint32
@@ -235,13 +228,6 @@ let inline writeGuid (g: Guid) out =
 let inline writeBigInteger (i: bigint) out =
     writeBin (i.ToByteArray ()) out
 
-let inline writeDataTable (dt: System.Data.DataTable) out =
-    use bytes = new MemoryStream()
-    let formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter()
-    formatter.Serialize(bytes, dt)
-    bytes.Close()
-    writeBin (bytes.ToArray()) out
-
 // todo necessary to take the underlying type into account?
 let inline writeEnum (enum: 'enum when 'enum: enum<'underlying>) out =
     writeInt64 (Convert.ChangeType (enum, typeof<int64>) :?> int64) out
@@ -381,8 +367,6 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
     | Shape.Tuple (:? ShapeTuple<'T> as shape) ->
         let elementSerializers = shape.Elements |> Array.map makeMemberVisitor
         Action<_, _> (fun (tuple: 'T) out -> writeTuple tuple out elementSerializers) |> w
-    | BclIsInstanceOfSystemDataTable _ ->
-        Action<_, _> (fun (table: System.Data.DataTable) out -> writeDataTable table out) |> w
     | _ ->
         failwithf "Cannot serialize %s." typeof<'T>.Name
 
