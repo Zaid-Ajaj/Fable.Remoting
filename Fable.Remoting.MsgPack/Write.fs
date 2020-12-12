@@ -19,6 +19,20 @@ open TypeShape.Core.Utils
 
 let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 
+let (|BclIsInstanceOfSystemDataSet|_|) (s: TypeShape) =
+  let tableTy =  typeof<System.Data.DataSet>
+  if s.Type = tableTy || s.Type.IsInstanceOfType tableTy then
+    Some s
+  else
+    None
+
+let (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
+  let tableTy =  typeof<System.Data.DataTable>
+  if s.Type = tableTy || s.Type.IsInstanceOfType tableTy then
+    Some s
+  else
+    None
+
 let inline write32bitNumberBytes b1 b2 b3 b4 (out: Stream) writeFormat =
     if b2 > 0uy || b1 > 0uy then
         if writeFormat then out.WriteByte Format.Uint32
@@ -263,6 +277,24 @@ let inline writeTuple tuple (out: Stream) (elementSerializers: Action<'a, Stream
     for s in elementSerializers do
         s.Invoke (tuple, out)
 
+let inline writeDataTable (table: System.Data.DataTable) out =
+  let schema, data =
+      use stringWriter1 = new StringWriter()
+      use stringWriter2 = new StringWriter()
+      table.WriteXmlSchema stringWriter1
+      table.WriteXml stringWriter2
+      string stringWriter1, string stringWriter2
+  writeArray [|schema; data|] out (Action<_,_>(writeString))
+
+let inline writeDataSet (dataset: System.Data.DataSet) out =
+  let schema, data =
+      use stringWriter1 = new StringWriter()
+      use stringWriter2 = new StringWriter()
+      dataset.WriteXmlSchema stringWriter1
+      dataset.WriteXml stringWriter2
+      string stringWriter1, string stringWriter2
+  writeArray [|schema; data|] out (Action<_,_>(writeString))
+
 let rec makeSerializer<'T> (): Action<'T, Stream> =
     let ctx = new TypeGenerationContext ()
     serializerCached<'T> ctx
@@ -367,6 +399,8 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
     | Shape.Tuple (:? ShapeTuple<'T> as shape) ->
         let elementSerializers = shape.Elements |> Array.map makeMemberVisitor
         Action<_, _> (fun (tuple: 'T) out -> writeTuple tuple out elementSerializers) |> w
+    | BclIsInstanceOfSystemDataSet _ ->
+        Action<_, _> (fun (dataset: System.Data.DataSet) out -> writeDataSet dataset out) |> w
     | _ ->
         failwithf "Cannot serialize %s." typeof<'T>.Name
 

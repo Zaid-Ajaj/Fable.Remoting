@@ -38,6 +38,8 @@ type Kind =
     | Long = 8
     | BigInt = 9
     | TimeSpan = 10
+    | DataSet = 12
+    | DataTable = 13
 
 /// Helper for serializing map/dict with non-primitive, non-string keys such as unions and records.
 /// Performs additional serialization/deserialization of the key object and uses the resulting JSON
@@ -107,6 +109,50 @@ type MapStringKeySerializer<'v>() =
             serializer.Serialize(writer, v) )
         writer.WriteEndObject()
 
+type DataSetSerializer() =
+    static member Deserialize(t:Type, reader:JsonReader, serializer:JsonSerializer) =
+        let jsonToken = JToken.ReadFrom(reader)
+        if jsonToken.Type = JTokenType.Object then
+            let dictionary = serializer.Deserialize<Dictionary<string,string>>(jsonToken.CreateReader())
+            match dictionary.TryGetValue "schema",dictionary.TryGetValue "data" with
+            | (true, schema), (true, data) -> 
+                if t = typeof<System.Data.DataSet> then
+                    let dataset = new System.Data.DataSet()
+                    dataset.ReadXmlSchema(new System.IO.StringReader(schema))
+                    dataset.ReadXml(new System.IO.StringReader(data)) |> ignore
+                    box dataset
+                elif t = typeof<System.Data.DataTable> then
+                    let table = new System.Data.DataTable()
+                    table.ReadXmlSchema(new System.IO.StringReader(schema))
+                    table.ReadXml(new System.IO.StringReader(data)) |> ignore
+                    box table
+                else
+                    failwith "DataSetSerializer input type wasn't a DataSet"
+            | _ -> failwith "DataSetSerializer input type wasn't a DataSet"
+        else
+            failwith "DataSetSerializer input type wasn't a DataSet"
+    static member Serialize(value: obj, writer:JsonWriter, serializer:JsonSerializer) =
+        let schema, data =
+            match value with
+            | :? System.Data.DataTable as table ->
+                use stringWriter1 = new System.IO.StringWriter()
+                use stringWriter2 = new System.IO.StringWriter()
+                table.WriteXmlSchema stringWriter1
+                table.WriteXml stringWriter2
+                string stringWriter1, string stringWriter2
+            | :? System.Data.DataSet as dataset ->
+                use stringWriter1 = new System.IO.StringWriter()
+                use stringWriter2 = new System.IO.StringWriter()
+                dataset.WriteXmlSchema stringWriter1
+                dataset.WriteXml stringWriter2
+                string stringWriter1, string stringWriter2
+            | _ -> failwith "DataSetSerializer input type wasn't a DataTable or a DataSet"
+        writer.WriteStartObject()
+        writer.WritePropertyName("schema")
+        writer.WriteValue(schema)
+        writer.WritePropertyName("data")
+        writer.WriteValue(data)
+        writer.WriteEndObject()
 module private Cache =
     let jsonConverterTypes = ConcurrentDictionary<Type,Kind>()
     let serializationBinderTypes = ConcurrentDictionary<string,Type>()
@@ -206,6 +252,10 @@ type FableJsonConverter() =
                     Kind.MapOrDictWithNonStringKey
                 elif t.IsGenericType && (t.GetGenericTypeDefinition() = typedefof<Map<_,_>>)
                     then Kind.MapWithStringKey
+                elif typeof<System.Data.DataTable>.IsAssignableFrom t
+                    then Kind.DataTable
+                elif typeof<System.Data.DataSet>.IsAssignableFrom t
+                    then Kind.DataSet
                 else Kind.Other)
         kind <> Kind.Other
 
@@ -279,6 +329,9 @@ type FableJsonConverter() =
                 let mapSerializer = typedefof<MapStringKeySerializer<_>>.MakeGenericType valueT
                 let mapSerializeMethod = mapSerializer.GetMethod("Serialize")
                 mapSerializeMethod.Invoke(null, [| value; writer; serializer |]) |> ignore
+            | true, Kind.DataTable
+            | true, Kind.DataSet ->
+                DataSetSerializer.Serialize(value, writer, serializer)
             | true, _ ->
                 serializer.Serialize(writer, value)
 
@@ -467,5 +520,8 @@ type FableJsonConverter() =
               let mapSerializer = typedefof<MapStringKeySerializer<_>>.MakeGenericType valueT
               let mapDeserializeMethod = mapSerializer.GetMethod("Deserialize")
               mapDeserializeMethod.Invoke(null, [| t; mapLiteral.CreateReader(); serializer |])
+        | true, Kind.DataTable
+        | true, Kind.DataSet ->
+            DataSetSerializer.Deserialize(t, reader, serializer)
         | true, _ ->
             serializer.Deserialize(reader, t)

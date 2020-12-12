@@ -341,7 +341,25 @@ type Reader (data: byte[]) =
             DateTimeOffset (dateTimeTicks, TimeSpan.FromMinutes (float timeSpanMinutes)) |> box
         elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Set<_>> then
             x.ReadSet(len, t)
-        else
+#if !FABLE_COMPILER
+        elif t = typeof<System.Data.DataTable> then
+            match x.ReadRawArray(2, typeof<string>) :?> string array with
+            | [|schema;data|] -> 
+                let t = new System.Data.DataTable()
+                t.ReadXmlSchema(new System.IO.StringReader(schema))
+                t.ReadXml(new System.IO.StringReader(data)) |> ignore
+                box t
+            | otherwise -> failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
+        elif t = typeof<System.Data.DataSet> then
+            match x.ReadRawArray(2, typeof<string>) :?> string array with
+            | [|schema;data|] -> 
+                let t = new System.Data.DataSet()
+                t.ReadXmlSchema(new System.IO.StringReader(schema))
+                t.ReadXml(new System.IO.StringReader(data)) |> ignore
+                box t
+            | otherwise -> failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
+#endif
+         else
             failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 
     member x.ReadBin (len, t) =
@@ -351,6 +369,7 @@ type Reader (data: byte[]) =
             x.ReadRawBin len |> box
         elif t = typeof<bigint> then
             x.ReadRawBin len |> bigint |> box
+
         else
             failwithf "Expecting %s at position %d, but the data contains bin." t.Name pos
 

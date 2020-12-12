@@ -182,4 +182,46 @@ let converterTest =
         test "Array of 3-tuples" {
             [| (1L, ":)", DateTime.Now); (4L, ":<", DateTime.Now) |] |> serializeDeserializeCompare
         }
+        #if !FABLE_COMPILER
+        test "datatable" {
+            let t = new System.Data.DataTable()
+            t.TableName <- "myname"
+            t.Columns.Add("a", typeof<int>) |> ignore
+            t.Columns.Add("b", typeof<string>) |> ignore
+            t.Rows.Add(1, "11111")  |> ignore
+            t.Rows.Add(2, "222222") |> ignore
+            use ms = new MemoryStream ()
+            MsgPack.Write.serializeObj t ms
+
+            let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<System.Data.DataTable> :?> System.Data.DataTable
+            Expect.equal deserialized.Columns.Count   t.Columns.Count  "column count"
+            Expect.equal deserialized.Rows.Count      t.Rows.Count     "row count"
+            Expect.equal deserialized.TableName       t.TableName      "table name"
+            Expect.equal deserialized.Rows.[0].["a"]  t.Rows.[0].["a"] "table.[0,'a']"
+            Expect.equal deserialized.Rows.[0].["b"]  t.Rows.[0].["b"] "table.[0,'b']"
+            Expect.equal deserialized.Rows.[1].["a"]  t.Rows.[1].["a"] "table.[1,'a']"
+            Expect.equal deserialized.Rows.[1].["b"]  t.Rows.[1].["b"] "table.[1,'b']"
+        }
+        test "dataset" {
+            let t = new System.Data.DataTable()
+            t.TableName <- "myname"
+            t.Columns.Add("a", typeof<int>) |> ignore
+            t.Columns.Add("b", typeof<string>) |> ignore
+            t.Rows.Add(1, "11111")  |> ignore
+            t.Rows.Add(2, "222222") |> ignore
+            let ds = new System.Data.DataSet()
+            ds.Tables.Add t
+            use ms = new MemoryStream ()
+            MsgPack.Write.serializeObj ds ms
+
+            let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<System.Data.DataSet> :?> System.Data.DataSet
+            Expect.equal deserialized.Tables.["myname"].Columns.Count   t.Columns.Count  "column count"
+            Expect.equal deserialized.Tables.["myname"].Rows.Count      t.Rows.Count     "row count"
+            Expect.equal deserialized.Tables.["myname"].TableName       t.TableName      "table name"
+            Expect.equal deserialized.Tables.["myname"].Rows.[0].["a"]  t.Rows.[0].["a"] "table.[0,'a']"
+            Expect.equal deserialized.Tables.["myname"].Rows.[0].["b"]  t.Rows.[0].["b"] "table.[0,'b']"
+            Expect.equal deserialized.Tables.["myname"].Rows.[1].["a"]  t.Rows.[1].["a"] "table.[1,'a']"
+            Expect.equal deserialized.Tables.["myname"].Rows.[1].["b"]  t.Rows.[1].["b"] "table.[1,'b']"
+        }
+        #endif
     ]
