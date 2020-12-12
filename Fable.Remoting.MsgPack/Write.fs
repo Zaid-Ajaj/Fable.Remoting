@@ -401,6 +401,8 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
         Action<_, _> (fun (tuple: 'T) out -> writeTuple tuple out elementSerializers) |> w
     | BclIsInstanceOfSystemDataSet _ ->
         Action<_, _> (fun (dataset: System.Data.DataSet) out -> writeDataSet dataset out) |> w
+    | BclIsInstanceOfSystemDataTable _ ->
+        Action<_, _> (fun (table: System.Data.DataTable) out -> writeDataTable table out) |> w
     | _ ->
         failwithf "Cannot serialize %s." typeof<'T>.Name
 
