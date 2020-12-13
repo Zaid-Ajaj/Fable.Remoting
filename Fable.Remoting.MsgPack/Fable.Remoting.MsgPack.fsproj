@@ -8,9 +8,9 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;msgpack</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.6.2</Version>
+    <Version>1.7.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageReleaseNotes>Fix handling arrays of tuples (workaround for Fable bug)</PackageReleaseNotes>
+    <PackageReleaseNotes>Add support for DataTable and DataSet</PackageReleaseNotes>
     <TargetFrameworks>netstandard2.0;net45;netcoreapp3.1</TargetFrameworks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1' ">

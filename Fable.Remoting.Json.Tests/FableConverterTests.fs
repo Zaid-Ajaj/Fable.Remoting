@@ -240,6 +240,45 @@ let converterTest =
             | ["one", Some 1; "two", Some 2] -> pass()
             | otherwise -> fail()
 
+        test "DataTable can be converted" {
+            let t = new System.Data.DataTable()
+            t.TableName <- "myname"
+            t.Columns.Add("a", typeof<int>) |> ignore
+            t.Columns.Add("b", typeof<string>) |> ignore
+            t.Rows.Add(1, "11111")  |> ignore
+            t.Rows.Add(2, "222222") |> ignore
+            let serialized = serialize t
+            let deserialized = deserialize<System.Data.DataTable> serialized
+            Expect.equal deserialized.Columns.Count   t.Columns.Count  "column count"
+            Expect.equal deserialized.Rows.Count      t.Rows.Count     "row count"
+            Expect.equal deserialized.TableName       t.TableName      "table name"
+            Expect.equal deserialized.Rows.[0].["a"]  t.Rows.[0].["a"] "table.[0,'a']"
+            Expect.equal deserialized.Rows.[0].["b"]  t.Rows.[0].["b"] "table.[0,'b']"
+            Expect.equal deserialized.Rows.[1].["a"]  t.Rows.[1].["a"] "table.[1,'a']"
+            Expect.equal deserialized.Rows.[1].["b"]  t.Rows.[1].["b"] "table.[1,'b']"
+        }
+
+        test "DataSet can be converted" {
+            let t = new System.Data.DataTable()
+            t.TableName <- "myname"
+            t.Columns.Add("a", typeof<int>) |> ignore
+            t.Columns.Add("b", typeof<string>) |> ignore
+            t.Rows.Add(1, "11111")  |> ignore
+            t.Rows.Add(2, "222222") |> ignore
+            let ds = new System.Data.DataSet()
+            ds.Tables.Add t
+            let serialized = serialize ds
+
+            let deserialized = deserialize<System.Data.DataSet> serialized
+            Expect.equal deserialized.Tables.["myname"].Columns.Count   t.Columns.Count  "column count"
+            Expect.equal deserialized.Tables.["myname"].Rows.Count      t.Rows.Count     "row count"
+            Expect.equal deserialized.Tables.["myname"].TableName       t.TableName      "table name"
+            Expect.equal deserialized.Tables.["myname"].Rows.[0].["a"]  t.Rows.[0].["a"] "table.[0,'a']"
+            Expect.equal deserialized.Tables.["myname"].Rows.[0].["b"]  t.Rows.[0].["b"] "table.[0,'b']"
+            Expect.equal deserialized.Tables.["myname"].Rows.[1].["a"]  t.Rows.[1].["a"] "table.[1,'a']"
+            Expect.equal deserialized.Tables.["myname"].Rows.[1].["b"]  t.Rows.[1].["b"] "table.[1,'b']"
+        }
+
         testCase "DateTimeOffset can be deserialized" <| fun () ->
             let input = "\"2019-04-01T16:00:00.000+05:00\""
             let deserialized = deserialize<DateTimeOffset> input
