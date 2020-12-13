@@ -204,6 +204,9 @@ type IBinaryServer = {
     echoOptionalLong : Option<int64> -> Async<Option<int64>>
     echoSingleDULong : SingleLongCase -> Async<SingleLongCase>
     echoLongInGenericUnion : Maybe<int64> -> Async<Maybe<int64>>
+
+    echoDataTable : System.Data.DataTable -> Async<System.Data.DataTable>
+    echoDataSet : System.Data.DataSet -> Async<System.Data.DataSet>
 }
 
 module Async =
@@ -322,6 +325,8 @@ let binaryServer : IBinaryServer  = {
     echoOptionalLong =  Async.result
     echoSingleDULong = Async.result
     echoLongInGenericUnion = Async.result
+    echoDataTable = Async.result
+    echoDataSet = Async.result
 }
 
 type IReaderTest = { getPath: Async<string> }

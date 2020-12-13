@@ -575,4 +575,55 @@ let middlewareTests =
             let expected = Map.ofList [ "hello", 5; "there!", 6 ]
             Expect.equal output expected "Echoed map is correct"
         }
+
+        testCaseAsync "IBinaryServer.echoDataTable" <| async {
+            let t = new System.Data.DataTable()
+            t.TableName <- "myname"
+            t.Columns.Add("a", typeof<int64>) |> ignore
+            t.Columns.Add("b", typeof<string>) |> ignore
+            t.Rows.Add(1L, "11111")  |> ignore
+            t.Rows.Add(2L, "222222") |> ignore
+
+            let! deserialized = binaryProxy.call (fun server -> server.echoDataTable t)
+
+            Expect.equal deserialized.TableName      t.TableName      "table name"
+            Expect.equal deserialized.Columns.Count  t.Columns.Count  "column count"
+            Expect.equal deserialized.Rows.Count     t.Rows.Count     "row count"
+            Expect.equal deserialized.Rows.[0].["a"] t.Rows.[0].["a"] "table.[0,'a']"
+            Expect.equal deserialized.Rows.[0].["b"] t.Rows.[0].["b"] "table.[0,'b']"
+            Expect.equal deserialized.Rows.[1].["a"] t.Rows.[1].["a"] "table.[1,'a']"
+            Expect.equal deserialized.Rows.[1].["b"] t.Rows.[1].["b"] "table.[1,'b']"
+        }
+
+        testCaseAsync "IBinaryServer.echoDataSet" <| async {
+            let t = new System.Data.DataTable()
+            t.TableName <- "myname"
+            t.Columns.Add("a", typeof<int64>) |> ignore
+            t.Columns.Add("b", typeof<string>) |> ignore
+            t.Rows.Add(1L, "11111")  |> ignore
+            t.Rows.Add(2L, "222222") |> ignore
+
+            let t2 = new System.Data.DataTable()
+            t2.TableName <- "myname2"
+            t2.Columns.Add("t.a", typeof<int64>) |> ignore
+            t2.Columns.Add("b", typeof<string>) |> ignore
+            t2.Constraints.Add(System.Data.ForeignKeyConstraint(t.Columns.["a"], t2.Columns.["t.a"], ConstraintName = "t2fk"))
+            t2.Rows.Add(1L, "t.11111")  |> ignore
+            t2.Rows.Add(2L, "t.222222") |> ignore
+
+            let ds = new System.Data.DataSet()
+            ds.Tables.Add t
+            ds.Tables.Add t2
+            let! deserialized = binaryProxy.call (fun server -> server.echoDataSet ds)
+
+            Expect.equal deserialized.Tables.Count                               ds.Tables.Count  "tables count"
+            Expect.equal deserialized.Tables.[0].TableName                       t.TableName      "table name"
+            Expect.equal deserialized.Tables.[0].Columns.Count                   t.Columns.Count  "column count"
+            Expect.equal deserialized.Tables.[0].Rows.Count                      t.Rows.Count     "row count"
+            Expect.equal deserialized.Tables.[0].Rows.[0].["a"]                  t.Rows.[0].["a"] "table.[0,'a']"
+            Expect.equal deserialized.Tables.[0].Rows.[0].["b"]                  t.Rows.[0].["b"] "table.[0,'b']"
+            Expect.equal deserialized.Tables.[0].Rows.[1].["a"]                  t.Rows.[1].["a"] "table.[1,'a']"
+            Expect.equal deserialized.Tables.[0].Rows.[1].["b"]                  t.Rows.[1].["b"] "table.[1,'b']"
+            Expect.equal deserialized.Tables.[1].Constraints.[0].ConstraintName "t2fk"            "constraint name"
+        }
     ]
