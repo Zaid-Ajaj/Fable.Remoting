@@ -372,4 +372,117 @@ let converterTest =
                   | Some 5 -> pass()
                   | otherwise -> fail()
             | otherwise -> fail()
+
+        testCase "Deserialization DataTable" <| fun () ->
+            let dataXml = """<?xml version="1.0" standalone="yes"?>
+<NewDataSet>
+  <myname>
+    <a>1</a>
+    <b>11111</b>
+  </myname>
+  <myname>
+    <a>2</a>
+    <b>222222</b>
+  </myname>
+</NewDataSet>"""
+            let schemaXml = """<?xml version="1.0" standalone="yes"?>
+            <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+              <xs:element name="NewDataSet" msdata:IsDataSet="true" msdata:MainDataTable="myname" msdata:UseCurrentLocale="true">
+                <xs:complexType>
+                  <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element name="myname">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="a" type="xs:long" minOccurs="0" />
+                          <xs:element name="b" type="xs:string" minOccurs="0" />
+                          <xs:element name="c" type="xs:unsignedByte" minOccurs="0" />
+                          <xs:element name="d" msdata:DataType="System.DateTimeOffset" type="xs:anyType" minOccurs="0" />
+                          <xs:element name="e" type="xs:base64Binary" minOccurs="0" />
+                          <xs:element name="f" msdata:DataType="System.DayOfWeek, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" type="xs:anyType" minOccurs="0" />
+                          <xs:element name="g" type="xs:string" minOccurs="0" />
+                          <xs:element name="h" type="xs:string" minOccurs="0" />
+                          <xs:element name="i" type="xs:string" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:choice>
+                </xs:complexType>
+              </xs:element>
+            </xs:schema>"""
+            let json = sprintf """{"schema": %s, "data" : %s}""" (serialize schemaXml) (serialize dataXml)
+            let deserialized = deserialize<System.Data.DataTable> json
+            equal deserialized.TableName       "myname"
+            equal deserialized.Columns.Count   9
+            equal deserialized.Rows.Count      2
+            equal deserialized.Rows.[0].["a"]  (box 1L      )
+            equal deserialized.Rows.[0].["b"]  (box "11111" )
+            equal deserialized.Rows.[1].["a"]  (box 2L      )
+            equal deserialized.Rows.[1].["b"]  (box "222222")
+
+        testCase "Deserialization DataSet" <| fun () ->
+            let dataXml =
+              """<?xml version="1.0" standalone="yes"?>
+<NewDataSet>
+  <myname>
+    <a>1</a>
+    <b>11111</b>
+  </myname>
+  <myname>
+    <a>2</a>
+    <b>222222</b>
+  </myname>
+  <Table1>
+    <a>aaa</a>
+  </Table1>
+</NewDataSet>"""
+            let schemaXml =
+              """<?xml version="1.0" standalone="yes"?>
+<xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+  <xs:element name="NewDataSet" msdata:IsDataSet="true" msdata:UseCurrentLocale="true">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="myname">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="a" type="xs:long" minOccurs="0" />
+              <xs:element name="b" type="xs:string" minOccurs="0" />
+              <xs:element name="c" type="xs:unsignedByte" minOccurs="0" />
+              <xs:element name="d" msdata:DataType="System.DateTimeOffset" type="xs:anyType" minOccurs="0" />
+              <xs:element name="e" type="xs:base64Binary" minOccurs="0" />
+              <xs:element name="f" msdata:DataType="System.DayOfWeek, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" type="xs:anyType" minOccurs="0" />
+              <xs:element name="g" type="xs:string" minOccurs="0" />
+              <xs:element name="h" type="xs:string" minOccurs="0" />
+              <xs:element name="i" type="xs:string" minOccurs="0" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Table1">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="a" type="xs:string" minOccurs="0" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+    <xs:unique name="Table1_Constraint1" msdata:ConstraintName="Constraint1">
+      <xs:selector xpath=".//Table1" />
+      <xs:field xpath="a" />
+    </xs:unique>
+    <xs:keyref name="Constraint1" refer="Table1_Constraint1" msdata:ConstraintOnly="true">
+      <xs:selector xpath=".//myname" />
+      <xs:field xpath="i" />
+    </xs:keyref>
+  </xs:element>
+</xs:schema>"""
+
+            let json = sprintf """{"schema": %s, "data" : %s}""" (serialize schemaXml) (serialize dataXml)
+            let deserialized = deserialize<System.Data.DataSet> json
+            equal deserialized.Tables.["myname"].Columns.Count   9
+            equal deserialized.Tables.["myname"].Rows.Count      2
+            equal deserialized.Tables.["myname"].Rows.[0].["a"]  (box 1L      )
+            equal deserialized.Tables.["myname"].Rows.[0].["b"]  (box "11111" )
+            equal deserialized.Tables.["myname"].Rows.[1].["a"]  (box 2L      )
+            equal deserialized.Tables.["myname"].Rows.[1].["b"]  (box "222222")
+
     ]
