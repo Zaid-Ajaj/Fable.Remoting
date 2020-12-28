@@ -139,7 +139,7 @@ paket add Fable.Remoting.Suave --project /path/to/Project.fsproj
 Create a [WebPart](https://suave.io/composing.html) from the value `studentApi`
 ```fs
 open Suave
-open Fable.Remotion.Server
+open Fable.Remoting.Server
 open Fable.Remoting.Suave
 
 let webApp : WebPart =
