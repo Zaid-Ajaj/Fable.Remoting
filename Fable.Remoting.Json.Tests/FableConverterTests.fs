@@ -232,6 +232,24 @@ let converterTest =
             | ["one",1; "two",2] -> pass()
             | otherwise -> fail()
 
+        testCase "Map<Guid, int> conversion works" <| fun () ->
+            let firstGuid = Guid.NewGuid()
+            let secondGuid = Guid.NewGuid()
+            let input = Map.ofSeq [firstGuid, 1 ;secondGuid, 2]
+            let serialized = serialize input
+            let output =
+                serialized
+                |> deserialize<Map<Guid, int>>
+                |> Map.toList
+                |> List.sortBy snd
+
+            match output with
+            | [first,1; second,2] ->
+                Expect.equal first firstGuid "First GUID is deserialized"
+                Expect.equal second secondGuid "Second GUID is deserialized"
+            | otherwise ->
+                fail()
+
         testCase "Map<string, Option<string>> conversion works" <| fun () ->
             let input = ["one", Some 1; "two", Some 2] |> Map.ofSeq
             let serialized = serialize input
@@ -327,6 +345,35 @@ let converterTest =
             |> function
                 | [ 10, 10; 20, 20 ] -> pass()
                 | otherwise -> fail()
+
+        testCase "TestCommand can be converted correctly" <| fun () ->
+            let firstGuid = Guid.NewGuid()
+            let testCommand : TestCommand = {
+                Data = {
+                    CataA = "CataA"
+                    CataC = "CataC"
+                    CataB = Map.ofList [
+                        firstGuid, {
+                            MataA = "MataA"
+                            MataC = "MataC"
+                            MataB = Map.ofList [
+                                firstGuid, { Text = "text"; Value = "value" }
+                            ]
+                        }
+                    ]
+                }
+            }
+
+            let serialized = serialize testCommand
+            let deserialized = deserialize<TestCommand> serialized
+            pass()
+
+        testCase "TestCommand can be converted from JSON generated on the client" <| fun () ->
+            let serialized = """
+            {"Data": {"CataA": "CataA", "CataB": {"edd10cd5-3633-484f-b5db-8ff01fb88a5b": {"MataA": "MataA", "MataC": "MataC", "MataB": {"edd10cd5-3633-484f-b5db-8ff01fb88a5b": {"Text": "text", "Value": "value"}}}}, "CataC": "CataC"}}
+            """
+            let deserialized = deserialize<TestCommand> serialized
+            pass()
 
         testCase "Deserializing map from array of arrays works" <| fun () ->
             "[[\"firstKey\", 10], [\"secondKey\", 20]]"

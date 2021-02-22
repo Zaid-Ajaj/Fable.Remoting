@@ -124,6 +124,29 @@ let serverTests =
                 test.equal true (result = [| byte 1; byte 2; byte 3|])
             }
 
+        testCaseAsync "IServer.echoTestCommand" <| 
+            async {
+                let firstGuid = Guid.NewGuid()
+                let testCommand : TestCommand = {
+                    Data = {
+                        CataA = "CataA"
+                        CataC = "CataC"
+                        CataB = Map.ofList [
+                            firstGuid, { 
+                                MataA = "MataA"
+                                MataC = "MataC"
+                                MataB = Map.ofList [
+                                    firstGuid, { Text = "text"; Value = "value" }
+                                ]
+                            }
+                        ]
+                    }
+                }
+
+                let! output = server.echoTestCommand testCommand
+                test.equal true (output = testCommand)
+            }
+
         testCaseAsync "IServer.privateConstructor" <|
             async {
                 let input = String50.Create "Hello"

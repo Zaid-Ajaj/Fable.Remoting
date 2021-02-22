@@ -51,10 +51,17 @@ type MapSerializer<'k,'v when 'k : comparison>() =
             let dictionary =
                 serializer.Deserialize<Dictionary<string,'v>>(jsonToken.CreateReader())
                     |> Seq.fold (fun (dict:Dictionary<'k,'v>) kvp ->
-                        use tempReader = new System.IO.StringReader(kvp.Key)
-                        let key = serializer.Deserialize(tempReader, typeof<'k>) :?> 'k
-                        dict.Add(key, kvp.Value)
-                        dict
+                        if typeof<'k> = typeof<Guid> then
+                            // remove quotes from the Guid
+                            let cleanedGuid = kvp.Key.Replace("\"", "")
+                            let parsedGuid = Guid.Parse(cleanedGuid)
+                            dict.Add(unbox<'k> parsedGuid, kvp.Value)
+                            dict
+                        else
+                            use tempReader = new System.IO.StringReader(kvp.Key)
+                            let key = serializer.Deserialize(tempReader, typeof<'k>) :?> 'k
+                            dict.Add(key, kvp.Value)
+                            dict
                         ) (Dictionary<'k,'v>())
             if t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Map<_,_>>
             then dictionary |> Seq.map (|KeyValue|) |> Map.ofSeq :> obj

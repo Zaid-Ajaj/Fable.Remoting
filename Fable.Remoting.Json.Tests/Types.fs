@@ -61,6 +61,26 @@ type Color = Red | Blue
 type ColorDU = ColorType of Color
 type ColorRecord = { Color: ColorDU }
 
+type OtherDataA = {
+    Text : string
+    Value : string
+}
+
+type OtherDataB = {
+    MataA : string
+    MataC : string
+    MataB : Map<Guid,OtherDataA>
+}
+type SomeData = {
+    CataA : string
+    CataB : Map<Guid, OtherDataB>
+    CataC : string
+}
+
+type TestCommand = {
+    Data : SomeData
+}
+
 type User = { Id: int; Username: string }
 type Bot = { Identifier: string }
 type Actor =

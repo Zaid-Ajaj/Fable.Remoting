@@ -20,6 +20,26 @@ type GenericRecord<'t> = {
     OtherValue : int
 }
 
+type OtherDataA = {
+    Text : string
+    Value : string
+}
+
+type OtherDataB = {
+    MataA : string
+    MataC : string
+    MataB : Map<Guid,OtherDataA>
+}
+type SomeData = {
+    CataA : string
+    CataB : Map<Guid, OtherDataB>
+    CataC : string
+}
+
+type TestCommand = {
+    Data : SomeData
+}
+
 [<Measure>]
 type SomeUnit
 
@@ -293,7 +313,7 @@ type IServer = {
     echoMap : Map<string, int> -> Async<Map<string, int>>
     echoTupleMap : Map<int * int, int> -> Async<Map<int * int, int>>
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
-
+    echoTestCommand : TestCommand -> Async<TestCommand>
     // sets
     echoSet : Set<string> -> Async<Set<string>>
     echoTupleSet : Set<int * int> -> Async<Set<int * int>>

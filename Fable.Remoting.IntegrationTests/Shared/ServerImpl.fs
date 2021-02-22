@@ -142,6 +142,7 @@ let server : IServer  = {
     echoGenericUnionString = Async.result
     echoSimpleUnionType = Async.result
     echoGenericMap = Async.result
+    echoTestCommand = Async.result
     echoRecord = Async.result
     echoRemoteWorkEntity = Async.result
     echoAnonymousRecord = Async.result
