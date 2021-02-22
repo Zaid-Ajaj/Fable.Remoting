@@ -5,11 +5,11 @@ On your Asp.NET Core project, reference the the shared API types:
 <Compile Include="../Shared/SharedModels.fs" />
 <Compile Include="Program.fs" />
 ```
-Now you need to install the Suave-specific package: [Fable.Remoting.AspNetCore](https://www.nuget.org/packages/Fable.Remoting.AspNetCore/):
+Now you need to install the ASP.NET-specific package: [Fable.Remoting.AspNetCore](https://www.nuget.org/packages/Fable.Remoting.AspNetCore/):
 ```
 paket add Fable.Remoting.AspNetCore --project path/to/Server.fsproj
 ```
-## Expose the API as Asp.NET Core middleware:
+## Expose the API as ASP.NET Core middleware:
 
 Besides `Fable.Remoting.AspNetCore`, this snippet is using the following packages to run the server: 
 - `Microsoft.AspNetCore.Hosting`
