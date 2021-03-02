@@ -37,7 +37,7 @@ type ITodoStore =
 An in-memory store might look like this:
 ```fs
 type InMemoryTodoStore() = 
-    interface ITodoStore = 
+    interface ITodoStore with 
         member this.getAllTodos() = 
             async {
                 return [
@@ -152,7 +152,7 @@ You might be wondering where this `ILogger<'T>` is coming from since you only re
 Your dependencies, like `InMemoryTodoStore`, can have other (nested) dependencies themselves. Lets say that you want to do some logging from within `InMemoryTodoStore`, you only need to specify the logger in the constructor of the type:
 ```fs
 type InMemoryTodoStore(logger: ILogger<InMemoryTodoStore>) = 
-    interface ITodoStore = 
+    interface ITodoStore with 
         member this.getAllTodos() = 
             async {
                 do logger.LogInformation("Returning a static list of to-do items")
