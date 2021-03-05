@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.3.0</Version>
+        <Version>7.4.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update SimpleJson to 3.18 to support proper NaN conversion</PackageReleaseNotes>
+        <PackageReleaseNotes>Update SimpleJson to 3.18.1 to remove generated build artifacts from the nuget</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1</TargetFrameworks>
     </PropertyGroup>
     <ItemGroup>
@@ -20,7 +20,7 @@
         <Compile Include="Remoting.fs" />
     </ItemGroup>
     <ItemGroup>
-        <Content Include="*.fsproj; *.fs" PackagePath="fable\" />
+        <Content Include="*.fsproj; *.fs" Exclude="**\*.fs.js" PackagePath="fable\" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Fable.Remoting.MsgPack\Fable.Remoting.MsgPack.fsproj" />
