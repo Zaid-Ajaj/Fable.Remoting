@@ -225,8 +225,10 @@ let writeBin (data: byte[]) (out: Stream) =
     write32bitNumber data.Length out false
     out.Write (data, 0, data.Length)
 
-let inline writeDateTime (dt: DateTime) out =
+let inline writeDateTime (dt: DateTime) (out: Stream) =
+    out.WriteByte (Format.fixarr 2uy)
     writeInt64 dt.Ticks out
+    writeInt64 (int64 dt.Kind) out
 
 let inline writeDateTimeOffset (dto: DateTimeOffset) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
@@ -559,6 +561,11 @@ module Fable =
 
         out.AddRange data
 
+    let inline private writeDateTime (out: ResizeArray<byte>) (dto: DateTime) =
+        out.Add (Format.fixarr 2uy)
+        writeInt64 dto.Ticks out
+        writeInt64 (int64 dto.Kind) out
+
     let inline private writeDateTimeOffset (out: ResizeArray<byte>) (dto: DateTimeOffset) =
         out.Add (Format.fixarr 2uy)
         writeInt64 dto.Ticks out
@@ -710,7 +717,7 @@ module Fable =
     serializerCache.Add (typeof<byte[]>.FullName, fun x out -> writeBin (x :?> byte[]) out)
     serializerCache.Add (typeof<bigint>.FullName, fun x out -> writeBin ((x :?> bigint).ToByteArray ()) out)
     serializerCache.Add (typeof<Guid>.FullName, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
-    serializerCache.Add (typeof<DateTime>.FullName, fun x out -> writeInt64 (x :?> DateTime).Ticks out)
+    serializerCache.Add (typeof<DateTime>.FullName, fun x out -> writeDateTime out (x :?> DateTime))
     serializerCache.Add (typeof<DateTimeOffset>.FullName, fun x out -> writeDateTimeOffset out (x :?> DateTimeOffset))
     serializerCache.Add (typeof<TimeSpan>.FullName, fun x out -> writeInt64 (x :?> TimeSpan).Ticks out)
     #endif

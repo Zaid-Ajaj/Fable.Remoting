@@ -21,6 +21,12 @@ let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
 
     equal value deserialized
 
+let serializeDeserialize<'a> (value: 'a) =
+    use ms = new MemoryStream ()
+    MsgPack.Write.serializeObj value ms
+
+    MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
+
 let serializeDeserializeCompareSequence (value: 'a) =
     use ms = new MemoryStream ()
     MsgPack.Write.serializeObj value ms
@@ -48,22 +54,22 @@ let converterTest =
             -20 |> serializeDeserializeCompareWithLength 1
         }
         test "Maybe" {
-            Just 1 |> serializeDeserializeCompare 
+            Just 1 |> serializeDeserializeCompare
         }
         test "Nested maybe array works" {
-            Just [| Nothing; Just 1 |] |> serializeDeserializeCompare 
+            Just [| Nothing; Just 1 |] |> serializeDeserializeCompare
         }
         test "Record" {
-            { Prop1 = ""; Prop2 = 2; Prop3 = None } |> serializeDeserializeCompare 
+            { Prop1 = ""; Prop2 = 2; Prop3 = None } |> serializeDeserializeCompare
         }
         test "None" {
-            (None: string option) |> serializeDeserializeCompare 
+            (None: string option) |> serializeDeserializeCompare
         }
         test "Some string works" {
-            Some "ddd" |> serializeDeserializeCompare 
+            Some "ddd" |> serializeDeserializeCompare
         }
         test "Long serialized as fixnum" {
-            20L |> serializeDeserializeCompare 
+            20L |> serializeDeserializeCompare
         }
         test "Long serialized as int16, 3 bytes" {
             60_000L |> serializeDeserializeCompareWithLength 3
@@ -77,6 +83,26 @@ let converterTest =
         test "DateTime" {
             DateTime.Now |> serializeDeserializeCompare
         }
+
+        test "DateTime conversions preverses Kind" {
+            let nowTicks = DateTime.Now.Ticks
+            let localNow = DateTime(nowTicks, DateTimeKind.Local)
+            let utcNow = DateTime(nowTicks, DateTimeKind.Utc)
+            let unspecifiedNow = DateTime(nowTicks, DateTimeKind.Unspecified)
+
+            let localNowDeserialized = serializeDeserialize localNow
+            let utcNowDeserialized = serializeDeserialize utcNow
+            let unspecifiedNowDeserialized = serializeDeserialize unspecifiedNow
+
+            Expect.equal DateTimeKind.Local localNowDeserialized.Kind "Local is preserved"
+            Expect.equal DateTimeKind.Utc utcNowDeserialized.Kind "Utc is preserved"
+            Expect.equal DateTimeKind.Unspecified unspecifiedNowDeserialized.Kind "Unspecified is preserved"
+
+            Expect.equal localNow localNowDeserialized "Now(Local) can be converted"
+            Expect.equal utcNow utcNowDeserialized "Now(Utc) can be converted"
+            Expect.equal unspecifiedNow unspecifiedNowDeserialized "Now(Unspecified) can be converted"
+        }
+
         test "DateTimeOffset" {
             DateTimeOffset.Now |> serializeDeserializeCompare
         }
