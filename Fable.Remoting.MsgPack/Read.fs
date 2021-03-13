@@ -25,7 +25,6 @@ let inline interpretIntegerAs typ n =
     if typ = typeof<Int32> then int32 n |> box
     elif typ = typeof<Int64> then int64 n |> box
     elif typ = typeof<Int16> then int16 n |> box
-    elif typ = typeof<DateTime> then DateTime (int64 n) |> box
     elif typ = typeof<UInt32> then uint32 n |> box
     elif typ = typeof<UInt64> then uint64 n |> box
     elif typ = typeof<UInt16> then uint16 n |> box
@@ -114,10 +113,10 @@ type Reader (data: byte[]) =
 #else
         if BitConverter.IsLittleEndian then
             let arr = Array.zeroCreate len
-        
+
             for i in 0 .. len - 1 do
                 arr.[i] <- data.[pos + len - 1 - i]
-            
+
             pos <- pos + len
             m (arr, 0)
         else
@@ -171,24 +170,24 @@ type Reader (data: byte[]) =
 #if !FABLE_COMPILER
         mapReaderCache.GetOrAdd (t, Func<_, _>(fun (t: Type) ->
             let args = t.GetGenericArguments ()
-            
+
             if args.Length <> 2 then
                 failwithf "Expecting %s, but the data contains a map." t.Name
 
             let mapDeserializer = typedefof<DictionaryDeserializer<_,_>>.MakeGenericType args
             let isDictionary = t.GetGenericTypeDefinition () = typedefof<Dictionary<_, _>>
             let d = Delegate.CreateDelegate (typeof<Func<int, bool, (Type -> obj), obj>>, mapDeserializer.GetMethod "Deserialize") :?> Func<int, bool, (Type -> obj), obj>
-            
+
             fun (len, x: Reader) -> d.Invoke (len, isDictionary, x.Read))) (len, x)
 #else
         let args = t.GetGenericArguments ()
-        
+
         if args.Length <> 2 then
             failwithf "Expecting %s, but the data contains a map." t.Name
 
         let pairs =
             let arr = Array.zeroCreate len
-            
+
             for i in 0 .. len - 1 do
                 arr.[i] <- x.Read args.[0] |> box :?> IStructuralComparable, x.Read args.[1]
 
@@ -206,17 +205,17 @@ type Reader (data: byte[]) =
 #if !FABLE_COMPILER
         setReaderCache.GetOrAdd (t, Func<_, _>(fun (t: Type) ->
             let args = t.GetGenericArguments ()
-            
+
             if args.Length <> 1 then
                 failwithf "Expecting %s, but the data contains a set." t.Name
 
             let setDeserializer = typedefof<SetDeserializer<_>>.MakeGenericType args
             let d = Delegate.CreateDelegate (typeof<Func<int, (Type -> obj), obj>>, setDeserializer.GetMethod "Deserialize") :?> Func<int, (Type -> obj), obj>
-            
+
             fun (len, x: Reader) -> d.Invoke (len, x.Read))) (len, x)
 #else
         let args = t.GetGenericArguments ()
-        
+
         if args.Length <> 1 then
             failwithf "Expecting %s, but the data contains a set." t.Name
 
@@ -241,7 +240,7 @@ type Reader (data: byte[]) =
 
         for i in 0 .. len - 1 do
             arr.[i] <- x.Read elementType
-        
+
         arr
 #endif
 
@@ -257,7 +256,7 @@ type Reader (data: byte[]) =
 #if !FABLE_COMPILER
             let fieldTypes = FSharpType.GetRecordFields t |> Array.map (fun prop -> prop.PropertyType)
             let ctor = FSharpValue.PreComputeRecordConstructor (t, true)
-            
+
             arrayReaderCache.GetOrAdd (t, fun (_, x: Reader) ->
                 ctor (fieldTypes |> Array.map x.Read)) (len, x)
 #else
@@ -291,7 +290,7 @@ type Reader (data: byte[]) =
                             fieldTypes |> Array.map x.Read
 
                     unionConstructorCache.GetOrAdd (case, Func<_, _>(fun case -> FSharpValue.PreComputeUnionConstructor (case, true))) fields) (len, x)
-#else        
+#else
             let tag = x.Read typeof<int> :?> int
             let case = FSharpType.GetUnionCases (t, true) |> Array.find (fun x -> x.Tag = tag)
             let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
@@ -335,16 +334,26 @@ type Reader (data: byte[]) =
 #else
             FSharpValue.MakeTuple (FSharpType.GetTupleElements t |> Array.map x.Read, t)
 #endif
+        elif t = typeof<DateTime> then
+            let dateTimeTicks = x.Read typeof<int64> :?> int64
+            let kindAsInt = x.Read typeof<int64> :?> int64
+            let kind =
+                match kindAsInt with
+                | 1L -> DateTimeKind.Utc
+                | 2L -> DateTimeKind.Local
+                | _ -> DateTimeKind.Unspecified
+            DateTime(ticks=dateTimeTicks, kind=kind) |> box
         elif t = typeof<DateTimeOffset> then
             let dateTimeTicks = x.Read typeof<int64> :?> int64
             let timeSpanMinutes = x.Read typeof<int16> :?> int16
             DateTimeOffset (dateTimeTicks, TimeSpan.FromMinutes (float timeSpanMinutes)) |> box
+
         elif t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<Set<_>> then
             x.ReadSet(len, t)
 #if !FABLE_COMPILER
         elif t = typeof<System.Data.DataTable> then
             match x.ReadRawArray(2, typeof<string>) :?> string array with
-            | [|schema;data|] -> 
+            | [|schema;data|] ->
                 let t = new System.Data.DataTable()
                 t.ReadXmlSchema(new System.IO.StringReader(schema))
                 t.ReadXml(new System.IO.StringReader(data)) |> ignore
@@ -352,7 +361,7 @@ type Reader (data: byte[]) =
             | otherwise -> failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
         elif t = typeof<System.Data.DataSet> then
             match x.ReadRawArray(2, typeof<string>) :?> string array with
-            | [|schema;data|] -> 
+            | [|schema;data|] ->
                 let t = new System.Data.DataSet()
                 t.ReadXmlSchema(new System.IO.StringReader(schema))
                 t.ReadXml(new System.IO.StringReader(data)) |> ignore

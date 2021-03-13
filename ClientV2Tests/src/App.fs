@@ -124,7 +124,7 @@ let serverTests =
                 test.equal true (result = [| byte 1; byte 2; byte 3|])
             }
 
-        testCaseAsync "IServer.echoTestCommand" <| 
+        testCaseAsync "IServer.echoTestCommand" <|
             async {
                 let firstGuid = Guid.NewGuid()
                 let testCommand : TestCommand = {
@@ -132,7 +132,7 @@ let serverTests =
                         CataA = "CataA"
                         CataC = "CataC"
                         CataB = Map.ofList [
-                            firstGuid, { 
+                            firstGuid, {
                                 MataA = "MataA"
                                 MataC = "MataC"
                                 MataB = Map.ofList [
@@ -1381,6 +1381,11 @@ let inline serializeDeserializeCompare typ (value: 'a) =
     let deserialized = Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
     Expect.equal value deserialized "Values are equal after roundtrip"
 
+let inline serializeDeserialize typ (value: 'a) =
+    let ra = FSharp.Collections.ResizeArray<byte> ()
+    Fable.Remoting.MsgPack.Write.Fable.writeObject value typ ra
+    Fable.Remoting.MsgPack.Read.Reader(ra.ToArray ()).Read typ :?> 'a
+
 let inline serializeDeserializeCompareDictionary typ (value: System.Collections.Generic.IDictionary<'a, 'b>) =
     let ra = FSharp.Collections.ResizeArray<byte> ()
     Fable.Remoting.MsgPack.Write.Fable.writeObject value typ ra
@@ -1441,6 +1446,24 @@ let msgPackTests =
 
         testCase "DateTime" <| fun () ->
             DateTime.Now |> serializeDeserializeCompare typeof<DateTime>
+
+        testCase "DateTime conversions preverses Kind" <| fun () ->
+            let nowTicks = DateTime.Now.Ticks
+            let localNow = DateTime(nowTicks, DateTimeKind.Local)
+            let utcNow = DateTime(nowTicks, DateTimeKind.Utc)
+            let unspecifiedNow = DateTime(nowTicks, DateTimeKind.Unspecified)
+
+            let localNowDeserialized = serializeDeserialize typeof<DateTime> localNow
+            let utcNowDeserialized = serializeDeserialize typeof<DateTime> utcNow
+            let unspecifiedNowDeserialized = serializeDeserialize typeof<DateTime> unspecifiedNow
+
+            Expect.equal DateTimeKind.Local localNowDeserialized.Kind "Local is preserved"
+            Expect.equal DateTimeKind.Utc utcNowDeserialized.Kind "Utc is preserved"
+            Expect.equal DateTimeKind.Unspecified unspecifiedNowDeserialized.Kind "Unspecified is preserved"
+
+            Expect.equal localNow localNowDeserialized "Now(Local) can be converted"
+            Expect.equal utcNow utcNowDeserialized "Now(Utc) can be converted"
+            Expect.equal unspecifiedNow unspecifiedNowDeserialized "Now(Unspecified) can be converted"
 
         testCase "DateTimeOffset" <| fun () ->
             DateTimeOffset.Now |> serializeDeserializeCompare typeof<DateTimeOffset>
