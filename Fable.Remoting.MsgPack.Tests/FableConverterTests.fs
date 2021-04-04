@@ -116,7 +116,7 @@ let converterTest =
             String.init 70_000 (fun _ -> "ΰ") |> serializeDeserializeCompare
         }
         test "Decimal" {
-            3.1415926535m |> serializeDeserializeCompare
+            32313213121.1415926535m |> serializeDeserializeCompare
         }
         test "Map16 with map" {
             Map.ofArray [| for i in 1 .. 295 -> i, (i * i) |] |> serializeDeserializeCompare

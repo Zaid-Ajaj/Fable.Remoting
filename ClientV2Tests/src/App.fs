@@ -1239,7 +1239,7 @@ let binaryServerTests =
                 let! output = binaryServer.echoInt64WithMeasure input
                 test.equal true (input = output)
 
-                let input = 333.35M<SomeUnit>
+                let input = 32313213121.1415926535m<SomeUnit>
                 let! output = binaryServer.echoDecimalWithMeasure input
                 test.equal true (input = output)
 
@@ -1481,7 +1481,7 @@ let msgPackTests =
             -5889845622625456789L |> serializeDeserializeCompare typeof<int64>
 
         testCase "Decimal" <| fun () ->
-            3.1415926535m |> serializeDeserializeCompare typeof<decimal>
+            32313213121.1415926535m |> serializeDeserializeCompare typeof<decimal>
 
         testCase "Map16 with map" <| fun () ->
             Map.ofArray [| for i in 1 .. 295 -> i, (i * i) |] |> serializeDeserializeCompare typeof<Map<int, int>>
@@ -1554,7 +1554,7 @@ let msgPackTests =
         testCase "Units of measure" <| fun () ->
             85<SomeUnit> |> serializeDeserializeCompare typeof<int<SomeUnit>>
             85L<SomeUnit> |> serializeDeserializeCompare typeof<int64<SomeUnit>>
-            85.44m<SomeUnit> |> serializeDeserializeCompare typeof<decimal<SomeUnit>>
+            32313213121.1415926535m<SomeUnit> |> serializeDeserializeCompare typeof<decimal<SomeUnit>>
             85.44f<SomeUnit> |> serializeDeserializeCompare typeof<float32<SomeUnit>>
             85.44<SomeUnit> |> serializeDeserializeCompare typeof<float<SomeUnit>>
         testCase "Value option" <| fun () ->

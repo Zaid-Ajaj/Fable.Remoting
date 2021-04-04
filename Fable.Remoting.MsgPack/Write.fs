@@ -21,14 +21,14 @@ let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 
 let (|BclIsInstanceOfSystemDataSet|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataSet>
-  if s.Type = tableTy || s.Type.IsInstanceOfType tableTy then
+  if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
     Some s
   else
     None
 
 let (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataTable>
-  if s.Type = tableTy || s.Type.IsInstanceOfType tableTy then
+  if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
     Some s
   else
     None
@@ -169,7 +169,11 @@ let inline writeDouble (n: float) (out: Stream) =
     write64bitNumberFull (NativePtr.toNativeInt &&n |> NativePtr.ofNativeInt |> NativePtr.read<uint64>) out
 
 let inline writeDecimal (n: decimal) out =
-    writeDouble (float n) out
+    let bits = Decimal.GetBits n
+
+    writeArrayHeader bits.Length out
+    for b in bits do
+        write32bitNumber b out true
 
 let inline writeStringHeader length (out: Stream) =
     if length < 32 then
@@ -190,7 +194,7 @@ let writeString (str: string) (out: Stream) =
     let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
 
     // allocate space on the stack if the string is not too long
-    if str.Length < 500 then
+    if maxLength < 1500 then
         let buffer = Span (NativePtr.stackalloc<byte> maxLength |> NativePtr.toVoidPtr, maxLength)
         let bytesWritten = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
 
@@ -298,6 +302,9 @@ let inline writeDataSet (dataset: System.Data.DataSet) out =
   writeArray [|schema; data|] out (Action<_,_>(writeString))
 
 let rec makeSerializer<'T> (): Action<'T, Stream> =
+    if typeof<'T> = typeof<obj> then
+        failwithf "Cannot serialize System.Object. If you are unable specify the generic parameter for 'makeSerializer', use 'makeSerializerObj' instead."
+
     let ctx = new TypeGenerationContext ()
     serializerCached<'T> ctx
 
@@ -408,8 +415,8 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
     | _ ->
         failwithf "Cannot serialize %s." typeof<'T>.Name
 
-// TypeShape requires generic types at compile time, but DynamicRecord only works with object values so it's impossible to pass the generic type to makeSerializer
-// Therefore serialization delegates are constructed on demand by compilation at runtime
+// TypeShape requires generic types at compile time, but some applications will only know the types at runtime
+// This method bypasses that restriction by emitting IL to construct the delegate on demand
 let makeSerializerObj (t: Type) =
     let makeSerializerMi = this.GetMethod("makeSerializer", Reflection.BindingFlags.Public ||| Reflection.BindingFlags.Static).MakeGenericMethod t
     let specializedActionType = typedefof<Action<_, _>>.MakeGenericType [| t; typeof<Stream> |]
