@@ -367,7 +367,11 @@ type Reader (data: byte[]) =
             | otherwise -> failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 #endif
         elif t = typeof<decimal> || t.FullName = "Microsoft.FSharp.Core.decimal`1" then
-            x.ReadRawArray (4, typeof<int>) :?> int[] |> Decimal |> box
+#if !FABLE_COMPILER
+            arrayReaderCache.GetOrAdd (t, fun (_, (x: Reader)) -> x.ReadRawArray (4, typeof<int>) :?> int[] |> Decimal |> box) (len, x)
+#else
+            x.ReadRawArray (4, typeof<int>) |> box :?> int[] |> Decimal |> box
+#endif
         else
             failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 
