@@ -589,6 +589,13 @@ module Fable =
             out.Add Format.Array32
             writeUnsigned32bitNumber (uint32 len) out false
 
+    let private writeDecimal (n: decimal) (out: ResizeArray<byte>) =
+        let bits = Decimal.GetBits n
+        
+        writeArrayHeader bits.Length out
+        for b in bits do
+            writeInt64 (int64 b) out
+
     let rec private writeArray (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
         writeArrayHeader arr.Count out
 
@@ -690,7 +697,7 @@ module Fable =
             elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
                 cacheGetOrAdd (t, fun x out -> writeInt64 (x :?> int64) out) x out
             elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
-                cacheGetOrAdd (t, fun x out -> writeDouble (x :?> decimal |> float) out) x out
+                cacheGetOrAdd (t, fun x out -> writeDecimal (x :?> decimal) out) x out
             elif t.FullName = "Microsoft.FSharp.Core.float`1" then
                 cacheGetOrAdd (t, fun x out -> writeDouble (x :?> float) out) x out
             elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
@@ -720,7 +727,7 @@ module Fable =
     serializerCache.Add (typeof<UInt64>.FullName, fun x out -> writeUInt64 (x :?> UInt64) out)
     serializerCache.Add (typeof<float32>.FullName, fun x out -> writeSingle (x :?> float32) out)
     serializerCache.Add (typeof<float>.FullName, fun x out -> writeDouble (x :?> float) out)
-    serializerCache.Add (typeof<decimal>.FullName, fun x out -> writeDouble (x :?> decimal |> float) out)
+    serializerCache.Add (typeof<decimal>.FullName, fun x out -> writeDecimal (x :?> decimal) out)
     serializerCache.Add (typeof<byte[]>.FullName, fun x out -> writeBin (x :?> byte[]) out)
     serializerCache.Add (typeof<bigint>.FullName, fun x out -> writeBin ((x :?> bigint).ToByteArray ()) out)
     serializerCache.Add (typeof<Guid>.FullName, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
