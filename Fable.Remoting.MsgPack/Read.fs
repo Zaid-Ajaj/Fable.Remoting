@@ -46,11 +46,9 @@ let inline interpretIntegerAs typ n =
 let inline interpretFloatAs typ n =
     if typ = typeof<float32> then float32 n |> box
     elif typ = typeof<float> then float n |> box
-    elif typ = typeof<decimal> then decimal n |> box
 #if FABLE_COMPILER
     elif typ.FullName = "Microsoft.FSharp.Core.float32`1" then float32 n |> box
     elif typ.FullName = "Microsoft.FSharp.Core.float`1" then float n |> box
-    elif typ.FullName = "Microsoft.FSharp.Core.decimal`1" then decimal n |> box
 #endif
     else failwithf "Cannot interpret float %A as %s." n typ.Name
 
@@ -368,7 +366,13 @@ type Reader (data: byte[]) =
                 box t
             | otherwise -> failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 #endif
-         else
+        elif t = typeof<decimal> || t.FullName = "Microsoft.FSharp.Core.decimal`1" then
+#if !FABLE_COMPILER
+            arrayReaderCache.GetOrAdd (t, fun (_, (x: Reader)) -> x.ReadRawArray (4, typeof<int>) :?> int[] |> Decimal |> box) (len, x)
+#else
+            x.ReadRawArray (4, typeof<int>) |> box :?> int[] |> Decimal |> box
+#endif
+        else
             failwithf "Expecting %s at position %d, but the data contains an array." t.Name pos
 
     member x.ReadBin (len, t) =

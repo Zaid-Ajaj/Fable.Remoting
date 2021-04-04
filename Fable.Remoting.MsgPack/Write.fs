@@ -21,14 +21,14 @@ let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 
 let (|BclIsInstanceOfSystemDataSet|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataSet>
-  if s.Type = tableTy || s.Type.IsInstanceOfType tableTy then
+  if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
     Some s
   else
     None
 
 let (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataTable>
-  if s.Type = tableTy || s.Type.IsInstanceOfType tableTy then
+  if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
     Some s
   else
     None
@@ -169,7 +169,11 @@ let inline writeDouble (n: float) (out: Stream) =
     write64bitNumberFull (NativePtr.toNativeInt &&n |> NativePtr.ofNativeInt |> NativePtr.read<uint64>) out
 
 let inline writeDecimal (n: decimal) out =
-    writeDouble (float n) out
+    let bits = Decimal.GetBits n
+
+    writeArrayHeader bits.Length out
+    for b in bits do
+        write32bitNumber b out true
 
 let inline writeStringHeader length (out: Stream) =
     if length < 32 then
@@ -190,7 +194,7 @@ let writeString (str: string) (out: Stream) =
     let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
 
     // allocate space on the stack if the string is not too long
-    if str.Length < 500 then
+    if maxLength < 1500 then
         let buffer = Span (NativePtr.stackalloc<byte> maxLength |> NativePtr.toVoidPtr, maxLength)
         let bytesWritten = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
 
@@ -298,6 +302,9 @@ let inline writeDataSet (dataset: System.Data.DataSet) out =
   writeArray [|schema; data|] out (Action<_,_>(writeString))
 
 let rec makeSerializer<'T> (): Action<'T, Stream> =
+    if typeof<'T> = typeof<obj> then
+        failwithf "Cannot serialize System.Object. If you are unable specify the generic parameter for 'makeSerializer', use 'makeSerializerObj' instead."
+
     let ctx = new TypeGenerationContext ()
     serializerCached<'T> ctx
 
@@ -408,8 +415,8 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
     | _ ->
         failwithf "Cannot serialize %s." typeof<'T>.Name
 
-// TypeShape requires generic types at compile time, but DynamicRecord only works with object values so it's impossible to pass the generic type to makeSerializer
-// Therefore serialization delegates are constructed on demand by compilation at runtime
+// TypeShape requires generic types at compile time, but some applications will only know the types at runtime
+// This method bypasses that restriction by emitting IL to construct the delegate on demand
 let makeSerializerObj (t: Type) =
     let makeSerializerMi = this.GetMethod("makeSerializer", Reflection.BindingFlags.Public ||| Reflection.BindingFlags.Static).MakeGenericMethod t
     let specializedActionType = typedefof<Action<_, _>>.MakeGenericType [| t; typeof<Stream> |]
@@ -582,6 +589,13 @@ module Fable =
             out.Add Format.Array32
             writeUnsigned32bitNumber (uint32 len) out false
 
+    let private writeDecimal (n: decimal) (out: ResizeArray<byte>) =
+        let bits = Decimal.GetBits n
+        
+        writeArrayHeader bits.Length out
+        for b in bits do
+            writeInt64 (int64 b) out
+
     let rec private writeArray (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
         writeArrayHeader arr.Count out
 
@@ -683,7 +697,7 @@ module Fable =
             elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
                 cacheGetOrAdd (t, fun x out -> writeInt64 (x :?> int64) out) x out
             elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
-                cacheGetOrAdd (t, fun x out -> writeDouble (x :?> decimal |> float) out) x out
+                cacheGetOrAdd (t, fun x out -> writeDecimal (x :?> decimal) out) x out
             elif t.FullName = "Microsoft.FSharp.Core.float`1" then
                 cacheGetOrAdd (t, fun x out -> writeDouble (x :?> float) out) x out
             elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
@@ -713,7 +727,7 @@ module Fable =
     serializerCache.Add (typeof<UInt64>.FullName, fun x out -> writeUInt64 (x :?> UInt64) out)
     serializerCache.Add (typeof<float32>.FullName, fun x out -> writeSingle (x :?> float32) out)
     serializerCache.Add (typeof<float>.FullName, fun x out -> writeDouble (x :?> float) out)
-    serializerCache.Add (typeof<decimal>.FullName, fun x out -> writeDouble (x :?> decimal |> float) out)
+    serializerCache.Add (typeof<decimal>.FullName, fun x out -> writeDecimal (x :?> decimal) out)
     serializerCache.Add (typeof<byte[]>.FullName, fun x out -> writeBin (x :?> byte[]) out)
     serializerCache.Add (typeof<bigint>.FullName, fun x out -> writeBin ((x :?> bigint).ToByteArray ()) out)
     serializerCache.Add (typeof<Guid>.FullName, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
