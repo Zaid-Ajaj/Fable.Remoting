@@ -41,6 +41,20 @@ type Kind =
     | DataSet = 12
     | DataTable = 13
 
+module Utilities =
+    let quoted (input: string) = input.StartsWith "\"" && input.EndsWith "\""
+    let isUnionCaseWihoutFields (inputType: Type) (caseName: string) =
+        if FSharpType.IsUnion inputType then
+            let cases = FSharpType.GetUnionCases(inputType)
+            let foundCase =
+                cases
+                |> Array.tryFind (fun case -> case.Name = caseName)
+            match foundCase with
+            | None -> false
+            | Some case -> Seq.isEmpty (case.GetFields())
+        else
+            false
+
 /// Helper for serializing map/dict with non-primitive, non-string keys such as unions and records.
 /// Performs additional serialization/deserialization of the key object and uses the resulting JSON
 /// representation of the key object as the string key in the serialized map/dict.
@@ -48,21 +62,26 @@ type MapSerializer<'k,'v when 'k : comparison>() =
     static member Deserialize(t:Type, reader:JsonReader, serializer:JsonSerializer) =
         let jsonToken = JToken.ReadFrom(reader)
         if jsonToken.Type = JTokenType.Object then
-            let dictionary =
-                serializer.Deserialize<Dictionary<string,'v>>(jsonToken.CreateReader())
-                    |> Seq.fold (fun (dict:Dictionary<'k,'v>) kvp ->
-                        if typeof<'k> = typeof<Guid> then
-                            // remove quotes from the Guid
-                            let cleanedGuid = kvp.Key.Replace("\"", "")
-                            let parsedGuid = Guid.Parse(cleanedGuid)
-                            dict.Add(unbox<'k> parsedGuid, kvp.Value)
-                            dict
-                        else
-                            use tempReader = new System.IO.StringReader(kvp.Key)
-                            let key = serializer.Deserialize(tempReader, typeof<'k>) :?> 'k
-                            dict.Add(key, kvp.Value)
-                            dict
-                        ) (Dictionary<'k,'v>())
+            // use an intermediate dictionary to deserialize the values
+            // where the keys are strings.
+            // then deserialize the keys separately
+            let initialDictionary = serializer.Deserialize<Dictionary<string,'v>>(jsonToken.CreateReader())
+            let dictionary = Dictionary<'k,'v>()
+            for kvp in initialDictionary do
+                if typeof<'k> = typeof<Guid> then
+                    // remove quotes from the Guid
+                    let cleanedGuid = kvp.Key.Replace("\"", "")
+                    let parsedGuid = Guid.Parse(cleanedGuid)
+                    dictionary.Add(unbox<'k> parsedGuid, kvp.Value)
+                else
+                    let quotedKey =
+                        if not (Utilities.quoted kvp.Key) && Utilities.isUnionCaseWihoutFields typeof<'k> kvp.Key
+                        then "\"" + kvp.Key + "\""
+                        else kvp.Key
+                    use tempReader = new System.IO.StringReader(quotedKey)
+                    let key = serializer.Deserialize(tempReader, typeof<'k>) :?> 'k
+                    dictionary.Add(key, kvp.Value)
+
             if t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Map<_,_>>
             then dictionary |> Seq.map (|KeyValue|) |> Map.ofSeq :> obj
             elif t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Dictionary<_,_>>
@@ -122,7 +141,7 @@ type DataSetSerializer() =
         if jsonToken.Type = JTokenType.Object then
             let dictionary = serializer.Deserialize<Dictionary<string,string>>(jsonToken.CreateReader())
             match dictionary.TryGetValue "schema",dictionary.TryGetValue "data" with
-            | (true, schema), (true, data) -> 
+            | (true, schema), (true, data) ->
                 if t = typeof<System.Data.DataSet> then
                     let dataset = new System.Data.DataSet()
                     dataset.ReadXmlSchema(new System.IO.StringReader(schema))

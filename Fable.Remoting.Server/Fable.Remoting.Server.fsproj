@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.15.0</Version>
+        <Version>5.16.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net462</TargetFrameworks>
-        <PackageReleaseNotes>Update MsgPack to preserve DateTimeKind and fix TypeShape runtime issue when dynamically resolving IsByRefLike</PackageReleaseNotes>
+        <PackageReleaseNotes>Update MsgPack to preserve accuracy of decimals and fix JSON deserialization issue when using enum union case in Map keys</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

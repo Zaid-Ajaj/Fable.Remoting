@@ -346,6 +346,23 @@ let converterTest =
                 | [ 10, 10; 20, 20 ] -> pass()
                 | otherwise -> fail()
 
+        testCase "Deserializing Map<Color, int> from object literal works" <| fun () ->
+            "{ \"Red\": 10, \"Blue\": 20 }"
+            |> deserialize<Map<Color, int>>
+            |> Map.toList
+            |> fun output -> Expect.equal [ Color.Red, 10; Color.Blue, 20 ] output "deserialization worked"
+
+        testCase "Map<Color, int> roundtrip" <| fun () ->
+            let serialized =
+              [ Color.Red, 10; Color.Blue, 20 ]
+              |> Map.ofList
+              |> serialize
+
+            serialized
+            |> deserialize<Map<Color, int>>
+            |> Map.toList
+            |> fun output -> Expect.equal [ Color.Red, 10; Color.Blue, 20 ] output "deserialization worked"
+
         testCase "TestCommand can be converted correctly" <| fun () ->
             let firstGuid = Guid.NewGuid()
             let testCommand : TestCommand = {

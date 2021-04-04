@@ -8,7 +8,8 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>2.14.0</Version>
+        <Version>2.15.0</Version>
+        <PackageReleaseNotes>Fix using an enum union case (without fields) within Map keys</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
