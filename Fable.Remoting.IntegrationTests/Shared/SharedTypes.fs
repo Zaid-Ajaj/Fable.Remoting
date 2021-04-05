@@ -223,7 +223,11 @@ type IBinaryServer = {
     echoMap : Map<string, int> -> Async<Map<string, int>>
     echoTupleMap : Map<int * int, int> -> Async<Map<int * int, int>>
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
-
+    mapDateTimeOffsetAsKey: Map<DateTimeOffset, int> -> Async<Map<DateTimeOffset, int>>
+    echoBigIntKeyMap : Map<bigint, int> -> Async<Map<bigint, int>>
+    echoDecimalKeyMap : Map<decimal, int> -> Async<Map<decimal, int>>
+    echoLongKeyMap : Map<int64, int> -> Async<Map<int64, int>>
+    echoIntKeyMap : Map<int, int> -> Async<Map<int, int>>
     // sets
     echoSet : Set<string> -> Async<Set<string>>
     echoTupleSet : Set<int * int> -> Async<Set<int * int>>
@@ -314,6 +318,11 @@ type IServer = {
     echoTupleMap : Map<int * int, int> -> Async<Map<int * int, int>>
     mapRecordAsKey: unit -> Async<Map<RecordAsKey, int>>
     echoTestCommand : TestCommand -> Async<TestCommand>
+    mapDateTimeOffsetAsKey: Map<DateTimeOffset, int> -> Async<Map<DateTimeOffset, int>>
+    echoBigIntKeyMap : Map<bigint, int> -> Async<Map<bigint, int>>
+    echoDecimalKeyMap : Map<decimal, int> -> Async<Map<decimal, int>>
+    echoLongKeyMap : Map<int64, int> -> Async<Map<int64, int>>
+    echoIntKeyMap : Map<int, int> -> Async<Map<int, int>>
     // sets
     echoSet : Set<string> -> Async<Set<string>>
     echoTupleSet : Set<int * int> -> Async<Set<int * int>>

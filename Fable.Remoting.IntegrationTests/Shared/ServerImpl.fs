@@ -113,6 +113,11 @@ let serverBinary : IBinaryServer = {
     echoOptionalLong =  Async.result
     echoSingleDULong = Async.result
     echoLongInGenericUnion = Async.result
+    mapDateTimeOffsetAsKey = Async.result
+    echoBigIntKeyMap = Async.result
+    echoDecimalKeyMap = Async.result
+    echoLongKeyMap = Async.result
+    echoIntKeyMap = Async.result
 }
 
 // Async.result : 'a -> Async<'a>
@@ -203,4 +208,9 @@ let server : IServer  = {
     }
 
     echoPosition = Async.result
+    mapDateTimeOffsetAsKey = Async.result
+    echoBigIntKeyMap = Async.result
+    echoDecimalKeyMap = Async.result
+    echoLongKeyMap = Async.result
+    echoIntKeyMap = Async.result
 }

@@ -55,6 +55,22 @@ module Utilities =
         else
             false
 
+    let isNonStringPrimitiveType (inputType: Type) =
+        inputType = typeof<DateTimeOffset>
+        || inputType = typeof<DateTime>
+        || inputType = typeof<int64>
+        || inputType = typeof<uint64>
+        || inputType = typeof<int32>
+        || inputType = typeof<uint32>
+        || inputType = typeof<decimal>
+        || inputType = typeof<int16>
+        || inputType = typeof<uint16>
+        || inputType = typeof<int8>
+        || inputType = typeof<uint8>
+        || inputType = typeof<bigint>
+        || inputType = typeof<float>
+        || inputType = typeof<byte>
+
 /// Helper for serializing map/dict with non-primitive, non-string keys such as unions and records.
 /// Performs additional serialization/deserialization of the key object and uses the resulting JSON
 /// representation of the key object as the string key in the serialized map/dict.
@@ -74,8 +90,11 @@ type MapSerializer<'k,'v when 'k : comparison>() =
                     let parsedGuid = Guid.Parse(cleanedGuid)
                     dictionary.Add(unbox<'k> parsedGuid, kvp.Value)
                 else
+                    let shouldQuoteKey =
+                        not (Utilities.quoted kvp.Key)
+                        && (Utilities.isUnionCaseWihoutFields typeof<'k> kvp.Key || Utilities.isNonStringPrimitiveType typeof<'k>)
                     let quotedKey =
-                        if not (Utilities.quoted kvp.Key) && Utilities.isUnionCaseWihoutFields typeof<'k> kvp.Key
+                        if shouldQuoteKey
                         then "\"" + kvp.Key + "\""
                         else kvp.Key
                     use tempReader = new System.IO.StringReader(quotedKey)

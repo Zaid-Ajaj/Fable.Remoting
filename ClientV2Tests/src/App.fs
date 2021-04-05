@@ -223,6 +223,42 @@ let serverTests =
                     | otherwise -> test.failwith (sprintf "%A" otherwise)
             }
 
+        testCaseAsync "IServer.mapDateTimeOffsetAsKey" <|
+            async {
+                let now = DateTimeOffset.Now
+                let input = Map.ofList [ now, 10 ]
+                let! output = server.mapDateTimeOffsetAsKey input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IServer.echoIntKeyMap" <|
+            async {
+                let input = Map.ofList [ 10, 10; 20,20 ]
+                let! output = server.echoIntKeyMap input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IServer.echoBigIntKeyMap" <|
+            async {
+                let input = Map.ofList [ 10I, 10; 20I,20 ]
+                let! output = server.echoBigIntKeyMap input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IServer.echoLongKeyMap" <|
+            async {
+                let input = Map.ofList [ 10L, 10; 20L,20 ]
+                let! output = server.echoLongKeyMap input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IServer.echoDecimalKeyMap" <|
+            async {
+                let input = Map.ofList [ 10M, 10; 20M,20 ]
+                let! output = server.echoDecimalKeyMap input
+                test.areEqual input output
+            }
+
         testCaseAsync "IServer.setRecordAsValue" <|
             async {
                 let! result = server.setRecordAsValue()
@@ -674,6 +710,42 @@ let binaryServerTests =
             async {
                 let! result = binaryServer.getLength "hello"
                 do test.equal result 5
+            }
+
+        testCaseAsync "IBinaryServer.mapDateTimeOffsetAsKey" <|
+            async {
+                let now = DateTimeOffset.Now
+                let input = Map.ofList [ now, 10 ]
+                let! output = binaryServer.mapDateTimeOffsetAsKey input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IBinaryServer.echoIntKeyMap" <|
+            async {
+                let input = Map.ofList [ 10, 10; 20,20 ]
+                let! output = binaryServer.echoIntKeyMap input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IBinaryServer.echoBigIntKeyMap" <|
+            async {
+                let input = Map.ofList [ 10I, 10; 20I,20 ]
+                let! output = binaryServer.echoBigIntKeyMap input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IBinaryServer.echoLongKeyMap" <|
+            async {
+                let input = Map.ofList [ 10L, 10; 20L,20 ]
+                let! output = binaryServer.echoLongKeyMap input
+                test.areEqual input output
+            }
+
+        testCaseAsync "IBinaryServer.echoDecimalKeyMap" <|
+            async {
+                let input = Map.ofList [ 10M, 10; 20M,20 ]
+                let! output = binaryServer.echoDecimalKeyMap input
+                test.areEqual input output
             }
 
         testCaseAsync "IBinaryServer.echoTupleMap" <|
