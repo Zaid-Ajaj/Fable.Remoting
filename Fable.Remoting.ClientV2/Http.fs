@@ -1,5 +1,6 @@
 namespace Fable.Remoting.Client
 
+open System.Threading
 open Browser
 open Browser.Types
 
@@ -67,32 +68,52 @@ module Http =
             | RequestBody.Json content -> xhr.send(content)
             | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
 
-    let sendAndReadBinary (req: HttpRequest) =
-        Async.FromContinuations <| fun (resolve, _, _) ->
-            let xhr = XMLHttpRequest.Create()
+//    async {
+//        let! ct = Async.CancellationToken
+//        return! Async.FromContinuations(
+//            fun (cont,econt,ccont) ->
+//                let rec inner () =
+//                    async {
+//                        do printfn "looping..."
+//                        do! Async.Sleep 1000
+//                        return! inner ()
+//                    }
+//
+//                Async.Start(inner (), cancellationToken = ct)
+//                cont ())
+//    }
+    let sendAndReadBinary (req: HttpRequest) = async {
+            let! cancellation = Async.CancellationToken
+            let exec = Async.FromContinuations <| fun (resolve, _, _) ->
+                let xhr = XMLHttpRequest.Create()
+                match req.HttpMethod with
+                | GET -> xhr.``open``("GET", req.Url)
+                | POST -> xhr.``open``("POST", req.Url)
 
-            match req.HttpMethod with
-            | GET -> xhr.``open``("GET", req.Url)
-            | POST -> xhr.``open``("POST", req.Url)
+                // read response as byte array
+                xhr.responseType <- "arraybuffer"
 
-            // read response as byte array
-            xhr.responseType <- "arraybuffer"
+                // set the headers, must be after opening the request
+                for (key, value) in req.Headers do
+                    xhr.setRequestHeader(key, value)
 
-            // set the headers, must be after opening the request
-            for (key, value) in req.Headers do
-                xhr.setRequestHeader(key, value)
+                xhr.withCredentials <- req.WithCredentials
+                cancellation.Register(fun _ -> xhr.abort()) |> ignore
+                
+                xhr.onreadystatechange <- fun _ ->
+                    match xhr.readyState with
+                    | ReadyState.Done ->
+                        let bytes = InternalUtilities.createUInt8Array xhr.response
+                        resolve (bytes, xhr.status)
+                    | _ ->
+                        ignore()
 
-            xhr.withCredentials <- req.WithCredentials
-
-            xhr.onreadystatechange <- fun _ ->
-                match xhr.readyState with
-                | ReadyState.Done ->
-                    let bytes = InternalUtilities.createUInt8Array xhr.response
-                    resolve (bytes, xhr.status)
-                | _ ->
-                    ignore()
-
-            match req.RequestBody with
-            | Empty -> xhr.send()
-            | RequestBody.Json content -> xhr.send(content)
-            | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
+                match req.RequestBody with
+                | Empty -> xhr.send()
+                | RequestBody.Json content -> xhr.send(content)
+                | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
+            
+            return! exec
+        }
+        
+        
