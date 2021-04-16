@@ -44,14 +44,20 @@ module Http =
     let withBody body (req: HttpRequest) = { req with RequestBody = body }
 
     /// Sends the request to the server and asynchronously returns a response
-    let send (req: HttpRequest) =
-        Async.FromContinuations <| fun (resolve, _, _) ->
+    let send (req: HttpRequest) = async {
+        let! cancellationToken = Async.CancellationToken
+        let fromContinuations = Async.FromContinuations <| fun (resolve, _, cancelEx) ->
             let xhr = XMLHttpRequest.Create()
 
             match req.HttpMethod with
             | GET -> xhr.``open``("GET", req.Url)
             | POST -> xhr.``open``("POST", req.Url)
 
+            cancellationToken.Register(fun _ ->
+                        Fable.Core.JS.console.log("CancellationToken Called")
+                        xhr.abort()
+                        cancelEx(System.OperationCanceledException(cancellationToken))
+                    ) |> ignore
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do
                 xhr.setRequestHeader(key, value)
@@ -67,24 +73,13 @@ module Http =
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
             | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
-
-//    async {
-//        let! ct = Async.CancellationToken
-//        return! Async.FromContinuations(
-//            fun (cont,econt,ccont) ->
-//                let rec inner () =
-//                    async {
-//                        do printfn "looping..."
-//                        do! Async.Sleep 1000
-//                        return! inner ()
-//                    }
-//
-//                Async.Start(inner (), cancellationToken = ct)
-//                cont ())
-//    }
+            
+        return! fromContinuations
+    }
+    
     let sendAndReadBinary (req: HttpRequest) = async {
-            let! cancellation = Async.CancellationToken
-            let exec = Async.FromContinuations <| fun (resolve, _, _) ->
+            let! cancellationToken = Async.CancellationToken
+            let fromContinuations = Async.FromContinuations <| fun (resolve, _, cancelEx) ->
                 let xhr = XMLHttpRequest.Create()
                 match req.HttpMethod with
                 | GET -> xhr.``open``("GET", req.Url)
@@ -96,9 +91,15 @@ module Http =
                 // set the headers, must be after opening the request
                 for (key, value) in req.Headers do
                     xhr.setRequestHeader(key, value)
-
+                
                 xhr.withCredentials <- req.WithCredentials
-                cancellation.Register(fun _ -> xhr.abort()) |> ignore
+
+                cancellationToken.Register(fun _ ->
+                        Fable.Core.JS.console.log("CancellationToken Called")
+                        xhr.abort()
+                        
+                        cancelEx(System.OperationCanceledException(cancellationToken))
+                    ) |> ignore
                 
                 xhr.onreadystatechange <- fun _ ->
                     match xhr.readyState with
@@ -113,7 +114,7 @@ module Http =
                 | RequestBody.Json content -> xhr.send(content)
                 | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
             
-            return! exec
+            return! fromContinuations
         }
         
         

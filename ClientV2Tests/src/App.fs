@@ -1,5 +1,6 @@
 ﻿module App
 
+open System.Threading
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Remoting.Client
@@ -51,6 +52,31 @@ let serverTests =
                 | [ "http://api.example.com/IMusicStore/getLength" ] -> test.pass()
                 | otherwise -> test.fail()
 
+        testCaseAsync "Cancellation" <|
+            async {
+                let tokenSource = new CancellationTokenSource(250)
+                let work = async {
+                    Fable.Core.JS.console.log("Working it")
+                    do! server.simulateLongComputation 5000
+//                    Fable.Core.JS.console.log("Computation finished %b", token.)   
+                    //printfn "IsCancleed: %b" token.IsCancellationRequested
+                    Fable.Core.JS.console.log("Computation finished")       
+                }
+
+                
+                let! result =
+                    Async.StartAsPromise(work, tokenSource.Token)
+                    |> Async.AwaitPromise
+                    |> Async.Catch
+                
+                match result with
+                | Choice.Choice1Of2 _ ->
+                    printfn "Bad News" 
+                    test.fail()
+                | Choice2Of2 ex ->
+                    printfn "Good News: %A" ex
+                    test.pass()
+            }
         testCaseAsync "IServer.getLength" <|
             async {
                 let! result = server.getLength "hello"

@@ -213,4 +213,6 @@ let server : IServer  = {
     echoDecimalKeyMap = Async.result
     echoLongKeyMap = Async.result
     echoIntKeyMap = Async.result
+    
+    simulateLongComputation = fun delay -> Async.Sleep delay
 }
