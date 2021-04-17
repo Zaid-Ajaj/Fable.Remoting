@@ -15,7 +15,7 @@ let errorHandler (ex : Exception) (logger : ILogger) =
 
 let docs = Docs.createFor<IServer>()
 
-let serverDocs = 
+let serverDocs =
   Remoting.documentation "Server Docs" [
     docs.route <@ fun api -> api.getLength @>
     |> docs.alias "Get Length"
@@ -23,16 +23,16 @@ let serverDocs =
     |> docs.example <@ fun api -> api.getLength "example string" @>
     |> docs.example <@ fun api -> api.getLength "yet another example" @>
     |> docs.example <@ fun api -> api.getLength "" @>
-    
+
     docs.route <@ fun api -> api.simpleUnit @>
     |> docs.alias "Simple Unit"
-    |> docs.description "Unit as input"
+    |> docs.description "Uses a unit as input for the remote function"
   ]
 
-let webApp = 
-    Remoting.createApi() 
-    |> Remoting.fromValue server 
-    |> Remoting.withRouteBuilder routeBuilder 
+let webApp =
+    Remoting.createApi()
+    |> Remoting.fromValue server
+    |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.withDocs "/api/server/docs" serverDocs
     |> Remoting.buildHttpHandler
 
