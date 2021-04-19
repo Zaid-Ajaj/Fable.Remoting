@@ -55,9 +55,9 @@ module Http =
             | POST -> xhr.``open``("POST", req.Url)
 
             token.Register(fun _ ->
-                        xhr.abort()
-                        cancel(System.OperationCanceledException(token))
-                    ) |> ignore
+                xhr.abort()
+                cancel(System.OperationCanceledException(token))
+            ) |> ignore
             
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do
@@ -97,13 +97,13 @@ module Http =
                 xhr.withCredentials <- req.WithCredentials
 
                 token.Register(fun _ ->
-                        xhr.abort()
-                        cancel(System.OperationCanceledException(token))
-                    ) |> ignore
+                    xhr.abort()
+                    cancel(System.OperationCanceledException(token))
+                ) |> ignore
                 
                 xhr.onreadystatechange <- fun _ ->
                     match xhr.readyState with
-                    | ReadyState.Done when xhr.status <> 0 && not token.IsCancellationRequested->
+                    | ReadyState.Done when xhr.status <> 0 && not token.IsCancellationRequested ->
                         let bytes = InternalUtilities.createUInt8Array xhr.response
                         resolve (bytes, xhr.status)
                     | _ ->
