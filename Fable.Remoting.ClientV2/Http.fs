@@ -43,9 +43,7 @@ module Http =
     /// Appends a request with string body content
     let withBody body (req: HttpRequest) = { req with RequestBody = body }
 
-    
-    /// Sends the request to the server and asynchronously returns a response
-    let send (req: HttpRequest) = async {
+    let private sendAndRead (preparation:(XMLHttpRequest -> unit) option) resultMapper (req: HttpRequest) = async {
         let! token = Async.CancellationToken
         let request = Async.FromContinuations <| fun (resolve, _, cancel) ->
             let xhr = XMLHttpRequest.Create()
@@ -54,6 +52,10 @@ module Http =
             | GET -> xhr.``open``("GET", req.Url)
             | POST -> xhr.``open``("POST", req.Url)
 
+            match preparation with
+            | Some f ->  f xhr
+            | _ -> ignore()
+            
             token.Register(fun _ ->
                 xhr.abort()
                 cancel(System.OperationCanceledException(token))
@@ -68,7 +70,7 @@ module Http =
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
                 | ReadyState.Done when xhr.status <> 0 && not token.IsCancellationRequested ->
-                    resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
+                    xhr |> resultMapper |> resolve
                 | _ -> ignore()
 
             match req.RequestBody with
@@ -78,43 +80,16 @@ module Http =
             
         return! request
     }
-    
-    let sendAndReadBinary (req: HttpRequest) = async {
-            let! token = Async.CancellationToken
-            let request = Async.FromContinuations <| fun (resolve, _, cancel) ->
-                let xhr = XMLHttpRequest.Create()
-                match req.HttpMethod with
-                | GET -> xhr.``open``("GET", req.Url)
-                | POST -> xhr.``open``("POST", req.Url)
+        
+    /// Sends the request to the server and asynchronously returns a response
+    let send = sendAndRead None (fun xhr  -> { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText })
 
-                // read response as byte array
-                xhr.responseType <- "arraybuffer"
-
-                // set the headers, must be after opening the request
-                for (key, value) in req.Headers do
-                    xhr.setRequestHeader(key, value)
-                
-                xhr.withCredentials <- req.WithCredentials
-
-                token.Register(fun _ ->
-                    xhr.abort()
-                    cancel(System.OperationCanceledException(token))
-                ) |> ignore
-                
-                xhr.onreadystatechange <- fun _ ->
-                    match xhr.readyState with
-                    | ReadyState.Done when xhr.status <> 0 && not token.IsCancellationRequested ->
-                        let bytes = InternalUtilities.createUInt8Array xhr.response
-                        resolve (bytes, xhr.status)
-                    | _ ->
-                        ignore()
-
-                match req.RequestBody with
-                | Empty -> xhr.send()
-                | RequestBody.Json content -> xhr.send(content)
-                | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
-            
-            return! request
-        }
+    /// Sends the request to the server and asynchronously returns the response as byte array
+    let sendAndReadBinary =
+        sendAndRead
+            (Some (fun xhr -> xhr.responseType <- "arraybuffer" )) // read response as byte array 
+            (fun xhr ->
+                let bytes = InternalUtilities.createUInt8Array xhr.response
+                (bytes, xhr.status))
         
         
