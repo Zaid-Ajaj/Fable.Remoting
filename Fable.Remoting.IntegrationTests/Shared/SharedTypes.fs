@@ -365,6 +365,7 @@ type IServer = {
     // misc
     command: CommandLabel * RequesterIdentifier * Requests.Command -> Async<OperationErrorMessage>
     echoPosition : Position -> Async<Position>
+    simulateLongComputation: int -> Async<unit>
 }
 
 let routeBuilder typeName methodName =
