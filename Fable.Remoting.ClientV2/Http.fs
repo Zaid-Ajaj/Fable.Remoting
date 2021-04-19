@@ -42,8 +42,7 @@ module Http =
     /// Appends a request with string body content
     let withBody body (req: HttpRequest) = { req with RequestBody = body }
 
-    /// Sends the request to the server and asynchronously returns a response
-    let send (req: HttpRequest) =
+    let private sendAndRead (preparation:(XMLHttpRequest -> unit) option) resultMapper (req: HttpRequest) =
         Async.FromContinuations <| fun (resolve, _, _) ->
             let xhr = XMLHttpRequest.Create()
 
@@ -51,48 +50,33 @@ module Http =
             | GET -> xhr.``open``("GET", req.Url)
             | POST -> xhr.``open``("POST", req.Url)
 
+            match preparation with
+            | Some f ->  f xhr
+            | _ -> ignore()
+            
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do
                 xhr.setRequestHeader(key, value)
-
+            
             xhr.withCredentials <- req.WithCredentials
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
-                | ReadyState.Done -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
+                | ReadyState.Done ->  xhr |> resultMapper |> resolve
                 | _ -> ignore()
 
             match req.RequestBody with
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
             | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
-
-    let sendAndReadBinary (req: HttpRequest) =
-        Async.FromContinuations <| fun (resolve, _, _) ->
-            let xhr = XMLHttpRequest.Create()
-
-            match req.HttpMethod with
-            | GET -> xhr.``open``("GET", req.Url)
-            | POST -> xhr.``open``("POST", req.Url)
-
-            // read response as byte array
-            xhr.responseType <- "arraybuffer"
-
-            // set the headers, must be after opening the request
-            for (key, value) in req.Headers do
-                xhr.setRequestHeader(key, value)
-
-            xhr.withCredentials <- req.WithCredentials
-
-            xhr.onreadystatechange <- fun _ ->
-                match xhr.readyState with
-                | ReadyState.Done ->
-                    let bytes = InternalUtilities.createUInt8Array xhr.response
-                    resolve (bytes, xhr.status)
-                | _ ->
-                    ignore()
-
-            match req.RequestBody with
-            | Empty -> xhr.send()
-            | RequestBody.Json content -> xhr.send(content)
-            | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
+        
+    /// Sends the request to the server and asynchronously returns a response
+    let send = sendAndRead None (fun xhr  -> { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText })
+    
+    /// Sends the request to the server and asynchronously returns the response as byte array
+    let sendAndReadBinary =
+        sendAndRead
+            (Some (fun xhr -> xhr.responseType <- "arraybuffer" )) // read response as byte array 
+            (fun xhr ->
+                let bytes = InternalUtilities.createUInt8Array xhr.response
+                (bytes, xhr.status))
