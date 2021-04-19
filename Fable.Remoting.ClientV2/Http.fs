@@ -67,7 +67,8 @@ module Http =
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
-                | ReadyState.Done -> resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
+                | ReadyState.Done when xhr.status <> 0 && not token.IsCancellationRequested ->
+                    resolve { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText }
                 | _ -> ignore()
 
             match req.RequestBody with
@@ -102,7 +103,7 @@ module Http =
                 
                 xhr.onreadystatechange <- fun _ ->
                     match xhr.readyState with
-                    | ReadyState.Done ->
+                    | ReadyState.Done when xhr.status <> 0 && not token.IsCancellationRequested->
                         let bytes = InternalUtilities.createUInt8Array xhr.response
                         resolve (bytes, xhr.status)
                     | _ ->
