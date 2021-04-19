@@ -52,18 +52,13 @@ let serverTests =
                 | [ "http://api.example.com/IMusicStore/getLength" ] -> test.pass()
                 | otherwise -> test.fail()
 
-        testCaseAsync "Cancellation" <|
+        testCaseAsync "IServer.simulateLongComputation cancellation" <|
             async {
                 let tokenSource = new CancellationTokenSource(250)
                 let work = async {
-                    Fable.Core.JS.console.log("Working it")
-                    do! server.simulateLongComputation 5000
-//                    Fable.Core.JS.console.log("Computation finished %b", token.)   
-                    //printfn "IsCancleed: %b" token.IsCancellationRequested
-                    Fable.Core.JS.console.log("Computation finished")       
+                    do! server.simulateLongComputation 5000   
                 }
 
-                
                 let! result =
                     Async.StartAsPromise(work, tokenSource.Token)
                     |> Async.AwaitPromise
@@ -71,12 +66,11 @@ let serverTests =
                 
                 match result with
                 | Choice.Choice1Of2 _ ->
-                    printfn "Bad News" 
                     test.fail()
-                | Choice2Of2 ex ->
-                    printfn "Good News: %A" ex
+                | Choice2Of2 _ ->
                     test.pass()
             }
+           
         testCaseAsync "IServer.getLength" <|
             async {
                 let! result = server.getLength "hello"
