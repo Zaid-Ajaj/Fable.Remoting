@@ -15,14 +15,14 @@ let fableWebPart =
     Remoting.createApi()
     |> Remoting.fromContext (fun ctx -> server)
     |> Remoting.withRouteBuilder routeBuilder
-    |> Remoting.withErrorHandler (fun ex routeInfo requestBodyText -> Propagate (sprintf "Message: %s, request body: %A" ex.Message requestBodyText))
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
     |> Remoting.buildWebPart
 
 let fableWebPartBinary = 
     Remoting.createApi()
     |> Remoting.fromContext (fun ctx -> serverBinary)
     |> Remoting.withRouteBuilder routeBuilder
-    |> Remoting.withErrorHandler (fun ex routeInfo requestBodyText -> Propagate (sprintf "Message: %s, request body: %A" ex.Message requestBodyText))
+    |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
     |> Remoting.withBinarySerialization
     |> Remoting.buildWebPart
 
@@ -106,7 +106,7 @@ module CookieTest =
         Remoting.createApi()
         |> Remoting.fromContext cookieServer
         |> Remoting.withRouteBuilder routeBuilder
-        |> Remoting.withErrorHandler (fun ex routeInfo requestBodyText -> Propagate (sprintf "Message: %s, request body: %A" ex.Message requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
         |> Remoting.buildWebPart
         >=> setCookie
 

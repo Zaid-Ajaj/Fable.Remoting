@@ -21,7 +21,7 @@ module ServerParts =
         Remoting.createApi()
         |> Remoting.fromValue server
         |> Remoting.withRouteBuilder routeBuilder
-        |> Remoting.withErrorHandler (fun ex routeInfo requestBodyText -> Propagate (sprintf "Message: %s, request body: %A" ex.Message requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
         |> Remoting.buildWebPart
 
     let webApp =

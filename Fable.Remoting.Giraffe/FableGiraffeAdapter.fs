@@ -19,13 +19,13 @@ module GiraffeUtil =
             setBodyFromString responseBody next ctx
 
     /// Handles thrown exceptions
-    let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (requestBodyText: string option) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
+    let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
         let logger = options.DiagnosticsLogger
         fun (next : HttpFunc) (ctx : HttpContext) ->
             match options.ErrorHandler with
             | None -> setJsonBody (Errors.unhandled routeInfo.methodName) logger next ctx
             | Some errorHandler ->
-                match errorHandler ex routeInfo requestBodyText with
+                match errorHandler ex routeInfo with
                 | Ignore -> setJsonBody (Errors.ignored routeInfo.methodName) logger next ctx
                 | Propagate error -> setJsonBody (Errors.propagated error) logger next ctx
 
@@ -56,8 +56,8 @@ module GiraffeUtil =
                 return! next ctx |> Async.AwaitTask
             | Exception (e, functionName, requestBodyText) ->
                 ctx.Response.StatusCode <- 500
-                let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
-                return! fail e routeInfo requestBodyText options next ctx |> Async.AwaitTask
+                let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx; requestBodyText = requestBodyText }
+                return! fail e routeInfo options next ctx |> Async.AwaitTask
             | InvalidHttpVerb ->
                 return halt
             | EndpointNotFound ->

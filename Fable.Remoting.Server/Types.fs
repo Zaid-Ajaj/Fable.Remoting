@@ -22,6 +22,7 @@ type RouteInfo<'ctx> = {
     path: string
     methodName: string
     httpContext: 'ctx
+    requestBodyText: string option
 }
 
 type CustomErrorResult<'a> =
@@ -34,7 +35,7 @@ type ErrorResult =
     | Ignore
     | Propagate of obj
 
-type ErrorHandler<'context> = System.Exception -> RouteInfo<'context> -> string option -> ErrorResult
+type ErrorHandler<'context> = System.Exception -> RouteInfo<'context> -> ErrorResult
 
 /// A protocol implementation can be a static value provided or it can be generated from the Http context on every request.
 type ProtocolImplementation<'context, 'serverImpl> = 
