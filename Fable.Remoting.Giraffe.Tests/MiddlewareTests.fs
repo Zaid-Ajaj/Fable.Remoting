@@ -27,20 +27,20 @@ module ServerParts =
     let webApp =
         Remoting.createApi()
         |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
+        |> Remoting.withErrorHandler (fun ex routeInfo requestBodyText -> Propagate (sprintf "Message: %s, request body: %A" ex.Message requestBodyText))
         |> Remoting.fromValue server
 
     let webAppBinary =
         Remoting.createApi()
         |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
+        |> Remoting.withErrorHandler (fun ex routeInfo requestBodyText -> Propagate (sprintf "Message: %s, request body: %A" ex.Message requestBodyText))
         |> Remoting.withBinarySerialization
         |> Remoting.fromValue binaryServer
 
     let otherWebApp =
         Remoting.createApi()
         |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
+        |> Remoting.withErrorHandler (fun ex routeInfo requestBodyText -> Propagate (sprintf "Message: %s, request body: %A" ex.Message requestBodyText))
         |> Remoting.fromContext (fun ctx -> implementation)
 
     let readerApp =

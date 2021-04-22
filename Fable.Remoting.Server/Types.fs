@@ -34,7 +34,7 @@ type ErrorResult =
     | Ignore
     | Propagate of obj
 
-type ErrorHandler<'context> = System.Exception -> RouteInfo<'context> -> ErrorResult
+type ErrorHandler<'context> = System.Exception -> RouteInfo<'context> -> string option -> ErrorResult
 
 /// A protocol implementation can be a static value provided or it can be generated from the Http context on every request.
 type ProtocolImplementation<'context, 'serverImpl> = 
@@ -79,7 +79,7 @@ type InvocationResult =
     | Success of isBinaryOutput: bool * output: MemoryStream
     | EndpointNotFound
     | InvalidHttpVerb
-    | Exception of exn * functionName: string
+    | Exception of exn * functionName: string * requestBodyText: string option
 
 // an example is a list of arguments and the description of the example
 type Example = obj list * string

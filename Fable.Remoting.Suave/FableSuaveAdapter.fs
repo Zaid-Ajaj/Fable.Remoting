@@ -60,13 +60,13 @@ module SuaveUtil =
     >=> Writers.setMimeType "application/json; charset=utf-8"
 
   /// Handles thrown exceptions
-  let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : WebPart = 
+  let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (requestBodyText: string option) (options: RemotingOptions<HttpContext, 't>) : WebPart = 
     let logger = options.DiagnosticsLogger
     fun (context: HttpContext) -> async {
       match options.ErrorHandler with 
       | None -> return! sendError (Errors.unhandled routeInfo.methodName) logger context 
       | Some errorHandler -> 
-          match errorHandler ex routeInfo with 
+          match errorHandler ex routeInfo requestBodyText with 
           | Ignore -> return! sendError (Errors.ignored routeInfo.methodName) logger context 
           | Propagate error -> return! sendError (Errors.propagated error) logger context 
     }
@@ -99,9 +99,9 @@ module SuaveUtil =
                       "application/msgpack"
 
               return! setBinaryResponseBody (output.ToArray ()) 200 mimeType ctx
-          | Exception (e, functionName) ->
+          | Exception (e, functionName, requestBodyText) ->
               let routeInfo = { methodName = functionName; path = ctx.request.path; httpContext = ctx }
-              return! fail e routeInfo options ctx
+              return! fail e routeInfo requestBodyText options ctx
           | InvalidHttpVerb ->
               return! halt ctx
           | EndpointNotFound ->

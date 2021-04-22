@@ -76,14 +76,14 @@ module internal Middleware =
       fun (next : HttpFunc) (ctx : HttpContext) ->
         task { return None }
 
-    let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler = 
+    let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (requestBodyText: string option) (options: RemotingOptions<HttpContext, 't>) : HttpHandler = 
       let logger = options.DiagnosticsLogger
       fun (next : HttpFunc) (ctx : HttpContext) -> 
         task {
             match options.ErrorHandler with 
             | None -> return! setBody (Errors.unhandled routeInfo.methodName) logger next ctx 
             | Some errorHandler -> 
-                match errorHandler ex routeInfo with 
+                match errorHandler ex routeInfo requestBodyText with 
                 | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) logger next ctx  
                 | Propagate error -> return! setBody (Errors.propagated error) logger next ctx  
         }
@@ -110,10 +110,10 @@ module internal Middleware =
 
                 do! output.CopyToAsync ctx.Response.Body
                 return! next ctx
-            | Exception (e, functionName) ->
+            | Exception (e, functionName, requestBodyText) ->
                 ctx.Response.StatusCode <- 500
                 let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
-                return! fail e routeInfo options next ctx
+                return! fail e routeInfo requestBodyText options next ctx
             | InvalidHttpVerb ->
                 return! halt next ctx
             | EndpointNotFound ->
