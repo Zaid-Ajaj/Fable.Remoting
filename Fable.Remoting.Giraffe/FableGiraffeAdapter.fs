@@ -54,9 +54,9 @@ module GiraffeUtil =
                 
                 do! output.CopyToAsync ctx.Response.Body |> Async.AwaitTask
                 return! next ctx |> Async.AwaitTask
-            | Exception (e, functionName) ->
+            | Exception (e, functionName, requestBodyText) ->
                 ctx.Response.StatusCode <- 500
-                let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx }
+                let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx; requestBodyText = requestBodyText }
                 return! fail e routeInfo options next ctx |> Async.AwaitTask
             | InvalidHttpVerb ->
                 return halt

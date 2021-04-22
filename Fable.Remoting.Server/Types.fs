@@ -22,6 +22,7 @@ type RouteInfo<'ctx> = {
     path: string
     methodName: string
     httpContext: 'ctx
+    requestBodyText: string option
 }
 
 type CustomErrorResult<'a> =
@@ -79,7 +80,7 @@ type InvocationResult =
     | Success of isBinaryOutput: bool * output: MemoryStream
     | EndpointNotFound
     | InvalidHttpVerb
-    | Exception of exn * functionName: string
+    | Exception of exn * functionName: string * requestBodyText: string option
 
 // an example is a list of arguments and the description of the example
 type Example = obj list * string

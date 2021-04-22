@@ -99,8 +99,8 @@ module SuaveUtil =
                       "application/msgpack"
 
               return! setBinaryResponseBody (output.ToArray ()) 200 mimeType ctx
-          | Exception (e, functionName) ->
-              let routeInfo = { methodName = functionName; path = ctx.request.path; httpContext = ctx }
+          | Exception (e, functionName, requestBodyText) ->
+              let routeInfo = { methodName = functionName; path = ctx.request.path; httpContext = ctx; requestBodyText = requestBodyText }
               return! fail e routeInfo options ctx
           | InvalidHttpVerb ->
               return! halt ctx

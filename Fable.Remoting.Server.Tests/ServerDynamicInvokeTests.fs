@@ -52,7 +52,7 @@ let invoke<'out, 'impl> (funcName: string) (record: 'impl) (input: Choice<obj[],
 
     match proxy { ImplementationBuilder = (fun () -> record); Input = inp; EndpointName = funcName; HttpVerb = "POST"; IsContentBinaryEncoded = false; IsProxyHeaderPresent = true } |> Async.RunSynchronously with
     | Success (_, output) -> JsonConvert.DeserializeObject<'out>(System.Text.Encoding.UTF8.GetString (output.ToArray ()), converter)
-    | InvocationResult.Exception (e, _) -> raise e
+    | InvocationResult.Exception (e, _, _) -> raise e
     | InvalidHttpVerb -> failwithf "Function %s does not expect POST" funcName
     | EndpointNotFound -> failwithf "Function %s was not found" funcName
 

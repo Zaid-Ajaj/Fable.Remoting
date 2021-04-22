@@ -117,6 +117,8 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                 let isNoArg = flattenedTypes.Length = 1 || (flattenedTypes.Length = 2 && flattenedTypes.[0] = typeof<unit>)
 
                 wrap (fun (props: InvocationProps<'impl>) -> async {
+                    let mutable requestBodyText = None
+
                     try
                         if props.HttpVerb <> "POST" && not (isNoArg && props.HttpVerb = "GET") then
                             return InvalidHttpVerb
@@ -133,6 +135,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                                 if String.IsNullOrEmpty text then
                                     []
                                 else
+                                    requestBodyText <- Some text
                                     let token = JsonConvert.DeserializeObject<JToken> (text, settings)
                                     if token.Type <> JTokenType.Array then
                                         failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" shape.MemberInfo.Name (flattenedTypes.Length - 1)
@@ -142,7 +145,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                             let props' = { Arguments = Choice2Of2 args; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                     with e ->
-                        return InvocationResult.Exception (e, shape.MemberInfo.Name) }) }
+                        return InvocationResult.Exception (e, shape.MemberInfo.Name, requestBodyText) }) }
 
     match shapeof<'impl> with
     | Shape.FSharpRecord (:? ShapeFSharpRecord<'impl> as shape) ->
