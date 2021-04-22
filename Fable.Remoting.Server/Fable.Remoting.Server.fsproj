@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.18.0</Version>
+        <Version>5.19.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net462</TargetFrameworks>
-        <PackageReleaseNotes>Revamped the embedded documentation application and removed the included frameworks</PackageReleaseNotes>
+        <PackageReleaseNotes>Include the JSON request body in the route info of the error handler</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
