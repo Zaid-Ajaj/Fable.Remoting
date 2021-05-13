@@ -72,7 +72,7 @@ let publish projectPath = fun _ ->
     let pushCmd = sprintf "nuget push %s -s nuget.org -k %s" nupkg nugetKey
     run projectPath dotnet pushCmd
 
-Target.create "PublishClientV2" (publish ClientV2)
+Target.create "PublishClient" (publish ClientV2)
 Target.create "PublishJson" (publish Json)
 Target.create "PublishServer" (publish Server)
 Target.create "PublishDotnetClient" (publish DotnetClient)

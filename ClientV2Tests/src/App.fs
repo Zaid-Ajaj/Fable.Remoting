@@ -56,21 +56,21 @@ let serverTests =
             async {
                 let tokenSource = new CancellationTokenSource(250)
                 let work = async {
-                    do! server.simulateLongComputation 5000   
+                    do! server.simulateLongComputation 5000
                 }
 
                 let! result =
                     Async.StartAsPromise(work, tokenSource.Token)
                     |> Async.AwaitPromise
                     |> Async.Catch
-                
+
                 match result with
                 | Choice.Choice1Of2 _ ->
                     test.fail()
                 | Choice2Of2 _ ->
                     test.pass()
             }
-           
+
         testCaseAsync "IServer.getLength" <|
             async {
                 let! result = server.getLength "hello"
@@ -217,6 +217,13 @@ let serverTests =
                 do test.equal result1 ""
                 do test.equal result2 "this one"
                 do test.equal true (isNull result3)
+            }
+
+        testCaseAsync "IServer.echoRecordWithChar" <|
+            async {
+                let input = { CharValue = '*' }
+                let! output = server.echoRecordWithChar input
+                test.equal input.CharValue output.CharValue
             }
 
         testCaseAsync "IServer.echoUnionOfOtherUnions" <|
@@ -739,6 +746,14 @@ let binaryServerTests =
                 let! output = binaryServer.mapDateTimeOffsetAsKey input
                 test.areEqual input output
             }
+
+        // TODO: implement char conversion in MsgPack
+        // testCaseAsync "IBinaryServer.echoRecordWithChar" <|
+        //     async {
+        //         let input = { CharValue = '*' }
+        //         let! output = binaryServer.echoRecordWithChar input
+        //         test.equal input.CharValue output.CharValue
+        //     }
 
         testCaseAsync "IBinaryServer.echoIntKeyMap" <|
             async {

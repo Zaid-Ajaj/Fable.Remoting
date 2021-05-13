@@ -163,6 +163,8 @@ type Tree =
 
 type RecordAsKey = { Key: int; Value: string }
 
+type RecordWithChar = { CharValue : char }
+
 type IBinaryServer = {
     // primitive types
     simpleUnit : unit -> Async<int>
@@ -198,6 +200,7 @@ type IBinaryServer = {
     echoTree : Tree -> Async<Tree>
     // Records, simple and generic
     echoRecord : Record -> Async<Record>
+    echoRecordWithChar : RecordWithChar -> Async<RecordWithChar>
     echoRemoteWorkEntity : RemoteWorkEntity -> Async<RemoteWorkEntity>
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
@@ -295,6 +298,7 @@ type IServer = {
     echoTree : Tree -> Async<Tree>
     // Records, simple and generic
     echoRecord : Record -> Async<Record>
+    echoRecordWithChar : RecordWithChar -> Async<RecordWithChar>
     echoRemoteWorkEntity : RemoteWorkEntity -> Async<RemoteWorkEntity>
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
