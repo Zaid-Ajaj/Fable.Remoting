@@ -226,6 +226,13 @@ let serverTests =
                 test.equal input.CharValue output.CharValue
             }
 
+        testCaseAsync "IServer.echoRecordWithChar using characters with accents" <|
+            async {
+                let input = { CharValue = 'ŕ' }
+                let! output = server.echoRecordWithChar input
+                test.equal input.CharValue output.CharValue
+            }
+
         testCaseAsync "IServer.echoUnionOfOtherUnions" <|
             async {
                 let! result = server.echoUnionOfOtherUnions (MyDU.CustomCase (set [SomeOtherDU.SomeOtherCase]))

@@ -84,7 +84,7 @@ module Proxy =
         let contentType =
             if binaryInput
             then "application/octet-stream"
-            else "application/json; charset=utf8"
+            else "application/json; charset=utf-8"
 
         let inputArgumentTypes = Array.take argumentCount funcArgs
 
@@ -134,7 +134,7 @@ module Proxy =
                     | TypeInfo.Async getAsyncTypeArgument -> getAsyncTypeArgument()
                     | TypeInfo.Promise getPromiseTypeArgument -> getPromiseTypeArgument()
                     | _ -> failwithf "Expected field %s to have a return type of Async<'t>" func.FieldName
-                
+
                 fun requestBody -> async {
                     // make plain RPC request and let it go through the deserialization pipeline
                     let! response =
