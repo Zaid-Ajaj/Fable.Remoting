@@ -17,12 +17,16 @@
     <DefineConstants>NET_CORE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="TypeShape.fs" />
+    <Compile Include="TypeShapeUtils.fs" />
     <Compile Include="Format.fs" />
     <Compile Include="Write.fs" />
     <Compile Include="Read.fs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="*.fsproj; *.fs" Exclude="**\*.fs.js" PackagePath="fable\" />
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Fable.Remoting.Server</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
