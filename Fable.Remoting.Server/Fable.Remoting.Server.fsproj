@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.20.0</Version>
+        <Version>5.21.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net462</TargetFrameworks>
-        <PackageReleaseNotes>Implement char serialization when using MsgPack</PackageReleaseNotes>
+        <PackageReleaseNotes>Internalize TypeShape</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
