@@ -35,7 +35,7 @@ module Http =
 
     /// Appends a request with headers as key-value pairs
     let withHeaders headers (req: HttpRequest) = { req with Headers = headers  }
-    
+
     /// Sets the withCredentials option on the XHR request, useful for CORS requests
     let withCredentials withCredentials (req: HttpRequest) =
         { req with WithCredentials = withCredentials }
@@ -55,12 +55,12 @@ module Http =
             match preparation with
             | Some f ->  f xhr
             | _ -> ignore()
-            
+
             token.Register(fun _ ->
                 xhr.abort()
                 cancel(System.OperationCanceledException(token))
             ) |> ignore
-            
+
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do
                 xhr.setRequestHeader(key, value)
@@ -69,7 +69,7 @@ module Http =
 
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
-                | ReadyState.Done when xhr.status <> 0 && not token.IsCancellationRequested ->
+                | ReadyState.Done when not token.IsCancellationRequested ->
                     xhr |> resultMapper |> resolve
                 | _ -> ignore()
 
@@ -77,19 +77,18 @@ module Http =
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
             | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
-            
+
         return! request
     }
-        
+
     /// Sends the request to the server and asynchronously returns a response
     let send = sendAndRead None (fun xhr  -> { StatusCode = unbox xhr.status; ResponseBody = xhr.responseText })
 
     /// Sends the request to the server and asynchronously returns the response as byte array
     let sendAndReadBinary =
         sendAndRead
-            (Some (fun xhr -> xhr.responseType <- "arraybuffer" )) // read response as byte array 
+            (Some (fun xhr -> xhr.responseType <- "arraybuffer" )) // read response as byte array
             (fun xhr ->
                 let bytes = InternalUtilities.createUInt8Array xhr.response
                 (bytes, xhr.status))
-        
-        
+

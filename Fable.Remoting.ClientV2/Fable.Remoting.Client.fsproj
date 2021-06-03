@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.10.0</Version>
+        <Version>7.11.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Fix JSON regression when deserializing char types from the server</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix regression where the status code zero of HTTP requests is ignored</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1</TargetFrameworks>
     </PropertyGroup>
     <ItemGroup>
