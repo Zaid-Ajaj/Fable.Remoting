@@ -1,4 +1,3 @@
-#if !FABLE_COMPILER
 #if TYPESHAPE_EXPOSE
 [<AutoOpen>]
 module TypeShape.Core.Core
@@ -8,6 +7,8 @@ module TypeShape.Core.Core
 // so we use a top-level internal module
 module internal TypeShape
 #endif
+
+#if !FABLE_COMPILER
 
 #nowarn "4224"
 
