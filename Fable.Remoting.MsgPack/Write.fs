@@ -11,22 +11,22 @@ open System.Collections.Concurrent
 
 #if !FABLE_COMPILER
 open System.Linq.Expressions
-open TypeShape.Core
-open TypeShape.Core.Utils
+open TypeShape
+open TypeShape_Utils
 
 #nowarn "9"
 #nowarn "51"
 
 let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 
-let (|BclIsInstanceOfSystemDataSet|_|) (s: TypeShape) =
+let internal (|BclIsInstanceOfSystemDataSet|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataSet>
   if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
     Some s
   else
     None
 
-let (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
+let internal (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataTable>
   if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
     Some s

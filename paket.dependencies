@@ -13,7 +13,6 @@ nuget NUnit
 nuget PuppeteerSharp
 nuget Suave
 nuget Giraffe
-nuget TypeShape
 
 group Build
     source https://api.nuget.org/v3/index.json

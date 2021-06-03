@@ -8,6 +8,8 @@ module TypeShape.Core.Core
 module internal TypeShape
 #endif
 
+#if !FABLE_COMPILER
+
 #nowarn "4224"
 
 open System
@@ -1725,3 +1727,4 @@ module Shape =
                 |> Some
         else
             None
+#endif

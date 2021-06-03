@@ -2,7 +2,7 @@
 
 open Fable.Remoting.Json
 open Newtonsoft.Json
-open TypeShape.Core
+open TypeShape
 open Fable.Remoting
 open System
 open Newtonsoft.Json.Linq
@@ -43,7 +43,7 @@ let typeNames inputTypes =
     |> String.concat ", "
     |> sprintf "[%s]"
 
-let (|FSharpAsync|_|) (s: TypeShape) =
+let internal (|FSharpAsync|_|) (s: TypeShape) =
     match s.ShapeInfo with
     | Generic (td, ta) when td = typedefof<Async<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsync<_>>(ta) :?> IShapeFSharpAsync |> Some
     | _ -> None

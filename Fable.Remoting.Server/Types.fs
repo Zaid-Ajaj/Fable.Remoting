@@ -2,7 +2,7 @@ namespace Fable.Remoting.Server
 
 open System 
 open FSharp.Reflection
-open TypeShape.Core
+open TypeShape
 open System.IO
 open Newtonsoft.Json.Linq
 
@@ -47,10 +47,10 @@ type SerializationType =
     | Json
     | MessagePack
 
-type IShapeFSharpAsync =
+type internal IShapeFSharpAsync =
     abstract Element: TypeShape
 
-type ShapeFSharpAsync<'T> () =
+type internal ShapeFSharpAsync<'T> () =
     interface IShapeFSharpAsync with
         member _.Element = shapeof<'T> :> _
 
