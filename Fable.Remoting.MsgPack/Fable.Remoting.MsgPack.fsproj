@@ -8,9 +8,9 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;msgpack</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.9.0</Version>
+    <Version>1.10.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageReleaseNotes>Preserve the accuracy of decimals</PackageReleaseNotes>
+    <PackageReleaseNotes>Implement char serialization</PackageReleaseNotes>
     <TargetFrameworks>netstandard2.0;net45;netcoreapp3.1</TargetFrameworks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1' ">

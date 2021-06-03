@@ -4,7 +4,7 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
 
 open System.IO
-open System.Threading.Tasks 
+open System.Threading.Tasks
 open Fable.Remoting.Server
 open FSharp.Control.Tasks
 open Newtonsoft.Json
@@ -15,15 +15,15 @@ type HttpFunc = HttpContext -> HttpFuncResult
 type HttpHandler = HttpFunc -> HttpFunc
 
 [<AutoOpen>]
-module Extensions = 
-    type HttpContext with 
-        member self.GetService<'t>() = self.RequestServices.GetService(typeof<'t>) :?> 't 
+module Extensions =
+    type HttpContext with
+        member self.GetService<'t>() = self.RequestServices.GetService(typeof<'t>) :?> 't
 
 
-/// The parts from Giraffe needed to simplify the middleware implementation 
-module internal Middleware = 
-    
-    let writeStringAsync (input: string) (ctx: HttpContext) (logger: Option<string -> unit>) = 
+/// The parts from Giraffe needed to simplify the middleware implementation
+module internal Middleware =
+
+    let writeStringAsync (input: string) (ctx: HttpContext) (logger: Option<string -> unit>) =
         task {
             Diagnostics.outputPhase logger input
             let bytes = System.Text.Encoding.UTF8.GetBytes(input)
@@ -31,7 +31,7 @@ module internal Middleware =
             return Some ctx
         }
 
-    let text (input: string) = 
+    let text (input: string) =
         fun (next : HttpFunc) (ctx : HttpContext) ->
             task {
                 let bytes = System.Text.Encoding.UTF8.GetBytes(input)
@@ -48,49 +48,49 @@ module internal Middleware =
                 | false -> func ctx
 
     let (>=>) = compose
-    
-    let setResponseBody (response: obj) logger : HttpHandler = 
-        fun (next : HttpFunc) (ctx : HttpContext) -> 
+
+    let setResponseBody (response: obj) logger : HttpHandler =
+        fun (next : HttpFunc) (ctx : HttpContext) ->
             task {
                 use ms = new MemoryStream ()
                 jsonSerialize response ms
-                let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ()) 
+                let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
                 return! writeStringAsync responseBody ctx logger
             }
-    
+
     /// Sets the content type of the Http response
-    let setContentType (contentType: string) : HttpHandler = 
-        fun (next : HttpFunc) (ctx : HttpContext) -> 
+    let setContentType (contentType: string) : HttpHandler =
+        fun (next : HttpFunc) (ctx : HttpContext) ->
             task {
                 ctx.Response.ContentType <- contentType
-                return Some ctx 
+                return Some ctx
             }
 
     /// Sets the body of the response to type of JSON
-    let setBody value logger : HttpHandler = 
+    let setBody value logger : HttpHandler =
         setResponseBody value logger
         >=> setContentType "application/json; charset=utf-8"
-    
+
     /// Used to forward of the Http context
-    let halt : HttpHandler = 
+    let halt : HttpHandler =
       fun (next : HttpFunc) (ctx : HttpContext) ->
         task { return None }
 
-    let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler = 
+    let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
       let logger = options.DiagnosticsLogger
-      fun (next : HttpFunc) (ctx : HttpContext) -> 
+      fun (next : HttpFunc) (ctx : HttpContext) ->
         task {
-            match options.ErrorHandler with 
-            | None -> return! setBody (Errors.unhandled routeInfo.methodName) logger next ctx 
-            | Some errorHandler -> 
-                match errorHandler ex routeInfo with 
-                | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) logger next ctx  
-                | Propagate error -> return! setBody (Errors.propagated error) logger next ctx  
+            match options.ErrorHandler with
+            | None -> return! setBody (Errors.unhandled routeInfo.methodName) logger next ctx
+            | Some errorHandler ->
+                match errorHandler ex routeInfo with
+                | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) logger next ctx
+                | Propagate error -> return! setBody (Errors.propagated error) logger next ctx
         }
 
     let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
-        
+
         fun (next: HttpFunc) (ctx: HttpContext) -> task {
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
             let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
@@ -135,7 +135,7 @@ module internal Middleware =
 
 type RemotingMiddleware<'t>(next          : RequestDelegate,
                             handler       : HttpFunc) =
-    
+
     do if isNull next then nullArg "next"
 
     member __.Invoke (ctx : HttpContext) = task {
@@ -144,11 +144,11 @@ type RemotingMiddleware<'t>(next          : RequestDelegate,
     }
 
 [<AutoOpen>]
-module AppBuilderExtensions = 
+module AppBuilderExtensions =
     type IApplicationBuilder with
       member this.UseRemoting(options:RemotingOptions<HttpContext, 't>) =
-          let handler = 
-              match options.Implementation with 
+          let handler =
+              match options.Implementation with
               | Empty -> Middleware.halt
               | StaticValue impl -> Middleware.buildFromImplementation (fun _ -> impl) options
               | FromContext createImplementationFrom -> Middleware.buildFromImplementation createImplementationFrom options

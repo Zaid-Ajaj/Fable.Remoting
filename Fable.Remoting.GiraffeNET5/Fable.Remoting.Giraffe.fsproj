@@ -8,9 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.7.0-rc-6</Version>
+        <Version>5.0.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PackageReleaseNotes>Implement char serialization when using MsgPack</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
