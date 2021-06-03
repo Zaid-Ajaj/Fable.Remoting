@@ -1,3 +1,4 @@
+#if !FABLE_COMPILER
 #if TYPESHAPE_EXPOSE
 [<AutoOpen>]
 module TypeShape.Core.Core
@@ -1725,3 +1726,4 @@ module Shape =
                 |> Some
         else
             None
+#endif

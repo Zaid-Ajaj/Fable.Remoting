@@ -1,4 +1,5 @@
-﻿#if TYPESHAPE_EXPOSE
+﻿#if !FABLE_COMPILER
+#if TYPESHAPE_EXPOSE
 module TypeShape.Core.Utils
 #else
 // NB we don't want to leak the `TypeShape` namespace
@@ -418,3 +419,4 @@ type ObjectCache() =
     /// Resets state for cache instance
     member __.Reset() =
         dict.Clear() ; cyclicValues.Clear()
+#endif
