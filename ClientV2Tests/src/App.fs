@@ -754,13 +754,12 @@ let binaryServerTests =
                 test.areEqual input output
             }
 
-        // TODO: implement char conversion in MsgPack
-        // testCaseAsync "IBinaryServer.echoRecordWithChar" <|
-        //     async {
-        //         let input = { CharValue = '*' }
-        //         let! output = binaryServer.echoRecordWithChar input
-        //         test.equal input.CharValue output.CharValue
-        //     }
+        testCaseAsync "IBinaryServer.echoRecordWithChar" <|
+            async {
+                let input = { CharValue = 'ŕ' }
+                let! output = binaryServer.echoRecordWithChar input
+                test.equal input.CharValue output.CharValue
+            }
 
         testCaseAsync "IBinaryServer.echoIntKeyMap" <|
             async {
@@ -1686,6 +1685,11 @@ let msgPackTests =
             [ Just 4; Nothing ] |> serializeDeserializeCompare typeof<Maybe<int> list>
         testCase "Array of 3-tuples" <| fun () ->
             [| (1L, ":)", DateTime.Now); (4L, ":<", DateTime.Now) |] |> serializeDeserializeCompare typeof<(int64 * string * DateTime)[]>
+        testCase "Chars" <| fun () ->
+            'q' |> serializeDeserializeCompare typeof<char>
+            'ψ' |> serializeDeserializeCompare typeof<char>
+            '☃' |> serializeDeserializeCompare typeof<char>
+            "☠️".[0] |> serializeDeserializeCompare typeof<char>
     ]
 
 let alltests =

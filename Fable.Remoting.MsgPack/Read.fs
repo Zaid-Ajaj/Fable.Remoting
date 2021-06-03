@@ -8,12 +8,14 @@ open System.Collections.Generic
 open FSharp.Reflection
 open System.Reflection
 
-let interpretStringAs (typ: Type) str =
+let interpretStringAs (typ: Type) (str: string) =
 #if FABLE_COMPILER
     box str
 #else
     if typ = typeof<string> then
         box str
+    elif typ = typeof<char> then
+        box str.[0]
     else
         // todo cacheable
         // String enum

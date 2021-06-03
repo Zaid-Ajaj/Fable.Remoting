@@ -334,6 +334,7 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
     | Shape.Bool -> Action<_, _> writeBool |> w
     | Shape.Byte -> Action<_, _> writeByte |> w
     | Shape.SByte -> Action<_, _> writeSByte |> w
+    | Shape.Char -> Action<_, _> (fun (c: char) out -> writeString (c.ToString ()) out) |> w
     | Shape.String -> Action<_, _> writeString |> w
     | Shape.Int16 -> Action<_, _> (fun (i: int16) out -> writeInt64 (int64 i) out) |> w
     | Shape.Int32 -> Action<_, _> (fun (i: int32) out -> writeInt64 (int64 i) out) |> w
@@ -718,6 +719,7 @@ module Fable =
     serializerCache.Add (typeof<sbyte>.FullName, fun x out -> writeInt64 (x :?> sbyte |> int64) out)
     serializerCache.Add (typeof<unit>.FullName, fun _ out -> writeNil out)
     serializerCache.Add (typeof<bool>.FullName, fun x out -> writeBool (x :?> bool) out)
+    serializerCache.Add (typeof<char>.FullName, fun x out -> writeString (x :?> string) out) // There are only strings in JS
     serializerCache.Add (typeof<string>.FullName, fun x out -> writeString (x :?> string) out)
     serializerCache.Add (typeof<int>.FullName, fun x out -> writeInt64 (x :?> int |> int64) out)
     serializerCache.Add (typeof<int16>.FullName, fun x out -> writeInt64 (x :?> int16 |> int64) out)

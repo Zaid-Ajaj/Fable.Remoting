@@ -249,5 +249,11 @@ let converterTest =
             Expect.equal deserialized.Tables.["myname"].Rows.[1].["a"]  t.Rows.[1].["a"] "table.[1,'a']"
             Expect.equal deserialized.Tables.["myname"].Rows.[1].["b"]  t.Rows.[1].["b"] "table.[1,'b']"
         }
+        test "Chars" {
+            'q' |> serializeDeserializeCompare
+            'ψ' |> serializeDeserializeCompare
+            '☃' |> serializeDeserializeCompare
+            "☠️".[0] |> serializeDeserializeCompare
+        }
         #endif
     ]
