@@ -496,7 +496,10 @@ module Fable =
             out.Add b2
             out.Add b3
             out.Add b4
-            write32bitNumber b5 b6 b7 b8 out false
+            out.Add b5
+            out.Add b6
+            out.Add b7
+            out.Add b8
         else
             write32bitNumber b5 b6 b7 b8 out true
 

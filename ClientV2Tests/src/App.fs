@@ -333,8 +333,10 @@ let serverTests =
             async {
                 let! fstResult = server.echoPrimitiveLong System.Int64.MaxValue
                 let! sndResult = server.echoPrimitiveLong System.Int64.MinValue
+                let! thirdResult = server.echoPrimitiveLong 637588453436987750L
                 do test.equal true (fstResult = System.Int64.MaxValue)
                 do test.equal true (sndResult = System.Int64.MinValue)
+                do test.equal true (thirdResult = 637588453436987750L)
             }
 
         testCaseAsync "IServer.echoComplexLong" <|
@@ -1550,6 +1552,8 @@ let msgPackTests =
 
         testCase "Long serialized as int16, 3 bytes" <| fun () ->
             60_000L |> serializeDeserializeCompareWithLength 3 typeof<int64>
+        testCase "uint64, 9 bytes" <| fun () ->
+            637588453436987750L |> serializeDeserializeCompareWithLength 9 typeof<int64>
 
         testCase "Array of 3 bools, 4 bytes" <| fun () ->
             [| false; true; true |] |> serializeDeserializeCompareWithLength 4 typeof<bool[]>
