@@ -55,7 +55,10 @@ let inline write64bitNumberBytes b1 b2 b3 b4 b5 b6 b7 b8 (out: Stream) =
         out.WriteByte b2
         out.WriteByte b3
         out.WriteByte b4
-        write32bitNumberBytes b5 b6 b7 b8 out false
+        out.WriteByte b5
+        out.WriteByte b6
+        out.WriteByte b7
+        out.WriteByte b8
     else
         write32bitNumberBytes b5 b6 b7 b8 out true
 

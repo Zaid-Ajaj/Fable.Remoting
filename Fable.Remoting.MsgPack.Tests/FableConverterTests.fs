@@ -74,6 +74,9 @@ let converterTest =
         test "Long serialized as int16, 3 bytes" {
             60_000L |> serializeDeserializeCompareWithLength 3
         }
+        test "uint64, 9 bytes" {
+            637588453436987750L |> serializeDeserializeCompareWithLength 9
+        }
         test "Array of 3 bools, 4 bytes" {
             [| false; true; true |] |> serializeDeserializeCompareWithLength 4
         }
