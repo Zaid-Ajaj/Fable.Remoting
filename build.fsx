@@ -82,6 +82,26 @@ Target.create "PublishGiraffeNET5" (publish GiraffeNET5)
 Target.create "PublishAspnetCore" (publish AspNetCore)
 Target.create "PublishMsgPack" (publish MsgPack)
 
+Target.create "PublishMsgPackDownstream" (fun ctx ->
+    publish MsgPack ctx
+    publish ClientV2 ctx
+    publish Json ctx
+    publish Server ctx
+    publish Suave ctx
+    publish GiraffeNET5 ctx
+    publish AspNetCore ctx
+    publish DotnetClient ctx
+)
+
+Target.create "PublishJsonDownstream" (fun ctx ->
+    publish Json ctx
+    publish Server ctx
+    publish Suave ctx
+    publish GiraffeNET5 ctx
+    publish AspNetCore ctx
+    publish DotnetClient ctx
+)
+
 Target.create "CleanGiraffe" <| fun _ ->
     clean (getPath "Giraffe")
     clean (getPath "Giraffe.Tests")

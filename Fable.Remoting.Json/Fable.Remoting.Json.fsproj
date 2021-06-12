@@ -8,8 +8,8 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>2.16.0</Version>
-        <PackageReleaseNotes>Allow using more primitive types as Map keys</PackageReleaseNotes>
+        <Version>2.17.0</Version>
+        <PackageReleaseNotes>Implement reflection cache for unions, tuples, options and maps</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>

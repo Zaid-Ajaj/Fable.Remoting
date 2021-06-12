@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.21.0</Version>
+        <Version>4.22.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-        <PackageReleaseNotes>Internalize TypeShape</PackageReleaseNotes>
+        <PackageReleaseNotes>Implement reflection cache for unions, tuples, options and maps</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

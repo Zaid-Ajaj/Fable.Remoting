@@ -7,10 +7,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>3.17.0</Version>
+        <Version>3.18.0</Version>
         <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Internalize TypeShape</PackageReleaseNotes>
+        <PackageReleaseNotes>Implement reflection cache for unions, tuples, options and maps</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Http.fs" />
