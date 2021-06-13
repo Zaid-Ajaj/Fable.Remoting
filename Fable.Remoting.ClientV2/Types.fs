@@ -1,5 +1,7 @@
 namespace Fable.Remoting.Client 
 
+open System
+
 type HttpMethod = GET | POST 
 
 type RequestBody = 
@@ -7,9 +9,7 @@ type RequestBody =
     | Json of string 
     | Binary of byte[] 
 
-type SerializationType =
-    | Json
-    | MessagePack
+type CustomResponseSerializer = byte[] -> Type -> obj
 
 type HttpRequest = {
     HttpMethod: HttpMethod
@@ -30,7 +30,7 @@ type RemoteBuilderOptions = {
     Authorization : string option
     WithCredentials : bool
     RouteBuilder : (string -> string -> string)
-    ResponseSerialization : SerializationType
+    CustomResponseSerialization : CustomResponseSerializer option
 }
 
 type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string) = 
