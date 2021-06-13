@@ -4,6 +4,7 @@ open Fable.Core
 open Fable.SimpleJson
 open System
 open Microsoft.FSharp.Reflection
+open Fable.Remoting
 
 module Remoting =
     /// Starts with default configuration for building a proxy
@@ -13,7 +14,7 @@ module Remoting =
         Authorization = None
         WithCredentials = false
         RouteBuilder = sprintf ("/%s/%s")
-        ResponseSerialization = Json
+        CustomResponseSerialization = None
     }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -38,7 +39,8 @@ module Remoting =
 
     /// Specifies that the API uses binary serialization for responses
     let withBinarySerialization (options: RemoteBuilderOptions) =
-        { options with ResponseSerialization = MessagePack }
+        let serializer response returnType = MsgPack.Read.Reader(response).Read returnType
+        { options with CustomResponseSerialization = Some serializer }
 
 type Remoting() =
     static member buildProxy<'t>(options: RemoteBuilderOptions, [<Inject>] ?resolver: ITypeResolver<'t>) : 't =

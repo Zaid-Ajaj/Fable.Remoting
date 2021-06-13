@@ -4,7 +4,6 @@ open System
 open Fable.Core
 open Fable.SimpleJson
 open Browser.Types
-open Fable.Remoting
 
 module internal Blob =
     /// Creates a Blob from the given input string
@@ -97,13 +96,13 @@ module Proxy =
             | None -> () ]
 
         let executeRequest =
-            if options.ResponseSerialization = MessagePack || isAsyncOfByteArray returnTypeAsync then
+            if options.CustomResponseSerialization.IsSome || isAsyncOfByteArray returnTypeAsync then
                 let onOk =
-                    match options.ResponseSerialization with
-                    | MessagePack ->
+                    match options.CustomResponseSerialization with
+                    | Some serializer ->
                         let returnType = getReturnType fieldType
-                        fun response -> MsgPack.Read.Reader(response).Read returnType
-                    | Json -> box
+                        fun response -> serializer response returnType
+                    | _ -> box
 
                 fun requestBody -> async {
                     // read as arraybuffer and deserialize
