@@ -478,6 +478,17 @@ let serverTests =
                 do test.equal true (input2 = result2)
             }
 
+        testCaseAsync "IServer.echoOtherDataC" <|
+            async {
+                let input = {
+                    Byte = 200uy
+                    SByte = -10y
+                    Maybes = [ Just -120y; Nothing; Just 120y; Just 5y; Just -5y ]
+                }
+
+                let! result = server.echoOtherDataC input
+                do test.equal true (input = result)
+            }
 
         testCaseAsync "IServer.echoIntList" <|
             async {
@@ -1105,6 +1116,17 @@ let binaryServerTests =
                 do test.equal true (input2 = result2)
             }
 
+        testCaseAsync "IBinaryServer.echoOtherDataC" <|
+            async {
+                let input = {
+                    Byte = 200uy
+                    SByte = -10y
+                    Maybes = [ Just -120y; Nothing; Just 120y; Just 5y; Just -5y ]
+                }
+
+                let! result = binaryServer.echoOtherDataC input
+                do test.equal true (input = result)
+            }
 
         testCaseAsync "IBinaryServer.echoIntList" <|
             async {
@@ -1694,6 +1716,15 @@ let msgPackTests =
             'ψ' |> serializeDeserializeCompare typeof<char>
             '☃' |> serializeDeserializeCompare typeof<char>
             "☠️".[0] |> serializeDeserializeCompare typeof<char>
+        testCase "Bytes" <| fun () ->
+            0uy |> serializeDeserializeCompare typeof<byte>
+            0y |> serializeDeserializeCompare typeof<sbyte>
+            255uy |> serializeDeserializeCompare typeof<byte>
+            100y |> serializeDeserializeCompare typeof<sbyte>
+            -100y |> serializeDeserializeCompare typeof<sbyte>
+            -5y |> serializeDeserializeCompare typeof<sbyte>
+            [| 0uy; 255uy; 100uy; 5uy |] |> serializeDeserializeCompare typeof<byte[]>
+            [| 0y; 100y; -100y; -5y |] |> serializeDeserializeCompare typeof<sbyte[]>
     ]
 
 let alltests =

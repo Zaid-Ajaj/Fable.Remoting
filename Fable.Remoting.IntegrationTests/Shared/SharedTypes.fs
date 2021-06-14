@@ -30,6 +30,13 @@ type OtherDataB = {
     MataC : string
     MataB : Map<Guid,OtherDataA>
 }
+
+type OtherDataC = {
+    Byte: byte
+    Maybes: Maybe<sbyte> list
+    SByte: sbyte
+}
+
 type SomeData = {
     CataA : string
     CataB : Map<Guid, OtherDataB>
@@ -204,6 +211,7 @@ type IBinaryServer = {
     echoRemoteWorkEntity : RemoteWorkEntity -> Async<RemoteWorkEntity>
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
+    echoOtherDataC : OtherDataC -> Async<OtherDataC>
 
     // lists
     echoIntList : int list -> Async<int list>
@@ -302,6 +310,7 @@ type IServer = {
     echoRemoteWorkEntity : RemoteWorkEntity -> Async<RemoteWorkEntity>
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
+    echoOtherDataC : OtherDataC -> Async<OtherDataC>
 
     // lists
     echoIntList : int list -> Async<int list>

@@ -284,6 +284,17 @@ let dotnetClientTests =
             Expect.equal true ({ Value = Just (None); OtherValue = 2 } = result2) "Nested generic record is correct"
         }
 
+        testCaseAsync "IServer.echoOtherDataC" <| async {
+            let input = {
+                Byte = 200uy
+                SByte = -10y
+                Maybes = [ Just -120y; Nothing; Just 120y; Just 5y; Just -5y ]
+            }
+
+            let! result = server.echoOtherDataC input
+            Expect.equal true (input = result) "OtherDataC is correct"
+        }
+
         testCaseAsync "IServer.echoIntList" <| async {
             let inputList = [1 .. 5]
             let! output = proxy.call <@ fun server -> server.echoIntList inputList @>
