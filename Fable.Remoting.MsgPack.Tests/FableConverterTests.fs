@@ -211,7 +211,6 @@ let converterTest =
         test "Array of 3-tuples" {
             [| (1L, ":)", DateTime.Now); (4L, ":<", DateTime.Now) |] |> serializeDeserializeCompare
         }
-        #if !FABLE_COMPILER
         test "datatable" {
             let t = new System.Data.DataTable()
             t.TableName <- "myname"
@@ -258,5 +257,14 @@ let converterTest =
             '☃' |> serializeDeserializeCompare
             "☠️".[0] |> serializeDeserializeCompare
         }
-        #endif
+        test "Bytes" {
+            0uy |> serializeDeserializeCompare
+            0y |> serializeDeserializeCompare
+            255uy |> serializeDeserializeCompare
+            100y |> serializeDeserializeCompare
+            -100y |> serializeDeserializeCompare
+            -5y |> serializeDeserializeCompare
+            [| 0uy; 255uy; 100uy; 5uy |] |> serializeDeserializeCompare
+            [| 0y; 100y; -100y; -5y |] |> serializeDeserializeCompare
+        }
     ]

@@ -89,7 +89,11 @@ let inline writeNil (out: Stream) = out.WriteByte Format.Nil
 let inline writeBool b (out: Stream) = out.WriteByte (if b then Format.True else Format.False)
 
 let inline writeByte b (out: Stream) =
-    out.WriteByte b
+    if b < 128uy then
+        out.WriteByte (Format.fixposnum b)
+    else
+        out.WriteByte Format.Uint8
+        out.WriteByte b
 
 let inline writeSByte (b: sbyte) (out: Stream) =
     writeByte (byte b) out
@@ -535,8 +539,12 @@ module Fable =
                 out.Add Format.Int64
                 writeSignedNumber (BitConverter.GetBytes n) out
 
-    let inline private writeByte b (out: ResizeArray<byte>) =
-        out.Add b
+    let private writeByte b (out: ResizeArray<byte>) =
+        if b < 128uy then
+            out.Add (Format.fixposnum b)
+        else
+            out.Add Format.Uint8
+            out.Add b
 
     let inline private writeString (str: string) (out: ResizeArray<byte>) =
         let str = Encoding.UTF8.GetBytes str
@@ -722,7 +730,7 @@ module Fable =
 
     #if FABLE_COMPILER
     serializerCache.Add (typeof<byte>.FullName, fun x out -> writeByte (x :?> byte) out)
-    serializerCache.Add (typeof<sbyte>.FullName, fun x out -> writeInt64 (x :?> sbyte |> int64) out)
+    serializerCache.Add (typeof<sbyte>.FullName, fun x out -> writeByte (x :?> sbyte |> byte) out)
     serializerCache.Add (typeof<unit>.FullName, fun _ out -> writeNil out)
     serializerCache.Add (typeof<bool>.FullName, fun x out -> writeBool (x :?> bool) out)
     serializerCache.Add (typeof<char>.FullName, fun x out -> writeString (x :?> string) out) // There are only strings in JS
