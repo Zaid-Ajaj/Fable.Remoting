@@ -85,7 +85,6 @@ Target.create "PublishMsgPack" (publish MsgPack)
 Target.create "PublishMsgPackDownstream" (fun ctx ->
     publish MsgPack ctx
     publish ClientV2 ctx
-    publish Json ctx
     publish Server ctx
     publish Suave ctx
     publish GiraffeNET5 ctx

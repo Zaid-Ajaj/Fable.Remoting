@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;aspnet</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>2.22.0</Version>
+        <Version>2.23.0</Version>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Implement reflection cache for unions, tuples, options and maps</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix byte serialization in MsgPack and support sbyte types</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

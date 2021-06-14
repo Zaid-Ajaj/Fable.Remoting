@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.2.0</Version>
+        <Version>5.3.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Implement reflection cache for unions, tuples, options and maps</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix byte serialization in MsgPack and support sbyte types</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

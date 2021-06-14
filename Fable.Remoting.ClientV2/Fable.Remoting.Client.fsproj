@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.15.0</Version>
+        <Version>7.16.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Better treeshaking when MsgPack is not used</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix byte serialization in MsgPack</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1</TargetFrameworks>
     </PropertyGroup>
     <ItemGroup>
