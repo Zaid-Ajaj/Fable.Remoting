@@ -27,7 +27,7 @@ let errorHandler (ex: Exception) (routeInfo: RouteInfo<HttpContext>) =
     | :? System.IO.IOException as x ->
         let customError = { errorMsg = "Something terrible happened" }
         Propagate customError
-    | :? System.Exception as x ->
+    | _ ->
         // ignore error
         Ignore
 ```
