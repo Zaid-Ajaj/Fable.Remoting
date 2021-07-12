@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.23.0</Version>
+        <Version>4.24.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-        <PackageReleaseNotes>Fix byte serialization in MsgPack and support sbyte types</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix int64 serialization in Json</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

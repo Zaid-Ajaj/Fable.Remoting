@@ -8,6 +8,8 @@ type Record = {
     Prop3 : int option
 }
 
+type File = { name: string; size: int64 }
+
 type Tree<'t> =
     | Leaf of 't
     | Branch of Tree<'t> * Tree<'t>

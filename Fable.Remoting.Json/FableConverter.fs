@@ -71,7 +71,7 @@ module private Cache =
         Constructor: obj[] -> obj }
 
     type UnionCase = {
-        Uci: UnionCaseInfo    
+        Uci: UnionCaseInfo
         FieldReader: ValueOption<obj -> obj[]>
         FieldTypes: Type[]
         Constructor: obj[] -> obj }
@@ -306,7 +306,7 @@ module private MapHelpers =
             let type' =
                 let mapTypes = t.GetGenericArguments()
                 let valueT = mapTypes.[1]
-                typedefof<MapStringKeySerializer<_>>.MakeGenericType valueT        
+                typedefof<MapStringKeySerializer<_>>.MakeGenericType valueT
             Activator.CreateInstance(type') :?> IMapSerializer)
 
 open MapHelpers
@@ -449,10 +449,11 @@ type FableJsonConverter() =
                 then upcast UInt64.Parse(json)
                 else upcast Int64.Parse(json)
             | JsonToken.Integer ->
-                let i = serializer.Deserialize(reader, typeof<int>) :?> int
+                let data = JValue.Load(reader).ToObject<string>();
                 if t.FullName = "System.UInt64"
-                then upcast System.Convert.ToUInt64(i)
-                else upcast System.Convert.ToInt64(i)
+                then upcast UInt64.Parse(data)
+                else upcast Int64.Parse(data)
+
             | JsonToken.StartObject -> // reading { high: int, low: int, unsigned: bool }
                 let internalLong = serializer.Deserialize(reader, typeof<InternalLong>) :?> InternalLong
                 let lowBytes = BitConverter.GetBytes(internalLong.low)

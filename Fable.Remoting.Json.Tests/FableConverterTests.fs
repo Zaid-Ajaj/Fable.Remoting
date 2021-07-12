@@ -9,6 +9,8 @@ open Types
 open Expecto.Logging
 
 let converter = new FableJsonConverter()
+let settings = JsonSerializerSettings()
+
 let deserialize<'a> (json : string) =
     if typeof<'a> = typeof<string> then unbox<'a> (box json)
     else JsonConvert.DeserializeObject(json, typeof<'a>, converter) :?> 'a
@@ -362,6 +364,11 @@ let converterTest =
             |> deserialize<Map<Color, int>>
             |> Map.toList
             |> fun output -> Expect.equal [ Color.Red, 10; Color.Blue, 20 ] output "deserialization worked"
+
+        testCase "Deserializing large int64 should work" <| fun () ->
+            let content = "{ \"name\": \"FileName.exe\", \"size\": 23427026601 }"
+            let deserialized = deserialize<File> content
+            Expect.equal deserialized { name = "FileName.exe"; size = 23427026601L } "Deserialization worked"
 
         testCase "TestCommand can be converted correctly" <| fun () ->
             let firstGuid = Guid.NewGuid()
