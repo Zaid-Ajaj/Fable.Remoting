@@ -88,3 +88,10 @@ type Bot = { Identifier: string }
 type Actor =
     | User of User
     | Bot of Bot
+
+type OptionalTimeSpan = { value : TimeSpan option }
+
+[<Struct>]
+type StructDU = StructDU of string
+
+type RecordWithStructDU = { value :  StructDU  }

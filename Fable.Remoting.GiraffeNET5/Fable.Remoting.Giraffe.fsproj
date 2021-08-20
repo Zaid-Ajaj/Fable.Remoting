@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.4.0</Version>
+        <Version>5.5.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Fix int64 serialization in Json</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix nullable conversions in pure dotnet clients</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

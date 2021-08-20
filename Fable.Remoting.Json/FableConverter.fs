@@ -40,6 +40,7 @@ type Kind =
     | TimeSpan = 10
     | DataSet = 12
     | DataTable = 13
+    | Nullable = 14
 
 module Utilities =
     let quoted (input: string) = input.StartsWith "\"" && input.EndsWith "\""
@@ -344,6 +345,8 @@ type FableJsonConverter() =
                 then Kind.TimeSpan
                 elif t.Name = "FSharpOption`1"
                 then Kind.Option
+                elif t.Name = "Nullable`1"
+                then Kind.Nullable
                 elif t.FullName = "System.Int64" || t.FullName = "System.UInt64"
                 then Kind.Long
                 elif t.FullName = "System.Numerics.BigInteger"
@@ -394,6 +397,8 @@ type FableJsonConverter() =
             | true, Kind.Option ->
                 let _, fields = getUnionInfo t |> getUnionCaseInfoAndFields value
                 serializer.Serialize(writer, fields.[0])
+            | true, Kind.Nullable ->
+                serializer.Serialize(writer, value)
             | true, Kind.Tuple ->
                 let tupleInfo = getTupleInfo t
                 serializer.Serialize(writer, tupleInfo.ElementReader value)
@@ -502,6 +507,15 @@ type FableJsonConverter() =
                 if isNull value
                 then cases.[0].Constructor [||]
                 else cases.[1].Constructor [|value|]
+
+        | true, Kind.Nullable ->
+            match reader.TokenType with
+            | JsonToken.Null ->
+                Activator.CreateInstance(t)
+            | _ ->
+                let innerType = t.GetGenericArguments().[0]
+                let value = serializer.Deserialize(reader, innerType)
+                Activator.CreateInstance(t, [|value|])
         | true, Kind.Tuple ->
             match reader.TokenType with
             | JsonToken.StartArray ->

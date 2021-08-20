@@ -340,6 +340,20 @@ let converterTest =
                 | [ "firstKey", 10; "secondKey", 20 ] -> pass()
                 | otherwise -> fail()
 
+        testCase "Deserializing optional timespan should work" <| fun () ->
+            let data : OptionalTimeSpan = { value = Some (TimeSpan.FromHours 2.0) }
+            let serialized = serialize data
+            serialized
+            |> deserialize<OptionalTimeSpan>
+            |> equal data
+
+        testCase "Deserializing struct DU should work" <| fun () ->
+            let data : RecordWithStructDU = { value = StructDU "Hello" }
+            let serialized = serialize data
+            serialized
+            |> deserialize<RecordWithStructDU>
+            |> equal data
+
         testCase "Deserializing Map<int, int> from object literal works" <| fun () ->
             "{ \"10\": 10, \"20\": 20 }"
             |> deserialize<Map<int, int>>
