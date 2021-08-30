@@ -8,6 +8,7 @@ nuget Expecto
 nuget FSharp.Core ~> 4.7.2
 nuget Microsoft.AspNetCore.Server.Kestrel ~> 2.2
 nuget Microsoft.AspNetCore.TestHost ~> 3.1
+nuget Microsoft.SourceLink.GitHub copy_local: true
 nuget Newtonsoft.Json
 nuget NUnit
 nuget PuppeteerSharp

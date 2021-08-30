@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <Description>Json serialization utilities for Fable.Remoting</Description>
@@ -12,6 +12,8 @@
         <PackageReleaseNotes>Fix nullable conversions in pure dotnet clients</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
         <LangVersion>latest</LangVersion>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     </PropertyGroup>
 
     <ItemGroup>
