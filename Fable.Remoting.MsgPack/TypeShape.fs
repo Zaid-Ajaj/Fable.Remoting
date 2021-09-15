@@ -1300,8 +1300,8 @@ and ShapeISerializable<'T when 'T :> ISerializable> private () =
 [<RequireQualifiedAccess>]
 module Shape =
 
-    let private SomeU = Some() // avoid allocating all the time
-    let inline private test<'T> (s : TypeShape) =
+    let SomeU = Some() // avoid allocating all the time
+    let inline test<'T> (s : TypeShape) =
         match s with
         | :? TypeShape<'T> -> SomeU
         | _ -> None

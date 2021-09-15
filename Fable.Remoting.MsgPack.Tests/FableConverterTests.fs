@@ -83,6 +83,18 @@ let converterTest =
         test "List of fixnums, 5 bytes" {
             [ 0; 2; 100; 10 ] |> serializeDeserializeCompareWithLength 5
         }
+        test "DateOnly" {
+            DateTime.Now |> DateOnly.FromDateTime |> serializeDeserializeCompare
+            DateOnly.MinValue |> serializeDeserializeCompare
+            DateOnly.MaxValue |> serializeDeserializeCompare
+            DateOnly (2012, 12, 21) |> serializeDeserializeCompare
+        }
+        test "TimeOnly" {
+            DateTime.Now |> TimeOnly.FromDateTime |> serializeDeserializeCompare
+            TimeOnly.MinValue |> serializeDeserializeCompare
+            TimeOnly.MaxValue |> serializeDeserializeCompare
+            TimeOnly (13, 37, 0) |> serializeDeserializeCompare
+        }
         test "DateTime" {
             DateTime.Now |> serializeDeserializeCompare
         }

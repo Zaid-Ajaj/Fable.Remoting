@@ -22,16 +22,22 @@ let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 let internal (|BclIsInstanceOfSystemDataSet|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataSet>
   if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
-    Some s
+    Shape.SomeU
   else
     None
 
 let internal (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataTable>
   if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
-    Some s
+    Shape.SomeU
   else
     None
+
+#if NET6_0_OR_GREATER
+let internal (|DateOnly|_|) (s: TypeShape) = Shape.test<DateOnly> s
+
+let internal (|TimeOnly|_|) (s: TypeShape) = Shape.test<TimeOnly> s
+#endif
 
 let inline write32bitNumberBytes b1 b2 b3 b4 (out: Stream) writeFormat =
     if b2 > 0uy || b1 > 0uy then
@@ -197,7 +203,7 @@ let inline writeStringHeader length (out: Stream) =
 
 let writeString (str: string) (out: Stream) =
     if isNull str then writeNil out else
-#if NET_CORE
+#if NETCOREAPP3_1_OR_GREATER
     let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
 
     // allocate space on the stack if the string is not too long
@@ -235,6 +241,14 @@ let writeBin (data: byte[]) (out: Stream) =
 
     write32bitNumber data.Length out false
     out.Write (data, 0, data.Length)
+
+#if NET6_0_OR_GREATER
+let inline writeDateOnly (date: DateOnly) (out: Stream) =
+    write32bitNumber date.DayNumber out true
+
+let inline writeTimeOnly (time: TimeOnly) (out: Stream) =
+    writeInt64 time.Ticks out
+#endif
 
 let inline writeDateTime (dt: DateTime) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
@@ -416,9 +430,15 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
     | Shape.Tuple (:? ShapeTuple<'T> as shape) ->
         let elementSerializers = shape.Elements |> Array.map makeMemberVisitor
         Action<_, _> (fun (tuple: 'T) out -> writeTuple tuple out elementSerializers) |> w
-    | BclIsInstanceOfSystemDataSet _ ->
+#if NET6_0_OR_GREATER
+    | DateOnly ->
+        Action<_, _> (fun date out -> writeDateOnly date out) |> w
+    | TimeOnly ->
+        Action<_, _> (fun time out -> writeTimeOnly time out) |> w
+#endif
+    | BclIsInstanceOfSystemDataSet ->
         Action<_, _> (fun (dataset: System.Data.DataSet) out -> writeDataSet dataset out) |> w
-    | BclIsInstanceOfSystemDataTable _ ->
+    | BclIsInstanceOfSystemDataTable ->
         Action<_, _> (fun (table: System.Data.DataTable) out -> writeDataTable table out) |> w
     | _ ->
         failwithf "Cannot serialize %s." typeof<'T>.Name
