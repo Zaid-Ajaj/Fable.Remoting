@@ -411,6 +411,12 @@ let dotnetClientTests =
             Expect.equal input output "Set is echoed correctly"
         }
 
+        testCaseAsync "IServer.echoRecordWithStringOption with proxy" <| async {
+            let input = { StringValue = Some "value" }
+            let! output = server.echoRecordWithStringOption input
+            Expect.equal input output "Set is echoed correctly"
+        }
+
         testCaseAsync "IServer.throwError using callSafely" <| async {
             let! result = proxy.callSafely <@ fun server -> server.throwError() @>
             match result with

@@ -95,3 +95,5 @@ type OptionalTimeSpan = { value : TimeSpan option }
 type StructDU = StructDU of string
 
 type RecordWithStructDU = { value :  StructDU  }
+
+type RecordWithStringOption = { StringOption: string option }
