@@ -488,8 +488,8 @@ type FableJsonConverter() =
             match reader.Value with
             | :? TimeSpan -> reader.Value
             | _ ->
-                let json = serializer.Deserialize(reader, typeof<int>) :?> int
-                let ts = TimeSpan.FromMilliseconds (float json)
+                let json = serializer.Deserialize(reader, typeof<float>) :?> float
+                let ts = TimeSpan.FromMilliseconds json
                 upcast ts
         | true, Kind.Option ->
             let cases = (getUnionInfo t).Cases
