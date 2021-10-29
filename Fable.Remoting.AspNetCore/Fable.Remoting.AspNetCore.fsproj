@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;aspnet</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>2.25.0</Version>
+        <Version>2.26.0</Version>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1; net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Fix nullable conversions in pure dotnet clients</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix for TimeSpan greater than 2,147,483,647 milliseconds</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
