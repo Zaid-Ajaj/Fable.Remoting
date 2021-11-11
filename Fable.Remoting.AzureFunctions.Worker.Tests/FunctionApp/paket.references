@@ -1,0 +1,5 @@
+group FunctionsWorker
+    FSharp.Core
+    Microsoft.Azure.Functions.Worker.Extensions.Http
+    Microsoft.Azure.Functions.Worker.Sdk
+    Microsoft.Azure.Functions.Worker

@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\Fable.Remoting.DotnetClient\Fable.Remoting.DotnetClient.fsproj" />
+        <ProjectReference Include="..\..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="..\..\Fable.Remoting.Giraffe.Tests\Types.fs" />
+        <Compile Include="AdapterTests.fs" />
+        <Compile Include="MiddlewareTests.fs" />
+        <Compile Include="Program.fs" />
+    </ItemGroup>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>
