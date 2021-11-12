@@ -25,6 +25,18 @@ group Build
     nuget Fake.DotNet.Cli
     nuget Fake.IO.FileSystem
 
+group FunctionsWorker
+    source https://api.nuget.org/v3/index.json
+    framework: net5
+    storage: none
+    lowest_matching: true
+    nuget Microsoft.Azure.Functions.Worker
+    nuget Microsoft.Azure.Functions.Worker.Sdk
+    nuget Microsoft.Azure.Functions.Worker.Extensions.Http
+    nuget FSharp.Core ~> 5.0
+    nuget Newtonsoft.Json
+    nuget Expecto
+
 group LatestNet5
     source https://api.nuget.org/v3/index.json
     framework: net5
