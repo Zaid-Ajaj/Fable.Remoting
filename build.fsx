@@ -92,6 +92,7 @@ Target.create "PublishMsgPackDownstream" (fun ctx ->
     publish GiraffeNET5 ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
+    publish AzureFunctionsWorker ctx
 )
 
 Target.create "PublishJsonDownstream" (fun ctx ->
@@ -101,6 +102,7 @@ Target.create "PublishJsonDownstream" (fun ctx ->
     publish GiraffeNET5 ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
+    publish AzureFunctionsWorker ctx
 )
 
 Target.create "CleanGiraffe" <| fun _ ->

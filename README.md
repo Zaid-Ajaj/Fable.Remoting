@@ -261,6 +261,10 @@ run app
 
 To use Azure Functions in isolated mode with custom HttpTrigger as serverless remoting server, just install:
 ```
+dotnet add package Fable.Remoting.AzureFunctions.Worker
+```
+or using paket
+```
 paket add Fable.Remoting.AzureFunctions.Worker --project /path/to/Project.fsproj
 ```
 
