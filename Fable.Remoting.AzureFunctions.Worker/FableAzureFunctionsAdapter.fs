@@ -62,19 +62,21 @@ module private FuncsUtil =
     
     let buildFromImplementation<'impl> (implBuilder: HttpRequestData -> 'impl) (options: RemotingOptions<HttpRequestData, 'impl>) =
         let proxy = makeApiProxy options
+        let rmsManager = options.RmsManager |> Option.defaultWith Microsoft.IO.RecyclableMemoryStreamManager
+
         fun (req:HttpRequestData) ->
             async {
                 let isProxyHeaderPresent = req.Headers.Contains "x-remoting-proxy"
+                use output = rmsManager.GetStream ()
                 let isBinaryEncoded =
                     match req.Headers.TryGetValues "Content-Type" with
                     | true, values -> values |> Seq.contains "application/octet-stream"
                     | false, _ -> false
                 let props = { ImplementationBuilder = (fun () -> implBuilder req); EndpointName = path req; Input = req.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
-                    HttpVerb = req.Method.ToUpper (); IsContentBinaryEncoded = isBinaryEncoded }
+                    HttpVerb = req.Method.ToUpper (); IsContentBinaryEncoded = isBinaryEncoded; Output = output }
 
                 match! proxy props with
-                | Success (isBinaryOutput, output) ->
-                    use output = output
+                | Success isBinaryOutput ->
                     let resp =
                         req.CreateResponse(HttpStatusCode.OK)
                         |> (fun r ->

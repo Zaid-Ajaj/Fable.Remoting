@@ -22,6 +22,7 @@ module ServerParts =
         |> Remoting.fromValue server
         |> Remoting.withRouteBuilder routeBuilder
         |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withRecyclableMemoryStreamManager (Microsoft.IO.RecyclableMemoryStreamManager (ThrowExceptionOnToArray = true))
         |> Remoting.buildWebPart
 
     let webApp =
