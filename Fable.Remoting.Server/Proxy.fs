@@ -37,6 +37,8 @@ let private msgPackSerialize (o: 'a) (stream: Stream) =
         msgPackSerializerCache.[typeof<'a>] <- s
         s o stream
 
+let recyclableMemoryStreamManager = Lazy<Microsoft.IO.RecyclableMemoryStreamManager> ()
+
 let typeNames inputTypes =
     inputTypes
     |> Array.map Diagnostics.typePrinter

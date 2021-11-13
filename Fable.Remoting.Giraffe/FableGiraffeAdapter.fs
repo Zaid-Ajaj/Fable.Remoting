@@ -34,11 +34,11 @@ module GiraffeUtil =
 
     let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
-        let rmsManager = options.RmsManager |> Option.defaultWith Microsoft.IO.RecyclableMemoryStreamManager
+        let rmsManager = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
         
         fun (next: HttpFunc) (ctx: HttpContext) -> Async.StartAsTask (async {
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
-            use output = rmsManager.GetStream ()
+            use output = rmsManager.GetStream "remoting-output-stream"
 
             let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = SubRouting.getNextPartOfPath ctx; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
                 HttpVerb = ctx.Request.Method.ToUpper (); IsContentBinaryEncoded = ctx.Request.ContentType = "application/octet-stream"; Output = output }
