@@ -105,13 +105,6 @@ type Reader (data: byte[]) =
 #endif
 
     let readInt len m =
-#if !FABLE_COMPILER
-        if BitConverter.IsLittleEndian then
-            Array.Reverse (data, pos, len)
-
-        pos <- pos + len
-        m (data, pos - len)
-#else
         if BitConverter.IsLittleEndian then
             for i in 0 .. len - 1 do
                 intBuf.[i] <- data.[pos + len - 1 - i]
@@ -121,7 +114,6 @@ type Reader (data: byte[]) =
         else
             pos <- pos + len
             m (data, pos - len)
-#endif
 
     member _.ReadByte () =
         pos <- pos + 1
