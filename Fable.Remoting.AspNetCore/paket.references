@@ -1,3 +1,4 @@
 FSharp.Core
 Microsoft.AspNetCore.Http.Abstractions
 TaskBuilder.fs
+Microsoft.IO.RecyclableMemoryStream

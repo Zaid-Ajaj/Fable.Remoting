@@ -76,6 +76,9 @@ module SuaveUtil =
       
       fun (ctx: HttpContext) -> async {
           use inp = new MemoryStream (ctx.request.rawForm)
+          // RecyclableMemoryStream can be set to throw on ToArray, so we cannot use it for Suave as its API requires a byte array output
+          use output = new MemoryStream ()
+
           let isRemotingProxy = ctx.request.headers |> List.exists (fun x -> fst x = "x-remoting-proxy")
           let isContentBinaryEncoded = 
               ctx.request.headers
@@ -85,11 +88,10 @@ module SuaveUtil =
                 | Some "application/octet-stream" -> true 
                 | otherwise -> false
           let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.request.path; Input = inp; HttpVerb = ctx.request.rawMethod.ToUpper ();
-              IsContentBinaryEncoded = isContentBinaryEncoded; IsProxyHeaderPresent = isRemotingProxy }
+              IsContentBinaryEncoded = isContentBinaryEncoded; IsProxyHeaderPresent = isRemotingProxy; Output = output }
 
           match! proxy props with
-          | Success (isBinaryOutput, output) ->
-              use output = output
+          | Success isBinaryOutput ->
               let mimeType =
                   if isBinaryOutput && isRemotingProxy then
                       "application/octet-stream"

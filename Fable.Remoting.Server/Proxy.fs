@@ -37,6 +37,8 @@ let private msgPackSerialize (o: 'a) (stream: Stream) =
         msgPackSerializerCache.[typeof<'a>] <- s
         s o stream
 
+let recyclableMemoryStreamManager = Lazy<Microsoft.IO.RecyclableMemoryStreamManager> ()
+
 let typeNames inputTypes =
     inputTypes
     |> Array.map Diagnostics.typePrinter
@@ -66,18 +68,17 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
                         | _ -> ()
 
                         let! res = s
-                        let output = new MemoryStream ()
 
                         if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
                             let data = box res :?> byte[]
-                            output.Write (data, 0, data.Length)
+                            props.Output.Write (data, 0, data.Length)
                         elif makeProps.ResponseSerialization = SerializationType.Json then
-                            jsonSerialize res output
+                            jsonSerialize res props.Output
                         else
-                            msgPackSerialize res output
+                            msgPackSerialize res props.Output
 
-                        output.Position <- 0L
-                        return Success (isBinaryOutput, output)
+                        props.Output.Position <- 0L
+                        return Success isBinaryOutput
                     })
         }
     | Shape.FSharpFunc func ->
@@ -125,7 +126,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                         elif props.IsContentBinaryEncoded then
                             use ms = new MemoryStream ()
                             do! props.Input.CopyToAsync ms |> Async.AwaitTask
-                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
+                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                         else
                             use sr = new StreamReader (props.Input)
@@ -142,7 +143,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
 
                                     token :?> JArray |> Seq.toList
 
-                            let props' = { Arguments = Choice2Of2 args; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent }
+                            let props' = { Arguments = Choice2Of2 args; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                     with e ->
                         return InvocationResult.Exception (e, shape.MemberInfo.Name, requestBodyText) }) }
