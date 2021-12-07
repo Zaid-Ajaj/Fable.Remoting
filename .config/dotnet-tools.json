@@ -3,19 +3,19 @@
   "isRoot": true,
   "tools": {
     "paket": {
-      "version": "6.0.0-beta4",
+      "version": "6.2.1",
       "commands": [
         "paket"
       ]
     },
     "fake-cli": {
-      "version": "5.20.4-alpha.1642",
+      "version": "5.20.4",
       "commands": [
         "fake"
       ]
     },
     "fable": {
-      "version": "3.2.1",
+      "version": "3.6.3",
       "commands": [
         "fable"
       ]
