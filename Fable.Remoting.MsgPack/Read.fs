@@ -98,6 +98,7 @@ type SetDeserializer<'a when 'a : comparison> () =
 
 type Reader (data: byte[]) =
     let mutable pos = 0
+    let intBuf = Array.zeroCreate 8
 
 #if !FABLE_COMPILER
     static let arrayReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
@@ -108,25 +109,15 @@ type Reader (data: byte[]) =
 #endif
 
     let readInt len m =
-#if !FABLE_COMPILER
         if BitConverter.IsLittleEndian then
-            Array.Reverse (data, pos, len)
-
-        pos <- pos + len
-        m (data, pos - len)
-#else
-        if BitConverter.IsLittleEndian then
-            let arr = Array.zeroCreate len
-
             for i in 0 .. len - 1 do
-                arr.[i] <- data.[pos + len - 1 - i]
+                intBuf.[i] <- data.[pos + len - 1 - i]
 
             pos <- pos + len
-            m (arr, 0)
+            m (intBuf, 0)
         else
             pos <- pos + len
             m (data, pos - len)
-#endif
 
     member _.ReadByte () =
         pos <- pos + 1

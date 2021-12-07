@@ -58,10 +58,12 @@ type InvocationPropsInt = {
     Arguments: Choice<byte[], JToken list>
     ArgumentCount: int
     IsProxyHeaderPresent: bool
+    Output: Stream
 }
 
 type InvocationProps<'impl> = {
     Input: Stream
+    Output: Stream
     ImplementationBuilder: unit -> 'impl
     EndpointName: string
     HttpVerb: string
@@ -77,7 +79,7 @@ type MakeEndpointProps = {
 }
 
 type InvocationResult =
-    | Success of isBinaryOutput: bool * output: MemoryStream
+    | Success of isBinaryOutput: bool
     | EndpointNotFound
     | InvalidHttpVerb
     | Exception of exn * functionName: string * requestBodyText: string option
@@ -104,4 +106,5 @@ type RemotingOptions<'context, 'serverImpl> = {
     DiagnosticsLogger : (string -> unit) option 
     Docs : string option * Option<Documentation>
     ResponseSerialization : SerializationType
+    RmsManager : Microsoft.IO.RecyclableMemoryStreamManager option
 }

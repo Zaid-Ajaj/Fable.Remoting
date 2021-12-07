@@ -8,8 +8,8 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>2.19.0</Version>
-        <PackageReleaseNotes>Fix nullable conversions in pure dotnet clients</PackageReleaseNotes>
+        <Version>2.20.0</Version>
+        <PackageReleaseNotes>Fix for TimeSpan greater than 2,147,483,647 milliseconds</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>

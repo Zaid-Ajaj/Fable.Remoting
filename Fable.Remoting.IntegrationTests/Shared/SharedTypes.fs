@@ -172,6 +172,8 @@ type RecordAsKey = { Key: int; Value: string }
 
 type RecordWithChar = { CharValue : char }
 
+type RecordWithStringOption = { StringValue : string option }
+
 type IBinaryServer = {
     // primitive types
     simpleUnit : unit -> Async<int>
@@ -212,6 +214,7 @@ type IBinaryServer = {
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
     echoOtherDataC : OtherDataC -> Async<OtherDataC>
+    echoRecordWithStringOption : RecordWithStringOption -> Async<RecordWithStringOption>
 
     // lists
     echoIntList : int list -> Async<int list>
@@ -311,6 +314,7 @@ type IServer = {
     echoGenericRecordInt : GenericRecord<int> -> Async<GenericRecord<int>>
     echoNestedGeneric : GenericRecord<Maybe<int option>> -> Async<GenericRecord<Maybe<int option>>>
     echoOtherDataC : OtherDataC -> Async<OtherDataC>
+    echoRecordWithStringOption : RecordWithStringOption -> Async<RecordWithStringOption>
 
     // lists
     echoIntList : int list -> Async<int list>

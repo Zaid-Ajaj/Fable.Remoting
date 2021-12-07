@@ -53,6 +53,7 @@ let GiraffeNET5 = getPath "GiraffeNET5"
 let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
 let MsgPack = getPath "MsgPack"
+let AzureFunctionsWorker = getPath "AzureFunctions.Worker"
 
 let clean projectPath =
     Shell.cleanDirs [
@@ -82,6 +83,7 @@ Target.create "PublishGiraffeNET5" (publish GiraffeNET5)
 Target.create "PublishAspnetCore" (publish AspNetCore)
 Target.create "PublishMsgPack" (publish MsgPack)
 
+
 Target.create "PublishMsgPackDownstream" (fun ctx ->
     publish MsgPack ctx
     publish ClientV2 ctx
@@ -90,6 +92,7 @@ Target.create "PublishMsgPackDownstream" (fun ctx ->
     publish GiraffeNET5 ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
+    publish AzureFunctionsWorker ctx
 )
 
 Target.create "PublishJsonDownstream" (fun ctx ->
@@ -99,6 +102,7 @@ Target.create "PublishJsonDownstream" (fun ctx ->
     publish GiraffeNET5 ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
+    publish AzureFunctionsWorker ctx
 )
 
 Target.create "CleanGiraffe" <| fun _ ->
@@ -193,6 +197,35 @@ open Fake.Core.TargetOperators
 
 "CleanGiraffe" ==> "BuildRunGiraffeTests"
 "CleanSuave" ==> "BuildRunSuaveTests"
+
+let buildRunAzureFunctionsTests onTestsFinished =
+    let funcsPath = "Fable.Remoting.AzureFunctions.Worker.Tests" </> "FunctionApp"
+    let clientPath = "Fable.Remoting.AzureFunctions.Worker.Tests" </> "Client"
+    
+    let mutable started = false
+    // Azure Functions Server
+    let server = async {
+        run funcsPath "dotnet" "restore --no-cache"
+        started <- true
+        run funcsPath "func start" "."
+    }
+    // Azure Functions Client
+    let client = async {
+        while started = false do
+            printfn "Waiting for Azure Functions server to start"
+            do! Async.Sleep 2000
+        
+        do! Async.Sleep 5000 // give it time to start
+        run clientPath "dotnet" "restore --no-cache"
+        run clientPath "dotnet" "build --configuration=Release"
+        run cwd "dotnet" (clientPath </> "bin" </> "Release" </> "netcoreapp3.1" </> "Fable.Remoting.AzureFunctions.Worker.Tests.Client.dll")
+        onTestsFinished()
+    }
+    [server;client] |> Async.Parallel |> Async.Ignore |> Async.RunSynchronously
+
+Target.create "BuildRunAzureFunctionsTests" <| fun _ -> buildRunAzureFunctionsTests (fun _ -> Environment.Exit(0)) // necessary hack to finish func process
+Target.create "PublishAzureFunctionsWorker" <| fun _ -> buildRunAzureFunctionsTests (publish AzureFunctionsWorker)
+
 
 Target.create "BuildRunAllTests" <| fun _ ->
     // Json

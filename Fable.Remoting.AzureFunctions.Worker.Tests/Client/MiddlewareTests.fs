@@ -1,88 +1,22 @@
-module MiddlewareTests
+﻿module Fable.Remoting.AzureFunctions.Worker.Tests.Client.MiddlewareTests
 
 open System
-open System.IO
-open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
-open Microsoft.AspNetCore.TestHost
-open Microsoft.AspNetCore.Http
-
-
+open System.Net.Http
 open Expecto
+open Fable.Remoting.DotnetClient
 open Types
-open System.Net
 
-let readerTest = reader {
-    let! context = resolve<HttpContext>()
-    return { getPath = async { return context.Request.Path.Value } }
-}
+let client = new HttpClient()
+client.BaseAddress <- Uri("http://localhost:7071/")
 
 let builder = sprintf "/api/%s/%s"
 
-module ServerParts =
-
-    open Fable.Remoting.Server
-    open Fable.Remoting.Giraffe
-    open Fable.Remoting.AspNetCore
-    let webApp =
-        Remoting.createApi()
-        |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
-        |> Remoting.fromValue server
-
-    let webAppBinary =
-        Remoting.createApi()
-        |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
-        |> Remoting.withBinarySerialization
-        |> Remoting.withRecyclableMemoryStreamManager (Microsoft.IO.RecyclableMemoryStreamManager (ThrowExceptionOnToArray = true))
-        |> Remoting.fromValue binaryServer
-
-    let otherWebApp =
-        Remoting.createApi()
-        |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
-        |> Remoting.fromContext (fun ctx -> implementation)
-
-    let readerApp =
-        Remoting.createApi()
-        |> Remoting.withRouteBuilder builder
-        |> Remoting.fromReader readerTest
-
-    let configureApp (app : IApplicationBuilder) =
-        app.UseRemoting(webApp)
-        app.UseRemoting(webAppBinary)
-        app.UseRemoting(otherWebApp)
-        app.UseRemoting(readerApp)
-
-    let createHost() =
-        WebHostBuilder()
-            .UseContentRoot(Directory.GetCurrentDirectory())
-            .Configure(Action<IApplicationBuilder> configureApp)
-
-open ServerParts
-
-let testServer = new TestServer(createHost())
-let client = testServer.CreateClient()
-
-module ClientParts =
-    open Fable.Remoting.DotnetClient
-
-    // proxies to different API's
-    let proxy = Proxy.custom<IServer> builder client false
-    let binaryProxy = Proxy.custom<IBinaryServer> builder client true
-    let protocolProxy = Proxy.custom<IProtocol> builder client false
-    let readerProxy = Proxy.custom<IReaderTest> builder client false
-
-open ClientParts
+let proxy = Proxy.custom<IServer> builder client false
+let binaryProxy = Proxy.custom<IBinaryServer> builder client true
+let protocolProxy = Proxy.custom<IProtocol> builder client false
 
 let middlewareTests =
     testList "Middleware tests" [
-
-        testCaseAsync "Reader monad works as a remoting handler" <| async {
-            let! path = readerProxy.call(fun server -> server.getPath)
-            Expect.equal "/api/IReaderTest/getPath" path "The path returned is correct"
-        }
 
         testCaseAsync "IProtocol.echoGenericUnionInt" <| async {
             let! result = protocolProxy.call(fun server -> server.echoGenericUnionInt (Just 5))

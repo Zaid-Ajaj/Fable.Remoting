@@ -443,6 +443,13 @@ let converterTest =
                 | Branch(Leaf 5, Leaf 10) -> pass()
                 | otherwise -> fail()
 
+        testCase "Converting a record with string option works" <| fun () ->
+          let input = { StringOption = Some "value" }
+          input
+          |> serialize
+          |> deserialize<RecordWithStringOption>
+          |> equal input
+
         testCase "Deserialization with provided type at runtime works" <| fun () ->
             let inputType = typeof<Option<int>>
             let json = "5"

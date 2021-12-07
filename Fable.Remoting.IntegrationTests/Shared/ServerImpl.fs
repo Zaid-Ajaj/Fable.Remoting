@@ -60,6 +60,7 @@ let serverBinary : IBinaryServer = {
     echoRemoteWorkEntity = Async.result
     echoAnonymousRecord = Async.result
     echoNestedAnonRecord = Async.result
+    echoRecordWithStringOption = Async.result
     echoTree = Async.result
     echoGenericRecordInt = Async.result
     echoNestedGeneric = Async.result
@@ -166,6 +167,7 @@ let server : IServer  = {
     setRecordAsValue = fun () -> async { return Set.ofList [ { Key = 1; Value = "Value" } ] }
     echoListOfListsOfStrings = Async.result
     echoListOfGenericRecords = Async.result
+    echoRecordWithStringOption = Async.result
     tuplesAndLists = fun (dict, xs) ->
         xs
         |> List.map (fun x -> x, x.Length)

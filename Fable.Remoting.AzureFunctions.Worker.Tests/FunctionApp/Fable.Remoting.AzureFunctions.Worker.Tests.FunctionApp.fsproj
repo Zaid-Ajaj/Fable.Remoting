@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <AzureFunctionsVersion>v3</AzureFunctionsVersion>
+        <OutputType>Exe</OutputType>
+        <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Include="host.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="local.settings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="..\..\Fable.Remoting.Giraffe.Tests\Types.fs" />
+        <Compile Include="Functions.fs" />
+        <Compile Include="Program.fs" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\Fable.Remoting.AzureFunctions.Worker\Fable.Remoting.AzureFunctions.Worker.fsproj" />
+    </ItemGroup>
+
+    <Target Name="RunFunctions">
+        <Exec Command="func start" />
+    </Target>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
+
+</Project>

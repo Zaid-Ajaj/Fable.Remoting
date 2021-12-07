@@ -28,6 +28,7 @@ let app =
   |> Remoting.fromValue implementation  
   |> Remoting.withDiagnosticsLogger (printfn "%s")
   |> Remoting.withErrorHandler errorHandler 
+  |> Remoting.withRecyclableMemoryStreamManager (Microsoft.IO.RecyclableMemoryStreamManager (ThrowExceptionOnToArray = true))
   |> Remoting.buildWebPart
 
 let postContent (input: string) =  new StringContent(sprintf "[%s]" input, System.Text.Encoding.UTF8)

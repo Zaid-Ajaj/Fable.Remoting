@@ -22,6 +22,7 @@ module ServerParts =
         |> Remoting.fromValue server
         |> Remoting.withRouteBuilder routeBuilder
         |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withRecyclableMemoryStreamManager (Microsoft.IO.RecyclableMemoryStreamManager (ThrowExceptionOnToArray = true))
         |> Remoting.buildWebPart
 
     let webApp =
@@ -408,6 +409,12 @@ let dotnetClientTests =
         testCaseAsync "IServer.echoSet with proxy" <| async {
             let input = ["hello"] |> Set.ofList
             let! output = server.echoSet input
+            Expect.equal input output "Set is echoed correctly"
+        }
+
+        testCaseAsync "IServer.echoRecordWithStringOption with proxy" <| async {
+            let input = { StringValue = Some "value" }
+            let! output = server.echoRecordWithStringOption input
             Expect.equal input output "Set is echoed correctly"
         }
 
