@@ -39,22 +39,28 @@ let inline interpretIntegerAs (typ: Type) n =
     elif typ = typeof<byte> then byte n |> box
     elif typ = typeof<sbyte> then sbyte n |> box
     elif typ.IsEnum then Enum.ToObject (typ, int64 n)
-#else
-    if Object.ReferenceEquals (typ, typeof<Int32>) then int32 n |> box
-    elif typ.FullName = "System.Int64" then int64 n |> box
-    elif Object.ReferenceEquals (typ, typeof<Int16>) then int16 n |> box
-    elif Object.ReferenceEquals (typ, typeof<UInt32>) then uint32 n |> box
-    elif typ.FullName = "System.UInt64" then uint64 n |> box
-    elif Object.ReferenceEquals (typ, typeof<UInt16>) then uint16 n |> box
-    elif typ.FullName = "System.TimeSpan" then TimeSpan (int64 n) |> box
-    elif typ.FullName = "Microsoft.FSharp.Core.int16`1" then int16 n |> box
-    elif typ.FullName = "Microsoft.FSharp.Core.int32`1" then int32 n |> box
-    elif typ.FullName = "Microsoft.FSharp.Core.int64`1" then int64 n |> box
-    elif Object.ReferenceEquals (typ, typeof<byte>) then byte n |> box
-    elif Object.ReferenceEquals (typ, typeof<sbyte>) then sbyte n |> box
-    elif typ.IsEnum then float n |> box
-#endif
     else failwithf "Cannot interpret integer %A as %s." n typ.Name
+#else
+    if Object.ReferenceEquals (typ, typeof<Int32>) then
+        int32 n |> box
+    else
+        // .FullName in Fable is a function call with multiple operations, so let's compute the value just once
+        let typeName = typ.FullName
+
+        if typeName = "System.Int64" then int64 n |> box
+        elif Object.ReferenceEquals (typ, typeof<Int16>) then int16 n |> box
+        elif Object.ReferenceEquals (typ, typeof<UInt32>) then uint32 n |> box
+        elif typeName = "System.UInt64" then uint64 n |> box
+        elif Object.ReferenceEquals (typ, typeof<UInt16>) then uint16 n |> box
+        elif typeName = "System.TimeSpan" then TimeSpan (int64 n) |> box
+        elif typeName = "Microsoft.FSharp.Core.int16`1" then int16 n |> box
+        elif typeName = "Microsoft.FSharp.Core.int32`1" then int32 n |> box
+        elif typeName = "Microsoft.FSharp.Core.int64`1" then int64 n |> box
+        elif Object.ReferenceEquals (typ, typeof<byte>) then byte n |> box
+        elif Object.ReferenceEquals (typ, typeof<sbyte>) then sbyte n |> box
+        elif typ.IsEnum then float n |> box
+        else failwithf "Cannot interpret integer %A as %s." n typ.Name
+#endif
 
 let inline interpretFloatAs (typ: Type) n =
 #if FABLE_COMPILER
@@ -133,7 +139,11 @@ type Reader (data: byte[]) =
 
     member _.ReadRawBin len =
         pos <- pos + len
+#if NETCOREAPP2_1_OR_GREATER
+        ReadOnlySpan (data, pos - len, len)
+#else
         data.[ pos - len .. pos - 1 ]
+#endif
 
     member _.ReadString len =
         pos <- pos + len
@@ -418,11 +428,15 @@ type Reader (data: byte[]) =
 
     member x.ReadBin (len, t) =
         if t = typeof<Guid> then
-            x.ReadRawBin len |> Guid |> box
+            Guid (x.ReadRawBin len) |> box
         elif t = typeof<byte[]> then
-            x.ReadRawBin len |> box
+#if NETCOREAPP2_1_OR_GREATER
+            (x.ReadRawBin len).ToArray () |> box
+#else
+            box (x.ReadRawBin len)
+#endif
         elif t = typeof<bigint> then
-            x.ReadRawBin len |> bigint |> box
+            bigint (x.ReadRawBin len) |> box
         else
             failwithf "Expecting %s at position %d, but the data contains bin." t.Name pos
 
