@@ -139,7 +139,7 @@ type Reader (data: byte[]) =
 
     member _.ReadRawBin len =
         pos <- pos + len
-#if NETCOREAPP2_1_OR_GREATER
+#if NETCOREAPP2_1_OR_GREATER && !FABLE_COMPILER
         ReadOnlySpan (data, pos - len, len)
 #else
         data.[ pos - len .. pos - 1 ]
@@ -430,7 +430,7 @@ type Reader (data: byte[]) =
         if t = typeof<Guid> then
             Guid (x.ReadRawBin len) |> box
         elif t = typeof<byte[]> then
-#if NETCOREAPP2_1_OR_GREATER
+#if NETCOREAPP2_1_OR_GREATER && !FABLE_COMPILER
             (x.ReadRawBin len).ToArray () |> box
 #else
             box (x.ReadRawBin len)
