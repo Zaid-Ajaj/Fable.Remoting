@@ -609,7 +609,7 @@ module Fable =
         
         writeArrayHeader bits.Length out
         for b in bits do
-            writeInt64 (int64 b) out
+            writeUnsigned32bitNumber (uint32 b) out true
 
     let rec private writeArray (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
         writeArrayHeader arr.Count out
