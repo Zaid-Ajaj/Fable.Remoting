@@ -749,6 +749,22 @@ let serverTests =
                 let! output = server.command(label, identifier, command)
                 test.equal true (output = Some "Operation error")
             }
+
+        testCaseAsync "IServer.echoDateOnlyMap" <|
+            async {
+                let input = [ (DateOnly.MinValue, DateOnly.MaxValue); (DateOnly.FromDayNumber 1000, DateOnly.FromDateTime DateTime.Now) ] |> Map.ofList
+                let! output = server.echoDateOnlyMap input
+                
+                test.equal output input
+            }
+
+        testCaseAsync "IServer.echoTimeOnlyMap" <|
+            async {
+                let input = [ (TimeOnly.MinValue, TimeOnly.MaxValue); (TimeOnly (10, 20, 30, 400), TimeOnly.FromDateTime DateTime.Now) ] |> Map.ofList
+                let! output = server.echoTimeOnlyMap input
+                
+                test.equal output input
+            }
     ]
 
 let binaryServerTests =
@@ -1452,6 +1468,22 @@ let binaryServerTests =
 
                 test.equal true (input = output)
             }
+
+        testCaseAsync "IBinaryServer.echoDateOnlyMap" <|
+            async {
+                let input = [ (DateOnly.MinValue, DateOnly.MaxValue); (DateOnly.FromDayNumber 1000, DateOnly.FromDateTime DateTime.Now) ] |> Map.ofList
+                let! output = binaryServer.echoDateOnlyMap input
+
+                test.equal output input
+            }
+
+        testCaseAsync "IBinaryServer.echoTimeOnlyMap" <|
+            async {
+                let input = [ (TimeOnly.MinValue, TimeOnly.MaxValue); (TimeOnly (10, 20, 30, 400), TimeOnly.FromDateTime DateTime.Now) ] |> Map.ofList
+                let! output = binaryServer.echoTimeOnlyMap input
+
+                test.equal output input
+            }
     ]
 
 let cookieServer =
@@ -1725,6 +1757,14 @@ let msgPackTests =
             -5y |> serializeDeserializeCompare typeof<sbyte>
             [| 0uy; 255uy; 100uy; 5uy |] |> serializeDeserializeCompare typeof<byte[]>
             [| 0y; 100y; -100y; -5y |] |> serializeDeserializeCompare typeof<sbyte[]>
+        testCase "DateOnlyMap" <| fun () ->
+            [ (DateOnly.MinValue, DateOnly.MaxValue); (DateOnly.FromDayNumber 1000, DateOnly.FromDateTime DateTime.Now) ]
+            |> Map.ofList
+            |> serializeDeserializeCompareDictionary typeof<Map<DateOnly, DateOnly>>
+        testCase "TimeOnlyMap" <| fun () ->
+            [ (TimeOnly.MinValue, TimeOnly.MaxValue); (TimeOnly (10, 20, 30, 400), TimeOnly.FromDateTime DateTime.Now) ]
+            |> Map.ofList
+            |> serializeDeserializeCompareDictionary typeof<Map<TimeOnly, TimeOnly>>
     ]
 
 let alltests =

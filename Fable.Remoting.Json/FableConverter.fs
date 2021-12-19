@@ -23,7 +23,6 @@ open System.Reflection
 open System.Collections.Generic
 open System.Collections.Concurrent
 open Newtonsoft.Json.Linq
-open Newtonsoft.Json.Linq
 
 type Kind =
     | Other = 0
@@ -41,6 +40,10 @@ type Kind =
     | DataSet = 12
     | DataTable = 13
     | Nullable = 14
+#if NET6_0_OR_GREATER
+    | DateOnly = 15
+    | TimeOnly = 16
+#endif
 
 module Utilities =
     let quoted (input: string) = input.StartsWith "\"" && input.EndsWith "\""
@@ -48,6 +51,10 @@ module Utilities =
     let isNonStringPrimitiveType (inputType: Type) =
         inputType = typeof<DateTimeOffset>
         || inputType = typeof<DateTime>
+#if NET6_0_OR_GREATER
+        || inputType = typeof<DateOnly>
+        || inputType = typeof<TimeOnly>
+#endif
         || inputType = typeof<int64>
         || inputType = typeof<uint64>
         || inputType = typeof<int32>
@@ -366,6 +373,12 @@ type FableJsonConverter() =
                     then Kind.DataTable
                 elif typeof<System.Data.DataSet>.IsAssignableFrom t
                     then Kind.DataSet
+#if NET6_0_OR_GREATER
+                elif t.FullName = "System.TimeOnly"
+                    then Kind.TimeOnly
+                elif t.FullName = "System.DateOnly"
+                    then Kind.DateOnly
+#endif
                 else Kind.Other)
         kind <> Kind.Other
 
@@ -439,6 +452,12 @@ type FableJsonConverter() =
             | true, Kind.DataTable
             | true, Kind.DataSet ->
                 DataSetSerializer.Serialize(value, writer, serializer)
+#if NET6_0_OR_GREATER
+            | true, Kind.DateOnly ->
+                (value :?> DateOnly).DayNumber |> writer.WriteValue
+            | true, Kind.TimeOnly ->
+                (value :?> TimeOnly).Ticks.ToString() |> writer.WriteValue
+#endif
             | true, _ ->
                 serializer.Serialize(writer, value)
 
@@ -629,5 +648,19 @@ type FableJsonConverter() =
         | true, Kind.DataTable
         | true, Kind.DataSet ->
             DataSetSerializer.Deserialize(t, reader, serializer)
+#if NET6_0_OR_GREATER
+        | true, Kind.DateOnly ->
+            match reader.TokenType with
+            | JsonToken.Integer ->
+                // Newtonsoft.Json interprets integers as int64, but day number of a DateOnly is always within the range of int32
+                reader.Value :?> int64 |> int |> DateOnly.FromDayNumber |> box
+            | JsonToken.String ->
+                // the day number is encoded as a string when used as a dictionary key
+                reader.Value :?> string |> int |> DateOnly.FromDayNumber |> box
+            | _ ->
+                failwithf "Expecting day number for DateOnly but got %s" (Enum.GetName(typeof<JsonToken>, reader.TokenType))
+        | true, Kind.TimeOnly ->
+            reader.Value :?> string |> int64 |> TimeOnly |> box
+#endif
         | true, _ ->
             serializer.Deserialize(reader, t)

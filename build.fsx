@@ -30,7 +30,7 @@ let run workingDir fileName args =
 
 
 let proj file = (sprintf "Fable.Remoting.%s" file) </> (sprintf "Fable.Remoting.%s.fsproj" file)
-let testDll file = (sprintf "Fable.Remoting.%s.Tests" file) </> "bin" </> "Release" </> "netcoreapp3.1" </> (sprintf "Fable.Remoting.%s.Tests.dll" file)
+let testDll file = (sprintf "Fable.Remoting.%s.Tests" file) </> "bin" </> "Release" </> "net6.0" </> (sprintf "Fable.Remoting.%s.Tests.dll" file)
 
 let JsonTestsDll = testDll "Json"
 let MsgPackTestsDll = testDll "MsgPack"

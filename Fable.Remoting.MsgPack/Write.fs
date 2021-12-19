@@ -201,6 +201,9 @@ let inline writeStringHeader length (out: Stream) =
 
         write32bitNumber length out false
 
+#if NET5_0_OR_GREATER
+[<System.Runtime.CompilerServices.SkipLocalsInit>]
+#endif
 let writeString (str: string) (out: Stream) =
     if isNull str then writeNil out else
 #if NETCOREAPP3_1_OR_GREATER
@@ -351,7 +354,7 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
         }
 
     match shapeof<'T> with
-    | Shape.Unit -> Action<_, _> (fun () -> writeNil) |> w
+    | Shape.Unit -> Action<_, _> (fun () out -> writeNil out) |> w
     | Shape.Bool -> Action<_, _> writeBool |> w
     | Shape.Byte -> Action<_, _> writeByte |> w
     | Shape.SByte -> Action<_, _> writeSByte |> w
@@ -446,7 +449,7 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
 // TypeShape requires generic types at compile time, but some applications will only know the types at runtime
 // This method bypasses that restriction by emitting IL to construct the delegate on demand
 let makeSerializerObj (t: Type) =
-    let makeSerializerMi = this.GetMethod("makeSerializer", Reflection.BindingFlags.Public ||| Reflection.BindingFlags.Static).MakeGenericMethod t
+    let makeSerializerMi = this.GetMethod(nameof(makeSerializer), BindingFlags.Public ||| BindingFlags.Static).MakeGenericMethod t
     let specializedActionType = typedefof<Action<_, _>>.MakeGenericType [| t; typeof<Stream> |]
 
     let instance = Expression.Parameter (typeof<obj>, "instance")
@@ -613,6 +616,14 @@ module Fable =
         writeInt64 dto.Ticks out
         writeInt64 (int64 dto.Offset.TotalMinutes) out
 
+#if NET6_0_OR_GREATER
+    let inline private writeDateOnly (out: ResizeArray<byte>) (date: DateOnly) =
+        writeUnsigned32bitNumber (uint32 date.DayNumber) out true
+
+    let inline private writeTimeOnly (out: ResizeArray<byte>) (time: TimeOnly) =
+        writeUInt64 (uint64 time.Ticks) out
+#endif
+
     let private writeArrayHeader len (out: ResizeArray<byte>) =
         if len < 16 then
             out.Add (Format.fixarr len)
@@ -748,7 +759,7 @@ module Fable =
         writeObject x typeof<'T> out
         #endif
 
-    #if FABLE_COMPILER
+#if FABLE_COMPILER
     serializerCache.Add (typeof<byte>.FullName, fun x out -> writeByte (x :?> byte) out)
     serializerCache.Add (typeof<sbyte>.FullName, fun x out -> writeByte (x :?> sbyte |> byte) out)
     serializerCache.Add (typeof<unit>.FullName, fun _ out -> writeNil out)
@@ -769,5 +780,9 @@ module Fable =
     serializerCache.Add (typeof<Guid>.FullName, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
     serializerCache.Add (typeof<DateTime>.FullName, fun x out -> writeDateTime out (x :?> DateTime))
     serializerCache.Add (typeof<DateTimeOffset>.FullName, fun x out -> writeDateTimeOffset out (x :?> DateTimeOffset))
+#if NET6_0_OR_GREATER
+    serializerCache.Add (typeof<DateOnly>.FullName, fun x out -> writeDateOnly out (x :?> DateOnly))
+    serializerCache.Add (typeof<TimeOnly>.FullName, fun x out -> writeTimeOnly out (x :?> TimeOnly))
+#endif
     serializerCache.Add (typeof<TimeSpan>.FullName, fun x out -> writeInt64 (x :?> TimeSpan).Ticks out)
-    #endif
+#endif
