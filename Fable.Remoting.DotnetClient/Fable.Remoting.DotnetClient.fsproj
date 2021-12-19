@@ -7,10 +7,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>3.23.0</Version>
+        <Version>3.24.0</Version>
         <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Improve readInt() performance from Remoting.MsgPack</PackageReleaseNotes>
+        <PackageReleaseNotes>Speed up integer and float deserialization in MsgPack</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Http.fs" />

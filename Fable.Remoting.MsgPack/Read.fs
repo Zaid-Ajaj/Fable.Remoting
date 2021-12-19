@@ -7,6 +7,10 @@ open System.Collections.Concurrent
 open System.Collections.Generic
 open FSharp.Reflection
 open System.Reflection
+open Microsoft.FSharp.NativeInterop
+
+#nowarn "9"
+#nowarn "51"
 
 let interpretStringAs (typ: Type) (str: string) =
 #if FABLE_COMPILER
@@ -23,7 +27,8 @@ let interpretStringAs (typ: Type) (str: string) =
         FSharpValue.MakeUnion (case, [||], true)
 #endif
 
-let inline interpretIntegerAs typ n =
+let inline interpretIntegerAs (typ: Type) n =
+#if !FABLE_COMPILER
     if typ = typeof<Int32> then int32 n |> box
     elif typ = typeof<Int64> then int64 n |> box
     elif typ = typeof<Int16> then int16 n |> box
@@ -35,28 +40,44 @@ let inline interpretIntegerAs typ n =
     elif typ = typeof<DateOnly> then DateOnly.FromDayNumber (int32 n) |> box
     elif typ = typeof<TimeOnly> then TimeOnly (int64 n) |> box
 #endif
-#if FABLE_COMPILER
-    elif typ.FullName = "Microsoft.FSharp.Core.int16`1" then int16 n |> box
-    elif typ.FullName = "Microsoft.FSharp.Core.int32`1" then int32 n |> box
-    elif typ.FullName = "Microsoft.FSharp.Core.int64`1" then int64 n |> box
-#endif
     elif typ = typeof<byte> then byte n |> box
     elif typ = typeof<sbyte> then sbyte n |> box
-#if !FABLE_COMPILER
     elif typ.IsEnum then Enum.ToObject (typ, int64 n)
-#else
-    elif typ.IsEnum then float n |> box
-#endif
     else failwithf "Cannot interpret integer %A as %s." n typ.Name
+#else
+    if Object.ReferenceEquals (typ, typeof<Int32>) then
+        int32 n |> box
+    else
+        // .FullName in Fable is a function call with multiple operations, so let's compute the value just once
+        let typeName = typ.FullName
 
-let inline interpretFloatAs typ n =
+        if typeName = "System.Int64" then int64 n |> box
+        elif Object.ReferenceEquals (typ, typeof<Int16>) then int16 n |> box
+        elif Object.ReferenceEquals (typ, typeof<UInt32>) then uint32 n |> box
+        elif typeName = "System.UInt64" then uint64 n |> box
+        elif Object.ReferenceEquals (typ, typeof<UInt16>) then uint16 n |> box
+        elif typeName = "System.TimeSpan" then TimeSpan (int64 n) |> box
+#if NET6_0_OR_GREATER
+        elif typeName = "System.DateOnly" then DateOnly.FromDayNumber (int32 n) |> box
+        elif typeName = "System.TimeOnly" then TimeOnly (int64 n) |> box
+#endif
+        elif typeName = "Microsoft.FSharp.Core.int16`1" then int16 n |> box
+        elif typeName = "Microsoft.FSharp.Core.int32`1" then int32 n |> box
+        elif typeName = "Microsoft.FSharp.Core.int64`1" then int64 n |> box
+        elif Object.ReferenceEquals (typ, typeof<byte>) then byte n |> box
+        elif Object.ReferenceEquals (typ, typeof<sbyte>) then sbyte n |> box
+        elif typ.IsEnum then float n |> box
+        else failwithf "Cannot interpret integer %A as %s." n typ.Name
+#endif
+
+let inline interpretFloatAs (typ: Type) n =
+#if FABLE_COMPILER
+    box n
+#else
     if typ = typeof<float32> then float32 n |> box
     elif typ = typeof<float> then float n |> box
-#if FABLE_COMPILER
-    elif typ.FullName = "Microsoft.FSharp.Core.float32`1" then float32 n |> box
-    elif typ.FullName = "Microsoft.FSharp.Core.float`1" then float n |> box
-#endif
     else failwithf "Cannot interpret float %A as %s." n typ.Name
+#endif
 
 #if !FABLE_COMPILER
 type DictionaryDeserializer<'k,'v when 'k: equality and 'k: comparison> () =
@@ -98,7 +119,6 @@ type SetDeserializer<'a when 'a : comparison> () =
 
 type Reader (data: byte[]) =
     let mutable pos = 0
-    let intBuf = Array.zeroCreate 8
 
 #if !FABLE_COMPILER
     static let arrayReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
@@ -106,18 +126,20 @@ type Reader (data: byte[]) =
     static let setReaderCache = ConcurrentDictionary<Type, (int * Reader) -> obj> ()
     static let unionConstructorCache = ConcurrentDictionary<UnionCaseInfo, obj [] -> obj> ()
     static let unionCaseFieldCache = ConcurrentDictionary<Type * int, UnionCaseInfo * Type[]> ()
-#endif
-
-    let readInt len m =
+#else
+    let numberBuffer = Array.zeroCreate 8
+    
+    let readNumber len bytesInterpretation =
+        pos <- pos + len
+        
         if BitConverter.IsLittleEndian then
             for i in 0 .. len - 1 do
-                intBuf.[i] <- data.[pos + len - 1 - i]
+                numberBuffer.[i] <- data.[pos - 1 - i]
 
-            pos <- pos + len
-            m (intBuf, 0)
+            bytesInterpretation (numberBuffer, 0)
         else
-            pos <- pos + len
-            m (data, pos - len)
+            bytesInterpretation (data, pos - len)
+#endif
 
     member _.ReadByte () =
         pos <- pos + 1
@@ -125,7 +147,11 @@ type Reader (data: byte[]) =
 
     member _.ReadRawBin len =
         pos <- pos + len
+#if NETCOREAPP2_1_OR_GREATER && !FABLE_COMPILER
+        ReadOnlySpan (data, pos - len, len)
+#else
         data.[ pos - len .. pos - 1 ]
+#endif
 
     member _.ReadString len =
         pos <- pos + len
@@ -137,29 +163,65 @@ type Reader (data: byte[]) =
     member x.ReadInt8 () =
         x.ReadByte () |> sbyte
 
-    member _.ReadUInt16 () =
-        readInt 2 BitConverter.ToUInt16
+    member x.ReadUInt16 () =
+        x.ReadInt16 () |> uint16
 
     member _.ReadInt16 () =
-        readInt 2 BitConverter.ToInt16
+        pos <- pos + 2
+        (int16 data.[pos - 2] <<< 8) ||| (int16 data.[pos - 1])
 
-    member _.ReadUInt32 () =
-        readInt 4 BitConverter.ToUInt32
+    member x.ReadUInt32 () =
+        x.ReadInt32 () |> uint32
 
     member _.ReadInt32 () =
-        readInt 4 BitConverter.ToInt32
+        pos <- pos + 4
+        (int data.[pos - 4] <<< 24) ||| (int data.[pos - 3] <<< 16) ||| (int data.[pos - 2] <<< 8) ||| (int data.[pos - 1])
 
-    member _.ReadUInt64 () =
-        readInt 8 BitConverter.ToUInt64
+    member x.ReadUInt64 () =
+        x.ReadInt64 () |> uint64
 
     member _.ReadInt64 () =
-        readInt 8 BitConverter.ToInt64
+#if !FABLE_COMPILER
+        pos <- pos + 8
+        (int64 data.[pos - 8] <<< 56) ||| (int64 data.[pos - 7] <<< 48) ||| (int64 data.[pos - 6] <<< 40) ||| (int64 data.[pos - 5] <<< 32) ||| 
+        (int64 data.[pos - 4] <<< 24) ||| (int64 data.[pos - 3] <<< 16) ||| (int64 data.[pos - 2] <<< 8) ||| (int64 data.[pos - 1])
+#else
+        readNumber 8 BitConverter.ToInt64
+#endif
 
-    member _.ReadFloat32 () =
-        readInt 4 BitConverter.ToSingle
+    member x.ReadFloat32 () =
+#if !FABLE_COMPILER
+        let mutable b = x.ReadInt32 ()
+        NativePtr.toNativeInt &&b |> NativePtr.ofNativeInt |> NativePtr.read<float32>
+#else
+        readNumber 4 BitConverter.ToSingle
 
-    member _.ReadFloat64 () =
-        readInt 8 BitConverter.ToDouble
+        // This is faster but does not yet work because of precision errors
+        //let sign = if (b >>> 31) = 0 then 1f else -1f
+        //let mutable e = (b >>> 23) &&& 0xff
+        //let m = b &&& 0x7fffff
+
+        //let m =
+        //    if e = 0 then
+        //        if m = 0 then
+        //            0f
+        //        else
+        //            e <- e - 126
+        //            1f / float32 0x7fffff
+        //    else
+        //        e <- e - 127
+        //        1f + float32 m / (float32 0x800000)
+
+        //sign * m * float32 (Math.Pow (2., float e))
+#endif
+
+    member x.ReadFloat64 () =
+#if !FABLE_COMPILER
+        let mutable b = x.ReadInt64 ()
+        NativePtr.toNativeInt &&b |> NativePtr.ofNativeInt |> NativePtr.read<float>
+#else
+        readNumber 8 BitConverter.ToDouble
+#endif
 
     member x.ReadMap (len: int, t: Type) =
 #if !FABLE_COMPILER
@@ -374,12 +436,15 @@ type Reader (data: byte[]) =
 
     member x.ReadBin (len, t) =
         if t = typeof<Guid> then
-            x.ReadRawBin len |> Guid |> box
+            Guid (x.ReadRawBin len) |> box
         elif t = typeof<byte[]> then
-            x.ReadRawBin len |> box
+#if NETCOREAPP2_1_OR_GREATER && !FABLE_COMPILER
+            (x.ReadRawBin len).ToArray () |> box
+#else
+            box (x.ReadRawBin len)
+#endif
         elif t = typeof<bigint> then
-            x.ReadRawBin len |> bigint |> box
-
+            bigint (x.ReadRawBin len) |> box
         else
             failwithf "Expecting %s at position %d, but the data contains bin." t.Name pos
 

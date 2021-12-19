@@ -30,20 +30,25 @@ let serializeDeserialize<'a> (value: 'a) =
 let serializeDeserializeCompareSequence (value: 'a) =
     use ms = new MemoryStream ()
     MsgPack.Write.serializeObj value ms
+    let data = ms.ToArray ()
+    let inputCopy = Array.copy data
 
-    let deserialized = MsgPack.Read.Reader(ms.ToArray ()).Read typeof<'a> :?> 'a
+    let deserialized = MsgPack.Read.Reader(data).Read typeof<'a> :?> 'a
 
     Expect.sequenceEqual value deserialized "Sequences must be equal."
+    Expect.sequenceEqual data inputCopy "The input data has been changed."
 
 let serializeDeserializeCompareWithLength<'a when 'a: equality> expectedLength (value: 'a) =
     use ms = new MemoryStream ()
     MsgPack.Write.serializeObj value ms
     let data = ms.ToArray ()
+    let inputCopy = Array.copy data
 
     let deserialized = MsgPack.Read.Reader(data).Read typeof<'a> :?> 'a
 
     equal value deserialized
-    Expect.equal data.Length expectedLength (sprintf "The expected and actual payload lengths must match.")
+    Expect.equal data.Length expectedLength "The expected and actual payload lengths must match."
+    Expect.sequenceEqual data inputCopy "The input data has been changed."
 
 let converterTest =
     testList "Converter Tests" [
@@ -75,7 +80,10 @@ let converterTest =
             60_000L |> serializeDeserializeCompareWithLength 3
         }
         test "uint64, 9 bytes" {
-            637588453436987750L |> serializeDeserializeCompareWithLength 9
+            637588453436987750UL |> serializeDeserializeCompareWithLength 9
+        }
+        test "int64, 9 bytes" {
+            -137588453400987759L |> serializeDeserializeCompareWithLength 9
         }
         test "Array of 3 bools, 4 bytes" {
             [| false; true; true |] |> serializeDeserializeCompareWithLength 4
@@ -153,7 +161,7 @@ let converterTest =
             Set.ofArray [| for i in 1 .. 80_000 -> i |] |> serializeDeserializeCompareSequence
         }
         test "Generic set" {
-            Set.ofList [ {| something = 5; somethnigElse = 10 |} ] |> serializeDeserializeCompare
+            Set.ofList [ {| something = 588854245464513.2465; somethnigElse = 58.24f |} ] |> serializeDeserializeCompare
             Set.ofList [ {| something = 5; somethnigElse = 10 |}; {| something = 5; somethnigElse = 11 |} ] |> serializeDeserializeCompare
             Set.ofList [ {| something = 6; somethnigElse = 10 |}; {| something = 5; somethnigElse = 10 |} ] |> serializeDeserializeCompare
         }
@@ -170,7 +178,18 @@ let converterTest =
             [| for i in 1L .. 80_000L -> 5_000_000_000L * (if i % 2L = 0L then -1L else 1L) |] |> serializeDeserializeCompare
         }
         test "Array32 of int32" {
-            [| 1 .. 100000 |] |> serializeDeserializeCompare
+            [| -100000 .. 100000 |] |> serializeDeserializeCompare
+        }
+        test "Array32 of uint32" {
+            [| 0u .. 200000u |] |> serializeDeserializeCompare
+        }
+        test "Array of single" {
+            [| Single.Epsilon; Single.MaxValue; Single.MinValue; Single.PositiveInfinity; Single.NegativeInfinity |] |> serializeDeserializeCompare
+            [| for i in -30_000 .. 30_000 -> float32 i * 10.356f |] |> serializeDeserializeCompare
+        }
+        test "Array of double" {
+            [| Double.Epsilon; Double.MaxValue; Double.MinValue; Double.PositiveInfinity; Double.NegativeInfinity |] |> serializeDeserializeCompare
+            [| for i in -30_000 .. 30_000 -> float i * 100.300056 |] |> serializeDeserializeCompare
         }
         test "Recursive record" {
             {
@@ -278,5 +297,13 @@ let converterTest =
             -5y |> serializeDeserializeCompare
             [| 0uy; 255uy; 100uy; 5uy |] |> serializeDeserializeCompare
             [| 0y; 100y; -100y; -5y |] |> serializeDeserializeCompare
+        }
+        test "Units of measure" {
+            85<SomeUnit> |> serializeDeserializeCompareWithLength 1
+            85L<SomeUnit> |> serializeDeserializeCompareWithLength 1
+            -85L<SomeUnit> |> serializeDeserializeCompareWithLength 9
+            32313213121.1415926535m<SomeUnit> |> serializeDeserializeCompareWithLength 18
+            80005.44f<SomeUnit> |> serializeDeserializeCompareWithLength 5
+            80000000000005.445454<SomeUnit> |> serializeDeserializeCompareWithLength 9
         }
     ]

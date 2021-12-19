@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.27.0</Version>
+        <Version>4.28.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-        <PackageReleaseNotes>Use RecyclableMemoryStream from Remoting.Server</PackageReleaseNotes>
+        <PackageReleaseNotes>Speed up integer and float deserialization in MsgPack</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

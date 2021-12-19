@@ -1607,7 +1607,9 @@ let msgPackTests =
         testCase "Long serialized as int16, 3 bytes" <| fun () ->
             60_000L |> serializeDeserializeCompareWithLength 3 typeof<int64>
         testCase "uint64, 9 bytes" <| fun () ->
-            637588453436987750L |> serializeDeserializeCompareWithLength 9 typeof<int64>
+            637588453436987750UL |> serializeDeserializeCompareWithLength 9 typeof<uint64>
+        testCase "int64, 9 bytes" <| fun () ->
+            -137588453400987759L |> serializeDeserializeCompareWithLength 9 typeof<int64>
 
         testCase "Array of 3 bools, 4 bytes" <| fun () ->
             [| false; true; true |] |> serializeDeserializeCompareWithLength 4 typeof<bool[]>
@@ -1683,9 +1685,9 @@ let msgPackTests =
         testCase "Set32" <| fun () ->
             Set.ofArray [| for i in 1 .. 80_000 -> i |] |> serializeDeserializeCompare typeof<Set<int>>
 
-        testCase "Generic set" <| fun () ->
+        testCase "Recursive set" <| fun () ->
             Set.ofList [
-                { Name = "root"; Children = [ { Name = "Grandchild"; Children = [ ] } ] }
+                { Name = "root"; Children = [ { Name = "Grandchild"; Children = [ { Name = "root"; Children = [ { Name = "Grandchild2"; Children = [ ] } ] } ] } ] }
                 { Name = "root"; Children = [ { Name = "Grandchild2"; Children = [ ] } ] }
             ] |> serializeDeserializeCompare typeof<Set<RecursiveRecord>>
         testCase "Binary data bin8, 5 bytes" <| fun () ->
@@ -1697,7 +1699,15 @@ let msgPackTests =
         testCase "Array32 of long" <| fun () ->
             [| for _ in 1 .. 80_000 -> 5_000_000_000L |] |> serializeDeserializeCompare typeof<int64[]>
         testCase "Array32 of int32" <| fun () ->
-            [| 1 .. 100000 |] |> serializeDeserializeCompare typeof<int[]>
+            [| -100000 .. 100000 |] |> serializeDeserializeCompare typeof<int[]>
+        testCase "Array32 of uint32" <| fun () ->
+            [| 0u .. 200000u |] |> serializeDeserializeCompare typeof<uint32[]>
+        testCase "Array of single" <| fun () ->
+            [| Single.Epsilon; Single.MaxValue; Single.MinValue; Single.PositiveInfinity; Single.NegativeInfinity |] |> serializeDeserializeCompare typeof<float32[]>
+            [| -3f .. 0.5f .. 3f |] |> serializeDeserializeCompare typeof<float32[]>
+        testCase "Array of double" <| fun () ->
+            [| Double.Epsilon; Double.MaxValue; Double.MinValue; Double.PositiveInfinity; Double.NegativeInfinity |] |> serializeDeserializeCompare typeof<float[]>
+            [| -3_000. .. 0.1 .. 3_000. |] |> serializeDeserializeCompare typeof<float[]>
         testCase "Recursive record" <| fun () ->
             {
                 Name = "root"
@@ -1723,11 +1733,12 @@ let msgPackTests =
             Ok 15 |> serializeDeserializeCompare typeof<Result<int, string>>
             Error "yup" |> serializeDeserializeCompare typeof<Result<int, string>>
         testCase "Units of measure" <| fun () ->
-            85<SomeUnit> |> serializeDeserializeCompare typeof<int<SomeUnit>>
-            85L<SomeUnit> |> serializeDeserializeCompare typeof<int64<SomeUnit>>
-            32313213121.1415926535m<SomeUnit> |> serializeDeserializeCompare typeof<decimal<SomeUnit>>
-            85.44f<SomeUnit> |> serializeDeserializeCompare typeof<float32<SomeUnit>>
-            85.44<SomeUnit> |> serializeDeserializeCompare typeof<float<SomeUnit>>
+            85<SomeUnit> |> serializeDeserializeCompareWithLength 1 typeof<int<SomeUnit>>
+            85L<SomeUnit> |> serializeDeserializeCompareWithLength 1 typeof<int64<SomeUnit>>
+            -85L<SomeUnit> |> serializeDeserializeCompareWithLength 9 typeof<int64<SomeUnit>>
+            32313213121.1415926535m<SomeUnit> |> serializeDeserializeCompareWithLength 18 typeof<decimal<SomeUnit>>
+            80000005.44f<SomeUnit> |> serializeDeserializeCompareWithLength 5 typeof<float32<SomeUnit>>
+            80000000000005.445454<SomeUnit> |> serializeDeserializeCompareWithLength 9 typeof<float<SomeUnit>>
         testCase "Value option" <| fun () ->
             ValueSome "blah" |> serializeDeserializeCompare typeof<string voption>
             ValueNone |> serializeDeserializeCompare typeof<string voption>
