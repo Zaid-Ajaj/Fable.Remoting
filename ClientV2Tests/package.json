@@ -3,7 +3,7 @@
     "scripts": {
         "build": "webpack-cli --mode production",
         "start": "webpack-dev-server",
-        "build-nagareyama": "dotnet fable --define NAGAREYAMA src && webpack-cli --mode production --config webpack.nagareyama.js",
+        "build-nagareyama": "dotnet fable src --define NAGAREYAMA && webpack-cli --mode production --config webpack.nagareyama.js",
         "start-nagareyama": "webpack-dev-server --config webpack.nagareyama.js"
     },
     "devDependencies": {
