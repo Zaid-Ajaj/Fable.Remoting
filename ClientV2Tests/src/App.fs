@@ -750,6 +750,7 @@ let serverTests =
                 test.equal true (output = Some "Operation error")
             }
 
+#if NAGAREYAMA
         testCaseAsync "IServer.echoDateOnlyMap" <|
             async {
                 let input = [ (DateOnly.MinValue, DateOnly.MaxValue); (DateOnly.FromDayNumber 1000, DateOnly.FromDateTime DateTime.Now) ] |> Map.ofList
@@ -765,6 +766,7 @@ let serverTests =
                 
                 test.equal output input
             }
+#endif
     ]
 
 let binaryServerTests =
@@ -1469,6 +1471,7 @@ let binaryServerTests =
                 test.equal true (input = output)
             }
 
+#if NAGAREYAMA
         testCaseAsync "IBinaryServer.echoDateOnlyMap" <|
             async {
                 let input = [ (DateOnly.MinValue, DateOnly.MaxValue); (DateOnly.FromDayNumber 1000, DateOnly.FromDateTime DateTime.Now) ] |> Map.ofList
@@ -1484,6 +1487,7 @@ let binaryServerTests =
 
                 test.equal output input
             }
+#endif
     ]
 
 let cookieServer =
@@ -1768,6 +1772,8 @@ let msgPackTests =
             -5y |> serializeDeserializeCompare typeof<sbyte>
             [| 0uy; 255uy; 100uy; 5uy |] |> serializeDeserializeCompare typeof<byte[]>
             [| 0y; 100y; -100y; -5y |] |> serializeDeserializeCompare typeof<sbyte[]>
+
+#if NAGAREYAMA
         testCase "DateOnlyMap" <| fun () ->
             [ (DateOnly.MinValue, DateOnly.MaxValue); (DateOnly.FromDayNumber 1000, DateOnly.FromDateTime DateTime.Now) ]
             |> Map.ofList
@@ -1776,6 +1782,7 @@ let msgPackTests =
             [ (TimeOnly.MinValue, TimeOnly.MaxValue); (TimeOnly (10, 20, 30, 400), TimeOnly.FromDateTime DateTime.Now) ]
             |> Map.ofList
             |> serializeDeserializeCompareDictionary typeof<Map<TimeOnly, TimeOnly>>
+#endif
     ]
 
 let alltests =
