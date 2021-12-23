@@ -11,6 +11,7 @@ open Fake
 open Fake.Core
 open Fake.IO
 open Fake.SystemHelper
+open System.Threading
 
 let (</>) x y = System.IO.Path.Combine(x, y);
 let cwd = __SOURCE_DIRECTORY__
@@ -43,7 +44,6 @@ let dotnet = "dotnet"
 
 let getPath x = cwd </> (sprintf "Fable.Remoting.%s" x)
 
-let Client = getPath "Client"
 let ClientV2 = getPath "ClientV2"
 let Json = getPath "Json"
 let Server = getPath "Server"
@@ -183,10 +183,7 @@ Target.create "BuildDocs" <| fun _ ->
     run "documentation" "npm" "run build"
 
 Target.create "ServeDocs" <| fun _ ->
-    async {
-        run "documentation" "npm" "run serve"
-    }
-    |> Async.StartImmediate
+    run "documentation" "npm" "run serve"
 
 Target.create "PublishDocs" <| fun _ ->
     run "documentation" "npm" "run publish"
@@ -204,24 +201,27 @@ let buildRunAzureFunctionsTests onTestsFinished =
     
     let mutable started = false
     // Azure Functions Server
-    let server = async {
+    let server = Tasks.Task.Run (fun () ->
         run funcsPath "dotnet" "restore --no-cache"
         started <- true
         run funcsPath "func start" "."
-    }
+    )
+
     // Azure Functions Client
-    let client = async {
+    let client = Tasks.Task.Run (fun () ->
         while started = false do
             printfn "Waiting for Azure Functions server to start"
-            do! Async.Sleep 2000
+            Thread.Sleep 2000
         
-        do! Async.Sleep 5000 // give it time to start
+        Thread.Sleep 5000 // give it time to start
         run clientPath "dotnet" "restore --no-cache"
         run clientPath "dotnet" "build --configuration=Release"
-        run cwd "dotnet" (clientPath </> "bin" </> "Release" </> "netcoreapp3.1" </> "Fable.Remoting.AzureFunctions.Worker.Tests.Client.dll")
+        run cwd "dotnet" (clientPath </> "bin" </> "Release" </> "net6.0" </> "Fable.Remoting.AzureFunctions.Worker.Tests.Client.dll")
         onTestsFinished()
-    }
-    [server;client] |> Async.Parallel |> Async.Ignore |> Async.RunSynchronously
+        Tasks.Task.CompletedTask
+    )
+
+    Tasks.Task.WaitAll (server, client)
 
 Target.create "BuildRunAzureFunctionsTests" <| fun _ -> buildRunAzureFunctionsTests (fun _ -> Environment.Exit(0)) // necessary hack to finish func process
 Target.create "PublishAzureFunctionsWorker" <| fun _ -> buildRunAzureFunctionsTests (publish AzureFunctionsWorker)
