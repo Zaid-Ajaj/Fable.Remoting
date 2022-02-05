@@ -5,13 +5,12 @@
         <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
         <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
-        <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;aspnet</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>2.28.0</Version>
-        <TargetFrameworks>netstandard2.0; netcoreapp3.1; net5.0</TargetFrameworks>
+        <Version>2.29.0</Version>
+        <TargetFrameworks>netstandard2.0; netcoreapp3.1; net6.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Speed up integer and float deserialization in MsgPack</PackageReleaseNotes>
+        <PackageReleaseNotes>Support TimeOnly, DateOnly, update to .NET 6</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

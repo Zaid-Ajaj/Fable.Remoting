@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.8.0</Version>
+        <Version>5.9.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Speed up integer and float deserialization in MsgPack</PackageReleaseNotes>
+        <PackageReleaseNotes>Support TimeOnly, DateOnly, update to .NET 6</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

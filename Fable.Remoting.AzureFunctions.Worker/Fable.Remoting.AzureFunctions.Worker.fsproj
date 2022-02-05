@@ -8,9 +8,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;azure functions</PackageTags>
         <Authors>Zaid Ajaj;Roman Provaznik</Authors>
-        <Version>1.2.0</Version>
+        <Version>1.3.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Speed up integer and float deserialization in MsgPack</PackageReleaseNotes>
+        <PackageReleaseNotes>Support TimeOnly, DateOnly, update to .NET 6</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableAzureFunctionsAdapter.fs" />

@@ -8,22 +8,22 @@ open System.Runtime.CompilerServices
 
 /// Utilities for working with binary data types in the browser
 module InternalUtilities =
-    [<Emit("new FileReader()")>]
     /// Creates a new instance of a FileReader
+    [<Emit("new FileReader()")>]
     let createFileReader() : FileReader = jsNative
     [<Emit("new Uint8Array($0)")>]
     let createUInt8Array(x: 'a) : byte[]  = jsNative
     /// Creates a Blob from the given input string
     [<Emit("new Blob([$0.buffer], { type: $1 })")>]
     let createBlobFromBytesAndMimeType (value: byte[]) (mimeType: string) : Blob = jsNative
-    [<Emit("window.URL.createObjectURL($0)")>]
     /// Creates an object URL (also known as data url) from a Blob
+    [<Emit("window.URL.createObjectURL($0)")>]
     let createObjectUrl (blob: Blob) : string = jsNative
-    [<Emit "URL.revokeObjectURL($0)">]
     /// Releases an existing object URL which was previously created by calling createObjectURL(). Call this method when you've finished using an object URL to let the browser know not to keep the reference to the file any longer.
+    [<Emit "URL.revokeObjectURL($0)">]
     let revokeObjectUrl (dataUrl: string) : unit = jsNative
-    [<Emit "$0 instanceof Uint8Array">]
     /// Returns whether the input byte array is a typed array of type Uint8Array
+    [<Emit "$0 instanceof Uint8Array">]
     let isUInt8Array (data: byte[]) : bool = jsNative
     /// Creates a typed byte array of binary data if it not already typed
     let toUInt8Array(data: byte[]) : byte[] =
@@ -68,8 +68,8 @@ module BrowserFileExtensions =
 
 [<Extension>]
 type ByteArrayExtensions =
-    [<Extension>]
     /// Saves the binary content as a file using the provided file name.
+    [<Extension>]
     static member SaveFileAs(content: byte[], fileName: string) =
 
         if String.IsNullOrWhiteSpace(fileName) then
@@ -91,8 +91,8 @@ type ByteArrayExtensions =
         Browser.Dom.window.setTimeout(unbox(fun () -> InternalUtilities.revokeObjectUrl(dataUrl)), 40 * 1000)
         |> ignore
 
-    [<Extension>]
     /// Saves the binary content as a file using the provided file name.
+    [<Extension>]
     static member SaveFileAs(content: byte[], fileName: string, mimeType: string) =
 
         if String.IsNullOrWhiteSpace(fileName) then
@@ -113,16 +113,17 @@ type ByteArrayExtensions =
         Browser.Dom.window.setTimeout(unbox(fun () -> InternalUtilities.revokeObjectUrl(dataUrl)), 40 * 1000)
         |> ignore
 
-    [<Extension>]
+    
     /// Converts the binary content into a data url by first converting it to a Blob of type "application/octet-stream" and reading it as a data url.
+    [<Extension>]
     static member AsDataUrl(content: byte[]) : string =
         let binaryData = InternalUtilities.toUInt8Array content
         let blob = InternalUtilities.createBlobFromBytesAndMimeType binaryData "application/octet-stream"
         let dataUrl = InternalUtilities.createObjectUrl blob
         dataUrl
 
-    [<Extension>]
     /// Converts the binary content into a data url by first converting it to a Blob of the provided mime-type and reading it as a data url.
+    [<Extension>]
     static member AsDataUrl(content: byte[], mimeType:string) : string =
         let binaryData = InternalUtilities.toUInt8Array content
         let blob = InternalUtilities.createBlobFromBytesAndMimeType binaryData mimeType
