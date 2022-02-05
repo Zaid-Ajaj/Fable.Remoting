@@ -1,4 +1,4 @@
-version 6.0.0
+version 6.2.1
 source https://api.nuget.org/v3/index.json
 
 storage: none
@@ -17,7 +17,7 @@ nuget Giraffe
 
 group Build
     source https://api.nuget.org/v3/index.json
-    framework: netstandard2.0
+    framework: net6.0
     storage: none
 
     nuget FSharp.Core
@@ -50,7 +50,7 @@ group LatestNet5
 group Client
     source https://api.nuget.org/v3/index.json
     lowest_matching: true
-    nuget Fable.Mocha
-    nuget Fable.SimpleJson
+    nuget Fable.Mocha >= 2.5
+    nuget Fable.SimpleJson >= 3.23.0
     nuget Fable.Browser.XMLHttpRequest
     nuget Fable.Core

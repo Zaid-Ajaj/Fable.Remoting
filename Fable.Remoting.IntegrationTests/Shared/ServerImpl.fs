@@ -120,6 +120,8 @@ let serverBinary : IBinaryServer = {
     echoDecimalKeyMap = Async.result
     echoLongKeyMap = Async.result
     echoIntKeyMap = Async.result
+    echoTimeOnlyMap = Async.result
+    echoDateOnlyMap = Async.result
     echoRecordWithChar = Async.result
 }
 
@@ -218,7 +220,8 @@ let server : IServer  = {
     echoDecimalKeyMap = Async.result
     echoLongKeyMap = Async.result
     echoIntKeyMap = Async.result
-
+    echoTimeOnlyMap = Async.result
+    echoDateOnlyMap = Async.result
     simulateLongComputation = fun delay -> Async.Sleep delay
     echoRecordWithChar = Async.result
 }

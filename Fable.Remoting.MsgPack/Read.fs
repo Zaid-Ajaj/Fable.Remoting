@@ -36,6 +36,10 @@ let inline interpretIntegerAs (typ: Type) n =
     elif typ = typeof<UInt64> then uint64 n |> box
     elif typ = typeof<UInt16> then uint16 n |> box
     elif typ = typeof<TimeSpan> then TimeSpan (int64 n) |> box
+#if NET6_0_OR_GREATER
+    elif typ = typeof<DateOnly> then DateOnly.FromDayNumber (int32 n) |> box
+    elif typ = typeof<TimeOnly> then TimeOnly (int64 n) |> box
+#endif
     elif typ = typeof<byte> then byte n |> box
     elif typ = typeof<sbyte> then sbyte n |> box
     elif typ.IsEnum then Enum.ToObject (typ, int64 n)
@@ -53,6 +57,10 @@ let inline interpretIntegerAs (typ: Type) n =
         elif typeName = "System.UInt64" then uint64 n |> box
         elif Object.ReferenceEquals (typ, typeof<UInt16>) then uint16 n |> box
         elif typeName = "System.TimeSpan" then TimeSpan (int64 n) |> box
+#if NET6_0_OR_GREATER
+        elif typeName = "System.DateOnly" then DateOnly.FromDayNumber (int32 n) |> box
+        elif typeName = "System.TimeOnly" then TimeOnly (int64 n) |> box
+#endif
         elif typeName = "Microsoft.FSharp.Core.int16`1" then int16 n |> box
         elif typeName = "Microsoft.FSharp.Core.int32`1" then int32 n |> box
         elif typeName = "Microsoft.FSharp.Core.int64`1" then int64 n |> box

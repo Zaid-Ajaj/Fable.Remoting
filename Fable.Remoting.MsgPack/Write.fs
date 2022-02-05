@@ -22,16 +22,22 @@ let this = Assembly.GetCallingAssembly().GetType("Fable.Remoting.MsgPack.Write")
 let internal (|BclIsInstanceOfSystemDataSet|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataSet>
   if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
-    Some s
+    Shape.SomeU
   else
     None
 
 let internal (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
   let tableTy =  typeof<System.Data.DataTable>
   if s.Type = tableTy || (s.Type.IsInstanceOfType tableTy && s.Type <> typeof<obj>) then
-    Some s
+    Shape.SomeU
   else
     None
+
+#if NET6_0_OR_GREATER
+let internal (|DateOnly|_|) (s: TypeShape) = Shape.test<DateOnly> s
+
+let internal (|TimeOnly|_|) (s: TypeShape) = Shape.test<TimeOnly> s
+#endif
 
 let inline write32bitNumberBytes b1 b2 b3 b4 (out: Stream) writeFormat =
     if b2 > 0uy || b1 > 0uy then
@@ -195,9 +201,12 @@ let inline writeStringHeader length (out: Stream) =
 
         write32bitNumber length out false
 
+#if NET5_0_OR_GREATER
+[<System.Runtime.CompilerServices.SkipLocalsInit>]
+#endif
 let writeString (str: string) (out: Stream) =
     if isNull str then writeNil out else
-#if NET_CORE
+#if NETCOREAPP3_1_OR_GREATER
     let maxLength = Encoding.UTF8.GetMaxByteCount str.Length
 
     // allocate space on the stack if the string is not too long
@@ -235,6 +244,14 @@ let writeBin (data: byte[]) (out: Stream) =
 
     write32bitNumber data.Length out false
     out.Write (data, 0, data.Length)
+
+#if NET6_0_OR_GREATER
+let inline writeDateOnly (date: DateOnly) (out: Stream) =
+    write32bitNumber date.DayNumber out true
+
+let inline writeTimeOnly (time: TimeOnly) (out: Stream) =
+    writeInt64 time.Ticks out
+#endif
 
 let inline writeDateTime (dt: DateTime) (out: Stream) =
     out.WriteByte (Format.fixarr 2uy)
@@ -337,7 +354,7 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
         }
 
     match shapeof<'T> with
-    | Shape.Unit -> Action<_, _> (fun () -> writeNil) |> w
+    | Shape.Unit -> Action<_, _> (fun () out -> writeNil out) |> w
     | Shape.Bool -> Action<_, _> writeBool |> w
     | Shape.Byte -> Action<_, _> writeByte |> w
     | Shape.SByte -> Action<_, _> writeSByte |> w
@@ -416,9 +433,15 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
     | Shape.Tuple (:? ShapeTuple<'T> as shape) ->
         let elementSerializers = shape.Elements |> Array.map makeMemberVisitor
         Action<_, _> (fun (tuple: 'T) out -> writeTuple tuple out elementSerializers) |> w
-    | BclIsInstanceOfSystemDataSet _ ->
+#if NET6_0_OR_GREATER
+    | DateOnly ->
+        Action<_, _> (fun date out -> writeDateOnly date out) |> w
+    | TimeOnly ->
+        Action<_, _> (fun time out -> writeTimeOnly time out) |> w
+#endif
+    | BclIsInstanceOfSystemDataSet ->
         Action<_, _> (fun (dataset: System.Data.DataSet) out -> writeDataSet dataset out) |> w
-    | BclIsInstanceOfSystemDataTable _ ->
+    | BclIsInstanceOfSystemDataTable ->
         Action<_, _> (fun (table: System.Data.DataTable) out -> writeDataTable table out) |> w
     | _ ->
         failwithf "Cannot serialize %s." typeof<'T>.Name
@@ -426,7 +449,7 @@ and private makeSerializerAux<'T> (ctx: TypeGenerationContext): Action<'T, Strea
 // TypeShape requires generic types at compile time, but some applications will only know the types at runtime
 // This method bypasses that restriction by emitting IL to construct the delegate on demand
 let makeSerializerObj (t: Type) =
-    let makeSerializerMi = this.GetMethod("makeSerializer", Reflection.BindingFlags.Public ||| Reflection.BindingFlags.Static).MakeGenericMethod t
+    let makeSerializerMi = this.GetMethod(nameof(makeSerializer), BindingFlags.Public ||| BindingFlags.Static).MakeGenericMethod t
     let specializedActionType = typedefof<Action<_, _>>.MakeGenericType [| t; typeof<Stream> |]
 
     let instance = Expression.Parameter (typeof<obj>, "instance")
@@ -593,6 +616,14 @@ module Fable =
         writeInt64 dto.Ticks out
         writeInt64 (int64 dto.Offset.TotalMinutes) out
 
+#if NET6_0_OR_GREATER
+    let inline private writeDateOnly (out: ResizeArray<byte>) (date: DateOnly) =
+        writeUnsigned32bitNumber (uint32 date.DayNumber) out true
+
+    let inline private writeTimeOnly (out: ResizeArray<byte>) (time: TimeOnly) =
+        writeUInt64 (uint64 time.Ticks) out
+#endif
+
     let private writeArrayHeader len (out: ResizeArray<byte>) =
         if len < 16 then
             out.Add (Format.fixarr len)
@@ -728,7 +759,7 @@ module Fable =
         writeObject x typeof<'T> out
         #endif
 
-    #if FABLE_COMPILER
+#if FABLE_COMPILER
     serializerCache.Add (typeof<byte>.FullName, fun x out -> writeByte (x :?> byte) out)
     serializerCache.Add (typeof<sbyte>.FullName, fun x out -> writeByte (x :?> sbyte |> byte) out)
     serializerCache.Add (typeof<unit>.FullName, fun _ out -> writeNil out)
@@ -749,5 +780,9 @@ module Fable =
     serializerCache.Add (typeof<Guid>.FullName, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
     serializerCache.Add (typeof<DateTime>.FullName, fun x out -> writeDateTime out (x :?> DateTime))
     serializerCache.Add (typeof<DateTimeOffset>.FullName, fun x out -> writeDateTimeOffset out (x :?> DateTimeOffset))
+#if NET6_0_OR_GREATER
+    serializerCache.Add (typeof<DateOnly>.FullName, fun x out -> writeDateOnly out (x :?> DateOnly))
+    serializerCache.Add (typeof<TimeOnly>.FullName, fun x out -> writeTimeOnly out (x :?> TimeOnly))
+#endif
     serializerCache.Add (typeof<TimeSpan>.FullName, fun x out -> writeInt64 (x :?> TimeSpan).Ticks out)
-    #endif
+#endif

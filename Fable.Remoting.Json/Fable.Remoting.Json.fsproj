@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <Description>Json serialization utilities for Fable.Remoting</Description>
@@ -10,7 +10,7 @@
         <Authors>Zaid Ajaj</Authors>
         <Version>2.20.0</Version>
         <PackageReleaseNotes>Fix for TimeSpan greater than 2,147,483,647 milliseconds</PackageReleaseNotes>
-        <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;net462;net6.0</TargetFrameworks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

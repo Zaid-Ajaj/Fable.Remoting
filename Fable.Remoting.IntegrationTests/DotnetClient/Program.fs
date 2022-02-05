@@ -523,6 +523,18 @@ let dotnetClientTests =
             let! output = server.echoPosition(position)
             Expect.equal output position "Output has gone through"
         }
+
+        testCaseAsync "IServer.echoDateOnlyMap" <| async {
+            let input = [ (DateOnly.MinValue, DateOnly.MaxValue); (DateOnly.FromDayNumber 1000, DateOnly.FromDateTime DateTime.Now) ] |> Map.ofList
+            let! output = server.echoDateOnlyMap input
+            Expect.equal output input "Output has gone through"
+        }
+
+        testCaseAsync "IServer.echoTimeOnlyMap" <| async {
+            let input = [ (TimeOnly.MinValue, TimeOnly.MaxValue); (TimeOnly (10, 20, 30, 400), TimeOnly.FromDateTime DateTime.Now) ] |> Map.ofList
+            let! output = server.echoTimeOnlyMap input
+            Expect.equal output input "Output has gone through"
+        }
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with

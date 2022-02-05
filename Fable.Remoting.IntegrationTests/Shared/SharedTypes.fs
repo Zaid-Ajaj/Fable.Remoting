@@ -242,6 +242,8 @@ type IBinaryServer = {
     echoDecimalKeyMap : Map<decimal, int> -> Async<Map<decimal, int>>
     echoLongKeyMap : Map<int64, int> -> Async<Map<int64, int>>
     echoIntKeyMap : Map<int, int> -> Async<Map<int, int>>
+    echoTimeOnlyMap : Map<TimeOnly, TimeOnly> -> Async<Map<TimeOnly, TimeOnly>>
+    echoDateOnlyMap : Map<DateOnly, DateOnly> -> Async<Map<DateOnly, DateOnly>>
     // sets
     echoSet : Set<string> -> Async<Set<string>>
     echoTupleSet : Set<int * int> -> Async<Set<int * int>>
@@ -340,6 +342,8 @@ type IServer = {
     echoDecimalKeyMap : Map<decimal, int> -> Async<Map<decimal, int>>
     echoLongKeyMap : Map<int64, int> -> Async<Map<int64, int>>
     echoIntKeyMap : Map<int, int> -> Async<Map<int, int>>
+    echoTimeOnlyMap : Map<TimeOnly, TimeOnly> -> Async<Map<TimeOnly, TimeOnly>>
+    echoDateOnlyMap : Map<DateOnly, DateOnly> -> Async<Map<DateOnly, DateOnly>>
     // sets
     echoSet : Set<string> -> Async<Set<string>>
     echoTupleSet : Set<int * int> -> Async<Set<int * int>>
