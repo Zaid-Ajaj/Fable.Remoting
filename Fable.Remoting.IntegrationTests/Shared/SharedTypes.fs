@@ -285,7 +285,7 @@ type IBinaryServer = {
     echoNestedAnonRecord : Maybe<{| nested: {| name: string |} |}> -> Async<Maybe<{| nested: {| name: string |} |}>>
 
     // mixed Task on the server, Async in JS
-#if TASK_AS_ASYNC
+#if TASK_AS_ASYNC || FABLE_COMPILER
     pureTask : Async<int>
     echoMapTask : Map<string, int> -> Async<Map<string, int>>
 #else
