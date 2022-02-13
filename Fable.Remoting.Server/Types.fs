@@ -47,11 +47,11 @@ type SerializationType =
     | Json
     | MessagePack
 
-type internal IShapeFSharpAsync =
+type internal IShapeFSharpAsyncOrTask =
     abstract Element: TypeShape
 
-type internal ShapeFSharpAsync<'T> () =
-    interface IShapeFSharpAsync with
+type internal ShapeFSharpAsyncOrTask<'T> () =
+    interface IShapeFSharpAsyncOrTask with
         member _.Element = shapeof<'T> :> _
 
 type InvocationPropsInt = {

@@ -47,11 +47,34 @@ let typeNames inputTypes =
 
 let internal (|FSharpAsync|_|) (s: TypeShape) =
     match s.ShapeInfo with
-    | Generic (td, ta) when td = typedefof<Async<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsync<_>>(ta) :?> IShapeFSharpAsync |> Some
+    | Generic (td, ta) when td = typedefof<Async<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsyncOrTask<_>>(ta) :?> IShapeFSharpAsyncOrTask |> Some
+    | _ -> None
+
+let internal (|Task|_|) (s: TypeShape) =
+    match s.ShapeInfo with
+    | Generic (td, ta) when td = typedefof<Threading.Tasks.Task<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsyncOrTask<_>>(ta) :?> IShapeFSharpAsyncOrTask |> Some
     | _ -> None
 
 let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'fieldPart -> InvocationPropsInt -> Async<InvocationResult> =
     let wrap (p: 'a -> InvocationPropsInt -> Async<InvocationResult>) = unbox<'fieldPart -> InvocationPropsInt -> Async<InvocationResult>> p
+
+    let validateArgumentCount props makeProps =
+        match props.Arguments with
+        | Choice2Of2 (_ :: _) ->
+            let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
+            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount
+        | _ -> ()
+
+    let writeToOutputMemoryStream isBinaryOutput (props: InvocationPropsInt) result =
+        if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
+            let data = box result :?> byte[]
+            props.Output.Write (data, 0, data.Length)
+        elif makeProps.ResponseSerialization = SerializationType.Json then
+            jsonSerialize result props.Output
+        else
+            msgPackSerialize result props.Output
+
+        props.Output.Position <- 0L
 
     match shapeof<'fieldPart> with
     | FSharpAsync a ->
@@ -61,23 +84,22 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
                     let isBinaryOutput = typeof<'result> = typeof<byte[]>
 
                     wrap (fun (s: Async<'result>) props -> async {
-                        match props.Arguments with
-                        | Choice2Of2 (_ :: _) ->
-                            let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
-                            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount
-                        | _ -> ()
+                        validateArgumentCount props makeProps
+                        let! result = s
+                        writeToOutputMemoryStream isBinaryOutput props result                       
+                        return Success isBinaryOutput
+                    })
+        }
+    | Task t ->
+        t.Element.Accept {
+            new ITypeVisitor<'fieldPart -> InvocationPropsInt -> Async<InvocationResult>> with
+                member _.Visit<'result> () =
+                    let isBinaryOutput = typeof<'result> = typeof<byte[]>
 
-                        let! res = s
-
-                        if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
-                            let data = box res :?> byte[]
-                            props.Output.Write (data, 0, data.Length)
-                        elif makeProps.ResponseSerialization = SerializationType.Json then
-                            jsonSerialize res props.Output
-                        else
-                            msgPackSerialize res props.Output
-
-                        props.Output.Position <- 0L
+                    wrap (fun (s: Threading.Tasks.Task<'result>) props -> async {
+                        validateArgumentCount props makeProps
+                        let! result = Async.AwaitTask s
+                        writeToOutputMemoryStream isBinaryOutput props result                       
                         return Success isBinaryOutput
                     })
         }
@@ -106,7 +128,7 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
                             failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount)
         }
     | _ ->
-        failwithf "The type '%s' of the record field '%s' for record type '%s' is not valid. It must either be Async<'t> or a function that returns Async<'t> (i.e. 'u -> Async<'t>)" typeof<'fieldPart>.Name makeProps.FieldName makeProps.RecordName
+        failwithf "The type '%s' of the record field '%s' for record type '%s' is not valid. It must either be Async<'t>, Task<'t> or a function that returns it (i.e. 'u -> Async<'t>)" typeof<'fieldPart>.Name makeProps.FieldName makeProps.RecordName
 
 let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): InvocationProps<'impl> -> Async<InvocationResult> =
     let wrap (p: InvocationProps<'a> -> Async<InvocationResult>) = unbox<InvocationProps<'impl> -> Async<InvocationResult>> p

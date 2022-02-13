@@ -2,6 +2,7 @@ module ServerImpl
 
 open SharedTypes
 open System
+open System.Threading.Tasks
 
 module Async =
     let result<'a> (x: 'a) : Async<'a> =
@@ -123,7 +124,9 @@ let serverBinary : IBinaryServer = {
     echoTimeOnlyMap = Async.result
     echoDateOnlyMap = Async.result
     echoRecordWithChar = Async.result
-}
+
+    pureTask = Task.FromResult 42
+    echoMapTask = fun map -> async { return map } |> Async.StartAsTask }
 
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
