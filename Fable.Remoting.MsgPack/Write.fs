@@ -708,17 +708,22 @@ module Fable =
         writeRecord out types vals
 
     and private writeUnion (out: ResizeArray<byte>) tag (types: Type[]) (vals: obj[]) =
-        out.Add (Format.fixarr 2uy)
-        out.Add (Format.fixposnum tag)
+        if vals.Length = 0 then
+            out.Add (Format.fixarr 1uy)
+            out.Add (Format.fixposnum tag)
+        else        
+            out.Add (Format.fixarr 2uy)
+            out.Add (Format.fixposnum tag)
 
-        // save 1 byte if the union case has a single parameter
-        if vals.Length <> 1 then
-            writeArrayHeader vals.Length out
+            // write the field directly instead of using an array if the union case has a single field
+            // saves 1 byte
+            if vals.Length = 1 then
+                writeObject vals.[0] types.[0] out
+            else
+                writeArrayHeader vals.Length out
 
-            for i in 0 .. vals.Length - 1 do
-                writeObject vals.[i] types.[i] out
-        else
-            writeObject vals.[0] types.[0] out
+                for i in 0 .. vals.Length - 1 do
+                    writeObject vals.[i] types.[i] out
 
     and writeObject (x: obj) (t: Type) (out: ResizeArray<byte>) =
         #if !FABLE_COMPILER
@@ -756,8 +761,8 @@ module Fable =
                 elif tDef = typedefof<_ option> then
                     cacheGetOrAdd (t, fun x out ->
                         let opt = x :?> _ option
-                        let tag, value = if Option.isSome opt then 1, opt.Value else 0, null
-                        writeUnion out tag genArgs [| value |]) x out
+                        let tag, values = if Option.isSome opt then 1, [| opt.Value |] else 0, [| |]
+                        writeUnion out tag genArgs values) x out
                 elif tDef = typedefof<Dictionary<_, _>> || tDef = typedefof<Map<_, _>> then
                     let keyType = genArgs.[0]
                     let valueType = genArgs.[1]

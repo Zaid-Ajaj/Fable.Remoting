@@ -392,7 +392,6 @@ type Reader (data: byte[]) =
 
             // none case
             if tag = 0uy then
-                x.ReadByte () |> ignore
                 box null
             else
                 x.Read (t.GetGenericArguments () |> Array.head) |> Some |> box
