@@ -33,6 +33,10 @@ let internal (|BclIsInstanceOfSystemDataTable|_|) (s: TypeShape) =
   else
     None
 
+#if NETCOREAPP2_1_OR_GREATER
+let inline stackalloc<'a when 'a: unmanaged> length = Span<'a> (NativePtr.stackalloc<'a> length |> NativePtr.toVoidPtr, length)
+#endif
+
 #if NET6_0_OR_GREATER
 let internal (|DateOnly|_|) (s: TypeShape) = Shape.test<DateOnly> s
 
@@ -181,10 +185,18 @@ let inline writeDouble (n: float) (out: Stream) =
     out.WriteByte Format.Float64
     write64bitNumberFull (NativePtr.toNativeInt &&n |> NativePtr.ofNativeInt |> NativePtr.read<uint64>) out
 
-let inline writeDecimal (n: decimal) out =
+#if NET5_0_OR_GREATER
+[<System.Runtime.CompilerServices.SkipLocalsInit>]
+#endif
+let writeDecimal (n: decimal) (out: Stream) =
+#if NET5_0_OR_GREATER
+    let bits = stackalloc 4
+    Decimal.GetBits (n, bits) |> ignore
+#else
     let bits = Decimal.GetBits n
+#endif
 
-    writeArrayHeader bits.Length out
+    out.WriteByte (Format.fixarr 4)
     for b in bits do
         write32bitNumber b out true
 
@@ -211,7 +223,7 @@ let writeString (str: string) (out: Stream) =
 
     // allocate space on the stack if the string is not too long
     if maxLength < 1500 then
-        let buffer = Span (NativePtr.stackalloc<byte> maxLength |> NativePtr.toVoidPtr, maxLength)
+        let buffer = stackalloc maxLength
         let bytesWritten = Encoding.UTF8.GetBytes (String.op_Implicit str, buffer)
 
         writeStringHeader bytesWritten out
@@ -266,8 +278,19 @@ let inline writeDateTimeOffset (dto: DateTimeOffset) (out: Stream) =
 let inline writeTimeSpan (ts: TimeSpan) out =
     writeInt64 ts.Ticks out
 
-let inline writeGuid (g: Guid) out =
+#if NET5_0_OR_GREATER
+[<System.Runtime.CompilerServices.SkipLocalsInit>]
+#endif
+let writeGuid (g: Guid) (out: Stream) =
+#if NETCOREAPP2_1_OR_GREATER
+    let buffer = stackalloc 16
+    g.TryWriteBytes buffer |> ignore
+    out.WriteByte Format.Bin8
+    out.WriteByte 16uy
+    out.Write buffer
+#else
     writeBin (g.ToByteArray ()) out
+#endif
 
 let inline writeBigInteger (i: bigint) out =
     writeBin (i.ToByteArray ()) out
@@ -285,19 +308,23 @@ let inline writeUnion union (out: Stream) (caseSerializers: Action<'a, Stream>[]
     let tag = tagReader union
     let fieldSerializers = caseSerializers.[tag]
 
-    out.WriteByte (Format.fixarr 2uy)
-    out.WriteByte (Format.fixposnum tag)
-
-    // save 1 byte if the union case has a single parameter
-    if fieldSerializers.Length <> 1 then
-        // todo one byte less for no args too (change fixarr above)
-        writeArrayHeader fieldSerializers.Length out
-
-        for serializer in fieldSerializers do
-            serializer.Invoke (union, out)
+    if fieldSerializers.Length = 0 then
+        out.WriteByte (Format.fixarr 1uy)
+        out.WriteByte (Format.fixposnum tag)
     else
-        let serializer = fieldSerializers.[0]
-        serializer.Invoke (union, out)
+        out.WriteByte (Format.fixarr 2uy)
+        out.WriteByte (Format.fixposnum tag)
+
+        // write the field directly instead of using an array if the union case has a single field
+        // saves 1 byte
+        if fieldSerializers.Length = 1 then
+            let serializer = fieldSerializers.[0]
+            serializer.Invoke (union, out)
+        else
+            writeArrayHeader fieldSerializers.Length out
+
+            for serializer in fieldSerializers do
+                serializer.Invoke (union, out)
 
 let inline writeStringEnum union out (caseNames: string[]) tagReader =
     writeString caseNames.[tagReader union] out
@@ -638,7 +665,7 @@ module Fable =
     let private writeDecimal (n: decimal) (out: ResizeArray<byte>) =
         let bits = Decimal.GetBits n
         
-        writeArrayHeader bits.Length out
+        out.Add (Format.fixarr 4)
         for b in bits do
             writeUnsigned32bitNumber (uint32 b) out true
 
