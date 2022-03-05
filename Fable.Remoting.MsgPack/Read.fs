@@ -8,6 +8,9 @@ open System.Collections.Generic
 open FSharp.Reflection
 open System.Reflection
 open Microsoft.FSharp.NativeInterop
+#if !FABLE_COMPILER && NETCOREAPP2_1_OR_GREATER
+open System.Buffers.Binary
+#endif
 
 #nowarn "9"
 #nowarn "51"
@@ -168,14 +171,22 @@ type Reader (data: byte[]) =
 
     member _.ReadInt16 () =
         pos <- pos + 2
+#if !FABLE_COMPILER && NETCOREAPP2_1_OR_GREATER
+        BinaryPrimitives.ReadInt16BigEndian (data.AsSpan (pos - 2, 2))
+#else
         (int16 data.[pos - 2] <<< 8) ||| (int16 data.[pos - 1])
+#endif
 
     member x.ReadUInt32 () =
         x.ReadInt32 () |> uint32
 
     member _.ReadInt32 () =
         pos <- pos + 4
+#if !FABLE_COMPILER && NETCOREAPP2_1_OR_GREATER
+        BinaryPrimitives.ReadInt32BigEndian (data.AsSpan (pos - 4, 4))
+#else
         (int data.[pos - 4] <<< 24) ||| (int data.[pos - 3] <<< 16) ||| (int data.[pos - 2] <<< 8) ||| (int data.[pos - 1])
+#endif
 
     member x.ReadUInt64 () =
         x.ReadInt64 () |> uint64
@@ -183,8 +194,12 @@ type Reader (data: byte[]) =
     member _.ReadInt64 () =
 #if !FABLE_COMPILER
         pos <- pos + 8
+#if NETCOREAPP2_1_OR_GREATER
+        BinaryPrimitives.ReadInt64BigEndian (data.AsSpan (pos - 8, 8))
+#else
         (int64 data.[pos - 8] <<< 56) ||| (int64 data.[pos - 7] <<< 48) ||| (int64 data.[pos - 6] <<< 40) ||| (int64 data.[pos - 5] <<< 32) ||| 
         (int64 data.[pos - 4] <<< 24) ||| (int64 data.[pos - 3] <<< 16) ||| (int64 data.[pos - 2] <<< 8) ||| (int64 data.[pos - 1])
+#endif
 #else
         readNumber 8 BitConverter.ToInt64
 #endif
@@ -329,6 +344,7 @@ type Reader (data: byte[]) =
 
                 arrayReaderCache.GetOrAdd (t, fun (len, (x: Reader)) -> d.Invoke (len, x.Read)) (len, x)
             else
+                // the length parameter is ignored because the shape of the union tells us how many elements there are too
                 arrayReaderCache.GetOrAdd (t, fun (_, x: Reader) ->
                     let tag = x.Read typeof<int> :?> int
                     let case, fieldTypes =
@@ -338,9 +354,12 @@ type Reader (data: byte[]) =
                             case, fields |> Array.map (fun x -> x.PropertyType))
 
                     let fields =
-                        // single parameter is serialized directly, not in an array, saving 1 byte on the array format
+                        // single case field is serialized directly
                         if fieldTypes.Length = 1 then
                             [| x.Read fieldTypes.[0] |]
+                        elif fieldTypes.Length = 0 then
+                            [| |]
+                        // multiple fields are serialized in an array
                         else
                             // don't care about this byte, it's going to be a fixarr of length fieldTypes.Length
                             x.ReadByte () |> ignore
@@ -353,9 +372,12 @@ type Reader (data: byte[]) =
             let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
 
             let fields =
-                // single parameter is serialized directly, not in an array, saving 1 byte on the array format
+                // single case field is serialized directly
                 if fieldTypes.Length = 1 then
                     [| x.Read fieldTypes.[0] |]
+                elif fieldTypes.Length = 0 then
+                    [| |]
+                // multiple fields are serialized in an array
                 else
                     // don't care about this byte, it's going to be a fixarr of length fieldTypes.Length
                     x.ReadByte () |> ignore
@@ -370,7 +392,6 @@ type Reader (data: byte[]) =
 
             // none case
             if tag = 0uy then
-                x.ReadByte () |> ignore
                 box null
             else
                 x.Read (t.GetGenericArguments () |> Array.head) |> Some |> box

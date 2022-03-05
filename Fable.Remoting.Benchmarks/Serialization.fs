@@ -133,15 +133,10 @@ type RecursiveRecordSerialization () =
 type RecursiveRecordDeserialization () =
     let json = jsonSerialize recursiveRecord
     let binary = msgPackSerializeToArray recursiveRecord
-    let binary' = Array.copy binary
 
     [<Benchmark>]
     member _.Json () =
         jsonDeserialize<RecursiveRecord> json
-
-    [<IterationSetup(Target = "MsgPack")>]
-    member _.ResetMsgPackInput () =
-        binary'.CopyTo (binary, 0)
 
     [<Benchmark>]
     member _.MsgPack () =
@@ -183,15 +178,10 @@ type IntMaybeMapSerialization () =
 type IntMaybeMapDeserialization () =
     let json = jsonSerialize intMaybeMap
     let binary = msgPackSerializeToArray intMaybeMap
-    let binary' = Array.copy binary
 
     [<Benchmark>]
     member _.Json () =
         jsonDeserialize<Map<int, Maybe<string>>> json
-
-    [<IterationSetup(Target = "MsgPack")>]
-    member _.ResetMsgPackInput () =
-        binary'.CopyTo (binary, 0)
 
     [<Benchmark>]
     member _.MsgPack () =
@@ -222,15 +212,10 @@ type Int64ArraySerialization () =
 type Int64ArrayDeserialization () =
     let json = jsonSerialize int64Array
     let binary = msgPackSerializeToArray int64Array
-    let binary' = Array.copy binary
 
     [<Benchmark>]
     member _.Json () =
         jsonDeserialize<int64[]> json
-
-    [<IterationSetup(Target = "MsgPack")>]
-    member _.ResetMsgPackInput () =
-        binary'.CopyTo (binary, 0)
 
     [<Benchmark>]
     member _.MsgPack () =
