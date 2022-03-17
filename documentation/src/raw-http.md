@@ -50,4 +50,4 @@ Functions of a single parameter such as `concatLists` are special: you don't alw
 
 ![singleParam](imgs/singleParam.png)
 
-This rule only applies when the function has a single parameter and when the parameter is not array-like is serialized form, this means the rule doesn't apply to arrays, lists or tuples because of ambiguity and you would have to wrap these arguments in an array just like in the situation with multiple parameters.   
+This rule only applies when the function has a single parameter and when the parameter is not array-like in serialized form, this means the rule doesn't apply to arrays, lists or tuples because of ambiguity and you would have to wrap these arguments in an array just like in the situation with multiple parameters.   

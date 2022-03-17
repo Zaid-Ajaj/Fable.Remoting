@@ -2,7 +2,7 @@
 
 In the previous section on [Implicit Authentication](implicit-authentication.md), I have shown you how to include an authorization header for requests made by the proxy to reach a secured API end point. The problem with this approach is that the access token you use in the authorization header is *constant*: every request made will use that same token for authorization. 
 
-This behavior might not always be preferrable because these tokens are short-lived and expire after a couple of hours, in which case the user might have to logout and login again to obtain a fresh token. Another common use-case is when are using using a third-party authorization server, you will need to ask the authorization server first to obtain new access tokens.
+This behavior might not always be preferrable because these tokens are short-lived and expire after a couple of hours, in which case the user might have to logout and login again to obtain a fresh token. Another common use-case is when you are using a third-party authorization server, you will need to ask the authorization server first to obtain new access tokens.
 
 Dependending on your type of application, you might want to use a *refresh token*: a token that is like the usual access token but this one is typically long-lived and it is used to *obtain* a newly generated access token every once in a while without the user having to logout after a certain time span of inactivity. 
 
@@ -10,7 +10,7 @@ Refresh tokens complicate the scenario, typically because the developer has to p
 
 > Of course, depending on your requirements, you might want to decide when exactly you want to refresh an access token, in this example we will aquire a fresh access token on every request.
 
-Assuming you have implemented a functions, let us call them `refreshTokenFromStorage` and `obtainAccessToken` you will use them to get an access token from the authorization server. The functions might have the following signature:
+Assuming you have implemented two functions, let us call them `refreshTokenFromStorage` and `obtainAccessToken`, you will use them to get an access token from the authorization server. The functions might have the following signature:
 ```fs
 type AccessToken = AccessToken of string 
 type RefreshToken = RefreshToken of string 
@@ -47,7 +47,7 @@ let getPopularAlbums() =
         return albums
     }
 ```
-In case you don't like callbacks, here is another way of writing `musicStore` function:
+In case you don't like callbacks, here is another way of writing the `musicStore` function:
 ```fs
 let getMusicStore() : Async<IMusicStore> = 
     async {

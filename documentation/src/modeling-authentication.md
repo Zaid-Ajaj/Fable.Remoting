@@ -4,7 +4,7 @@ When it comes to web applications, authentication and authorization are usually 
 
 > Note: the following modeling technique is the *recommended* implementation of auth when using Fable.Remoting. However, it is not the only way and it is still possible to use Http  mechanisms (headers/cookies) to secure your end points, see [Implicit Authentication](implicit-authentication.md).
 
-The following API models a book store interface with some of the functions requiring the user to be logged in and other functions to publicly available. We use stateless tokens that we pass around to authenticate or authorize the users:
+The following API models a book store interface with some of the functions requiring the user to be logged in and other functions publicly available. We use stateless tokens that we pass around to authenticate or authorize the users:
 
 ```fs
 // Shared.fs
@@ -50,6 +50,6 @@ type IBookStoreApi = {
     // etc . . . 
 }
 ```
-Just by looking at the types you can tell what the application does. Implementing such interface on the server requires that you generate an authorization/authentication token when invoking the `login` function, [JSON Web Tokens](https://jwt.io/) are good match for this type of scenario's and then use the resulting token in subsequent requests. There is no *implicit* logged in user nor some "user context", everything is stateless and explicit. 
+Just by looking at the types you can tell what the application does. Implementing such interface on the server requires that you generate an authorization/authentication token when invoking the `login` function, [JSON Web Tokens](https://jwt.io/) are a good match for this type of scenarios, and then use the resulting token in subsequent requests. There is no *implicit* logged in user nor some "user context", everything is stateless and explicit. 
 
 The drawback of this approach is that you have to validate the auth token yourself for every secure function. 
