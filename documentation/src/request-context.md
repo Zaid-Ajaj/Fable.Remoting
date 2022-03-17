@@ -1,11 +1,11 @@
 # Accessing Request Context
 
-Sometimes you might need to read data from the incoming request, Maybe to validate a request header or to do some kind of logging. In This section, we will demonstrate the techniques of building an implementation from protocol specs that has both per-request and static dependencies where the following holds:
+Sometimes you might need to read data from the incoming request. Maybe to validate a request header or to do some kind of logging. In this section, we will demonstrate the techniques of building an implementation from protocol specs that has both per-request and static dependencies where the following holds:
  
  - No change of the protocol specification is required
  - The implementation of the protocol specification is fully unit-testable without involving the Http pipeline 
 
-For the following example, assume that we will be needing the values of the headers as key-value pair (i.e. of type `Map<string, string>`) this will our per-request dependency, as a static dependency we will be needing a database that our implementation can call to get the actual album data.
+For the following example, assume that we will be needing the values of the headers as key-value pairs (i.e. of type `Map<string, string>`), this will be our per-request dependency, as a static dependency we will be needing a database that our implementation can call to get the actual album data.
 
 ```fs
 type IMusicDb = 
@@ -40,7 +40,7 @@ let musicStore (db: IMusicDb) (context: HttpContext) : IMusicStore  =
     // construct the music store 
     createMusicStore db headers 
 ```
-As you can see, the `musicStore` function takes in a dependency of `IMusicDb` and `HttpContext`. You will have to provide the `IMusicDb` yourself (for now) and you will end up with a function of type `HttpContext -> IMusicStore`. This signature is exactly what `Remoting.fromContext` is expecting and can used like this:
+As you can see, the `musicStore` function takes in a dependency of `IMusicDb` and `HttpContext`. You will have to provide the `IMusicDb` yourself (for now) and you will end up with a function of type `HttpContext -> IMusicStore`. This signature is exactly what `Remoting.fromContext` is expecting and can be used like this:
 ```fs
 // first, create your musicDb
 let musicDb : IMusicDb = { 

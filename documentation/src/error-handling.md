@@ -2,7 +2,7 @@
 
 You might ask: What happens when an exception is thrown on the server by one of the RPC methods? 
 
-Fable.Remoting provides fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to the exception handler on the server of the type 
+Fable.Remoting provides a fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to the exception handler on the server of the type 
 ```fs
 Exception -> RouteInfo<HttpContext> -> ErrorResult
 ``` 
@@ -94,4 +94,4 @@ Finally when a custom error like the `CustomError` shown above gets propagated, 
     "handled": true 
 }  
 ```
-Parsing the response text if needed becomes the responsibility of the consuming application 
+Parsing the response text if needed becomes the responsibility of the consuming application.

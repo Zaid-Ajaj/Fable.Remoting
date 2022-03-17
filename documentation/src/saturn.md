@@ -1,5 +1,5 @@
 # Setup Saturn
-On your Saturn project, you reference the the shared API types:
+On your Saturn project, you reference the shared API types:
 ```xml
 <Compile Include="../Shared/SharedModels.fs" />
 <Compile Include="Program.fs" />

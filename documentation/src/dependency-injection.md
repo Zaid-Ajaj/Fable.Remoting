@@ -16,7 +16,7 @@ type ITodoApi = {
     getTodos: unit -> Async<Todo list>
 }
 ```
-As you can see, the protocol only has one function that returns a list of `Todo` items. An implementation of such protocol can be simply constructed from a static list of this type:
+As you can see, the protocol only has one function that returns a list of `Todo` items. An implementation of such a protocol can be simply constructed from a static list of this type:
 ```fs
 let todoApi = {
     getTodos = fun () ->
@@ -29,7 +29,7 @@ let todoApi = {
 }
 ```
 ## Defining and implementing dependencies
-So far so good, this is the basic way of constructing an implementation of the protocol but now lets look at it from a point of view of *dependencies* so you can use them to build the implementation. For this protocol the only dependency is some kind of *storage* for the `Todo` items. The store might be an "in-memory" implementation returning the static list as we did above but another implementation can be reading the `Todo` items from a database. Either way, we need an interface for the store so that multiple implementation are possbile:
+So far so good, this is the basic way of constructing an implementation of the protocol but now lets look at it from a point of view of *dependencies* so you can use them to build the implementation. For this protocol the only dependency is some kind of *storage* for the `Todo` items. The store might be an "in-memory" implementation returning the static list as we did above but another implementation can be reading the `Todo` items from a database. Either way, we need an interface for the store so that multiple implementations are possbile:
 ```fs
 type ITodoStore = 
     abstract getAllTodos: unit -> Async<Todo list>
@@ -163,13 +163,13 @@ type InMemoryTodoStore(logger: ILogger<InMemoryTodoStore>) =
                 ]
             }
 ```
-The reason that we have `InMemoryTodoStore` as class and not a function is so that ASP.NET Core will understand how to resolve these nested dependencies from the constructor.
+The reason that we have `InMemoryTodoStore` as a class and not as a function is so that ASP.NET Core will understand how to resolve these nested dependencies from the constructor.
 
 ## Requiring dependencies for seperate protocol functions
 
 Previously, we have used two functions for the protocol implementation, one that uses the dependencies to create the protocol and one that requires the dependencies from the `HttpContext`. This way your protocol implementation becomes unit-testable because in your unit-tests you construct the test dependencies yourself and construct the protocol without requiring them from `HttpContext`. However, this can become very messy if you have a lot of dependencies, say 3 different dependencies per function, so that you have to construct *every* dependency if you want to test a single part (function) of the protocol. 
 
-A better way is making your little functions unit-testable instead of the making the whole protocol unit-testable. You define each function *seperately* along with the dependencies it requires, then resolve these from the `HttpContext`:
+A better way is making your little functions unit-testable instead of making the whole protocol unit-testable. You define each function *seperately* along with the dependencies it requires, then resolve these from the `HttpContext`:
 ```fs
 let getTodos (store: ITodoStore) (logger: ILogger<ITodoApi>) = 
     fun () -> 
@@ -228,7 +228,7 @@ And so on and so forth. This way makes for a clean and simple approach to depend
 
 ## Going even further: using the built-in Reader monad. 
 
-Ever since version 3.x of remoting, the final rewrite, remoting has included the `reader` monad which is way of resolving dependencies in a functional manner. With the `reader` monad, the above example can be refactored in two ways:
+Ever since version 3.x of remoting, the final rewrite, remoting has included the `reader` monad which is a way of resolving dependencies in a functional manner. With the `reader` monad, the above example can be refactored in two ways:
 
 - Writing a single *reader function* for the `ITodoApi`
 - Writing a reader function for each seperate protocol function
@@ -265,7 +265,7 @@ let todoApiReader =
         }
     }
 ```
-This simplifies the construction of the `ITodoApi` so that you don't need to work with `HttpContext` or even think about it being there. Now you can the use `fromReader` function in the `Remoting` module to expose the API to Http:
+This simplifies the construction of the `ITodoApi` so that you don't need to work with `HttpContext` or even think about it being there. Now you can use the `fromReader` function in the `Remoting` module to expose the API to Http:
 ```fs
 let webApi = 
   Remoting.createApi()
