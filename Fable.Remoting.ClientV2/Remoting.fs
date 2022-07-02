@@ -15,6 +15,7 @@ module Remoting =
         WithCredentials = false
         RouteBuilder = sprintf ("/%s/%s")
         CustomResponseSerialization = None
+        WithErrorInterceptor = None
     }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -41,6 +42,10 @@ module Remoting =
     let withBinarySerialization (options: RemoteBuilderOptions) =
         let serializer response returnType = MsgPack.Read.Reader(response).Read returnType
         { options with CustomResponseSerialization = Some serializer }
+
+    /// Adds an error interceptor function to each request of the proxy. This allows you to have centralized logic that runs on specific error types (ie: 401 errors)
+    let withErrorInterceptor errorInterceptor (options: RemoteBuilderOptions) =
+        { options with WithErrorInterceptor = Some errorInterceptor }
 
 type Remoting() =
     static member buildProxy<'t>(options: RemoteBuilderOptions, [<Inject>] ?resolver: ITypeResolver<'t>) : 't =

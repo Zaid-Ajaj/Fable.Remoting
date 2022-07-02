@@ -125,6 +125,11 @@ module Proxy =
                         let! responseText = Blob.readBlobAsText responseAsBlob
                         let response = { StatusCode = statusCode; ResponseBody = responseText }
                         let errorMsg = if n = 500 then sprintf "Internal server error (500) while making request to %s" url else sprintf "Http error (%d) while making request to %s" n url
+
+                        match options.WithErrorInterceptor with
+                        | Some errorInterceptor -> errorInterceptor statusCode responseText
+                        | _ -> ()
+
                         return! raise (ProxyRequestException(response, errorMsg, response.ResponseBody))
                 }
             else
@@ -151,8 +156,18 @@ module Proxy =
                     | 200 ->
                         let parsedJson = SimpleJson.parseNative response.ResponseBody
                         return Convert.fromJsonAs parsedJson returnType
-                    | 500 -> return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody))
-                    | n ->   return! raise (ProxyRequestException(response, sprintf "Http error (%d) from server occured while making request to %s" n url, response.ResponseBody))
+                    | 500 ->
+                        match options.WithErrorInterceptor with
+                        | Some errorInterceptor -> errorInterceptor response.StatusCode response.ResponseBody
+                        | _ -> ()
+
+                        return! raise (ProxyRequestException(response, sprintf "Internal server error (500) while making request to %s" url, response.ResponseBody))
+                    | n ->
+                        match options.WithErrorInterceptor with
+                        | Some errorInterceptor -> errorInterceptor response.StatusCode response.ResponseBody
+                        | _ -> ()
+
+                        return! raise (ProxyRequestException(response, sprintf "Http error (%d) from server occured while making request to %s" n url, response.ResponseBody))
                 }
 
         fun arg0 arg1 arg2 arg3 arg4 arg5 arg6 arg7 ->

@@ -31,6 +31,7 @@ type RemoteBuilderOptions = {
     WithCredentials : bool
     RouteBuilder : (string -> string -> string)
     CustomResponseSerialization : CustomResponseSerializer option
+    WithErrorInterceptor : (int -> string -> unit) option
 }
 
 type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string) = 
