@@ -1,6 +1,6 @@
 # Using .NET client from C*#*
 
-The .NET client can also be used with C# in an idiomatic way. You will need to put the protocol definitions inside a F*#* project and reference the project in a C*#* project to have the types available from your C*#* application:
+The .NET client can also be used with C# in an idiomatic way. You will need to put the protocol definitions inside an F*#* project and reference the project in a C*#* project to have the types available from your C*#* application:
 ```cs
 using System;
 using System.Threading.Tasks;  

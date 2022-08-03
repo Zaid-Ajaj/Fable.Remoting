@@ -9,7 +9,7 @@ proxy.call <@ fun server -> server.echoNumber (1 + 1) @>
 // nor this
 proxy.call <@ fun server -> server.sumAll [1 .. 10] @> 
 ```
-both sub-expressions `(1 + 1)` and `[1 .. 10]` must be computed before sending them to the server, but inside a quoutation expression, it is just there as parsed code that is yet to be compiled and the proxy doesn't always know how to evaluate them, there are many types of these expression that won't work right out of the box but the workaround is very simple: **bind the parameter to a value before passing it to the quotation expression**. So to make them work, just get the inline parameter out to it's own value:
+both sub-expressions `(1 + 1)` and `[1 .. 10]` must be computed before sending them to the server, but inside a quoutation expression, it is just there as parsed code that is yet to be compiled and the proxy doesn't always know how to evaluate them, there are many types of these expressions that won't work right out of the box but the workaround is very simple: **bind the parameter to a value before passing it to the quotation expression**. So to make them work, just get the inline parameter out to it's own value:
 ```fs
 // this works now
 let input = 1 + 1

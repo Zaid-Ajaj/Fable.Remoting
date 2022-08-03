@@ -1,6 +1,6 @@
 # Setting Asp.NET Core Middleware
 
-On your Asp.NET Core project, reference the the shared API types:
+On your Asp.NET Core project, reference the shared API types:
 ```xml
 <Compile Include="../Shared/SharedModels.fs" />
 <Compile Include="Program.fs" />
