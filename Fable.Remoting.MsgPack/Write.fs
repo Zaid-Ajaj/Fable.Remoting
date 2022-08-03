@@ -228,6 +228,7 @@ let writeString (str: string) (out: Stream) =
 
         writeStringHeader bytesWritten out
         out.Write (Span.op_Implicit (buffer.Slice (0, bytesWritten)))
+        ()
     else
         let buffer = System.Buffers.ArrayPool.Shared.Rent maxLength
 
@@ -288,6 +289,7 @@ let writeGuid (g: Guid) (out: Stream) =
     out.WriteByte Format.Bin8
     out.WriteByte 16uy
     out.Write buffer
+    ()
 #else
     writeBin (g.ToByteArray ()) out
 #endif
