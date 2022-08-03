@@ -8,9 +8,9 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;msgpack</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.16.0</Version>
+    <Version>1.18.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageReleaseNotes>Support TimeOnly, DateOnly, update to .NET 6</PackageReleaseNotes>
+    <PackageReleaseNotes>Improved performance #294 and includes workaround for upstream stackalloc codegen bug #305</PackageReleaseNotes>
     <TargetFrameworks>netstandard2.0;net462;netcoreapp3.1;net6.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>

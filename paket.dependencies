@@ -5,7 +5,7 @@ storage: none
 lowest_matching: true
 nuget benchmarkdotnet
 nuget Expecto
-nuget FSharp.Core ~> 4.7.2
+nuget FSharp.Core >= 4.7.2
 nuget Microsoft.AspNetCore.Server.Kestrel ~> 2.2
 nuget Microsoft.AspNetCore.TestHost ~> 3.1
 nuget Microsoft.IO.RecyclableMemoryStream ~> 2

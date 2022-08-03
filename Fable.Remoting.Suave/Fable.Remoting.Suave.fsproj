@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.29.0</Version>
+        <Version>4.31.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-        <PackageReleaseNotes>Support TimeOnly, DateOnly, update to .NET 6</PackageReleaseNotes>
+        <PackageReleaseNotes>Update MsgPack: Improved performance #294 and includes workaround for upstream stackalloc codegen bug #305</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
