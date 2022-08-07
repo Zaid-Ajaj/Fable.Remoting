@@ -1,0 +1,94 @@
+<!DOCTYPE>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Fable.Remoting</title>
+    <link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
+    <link rel="stylesheet" href="app.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/docute@4/dist/docute.js"></script>
+    <script>
+      // make images work using absolute urls both in developement and when published to github
+      Vue.component("ResolvedImage", {
+        props: ["source"],
+        template: "<img :src='resolvedUrl' />",
+        computed: {
+            resolvedUrl: function() {
+                let path = window.location.pathname;
+                if (path.endsWith("/")) {
+                    return path.substr(0, path.length - 1) + this.source;
+                } else {
+                    return path + this.source;
+                }
+            }
+        }
+      });
+
+      new Docute({
+        layout: "wide",
+        target: '#root',
+        highlight: [ "fsharp", "bash", "ocaml", "fs", "json", "sass", "sql" ],
+        cssVariables: {
+          accentColor:  "hsl(171, 100%, 41%)",
+          sidebarWidth: "300px",
+          sidebarLinkActiveColor: "hsl(171, 100%, 41%)",
+          sidebarLinkArrowColor: "hsl(171, 100%, 41%)"
+        },
+        nav: [
+          { title: "❤️ Sponsor my work", link: "https://github.com/sponsors/Zaid-Ajaj" },
+          { title: "📚 GitHub Repository", link: "https://github.com/Zaid-Ajaj/Fable.Remoting" },
+          { title: "✏️ Written by Zaid Ajaj", link: "https://github.com/Zaid-Ajaj" }
+        ],
+        sidebar: [
+            {
+
+              title: 'Fable.Remoting',
+              links: [
+                { title: "Introduction", link: "/" },
+                { title: "Getting started", link: "/getting-started/index" }
+              ] 
+            },
+            {
+                title: 'Server setup',
+                links: [
+                  { title: 'Giraffe', link: '/server-setup/giraffe' },
+                  { title: 'Saturn', link: '/server-setup/saturn' },
+                  { title: 'ASP.NET Core', link: '/server-setup/aspnet-core' },
+                  { title: "Azure Functions", link: "/server-setup/azure-functions" },
+                  { title: 'Suave', link: '/server-setup/suave' }
+                ]
+            },
+            {
+              title: "Client setup",
+              links: [
+                { title: "Fable", link: "/client-setup/fable" },
+                { title: "Dotnet", link: "/client-setup/dotnet" },
+              ]
+            },
+            {
+              title: "Advanced",
+              links: [
+                { title: "Custom Route Paths", link: "/advanced/custom-route-paths" },
+                { title: "Error Handling", link: "/advanced/error-handling" },
+                { title: "Binary Serialization", link: "/advanced/binary-serialization" },
+                { title: "Integrating Dependency Injection", link: "/advanced/integrating-dependency-injection" },
+                { title: "Type-safe documentation", link: "/advanced/type-safe-docs"},
+                { title: "Raw HTTP Communication", link: "/advanced/raw-http-communication" },
+                { title: "File Upload and Download", link: "/advanced/file-upload-and-download" }
+              ]
+            },
+            {
+              title: "Misc",
+              links: [
+                { title: "Troubleshooting", link: "/misc/troubleshoot" },
+                { title: "Credits", link: "/misc/credits" }
+              ]
+            }
+        ]
+      })
+    </script>
+  </body>
+</html>
