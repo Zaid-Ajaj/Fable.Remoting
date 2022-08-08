@@ -246,3 +246,4 @@ documentation/_book
 .fable
 *.fs.js
 /.idea
+docs/advanced/integrating-dependency-injection.md
