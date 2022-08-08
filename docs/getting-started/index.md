@@ -10,10 +10,16 @@ module ShareModels
 open System 
 
 type Album = {
-    Id : int
-    Title : string
-    Genre : string
-    Released : DateTime
+    id: int
+    title: string
+    genre: string
+    released: DateTime
+}
+
+type NewAlbumInfo = {
+    title: string
+    genre: string
+    released: DateTime
 }
 
 // The shared interface representing your client-server interaction
@@ -21,7 +27,7 @@ type IMusicStore = {
     popularAlbums : Async<list<Album>> 
     allAlbums : Async<list<Album>> 
     albumById : int -> Async<Option<Album>>
-    createAlbum : string -> string -> DateTime -> Async<Option<Album>>
+    createAlbum : NewAlbumInfo -> Async<Option<Album>>
 }
 ```
 As you can see, our interface is the `IMusicStore` record the fields of such record are functions of the shape:
@@ -43,16 +49,16 @@ let musicStore : IMusicStore = {
         let popularAlbums = albums |> List.filter (fun album -> album.Popular) 
         return popularAlbums 
     }
-    
+
     allAlbums = Database.getAllAlbums() 
-   
+
     albumById = fun id -> async {
         // findAlbumById : int -> Async<Option<Album>>
         let! album = Database.findAlbumById id
         return album
     }
 
-    createAlbum = fun title genre released -> async { (* you get the idea *) }
+    createAlbum = fun newAlbumInfo -> async { (* you get the idea *) }
 }
 ```
 Now you are almost ready to expose the API to your client and have these functions being callable directly. Start by setting up the server with your web framework of choice: 
