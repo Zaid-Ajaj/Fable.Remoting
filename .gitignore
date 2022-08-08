@@ -246,4 +246,8 @@ documentation/_book
 .fable
 *.fs.js
 /.idea
+<<<<<<< HEAD
 docs/advanced/integrating-dependency-injection.md
+=======
+.DS_Store
+>>>>>>> 963b77be75e30d56f66c9ef18241535c4a0822fc
