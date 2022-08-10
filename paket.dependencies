@@ -34,7 +34,7 @@ group FunctionsWorker
     nuget Microsoft.Azure.Functions.Worker
     nuget Microsoft.Azure.Functions.Worker.Sdk
     nuget Microsoft.Azure.Functions.Worker.Extensions.Http
-    nuget FSharp.Core ~> 5.0
+    nuget FSharp.Core >= 5.0
     nuget Newtonsoft.Json
     nuget Expecto
 
@@ -43,8 +43,8 @@ group LatestNet5
     framework: net5
     storage: none
     lowest_matching: true
-    nuget Giraffe 5.0.0
-    nuget FSharp.Core ~> 5.0
+    nuget Giraffe >= 5.0.0
+    nuget FSharp.Core >= 5.0
     nuget Microsoft.IO.RecyclableMemoryStream ~> 2
 
 group Client

@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.11.0</Version>
+        <Version>5.12.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update MsgPack: Improved performance #294 and includes workaround for upstream stackalloc codegen bug #305</PackageReleaseNotes>
+        <PackageReleaseNotes>Make Giraffe dependency requirement greater than 5.0.0, not equal to 5.0.0</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
