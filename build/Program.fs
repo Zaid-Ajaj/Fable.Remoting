@@ -226,6 +226,7 @@ let buildRunAzureFunctionsTests onTestsFinished =
 
 createTarget "BuildRunAzureFunctionsTests" <| fun _ -> buildRunAzureFunctionsTests (fun _ -> Environment.Exit(0)) // necessary hack to finish func process
 createTarget "PublishAzureFunctionsWorker" <| fun _ -> buildRunAzureFunctionsTests (publish AzureFunctionsWorker)
+createTarget "PublishAzureFunctionsWorkerWithoutTests" (publish AzureFunctionsWorker)
 
 createTarget "BuildRunAllTests" <| fun _ ->
     // Json
