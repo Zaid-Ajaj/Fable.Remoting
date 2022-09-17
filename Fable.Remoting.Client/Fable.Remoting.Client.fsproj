@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.21.0</Version>
+        <Version>7.22.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update MsgPack: Improved performance #294 and includes workaround for upstream stackalloc codegen bug #305</PackageReleaseNotes>
+        <PackageReleaseNotes>No longer uses ITypeResolver to inject reflection type information</PackageReleaseNotes>
         <TargetFramework>netstandard2.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>

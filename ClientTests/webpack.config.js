@@ -17,7 +17,7 @@ module.exports = function (evn, argv) {
   return {
     mode: mode,
     devtool: isProduction ? false : "eval-source-map",
-    entry: './src/ClientV2.fsproj',
+    entry: './src/Client.fsproj',
     output: {
       filename: 'bundle.js',
       path: path.join(__dirname, '..', 'Fable.Remoting.IntegrationTests', 'client-dist'),

@@ -62,7 +62,7 @@ let cwd = findParent __SOURCE_DIRECTORY__ "Fable.Remoting.sln"
 
 let getPath x = cwd </> $"Fable.Remoting.%s{x}"
 
-let ClientV2 = getPath "ClientV2"
+let Client = getPath "Client"
 let Json = getPath "Json"
 let Server = getPath "Server"
 let Suave = getPath "Suave"
@@ -72,7 +72,7 @@ let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
 let MsgPack = getPath "MsgPack"
 let AzureFunctionsWorker = getPath "AzureFunctions.Worker"
-let clientTests = cwd </> "ClientV2Tests"
+let clientTests = cwd </> "ClientTests"
 let clientUITests = cwd </> "UITests"
 let docs = cwd </> "documentation"
 
@@ -98,7 +98,7 @@ let publish projectPath = fun _ ->
     let pushCmd = $"nuget push %s{nupkg} -s nuget.org -k %s{nugetKey}"
     run projectPath dotnet pushCmd
 
-createTarget "PublishClient" (publish ClientV2)
+createTarget "PublishClient" (publish Client)
 createTarget "PublishJson" (publish Json)
 createTarget "PublishServer" (publish Server)
 createTarget "PublishDotnetClient" (publish DotnetClient)
@@ -110,7 +110,7 @@ createTarget "PublishMsgPack" (publish MsgPack)
 
 createTarget "PublishMsgPackDownstream" (fun ctx ->
     publish MsgPack ctx
-    publish ClientV2 ctx
+    publish Client ctx
     publish Server ctx
     publish Suave ctx
     publish GiraffeNET5 ctx
