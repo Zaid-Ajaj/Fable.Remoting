@@ -15,6 +15,6 @@
         "fable-loader": "^2.1.9",
         "webpack": "^4.39.3",
         "webpack-cli": "^3.3.8",
-        "webpack-dev-server": "^3.11.0"
+        "webpack-dev-server": "^4.11.0"
     }
 }
