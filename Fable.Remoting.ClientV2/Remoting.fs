@@ -43,8 +43,8 @@ module Remoting =
         { options with CustomResponseSerialization = Some serializer }
 
 type Remoting() =
-    static member buildProxy<'t>(options: RemoteBuilderOptions, [<Inject>] ?resolver: ITypeResolver<'t>) : 't =
-        let resolvedType = resolver.Value.ResolveType()
+    /// For internal library use only.
+    static member buildProxy(options: RemoteBuilderOptions, resolvedType: Type) =
         let schemaType = createTypeInfo resolvedType
         match schemaType with
         | TypeInfo.Record getFields ->
@@ -98,3 +98,5 @@ type Remoting() =
         | _ ->
             failwithf "Cannot build proxy. Exepected type %s to be a valid protocol definition which is a record of functions" resolvedType.FullName
 
+    static member inline buildProxy<'t>(options: RemoteBuilderOptions) : 't =
+        Remoting.buildProxy(options, typeof<'t>)
