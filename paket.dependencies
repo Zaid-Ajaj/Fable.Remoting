@@ -15,17 +15,6 @@ nuget PuppeteerSharp
 nuget Suave
 nuget Giraffe
 
-group Build
-    source https://api.nuget.org/v3/index.json
-    framework: net6.0
-    storage: none
-
-    nuget FSharp.Core
-    nuget Fake.Core.ReleaseNotes
-    nuget Fake.Core.Target
-    nuget Fake.DotNet.Cli
-    nuget Fake.IO.FileSystem
-
 group FunctionsWorker
     source https://api.nuget.org/v3/index.json
     framework: net5
