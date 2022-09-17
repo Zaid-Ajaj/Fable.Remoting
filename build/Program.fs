@@ -310,7 +310,7 @@ let withDotnetTool (tool: string) (version: string) (f: unit -> unit) =
             f()
         finally
             // uninstall it after having finished working with it
-            run cwd "dotnet" $"tool uninstall {tool} --version {version}"
+            run cwd "dotnet" $"tool uninstall {tool}"
     else
         // tool exists, keep track of the version
         let originalVersion = existingTools.[tool]
