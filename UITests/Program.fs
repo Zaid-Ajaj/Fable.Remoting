@@ -145,8 +145,8 @@ let main argv =
     printfn "========== SETUP =========="
     printfn ""
     printfn "Downloading chromium browser..."
-    let browserFetcher = BrowserFetcher()
-    browserFetcher.DownloadAsync(BrowserFetcher.DefaultRevision)
+    use browserFetcher = new BrowserFetcher()
+    browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision)
     |> Async.AwaitTask
     |> Async.RunSynchronously
     |> ignore
@@ -163,7 +163,7 @@ let main argv =
 
     printfn "Server listening to requests"
     let launchOptions = LaunchOptions()
-    launchOptions.ExecutablePath <- browserFetcher.GetExecutablePath(BrowserFetcher.DefaultRevision)
+    launchOptions.ExecutablePath <- browserFetcher.GetExecutablePath(BrowserFetcher.DefaultChromiumRevision)
     launchOptions.Headless <- true
 
     async {

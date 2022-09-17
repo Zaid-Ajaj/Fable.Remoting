@@ -26,8 +26,9 @@ install:
 
 build_script:
   - cmd: dotnet tool restore
-  - cmd: dotnet fake build -t BuildRunAllTests
-  - cmd: dotnet fake build -t IntegrationTests
-  - cmd: dotnet fake build -t IntegrationTestsNagareyama
+  - cmd: dotnet run --project ./build/Build.fsproj -- BuildRunAllTests
+  - cmd: dotnet run --project ./build/Build.fsproj -- IntegrationTests
+  - cmd: dotnet run --project ./build/Build.fsproj -- IntegrationTestsNagareyama
+  - cmd: dotnet run --project ./build/Build.fsproj -- IntegrationTestsNagareyamaV4
 
 test: off

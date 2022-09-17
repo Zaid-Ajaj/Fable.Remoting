@@ -22,6 +22,19 @@ let run workingDir fileName args =
     |> Proc.run
     |> ignore
 
+let execStdout workingDir fileName args =
+    printfn $"CWD: %s{workingDir}"
+    let fileName, args =
+        if Environment.isUnix
+        then fileName, args else "cmd", ("/C " + fileName + " " + args)
+
+    CreateProcess.fromRawCommandLine fileName args
+    |> CreateProcess.withWorkingDirectory workingDir
+    |> CreateProcess.withTimeout TimeSpan.MaxValue
+    |> CreateProcess.redirectOutput
+    |> CreateProcess.ensureExitCodeWithMessage $"'%s{workingDir}> %s{fileName} %s{args}' task failed"
+    |> Proc.run
+    |> fun result -> result.Result.Output
 
 let proj file = $"Fable.Remoting.%s{file}" </> $"Fable.Remoting.%s{file}.fsproj"
 let testDll file = $"Fable.Remoting.%s{file}.Tests" </> "bin" </> "Release" </> "net6.0" </> $"Fable.Remoting.%s{file}.Tests.dll"
@@ -263,7 +276,7 @@ createTarget "IntegrationTests" <| fun _ ->
     run clientTests "npm" "run build"
     runHeadlessBrowserTests()
 
-createTarget "IntegrationTestsNagareyama" <| fun _ ->
+let runFableIntegrationTests() = 
     clean (getPath "Server")
     clean (getPath "Json")
     clean (getPath "MsgPack")
@@ -276,6 +289,45 @@ createTarget "IntegrationTestsNagareyama" <| fun _ ->
     run clientTests "npm" "install"
     run clientTests "npm" "run build-nagareyama"
     runHeadlessBrowserTests()
+    
+let withDotnetTool (tool: string) (version: string) (f: unit -> unit) =
+    let existingTools =
+        execStdout cwd "dotnet" "tool list"
+        |> String.split '\n'
+        |> List.skip 2 // skip table header
+        |> List.where String.isNotNullOrEmpty
+        |> List.map (fun line ->
+            let parts = line.Split(" ", StringSplitOptions.RemoveEmptyEntries)
+            let tool = parts[0]
+            let version = parts[1]
+            tool, version)
+        |> Map.ofList
+        
+    if not (existingTools.ContainsKey tool) then
+        // tool doesn't exist
+        run cwd "dotnet" $"tool install {tool} --version {version}"
+        try
+            f()
+        finally
+            // uninstall it after having finished working with it
+            run cwd "dotnet" $"tool uninstall {tool} --version {version}"
+    else
+        // tool exists, keep track of the version
+        let originalVersion = existingTools.[tool]
+        run cwd "dotnet" $"tool uninstall {tool}"
+        run cwd "dotnet" $"tool install {tool} --version {version}"
+        try
+            f()
+        finally
+            // revert back to original version
+            run cwd "dotnet" $"tool uninstall {tool}"
+            run cwd "dotnet" $"tool install {tool} --version {originalVersion}"
+
+createTarget "IntegrationTestsNagareyama" <| fun _ ->
+    runFableIntegrationTests()
+    
+createTarget "IntegrationTestsNagareyamaV4" <| fun _ ->
+    withDotnetTool "fable" "4.0.0-theta-004" (fun _ -> runFableIntegrationTests())
 
 createTarget "IntegrationTestsNagareyamaLive" <| fun _ ->
     clean (getPath "Server")
