@@ -3,28 +3,29 @@ source https://api.nuget.org/v3/index.json
 
 storage: none
 lowest_matching: true
-nuget benchmarkdotnet
-nuget Expecto
-nuget FSharp.Core >= 4.7.2
+nuget benchmarkdotnet 0.13.2
+nuget Expecto 9.0.2
+nuget FSharp.Core >= 6.0.0
 nuget Microsoft.AspNetCore.Server.Kestrel ~> 2.2
 nuget Microsoft.AspNetCore.TestHost ~> 3.1
-nuget Microsoft.IO.RecyclableMemoryStream ~> 2
-nuget Newtonsoft.Json
-nuget NUnit
-nuget PuppeteerSharp
-nuget Suave
-nuget Giraffe
+nuget Microsoft.IO.RecyclableMemoryStream >= 2.2
+nuget Newtonsoft.Json >= 12.0
+nuget NUnit >= 3.12
+nuget PuppeteerSharp >= 7.1
+nuget Suave >= 2.5.6
+nuget Giraffe >= 4.1
 
 group FunctionsWorker
     source https://api.nuget.org/v3/index.json
     framework: net5
     storage: none
     lowest_matching: true
-    nuget Microsoft.Azure.Functions.Worker
-    nuget Microsoft.Azure.Functions.Worker.Sdk
-    nuget Microsoft.Azure.Functions.Worker.Extensions.Http
+    nuget FSharp.Core >= 6.0.0
+    nuget Microsoft.Azure.Functions.Worker ~> 1
+    nuget Microsoft.Azure.Functions.Worker.Sdk ~> 1
+    nuget Microsoft.Azure.Functions.Worker.Extensions.Http ~> 3
     nuget Newtonsoft.Json
-    nuget Expecto
+    nuget Expecto 9.0.2
 
 group LatestNet5
     source https://api.nuget.org/v3/index.json
@@ -32,8 +33,8 @@ group LatestNet5
     storage: none
     lowest_matching: true
     nuget Giraffe >= 5.0.0
-    nuget FSharp.Core >= 5.0
-    nuget Microsoft.IO.RecyclableMemoryStream ~> 2
+    nuget FSharp.Core >= 6.0
+    nuget Microsoft.IO.RecyclableMemoryStream >= 2.2
 
 group Client
     source https://api.nuget.org/v3/index.json

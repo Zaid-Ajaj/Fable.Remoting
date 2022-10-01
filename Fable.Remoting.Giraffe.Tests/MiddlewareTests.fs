@@ -119,8 +119,8 @@ let middlewareTests =
         }
 
         testCaseAsync "IServer.echoInteger with explicit quotes" <| async {
-            let! firstResult = proxy.call <@ fun server -> server.echoInteger 20 @>
-            let! secondResult = proxy.call <@ fun server -> server.echoInteger 0 @>
+            let! firstResult = proxy.call <@ fun (server: IServer) -> server.echoInteger 20 @>
+            let! secondResult = proxy.call <@ fun (server: IServer) -> server.echoInteger 0 @>
             Expect.equal 20 firstResult "result is echoed correctly"
             Expect.equal 0 secondResult "result is echoed correctly"
         }
@@ -316,6 +316,17 @@ let middlewareTests =
                 | other -> Expect.isTrue false "Should not happen"
         }
 
+        testCaseAsync "IServer.throwError using callSafelyTask" <| async {
+            let! result = proxy.callSafelyTask (fun server -> server.throwError()) |> Async.AwaitTask
+            match result with
+            | Ok value -> failwithf "Got value %A where an error was expected" value
+            | Result.Error ex ->
+                match ex with
+                | :? Fable.Remoting.DotnetClient.Http.ProxyRequestException as reqEx ->
+                    Expect.isTrue (reqEx.ResponseText.Contains("Generating custom server error")) "Works"
+                | other -> Expect.isTrue false "Should not happen"
+        }
+
         testCaseAsync "IServer.mutliArgFunc" <| async {
             let! result = proxy.call (fun server -> server.multiArgFunc "hello" 10 false)
             Expect.equal 15 result "Result is correct"
@@ -326,6 +337,11 @@ let middlewareTests =
 
         testCaseAsync "IServer.pureAsync" <| async {
             let! result = proxy.call (fun server -> server.pureAsync)
+            Expect.equal 42 result "Pure async without parameters works"
+        }
+
+        testCaseAsync "IServer.pureAsync as task" <| async {
+            let! result = proxy.callTask (fun server -> server.pureAsync) |> Async.AwaitTask
             Expect.equal 42 result "Pure async without parameters works"
         }
 
@@ -631,6 +647,12 @@ let middlewareTests =
             Expect.equal input output "Big int is equal"
         }
 
+        testCaseAsync "IBinaryServer.echoBigInteger as task" <| async {
+            let input = 1I
+            let! output = binaryProxy.callTask (fun server -> server.echoBigInteger input) |> Async.AwaitTask
+            Expect.equal input output "Big int is equal"
+        }
+
         testCaseAsync "IBinaryServer.tuplesAndLists" <| async {
             let inputDict = Map.ofList [ "hello", 5 ]
             let inputStrings = [ "there!" ]
@@ -649,4 +671,47 @@ let middlewareTests =
             do! testDataSetWithProxyCall proxyCall
         }
 
+        testCaseAsync "IBinaryServer.pureTask as async" <| async {
+            let! output = binaryProxy.call (fun server -> server.pureTask)
+            Expect.equal output 42 "Pure task without parameters works"
+        }
+
+        testCaseAsync "IBinaryServer.pureTask as task" <| async {
+            let! output = binaryProxy.callTask (fun server -> server.pureTask) |> Async.AwaitTask
+            Expect.equal output 42 "Pure task without parameters works"
+        }
+
+        testCaseAsync "IBinaryServer.echoMapTask as async" <| async {
+            let expected = Map.ofList [ "yup", 6 ]
+            let! output = binaryProxy.call (fun server -> server.echoMapTask expected)
+            Expect.equal output expected "Echoed map is correct"
+        }
+
+        testCaseAsync "IBinaryServer.echoMapTask as task" <| async {
+            let expected = Map.ofList [ "yup", 6 ]
+            let! output = binaryProxy.callTask (fun server -> server.echoMapTask expected) |> Async.AwaitTask
+            Expect.equal output expected "Echoed map is correct"
+        }
+
+        testCaseAsync "IBinaryServer.pureTask as async with explicit quotes" <| async {
+            let! output = binaryProxy.call <@ fun server -> server.pureTask @>
+            Expect.equal output 42 "Pure task without parameters works"
+        }
+
+        testCaseAsync "IBinaryServer.pureTask as task with explicit quotes" <| async {
+            let! output = binaryProxy.callTask <@ fun server -> server.pureTask @> |> Async.AwaitTask
+            Expect.equal output 42 "Pure task without parameters works"
+        }
+
+        testCaseAsync "IBinaryServer.echoMapTask as async with explicit quotes" <| async {
+            let expected = Map.ofList [ "yup", 6 ]
+            let! output = binaryProxy.call <@ fun server -> server.echoMapTask expected @>
+            Expect.equal output expected "Echoed map is correct"
+        }
+
+        testCaseAsync "IBinaryServer.echoMapTask as task with explicit quotes" <| async {
+            let expected = Map.ofList [ "yup", 6 ]
+            let! output = binaryProxy.callTask <@ fun server -> server.echoMapTask expected @> |> Async.AwaitTask
+            Expect.equal output expected "Echoed map is correct"
+        }
     ]

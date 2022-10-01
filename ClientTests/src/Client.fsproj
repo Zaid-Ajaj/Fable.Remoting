@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+	<DefineConstants>TASK_AS_ASYNC</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\Fable.Remoting.IntegrationTests\Shared\SharedTypes.fs" />

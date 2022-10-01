@@ -16,36 +16,33 @@ module private FuncsUtil =
         res
     
     let private htmlString (html:string) (req:HttpRequestData) : Task<HttpResponseData option> =
-        async {
+        task {
             let bytes = System.Text.Encoding.UTF8.GetBytes html
             let resp = req.CreateResponse(HttpStatusCode.OK) |> setContentType "text/html; charset=utf-8"
-            do! resp.WriteBytesAsync bytes |> Async.AwaitTask
+            do! resp.WriteBytesAsync bytes
             return Some resp
         }
-        |> Async.StartAsTask
     
     let text (str:string) (req:HttpRequestData) : Task<HttpResponseData option> =
-        async {
+        task {
             let bytes = System.Text.Encoding.UTF8.GetBytes str
             let resp = req.CreateResponse(HttpStatusCode.OK) |> setContentType "text/plain; charset=utf-8"
-            do! resp.WriteBytesAsync bytes |> Async.AwaitTask
+            do! resp.WriteBytesAsync bytes
             return Some resp
         }
-        |> Async.StartAsTask
     
     let private path (r:HttpRequestData) = r.Url.PathAndQuery.Split("?").[0]
 
     let setJsonBody (res:HttpResponseData) (response: obj) (logger: Option<string -> unit>) (req:HttpRequestData) : Task<HttpResponseData option> =
-        async {
+        task {
             use ms = new MemoryStream ()
             jsonSerialize response ms
             let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
             Diagnostics.outputPhase logger responseBody
             let res = res |> setContentType "application/json; charset=utf-8"
-            do! res.WriteStringAsync responseBody |> Async.AwaitTask
+            do! res.WriteStringAsync responseBody
             return Some res
         }
-        |> Async.StartAsTask
 
     /// Handles thrown exceptions
     let fail (ex: exn) (routeInfo: RouteInfo<HttpRequestData>) (options: RemotingOptions<HttpRequestData, 't>) (req:HttpRequestData) : Task<HttpResponseData option> =
@@ -65,7 +62,7 @@ module private FuncsUtil =
         let rmsManager = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
 
         fun (req:HttpRequestData) ->
-            async {
+            task {
                 let isProxyHeaderPresent = req.Headers.Contains "x-remoting-proxy"
                 use output = rmsManager.GetStream "remoting-output-stream"
                 let isBinaryEncoded =
@@ -87,11 +84,11 @@ module private FuncsUtil =
                             else
                                 r |> setContentType "application/msgpack"
                         )
-                    do! output.CopyToAsync resp.Body |> Async.AwaitTask
+                    do! output.CopyToAsync resp.Body
                     return Some resp
                 | Exception (e, functionName, requestBodyText) ->
                     let routeInfo = { methodName = functionName; path = path req; httpContext = req; requestBodyText = requestBodyText }
-                    return! fail e routeInfo options req |> Async.AwaitTask
+                    return! fail e routeInfo options req
                 | InvalidHttpVerb -> return halt
                 | EndpointNotFound ->
                     match req.Method.ToUpper(), options.Docs with
@@ -99,16 +96,15 @@ module private FuncsUtil =
                         let (Documentation(docsName, docsRoutes)) = docs
                         let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                         let docsApp = DocsApp.embedded docsName docsUrl schema
-                        return! htmlString docsApp req |> Async.AwaitTask
+                        return! htmlString docsApp req
                     | "OPTIONS", (Some docsUrl, Some docs)
                         when sprintf "/%s/$schema" docsUrl = (path req)
                           || sprintf "%s/$schema" docsUrl = (path req) ->
                         let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                         let serializedSchema = schema.ToString(Formatting.None)
-                        return! text serializedSchema req |> Async.AwaitTask
+                        return! text serializedSchema req
                     | _ -> return halt
             }
-            |> Async.StartAsTask
 
 module Remoting =
 
@@ -118,7 +114,7 @@ module Remoting =
     match options.Implementation with
     | StaticValue impl -> FuncsUtil.buildFromImplementation (fun _ -> impl) options
     | FromContext createImplementationFrom -> FuncsUtil.buildFromImplementation createImplementationFrom options
-    | Empty -> fun _ -> async { return None } |> Async.StartAsTask
+    | Empty -> fun _ -> Task.FromResult None
 
 module FunctionsRouteBuilder =
     /// Default RouteBuilder for Azure Functions running HttpTrigger on /api prefix
@@ -130,12 +126,11 @@ module HttpResponseData =
     
     let rec private chooseHttpResponse (fns:(HttpRequestData -> Task<HttpResponseData option>) list) =
         fun (req:HttpRequestData) ->
-            async {
+            task {
                 match fns with
                 | [] -> return req.CreateResponse(HttpStatusCode.NotFound)
                 | func :: tail ->
-                    let! result = func req |> Async.AwaitTask
-                    match result with
+                    match! func req with
                     | Some r -> return r
                     | None -> return! chooseHttpResponse tail req
             }
@@ -143,7 +138,7 @@ module HttpResponseData =
     /// Build HttpResponseData from builder functions and HttpRequestData
     /// This functionality is very similar to choose function from Giraffe
     let fromRequestHandlers (req:HttpRequestData) (fns:(HttpRequestData -> Task<HttpResponseData option>) list)  : Task<HttpResponseData> =
-        chooseHttpResponse fns req |> Async.StartAsTask
+        chooseHttpResponse fns req
     
     /// Build HttpResponseData from single builder function and HttpRequestData
     let fromRequestHandler (req:HttpRequestData) (fn:HttpRequestData -> Task<HttpResponseData option>)  : Task<HttpResponseData> =

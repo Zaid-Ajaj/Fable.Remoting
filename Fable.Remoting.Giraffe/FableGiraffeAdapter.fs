@@ -36,7 +36,7 @@ module GiraffeUtil =
         let proxy = makeApiProxy options
         let rmsManager = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
         
-        fun (next: HttpFunc) (ctx: HttpContext) -> Async.StartAsTask (async {
+        fun (next: HttpFunc) (ctx: HttpContext) -> task {
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
             use output = rmsManager.GetStream "remoting-output-stream"
 
@@ -54,12 +54,12 @@ module GiraffeUtil =
                 else
                     ctx.Response.ContentType <- "application/msgpack"
                 
-                do! output.CopyToAsync ctx.Response.Body |> Async.AwaitTask
-                return! next ctx |> Async.AwaitTask
+                do! output.CopyToAsync ctx.Response.Body
+                return! next ctx
             | Exception (e, functionName, requestBodyText) ->
                 ctx.Response.StatusCode <- 500
                 let routeInfo = { methodName = functionName; path = ctx.Request.Path.ToString(); httpContext = ctx; requestBodyText = requestBodyText }
-                return! fail e routeInfo options next ctx |> Async.AwaitTask
+                return! fail e routeInfo options next ctx
             | InvalidHttpVerb ->
                 return halt
             | EndpointNotFound ->
@@ -68,16 +68,16 @@ module GiraffeUtil =
                     let (Documentation(docsName, docsRoutes)) = docs
                     let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                     let docsApp = DocsApp.embedded docsName docsUrl schema
-                    return! htmlString docsApp next ctx |> Async.AwaitTask
+                    return! htmlString docsApp next ctx
                 | "OPTIONS", (Some docsUrl, Some docs)
                     when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
                       || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
                     let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                     let serializedSchema = schema.ToString(Formatting.None)
-                    return! text serializedSchema next ctx |> Async.AwaitTask
+                    return! text serializedSchema next ctx
                 | _ ->
                     return halt
-        })
+        }
 
 module Remoting =
 

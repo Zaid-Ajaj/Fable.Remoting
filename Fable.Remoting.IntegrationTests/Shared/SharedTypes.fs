@@ -1,6 +1,7 @@
 module SharedTypes
 
 open System
+open System.Threading.Tasks
 open Fable.Core
 
 type Record = {
@@ -282,6 +283,15 @@ type IBinaryServer = {
     echoLongInGenericUnion : Maybe<int64> -> Async<Maybe<int64>>
     echoAnonymousRecord : Maybe<{| name: string |}> -> Async<Maybe<{| name: string |}>>
     echoNestedAnonRecord : Maybe<{| nested: {| name: string |} |}> -> Async<Maybe<{| nested: {| name: string |} |}>>
+
+    // mixed Task on the server, Async in JS
+#if TASK_AS_ASYNC || FABLE_COMPILER
+    pureTask : Async<int>
+    echoMapTask : Map<string, int> -> Async<Map<string, int>>
+#else
+    pureTask : Task<int>
+    echoMapTask : Map<string, int> -> Task<Map<string, int>>
+#endif
 }
 
 type IServer = {

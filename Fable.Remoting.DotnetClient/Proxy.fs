@@ -13,6 +13,15 @@ module Proxy =
     open Patterns
     let private converter = FableJsonConverter()
 
+    let private taskCatch (f: unit -> Task<'a>) =
+        task {
+            try
+                let! res = f ()
+                return Choice1Of2 res
+            with e ->
+                return Choice2Of2 e
+        }
+
     /// Parses a JSON iput string to a .NET type using Fable JSON converter
     let parseAs<'t> (json: string) =
         JsonConvert.DeserializeObject<'t>(json, converter)
@@ -22,9 +31,9 @@ module Proxy =
         Fable.Remoting.MsgPack.Read.Reader(data).Read typeof<'t> :?> 't
 
     /// Sends a POST request to the specified url with the arguments of serialized to an input list
-    let proxyPost<'t> (functionArguments: obj list) url client isBinarySerialization =
+    let proxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization =
         let serializedInputArgs = JsonConvert.SerializeObject(functionArguments, converter)
-        async {
+        task {
             if isBinarySerialization then
                 let! data = Http.makePostRequestBinaryResponse client url serializedInputArgs
                 return parseAsBinary<'t> data
@@ -33,21 +42,27 @@ module Proxy =
                 return parseAs<'t> responseText
         }
 
+    /// Sends a POST request to the specified url with the arguments of serialized to an input list
+    let proxyPost<'t> (functionArguments: obj list) url client isBinarySerialization =
+        proxyPostTask<'t> functionArguments url client isBinarySerialization |> Async.AwaitTask
+
     /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it catched
-    let safeProxyPost<'t> (functionArguments: obj list) url client isBinarySerialization =
+    let safeProxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization =
         let serializedInputArgs = JsonConvert.SerializeObject(functionArguments, converter)
-        async {
+        task {
             if isBinarySerialization then
-                let! catchedResponse = Async.Catch (Http.makePostRequestBinaryResponse client url serializedInputArgs)
-                match catchedResponse with
+                match! taskCatch (fun () -> Http.makePostRequestBinaryResponse client url serializedInputArgs) with
                 | Choice1Of2 data -> return Ok (parseAsBinary<'t> data)
                 | Choice2Of2 thrownException -> return Error thrownException
             else
-                let! catchedResponse = Async.Catch (Http.makePostRequest client url serializedInputArgs)
-                match catchedResponse with
+                match! taskCatch (fun () -> Http.makePostRequest client url serializedInputArgs) with
                 | Choice1Of2 responseText -> return Ok (parseAs<'t> responseText)
                 | Choice2Of2 thrownException -> return Error thrownException
         }
+
+    /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it catched
+    let safeProxyPost<'t> (functionArguments: obj list) url client isBinarySerialization =
+        safeProxyPostTask<'t> functionArguments url client isBinarySerialization |> Async.AwaitTask
 
     type Proxy<'t>(builder, client: Option<HttpClient>, isBinarySerialization) =
         let typeName =
@@ -66,32 +81,42 @@ module Proxy =
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            let asyncPost = proxyPost<'a> args route client isBinarySerialization
-            Async.StartAsTask asyncPost 
+            proxyPostTask<'a> args route client isBinarySerialization
 
         member __.Call<'a, 'b> (expr: Expression<Func<'t, FSharpFunc<'a, Async<'b>>>>, input: 'a) : Task<'b> =
             let args = [ box input ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            let asyncPost = proxyPost<'b> args route client isBinarySerialization
-            Async.StartAsTask asyncPost 
+            proxyPostTask<'b> args route client isBinarySerialization
 
         member __.Call<'a, 'b, 'c> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, Async<'c>>>>>, arg1: 'a, arg2: 'b) : Task<'c> = 
             let args = [ box arg1; box arg2 ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            let asyncPost = proxyPost<'c> args route client isBinarySerialization
-            Async.StartAsTask asyncPost 
+            proxyPostTask<'c> args route client isBinarySerialization
 
         member __.Call<'a, 'b, 'c, 'd> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, FSharpFunc<'c, Async<'d>>>>>>, arg1: 'a, arg2: 'b, arg3: 'c) : Task<'d> = 
             let args = [ box arg1; box arg2; box arg3 ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            let asyncPost = proxyPost<'d> args route client isBinarySerialization
-            Async.StartAsTask asyncPost 
+            proxyPostTask<'d> args route client isBinarySerialization
+
+        /// Call the proxy function by wrapping it inside a quotation expr:
+        /// ```
+        /// async {
+        ///     let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")
+        ///     let! result = proxy.call <@ server -> server.getLength "input" @>
+        ///  }
+        /// ```
+        member __.call<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Task<'u>>) =
+            match expr with
+            | ProxyLambda(methodName, args) ->
+                let route = builder typeName methodName
+                proxyPost<'u> args route client isBinarySerialization
+            | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function by wrapping it inside a quotation expr:
         /// ```
@@ -117,11 +142,90 @@ module Proxy =
         ///       | Error ex -> (* panic! *)
         ///    }
         /// ```
+        member __.callSafely<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Task<'u>>) : Async<Result<'u, exn>> =
+            match expr with
+            | ProxyLambda(methodName, args) ->
+                let route = builder typeName methodName
+                safeProxyPost<'u> args route client isBinarySerialization
+            | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
+
+        /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
+        /// ```
+        ///    async {
+        ///       let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")
+        ///       let! result = proxy.callSafely <@ server -> server.getLength "input" @>
+        ///       match result with
+        ///       | Ok result -> (* do stuff with result *)
+        ///       | Error ex -> (* panic! *)
+        ///    }
+        /// ```
         member __.callSafely<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) : Async<Result<'u, exn>> =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
                 safeProxyPost<'u> args route client isBinarySerialization
+            | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
+
+        /// Call the proxy function by wrapping it inside a quotation expr:
+        /// ```
+        /// task {
+        ///     let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")
+        ///     let! result = proxy.call <@ server -> server.getLength "input" @>
+        ///  }
+        /// ```
+        member __.callTask<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Task<'u>>) =
+            match expr with
+            | ProxyLambda(methodName, args) ->
+                let route = builder typeName methodName
+                proxyPostTask<'u> args route client isBinarySerialization
+            | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
+
+        /// Call the proxy function by wrapping it inside a quotation expr:
+        /// ```
+        /// task {
+        ///     let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")
+        ///     let! result = proxy.call <@ server -> server.getLength "input" @>
+        ///  }
+        /// ```
+        member __.callTask<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) =
+            match expr with
+            | ProxyLambda(methodName, args) ->
+                let route = builder typeName methodName
+                proxyPostTask<'u> args route client isBinarySerialization
+            | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
+
+        /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
+        /// ```
+        ///    task {
+        ///       let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")
+        ///       let! result = proxy.callSafely <@ server -> server.getLength "input" @>
+        ///       match result with
+        ///       | Ok result -> (* do stuff with result *)
+        ///       | Error ex -> (* panic! *)
+        ///    }
+        /// ```
+        member __.callSafelyTask<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Task<'u>>) : Task<Result<'u, exn>> =
+            match expr with
+            | ProxyLambda(methodName, args) ->
+                let route = builder typeName methodName
+                safeProxyPostTask<'u> args route client isBinarySerialization
+            | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
+
+        /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
+        /// ```
+        ///    task {
+        ///       let proxy = Proxy.create<IServer> (sprintf "http://api.endpoint.org/api/%s/%s")
+        ///       let! result = proxy.callSafely <@ server -> server.getLength "input" @>
+        ///       match result with
+        ///       | Ok result -> (* do stuff with result *)
+        ///       | Error ex -> (* panic! *)
+        ///    }
+        /// ```
+        member __.callSafelyTask<'u> ([<ReflectedDefinition>] expr: Quotations.Expr<'t -> Async<'u>>) : Task<Result<'u, exn>> =
+            match expr with
+            | ProxyLambda(methodName, args) ->
+                let route = builder typeName methodName
+                safeProxyPostTask<'u> args route client isBinarySerialization
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
     /// Creates a proxy for a type with a route builder
