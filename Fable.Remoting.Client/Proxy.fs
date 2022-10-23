@@ -111,10 +111,12 @@ module Proxy =
                             Http.post url
                             |> Http.withBody requestBody
                             |> Http.withHeaders headers
+                            |> Http.withCredentials options.WithCredentials
                             |> Http.sendAndReadBinary
                         else
                             Http.get url
                             |> Http.withHeaders headers
+                            |> Http.withCredentials options.WithCredentials
                             |> Http.sendAndReadBinary
 
                     match statusCode with
@@ -141,10 +143,12 @@ module Proxy =
                             Http.post url
                             |> Http.withBody requestBody
                             |> Http.withHeaders headers
+                            |> Http.withCredentials options.WithCredentials
                             |> Http.send
                         else
                             Http.get url
                             |> Http.withHeaders headers
+                            |> Http.withCredentials options.WithCredentials
                             |> Http.send
 
                     match response.StatusCode with
