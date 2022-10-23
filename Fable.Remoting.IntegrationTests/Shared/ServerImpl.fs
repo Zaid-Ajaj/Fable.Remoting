@@ -227,4 +227,7 @@ let server : IServer  = {
     echoDateOnlyMap = Async.result
     simulateLongComputation = fun delay -> Async.Sleep delay
     echoRecordWithChar = Async.result
+
+    pureTask = Task.FromResult 42
+    echoMapTask = fun map -> Task.FromResult map
 }

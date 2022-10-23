@@ -86,6 +86,22 @@ module internal Middleware =
                 | Propagate error -> return! setBody (Errors.propagated error) logger next ctx
         }
 
+    let notFound (options: RemotingOptions<HttpContext, 'impl>) next (ctx: HttpContext) =
+        match ctx.Request.Method.ToUpper(), options.Docs with
+        | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
+            let (Documentation(docsName, docsRoutes)) = docs
+            let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
+            let docsApp = DocsApp.embedded docsName docsUrl schema
+            (text docsApp >=> setContentType "text/html") next ctx
+        | "OPTIONS", (Some docsUrl, Some docs)
+            when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
+              || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
+            let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
+            let serializedSchema = schema.ToString(Formatting.None)
+            text serializedSchema next ctx
+        | _ ->
+            halt next ctx
+
     let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
         let rmsManager = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
@@ -117,20 +133,7 @@ module internal Middleware =
             | InvalidHttpVerb ->
                 return! halt next ctx
             | EndpointNotFound ->
-                match ctx.Request.Method.ToUpper(), options.Docs with
-                | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
-                    let (Documentation(docsName, docsRoutes)) = docs
-                    let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
-                    let docsApp = DocsApp.embedded docsName docsUrl schema
-                    return! (text docsApp >=> setContentType "text/html") next ctx
-                | "OPTIONS", (Some docsUrl, Some docs)
-                    when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
-                      || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
-                    let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
-                    let serializedSchema = schema.ToString(Formatting.None)
-                    return! text serializedSchema next ctx
-                | _ ->
-                    return! halt next ctx
+                return! notFound options next ctx
         }
 
 type RemotingMiddleware<'t>(next          : RequestDelegate,

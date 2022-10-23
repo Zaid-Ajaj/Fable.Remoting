@@ -535,6 +535,17 @@ let dotnetClientTests =
             let! output = server.echoTimeOnlyMap input
             Expect.equal output input "Output has gone through"
         }
+
+        testCaseAsync "IServer.pureTask" <| async {
+            let! output = server.pureTask |> Async.AwaitTask
+            Expect.equal output 42 "Pure task without parameters works"
+        }
+
+        testCaseAsync "IServer.echoMapTask" <| async {
+            let expected = Map.ofList [ "yup", 6 ]
+            let! output = server.echoMapTask expected |> Async.AwaitTask
+            Expect.equal output expected "Echoed map is correct"
+        }
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with
