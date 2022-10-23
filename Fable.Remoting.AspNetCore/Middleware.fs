@@ -6,7 +6,6 @@ open Microsoft.AspNetCore.Http
 open System.IO
 open System.Threading.Tasks
 open Fable.Remoting.Server
-open FSharp.Control.Tasks
 open Newtonsoft.Json
 open Fable.Remoting.Server.Proxy
 
@@ -73,8 +72,7 @@ module internal Middleware =
 
     /// Used to forward of the Http context
     let halt : HttpHandler =
-      fun (next : HttpFunc) (ctx : HttpContext) ->
-        task { return None }
+      fun (next : HttpFunc) (ctx : HttpContext) -> Task.FromResult None
 
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
       let logger = options.DiagnosticsLogger

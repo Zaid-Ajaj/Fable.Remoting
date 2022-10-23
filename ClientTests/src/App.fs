@@ -1488,6 +1488,21 @@ let binaryServerTests =
                 test.equal output input
             }
 #endif
+
+        testCaseAsync "IBinaryServer.pureTask" <|
+            async {
+                let! output = binaryServer.pureTask
+                test.equal 42 output
+            }
+
+        testCaseAsync "IBinaryServer.echoMapTask" <|
+            async {
+                let input = ["hello", 1] |> Map.ofList
+                let! output = binaryServer.echoMapTask input
+                match input = output with
+                | true -> test.pass()
+                | false -> test.fail()
+            }
     ]
 
 let cookieServer =

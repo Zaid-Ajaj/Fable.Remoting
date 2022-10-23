@@ -70,6 +70,7 @@ let implementation = {
 
 
 open System
+open System.Threading.Tasks
 
 type UnionType = One | Two
 
@@ -209,6 +210,9 @@ type IBinaryServer = {
 
     echoDataTable : System.Data.DataTable -> Async<System.Data.DataTable>
     echoDataSet : System.Data.DataSet -> Async<System.Data.DataSet>
+
+    pureTask : Task<int>
+    echoMapTask : Map<string, int> -> Task<Map<string, int>>
 }
 
 module Async =
@@ -331,6 +335,9 @@ let binaryServer : IBinaryServer  = {
     echoLongInGenericUnion = Async.result
     echoDataTable = Async.result
     echoDataSet = Async.result
+
+    pureTask = Task.FromResult 42
+    echoMapTask = fun map -> Task.FromResult map
 }
 
 type IReaderTest = { getPath: Async<string> }

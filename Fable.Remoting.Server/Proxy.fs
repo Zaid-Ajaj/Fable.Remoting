@@ -9,6 +9,7 @@ open Newtonsoft.Json.Linq
 open System.IO
 open System.Collections.Concurrent
 open System.Text
+open System.Threading.Tasks
 
 let private fableConverter = new FableJsonConverter() :> JsonConverter
 
@@ -39,51 +40,73 @@ let private msgPackSerialize (o: 'a) (stream: Stream) =
 
 let recyclableMemoryStreamManager = Lazy<Microsoft.IO.RecyclableMemoryStreamManager> ()
 
-let typeNames inputTypes =
+let private typeNames inputTypes =
     inputTypes
     |> Array.map Diagnostics.typePrinter
     |> String.concat ", "
     |> sprintf "[%s]"
 
-let internal (|FSharpAsync|_|) (s: TypeShape) =
+let private (|FSharpAsync|_|) (s: TypeShape) =
     match s.ShapeInfo with
-    | Generic (td, ta) when td = typedefof<Async<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsync<_>>(ta) :?> IShapeFSharpAsync |> Some
+    | Generic (td, ta) when td = typedefof<Async<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsyncOrTask<_>>(ta) :?> IShapeFSharpAsyncOrTask |> Some
     | _ -> None
 
-let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'fieldPart -> InvocationPropsInt -> Async<InvocationResult> =
-    let wrap (p: 'a -> InvocationPropsInt -> Async<InvocationResult>) = unbox<'fieldPart -> InvocationPropsInt -> Async<InvocationResult>> p
+let private (|Task|_|) (s: TypeShape) =
+    match s.ShapeInfo with
+    | Generic (td, ta) when td = typedefof<Task<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsyncOrTask<_>>(ta) :?> IShapeFSharpAsyncOrTask |> Some
+    | _ -> None
+
+let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'fieldPart -> InvocationPropsInt -> Task<InvocationResult> =
+    let wrap (p: 'a -> InvocationPropsInt -> Task<InvocationResult>) = unbox<'fieldPart -> InvocationPropsInt -> Task<InvocationResult>> p
+
+    let validateArgumentCount props makeProps =
+        match props.Arguments with
+        | Choice2Of2 (_ :: _) ->
+            let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
+            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount
+        | _ -> ()
+
+    let writeToOutputMemoryStream isBinaryOutput (props: InvocationPropsInt) result =
+        if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
+            let data = box result :?> byte[]
+            props.Output.Write (data, 0, data.Length)
+        elif makeProps.ResponseSerialization = SerializationType.Json then
+            jsonSerialize result props.Output
+        else
+            msgPackSerialize result props.Output
+
+        props.Output.Position <- 0L
 
     match shapeof<'fieldPart> with
     | FSharpAsync a ->
         a.Element.Accept {
-            new ITypeVisitor<'fieldPart -> InvocationPropsInt -> Async<InvocationResult>> with
+            new ITypeVisitor<'fieldPart -> InvocationPropsInt -> Task<InvocationResult>> with
                 member _.Visit<'result> () =
                     let isBinaryOutput = typeof<'result> = typeof<byte[]>
 
-                    wrap (fun (s: Async<'result>) props -> async {
-                        match props.Arguments with
-                        | Choice2Of2 (_ :: _) ->
-                            let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
-                            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount
-                        | _ -> ()
+                    wrap (fun (s: Async<'result>) props -> task {
+                        validateArgumentCount props makeProps
+                        let! result = s
+                        writeToOutputMemoryStream isBinaryOutput props result                       
+                        return Success isBinaryOutput
+                    })
+        }
+    | Task t ->
+        t.Element.Accept {
+            new ITypeVisitor<'fieldPart -> InvocationPropsInt -> Task<InvocationResult>> with
+                member _.Visit<'result> () =
+                    let isBinaryOutput = typeof<'result> = typeof<byte[]>
 
-                        let! res = s
-
-                        if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
-                            let data = box res :?> byte[]
-                            props.Output.Write (data, 0, data.Length)
-                        elif makeProps.ResponseSerialization = SerializationType.Json then
-                            jsonSerialize res props.Output
-                        else
-                            msgPackSerialize res props.Output
-
-                        props.Output.Position <- 0L
+                    wrap (fun (s: Task<'result>) props -> task {
+                        validateArgumentCount props makeProps
+                        let! result = s
+                        writeToOutputMemoryStream isBinaryOutput props result                       
                         return Success isBinaryOutput
                     })
         }
     | Shape.FSharpFunc func ->
         func.Accept {
-            new IFSharpFuncVisitor<'fieldPart -> InvocationPropsInt -> Async<InvocationResult>> with
+            new IFSharpFuncVisitor<'fieldPart -> InvocationPropsInt -> Task<InvocationResult>> with
                 member _.Visit<'inp, 'out> () =
                     let outp = makeEndpointProxy<'out> makeProps
 
@@ -106,18 +129,18 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
                             failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount)
         }
     | _ ->
-        failwithf "The type '%s' of the record field '%s' for record type '%s' is not valid. It must either be Async<'t> or a function that returns Async<'t> (i.e. 'u -> Async<'t>)" typeof<'fieldPart>.Name makeProps.FieldName makeProps.RecordName
+        failwithf "The type '%s' of the record field '%s' for record type '%s' is not valid. It must either be Async<'t>, Task<'t> or a function that returns either (i.e. 'u -> Async<'t>)" typeof<'fieldPart>.Name makeProps.FieldName makeProps.RecordName
 
-let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): InvocationProps<'impl> -> Async<InvocationResult> =
-    let wrap (p: InvocationProps<'a> -> Async<InvocationResult>) = unbox<InvocationProps<'impl> -> Async<InvocationResult>> p
+let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): InvocationProps<'impl> -> Task<InvocationResult> =
+    let wrap (p: InvocationProps<'a> -> Task<InvocationResult>) = unbox<InvocationProps<'impl> -> Task<InvocationResult>> p
 
     let memberVisitor (shape: IShapeMember<'impl>, flattenedTypes: Type[]) =
-        shape.Accept { new IReadOnlyMemberVisitor<'impl, InvocationProps<'impl> -> Async<InvocationResult>> with
+        shape.Accept { new IReadOnlyMemberVisitor<'impl, InvocationProps<'impl> -> Task<InvocationResult>> with
             member _.Visit (shape: ReadOnlyMember<'impl, 'field>) =
                 let fieldProxy = makeEndpointProxy<'field> { FieldName = shape.MemberInfo.Name; RecordName = typeof<'impl>.Name; ResponseSerialization = options.ResponseSerialization; FlattenedTypes = flattenedTypes }
                 let isNoArg = flattenedTypes.Length = 1 || (flattenedTypes.Length = 2 && flattenedTypes.[0] = typeof<unit>)
 
-                wrap (fun (props: InvocationProps<'impl>) -> async {
+                wrap (fun (props: InvocationProps<'impl>) -> task {
                     let mutable requestBodyText = None
 
                     try
@@ -125,12 +148,12 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                             return InvalidHttpVerb
                         elif props.IsContentBinaryEncoded then
                             use ms = new MemoryStream ()
-                            do! props.Input.CopyToAsync ms |> Async.AwaitTask
+                            do! props.Input.CopyToAsync ms
                             let props' = { Arguments = Choice1Of2 (ms.ToArray ()); ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                         else
                             use sr = new StreamReader (props.Input)
-                            let! text = sr.ReadToEndAsync () |> Async.AwaitTask
+                            let! text = sr.ReadToEndAsync ()
 
                             let args =
                                 if String.IsNullOrEmpty text then
@@ -158,6 +181,6 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
         wrap (fun (props: InvocationProps<'impl>) ->
             match Map.tryFind props.EndpointName endpoints with
             | Some endpoint -> endpoint props
-            | _ -> async { return EndpointNotFound })
+            | _ -> Task.FromResult EndpointNotFound)
     | _ ->
         failwithf "Protocol definition must be encoded as a record type. The input type '%s' was not a record." typeof<'impl>.Name
