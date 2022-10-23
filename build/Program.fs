@@ -129,6 +129,15 @@ createTarget "PublishJsonDownstream" (fun ctx ->
     publish AzureFunctionsWorker ctx
 )
 
+createTarget "PublishServerDownstream" (fun ctx ->
+    publish Server ctx
+    publish Suave ctx
+    publish GiraffeNET5 ctx
+    publish AspNetCore ctx
+    publish DotnetClient ctx
+    publish AzureFunctionsWorker ctx
+)
+
 createTarget "RestoreBuildRunJsonTests" <| fun _ ->
     run cwd "dotnet"  ("restore " + proj "Json.Tests")
     run cwd "dotnet" ("build " + proj "Json.Tests" + " --configuration=Release")

@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.31.0</Version>
+        <Version>4.32.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-        <PackageReleaseNotes>Update MsgPack: Improved performance #294 and includes workaround for upstream stackalloc codegen bug #305</PackageReleaseNotes>
+        <PackageReleaseNotes>Update Fable.Remoting.Server, adding Task support</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

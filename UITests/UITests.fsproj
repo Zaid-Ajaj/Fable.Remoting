@@ -13,5 +13,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Fable.Remoting.Suave\Fable.Remoting.Suave.fsproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Fable.Core" Version="3.7.1" />
+  </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
