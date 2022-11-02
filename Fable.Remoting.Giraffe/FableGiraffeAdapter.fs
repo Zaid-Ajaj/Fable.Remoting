@@ -7,6 +7,7 @@ open System.IO
 open Fable.Remoting.Server
 open Newtonsoft.Json
 open Fable.Remoting.Server.Proxy
+open System.Threading.Tasks
 
 module GiraffeUtil =
     let setJsonBody (response: obj) (logger: Option<string -> unit>) : HttpHandler =
@@ -31,6 +32,22 @@ module GiraffeUtil =
 
     /// Used to halt the forwarding of the Http context
     let halt: HttpContext option = None
+
+    let notFound (options: RemotingOptions<HttpContext, 'impl>) next (ctx: HttpContext) =
+        match ctx.Request.Method.ToUpper(), options.Docs with
+        | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
+            let (Documentation(docsName, docsRoutes)) = docs
+            let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
+            let docsApp = DocsApp.embedded docsName docsUrl schema
+            htmlString docsApp next ctx
+        | "OPTIONS", (Some docsUrl, Some docs)
+            when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
+              || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
+            let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
+            let serializedSchema = schema.ToString(Formatting.None)
+            text serializedSchema next ctx
+        | _ ->
+            Task.FromResult halt
 
     let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
@@ -63,20 +80,7 @@ module GiraffeUtil =
             | InvalidHttpVerb ->
                 return halt
             | EndpointNotFound ->
-                match ctx.Request.Method.ToUpper(), options.Docs with
-                | "GET", (Some docsUrl, Some docs) when docsUrl = ctx.Request.Path.Value ->
-                    let (Documentation(docsName, docsRoutes)) = docs
-                    let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
-                    let docsApp = DocsApp.embedded docsName docsUrl schema
-                    return! htmlString docsApp next ctx
-                | "OPTIONS", (Some docsUrl, Some docs)
-                    when sprintf "/%s/$schema" docsUrl = ctx.Request.Path.Value
-                      || sprintf "%s/$schema" docsUrl = ctx.Request.Path.Value ->
-                    let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
-                    let serializedSchema = schema.ToString(Formatting.None)
-                    return! text serializedSchema next ctx
-                | _ ->
-                    return halt
+                return! notFound options next ctx
         }
 
 module Remoting =

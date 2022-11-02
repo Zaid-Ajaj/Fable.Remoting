@@ -397,6 +397,15 @@ type IServer = {
     command: CommandLabel * RequesterIdentifier * Requests.Command -> Async<OperationErrorMessage>
     echoPosition : Position -> Async<Position>
     simulateLongComputation: int -> Async<unit>
+
+    // mixed Task on the server, Async in JS
+#if TASK_AS_ASYNC || FABLE_COMPILER
+    pureTask : Async<int>
+    echoMapTask : Map<string, int> -> Async<Map<string, int>>
+#else
+    pureTask : Task<int>
+    echoMapTask : Map<string, int> -> Task<Map<string, int>>
+#endif
 }
 
 let routeBuilder typeName methodName =
