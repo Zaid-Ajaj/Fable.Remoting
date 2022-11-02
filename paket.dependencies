@@ -40,6 +40,6 @@ group Client
     source https://api.nuget.org/v3/index.json
     lowest_matching: true
     nuget Fable.Mocha >= 2.5
-    nuget Fable.SimpleJson >= 3.23.0
+    nuget Fable.SimpleJson >= 3.24.0
     nuget Fable.Browser.XMLHttpRequest
     nuget Fable.Core

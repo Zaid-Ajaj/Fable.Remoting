@@ -336,7 +336,7 @@ createTarget "IntegrationTestsNagareyama" <| fun _ ->
     runFableIntegrationTests()
     
 createTarget "IntegrationTestsNagareyamaV4" <| fun _ ->
-    withDotnetTool "fable" "4.0.0-theta-004" (fun _ -> runFableIntegrationTests())
+    withDotnetTool "fable" "4.0.0-theta-014" (fun _ -> runFableIntegrationTests())
 
 createTarget "IntegrationTestsNagareyamaLive" <| fun _ ->
     clean (getPath "Server")

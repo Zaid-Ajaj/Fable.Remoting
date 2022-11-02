@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.23.0</Version>
+        <Version>7.24.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Fixes withCredentials being ignored in proxy creation</PackageReleaseNotes>
+        <PackageReleaseNotes>Update Fable.SimpleJson to v3.24.0</PackageReleaseNotes>
         <TargetFramework>netstandard2.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>

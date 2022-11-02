@@ -7,10 +7,10 @@
         <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;aspnet</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>2.32.0</Version>
+        <Version>2.33.0</Version>
         <TargetFrameworks>netstandard2.0; netcoreapp3.1; net6.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update Fable.Remoting.Server, adding Task support</PackageReleaseNotes>
+        <PackageReleaseNotes>Make buildFromImplementation task statically compilable</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
