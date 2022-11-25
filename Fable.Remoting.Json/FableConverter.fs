@@ -29,6 +29,7 @@ type Kind =
     | Option = 1
     | Tuple = 2
     | Union = 3
+    | MutableRecord = 17
     | PojoDU = 4
     | StringEnum = 5
     | DateTime = 6
@@ -161,6 +162,10 @@ module private ReflectionHelpers =
             | _ -> None)
         |> defaultArg <| Kind.Union
 
+    let hasCliMutableAttribute (t: Type) = 
+        t.GetCustomAttributes(false)
+        |> Array.exists (fun attribute -> attribute.GetType().FullName.EndsWith "CLIMutableAttribute")
+    
     let unionOfRecords (t: Type) =
         let union = getUnionInfo t
         union.Cases
@@ -360,6 +365,8 @@ type FableJsonConverter() =
                 then Kind.BigInt
                 elif FSharpType.IsTuple t
                 then Kind.Tuple
+                elif FSharpType.IsRecord t && hasCliMutableAttribute t
+                then Kind.MutableRecord
                 elif (FSharpType.IsUnion(t, bindingFlags) && t.Name <> "FSharpList`1")
                 then getUnionKind t
                 elif t.IsGenericType
@@ -424,6 +431,13 @@ type FableJsonConverter() =
                 |> Seq.iter (fun (fi, v) ->
                     writer.WritePropertyName(fi.Name)
                     serializer.Serialize(writer, v))
+                writer.WriteEndObject()
+            | true, Kind.MutableRecord -> 
+                let properties = t.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+                writer.WriteStartObject()
+                for property in properties do
+                    writer.WritePropertyName(property.Name)
+                    serializer.Serialize(writer, property.GetValue(value, null))
                 writer.WriteEndObject()
             | true, Kind.StringEnum ->
                 let uci = getUnionInfo t |> getUnionCaseInfo value
@@ -549,6 +563,16 @@ type FableJsonConverter() =
             let case = getUnionInfo t |> getUnionCaseByName uciName
             let fields = case.Uci.GetFields() |> Array.map (fun fi -> Convert.ChangeType(dic.[fi.Name], fi.PropertyType))
             case.Constructor fields
+        | true, Kind.MutableRecord -> 
+            let content = serializer.Deserialize<JObject> reader
+            let fields = t.GetProperties() |> Array.map (fun property -> 
+                if content.ContainsKey property.Name then 
+                    content[property.Name].ToObject(property.PropertyType, serializer)
+                else 
+                    null
+            )
+
+            Activator.CreateInstance(t, fields)
         | true, Kind.StringEnum ->
             let name = serializer.Deserialize(reader, typeof<string>) :?> string
             (getUnionInfo t).Cases

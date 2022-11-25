@@ -8,8 +8,8 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>2.21.0</Version>
-        <PackageReleaseNotes>Support TimeOnly, DateOnly, update to .NET 6</PackageReleaseNotes>
+        <Version>2.22.0</Version>
+        <PackageReleaseNotes>Handle mutable records when they use conflicting fields</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0;net462;net6.0</TargetFrameworks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>

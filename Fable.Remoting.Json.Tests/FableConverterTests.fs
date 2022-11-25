@@ -465,6 +465,15 @@ let converterTest =
                   | otherwise -> fail()
             | otherwise -> fail()
 
+        testCase "Roundtrip with mutable record works" <| fun () ->
+            let input = { Value = Some 5; value = Some 1 }
+            input
+            |> serialize
+            |> deserialize<MutableRecord>
+            |> fun result -> 
+                Expect.equal input.Value result.Value "Value is good"
+                Expect.equal input.value result.value "value is good"
+
         testCase "Deserialization DataTable" <| fun () ->
             let dataXml = """<?xml version="1.0" standalone="yes"?>
 <NewDataSet>

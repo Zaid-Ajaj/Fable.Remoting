@@ -97,3 +97,12 @@ type StructDU = StructDU of string
 type RecordWithStructDU = { value :  StructDU  }
 
 type RecordWithStringOption = { StringOption: string option }
+
+// We test here that we can work with a record where the fields can conflict with each other
+// when we use case-insensitive serialization (default in Newtonsoft.Json). Without [<CLIMutable>] this fails,
+// so we also handle this special case in the Fable.Remoting.Json code.
+[<CLIMutable>]
+type MutableRecord = {
+    value : int option
+    Value : int option
+}
