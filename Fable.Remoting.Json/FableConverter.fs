@@ -436,8 +436,10 @@ type FableJsonConverter() =
                 let properties = t.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
                 writer.WriteStartObject()
                 for property in properties do
-                    writer.WritePropertyName(property.Name)
-                    serializer.Serialize(writer, property.GetValue(value, null))
+                    let propertyValue = property.GetValue(value, null)
+                    if not (isNull propertyValue) then
+                        writer.WritePropertyName(property.Name)
+                        serializer.Serialize(writer, propertyValue)
                 writer.WriteEndObject()
             | true, Kind.StringEnum ->
                 let uci = getUnionInfo t |> getUnionCaseInfo value
