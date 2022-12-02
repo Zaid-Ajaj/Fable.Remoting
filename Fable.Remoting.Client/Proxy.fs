@@ -134,7 +134,13 @@ module Proxy =
                     match returnTypeAsync with
                     | TypeInfo.Async getAsyncTypeArgument -> getAsyncTypeArgument()
                     | TypeInfo.Promise getPromiseTypeArgument -> getPromiseTypeArgument()
-                    | _ -> failwithf "Expected field %s to have a return type of Async<'t>" func.FieldName
+                    | TypeInfo.Any getReturnType ->
+                        let t = getReturnType()
+                        if t.FullName.StartsWith "System.Threading.Tasks.Task`1" then
+                            t.GetGenericArguments().[0] |> createTypeInfo
+                        else
+                            failwithf "Expected field %s to have a return type of Async<'t> or Task<'t>" func.FieldName
+                    | _ -> failwithf "Expected field %s to have a return type of Async<'t> or Task<'t>" func.FieldName
 
                 fun requestBody -> async {
                     // make plain RPC request and let it go through the deserialization pipeline
