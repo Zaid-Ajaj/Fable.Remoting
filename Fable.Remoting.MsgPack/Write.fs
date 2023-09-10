@@ -2,7 +2,6 @@
 
 open System.IO
 open System
-open System.Collections.Generic
 open System.Text
 open FSharp.Reflection
 open FSharp.NativeInterop
@@ -147,7 +146,7 @@ let inline writeSet (set: Set<'a>) (out: Stream) (elementSerializer: Action<'a, 
     for x in set do
         elementSerializer.Invoke (x, out)
 
-let inline writeDict (dict: Dictionary<'key, 'value>) (out: Stream) (keyWriter: Action<'key, Stream>) (valueWriter: Action<'value, Stream>) =
+let inline writeDict (dict: System.Collections.Generic.Dictionary<'key, 'value>) (out: Stream) (keyWriter: Action<'key, Stream>) (valueWriter: Action<'value, Stream>) =
     writeMapHeader dict.Count out
     for kvp in dict do
         keyWriter.Invoke (kvp.Key, out)
@@ -521,7 +520,7 @@ let serializeObj (x: obj) (out: Stream) =
 #endif
 
 module Fable =
-    let private serializerCache = Dictionary<string, obj -> ResizeArray<byte> -> unit> ()
+    let private serializerCache = System.Collections.Generic.Dictionary<string, obj -> ResizeArray<byte> -> unit> ()
 
     let private cacheGetOrAdd (typ: Type, f) =
         match serializerCache.TryGetValue typ.FullName with
@@ -677,7 +676,7 @@ module Fable =
         for x in arr do
             writeObject x t out
 
-    and private writeMap (out: ResizeArray<byte>) keyType valueType (dict: IDictionary<obj, obj>) =
+    and private writeMap (out: ResizeArray<byte>) keyType valueType (dict: System.Collections.Generic.IDictionary<obj, obj>) =
         let length = dict.Count
 
         if length < 16 then
@@ -765,10 +764,10 @@ module Fable =
                         let opt = x :?> _ option
                         let tag, values = if Option.isSome opt then 1, [| opt.Value |] else 0, [| |]
                         writeUnion out tag genArgs values) x out
-                elif tDef = typedefof<Dictionary<_, _>> || tDef = typedefof<Map<_, _>> then
+                elif tDef = typedefof<System.Collections.Generic.Dictionary<_, _>> || tDef = typedefof<Map<_, _>> then
                     let keyType = genArgs.[0]
                     let valueType = genArgs.[1]
-                    cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> IDictionary<obj, obj>)) x out
+                    cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> System.Collections.Generic.IDictionary<obj, obj>)) x out
                 elif tDef = typedefof<Set<_>> then
                     let elementType = genArgs |> Array.head
                     cacheGetOrAdd (t, fun x out -> writeSet out elementType (x :?> System.Collections.ICollection)) x out
