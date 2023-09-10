@@ -8,9 +8,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;azure functions</PackageTags>
         <Authors>Zaid Ajaj;Roman Provaznik</Authors>
-        <Version>1.7.0</Version>
+        <Version>1.8.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update Fable.Remoting.Server, adding Task support</PackageReleaseNotes>
+        <PackageReleaseNotes>Update MsgPack to work on dotnet 8</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableAzureFunctionsAdapter.fs" />

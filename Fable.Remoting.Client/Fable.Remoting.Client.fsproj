@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.25.0</Version>
+        <Version>7.26.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Accept Task-returning methods in JSON serialization</PackageReleaseNotes>
+        <PackageReleaseNotes>Update MsgPack to work on dotnet 8</PackageReleaseNotes>
         <TargetFramework>netstandard2.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>

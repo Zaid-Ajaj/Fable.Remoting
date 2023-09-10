@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.32.0</Version>
+        <Version>5.33.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net462</TargetFrameworks>
-        <PackageReleaseNotes>Add support for tasks</PackageReleaseNotes>
+        <PackageReleaseNotes>Update MsgPack to work on dotnet 8</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

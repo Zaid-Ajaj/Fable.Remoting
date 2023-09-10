@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.32.0</Version>
+        <Version>4.33.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
-        <PackageReleaseNotes>Update Fable.Remoting.Server, adding Task support</PackageReleaseNotes>
+        <PackageReleaseNotes>Update MsgPack to work on dotnet 8</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
