@@ -8,7 +8,7 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.15.0</Version>
+        <Version>5.17.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <PackageReleaseNotes>Make buildFromImplementation task statically compilable</PackageReleaseNotes>

@@ -8,7 +8,7 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;msgpack</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.19.0</Version>
+    <Version>1.21.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReleaseNotes>Fix inferred types when consumed from dotnet 8</PackageReleaseNotes>
     <TargetFrameworks>netstandard2.0;net462;netcoreapp3.1;net6.0</TargetFrameworks>
@@ -26,5 +26,7 @@
       <_Parameter1>Fable.Remoting.Server</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
-  <Import Project="..\.paket\Paket.Restore.targets" />
+  <ItemGroup>
+   <PackageReference Update="FSharp.Core" Version="4.7.2" />
+  </ItemGroup>
 </Project>
