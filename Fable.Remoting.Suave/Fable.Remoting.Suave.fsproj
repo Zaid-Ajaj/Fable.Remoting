@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <Description>Suave-Fable adapter that generates routes for shared server spec with a Fable client. Client must use Fable.Remoting.Client</Description>
@@ -10,7 +10,7 @@
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
         <Version>4.35.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+        <TargetFrameworks>netstandard2.1</TargetFrameworks>
         <PackageReleaseNotes>Update MsgPack to work on dotnet 8</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
