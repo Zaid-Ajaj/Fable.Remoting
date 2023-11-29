@@ -35,3 +35,20 @@ devServer: {
     }
 }
 ```
+If you happen to use [`vite-js`](https://vitejs.dev/config/server-options.html#server-proxy), here is the equivalent, to put in the `vite.config.ts:
+```js {highlight: [7,8,9,10,11]}
+import { defineConfig } from 'vite'
+
+export default defineConfig({   
+    server: {
+        host: '0.0.0.0'
+        , port: 5173
+        , proxy: {
+            '/api': {
+                target: 'http://localhost:5000',
+                changeOrigin: true
+            }
+        }
+    }
+})
+```
