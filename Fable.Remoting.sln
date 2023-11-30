@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30011.22
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.Json", "Fable.Remoting.Json\Fable.Remoting.Json.fsproj", "{F7E7D27F-7FAC-4736-980A-E65D2A9A3AEA}"
 EndProject
@@ -23,7 +23,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.DotnetClient
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.Client", "Fable.Remoting.Client\Fable.Remoting.Client.fsproj", "{EF7CC8EE-B06A-438C-B0EA-2C66F749C116}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ClientTests", "ClientTests\src\Client.fsproj", "{D9D3EA67-0178-493C-AC2D-C306F5FC75D2}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Client", "ClientTests\src\Client.fsproj", "{D9D3EA67-0178-493C-AC2D-C306F5FC75D2}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Server.Giraffe", "Fable.Remoting.IntegrationTests\Server.Giraffe\Server.Giraffe.fsproj", "{91E7F187-D488-4EB8-8004-89BA1944812C}"
 EndProject
@@ -45,7 +45,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.travis.yml = .travis.yml
 		appveyor.yml = appveyor.yml
 		build.cmd = build.cmd
-		build.fsx = build.fsx
 		build.sh = build.sh
 		LICENSE = LICENSE
 		paket.dependencies = paket.dependencies
@@ -53,11 +52,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.AzureFunctions.Worker", "Fable.Remoting.AzureFunctions.Worker\Fable.Remoting.AzureFunctions.Worker.fsproj", "{75E14B0C-A695-4755-818F-0F42FB76E70B}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.AzureFunctions.Worker", "Fable.Remoting.AzureFunctions.Worker\Fable.Remoting.AzureFunctions.Worker.fsproj", "{75E14B0C-A695-4755-818F-0F42FB76E70B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.AzureFunctions.Worker.Tests.FunctionApp", "Fable.Remoting.AzureFunctions.Worker.Tests\FunctionApp\Fable.Remoting.AzureFunctions.Worker.Tests.FunctionApp.fsproj", "{ABF72CDC-4C27-4DBD-9CE4-98B2EAF3BC65}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.AzureFunctions.Worker.Tests.FunctionApp", "Fable.Remoting.AzureFunctions.Worker.Tests\FunctionApp\Fable.Remoting.AzureFunctions.Worker.Tests.FunctionApp.fsproj", "{ABF72CDC-4C27-4DBD-9CE4-98B2EAF3BC65}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.AzureFunctions.Worker.Tests.Client", "Fable.Remoting.AzureFunctions.Worker.Tests\Client\Fable.Remoting.AzureFunctions.Worker.Tests.Client.fsproj", "{9B241790-013B-4817-90BF-D50E7A1D9BE0}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.AzureFunctions.Worker.Tests.Client", "Fable.Remoting.AzureFunctions.Worker.Tests\Client\Fable.Remoting.AzureFunctions.Worker.Tests.Client.fsproj", "{9B241790-013B-4817-90BF-D50E7A1D9BE0}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Build", "build\Build.fsproj", "{30D42110-503D-4671-B58C-C4FE9BD2BEB2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -321,6 +322,18 @@ Global
 		{9B241790-013B-4817-90BF-D50E7A1D9BE0}.Release|x64.Build.0 = Release|Any CPU
 		{9B241790-013B-4817-90BF-D50E7A1D9BE0}.Release|x86.ActiveCfg = Release|Any CPU
 		{9B241790-013B-4817-90BF-D50E7A1D9BE0}.Release|x86.Build.0 = Release|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Debug|x64.Build.0 = Debug|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Debug|x86.Build.0 = Debug|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|x64.ActiveCfg = Release|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|x64.Build.0 = Release|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|x86.ActiveCfg = Release|Any CPU
+		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

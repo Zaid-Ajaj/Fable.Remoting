@@ -1,0 +1,18 @@
+{
+  "profiles": {
+    "step debug it": {
+      "commandName": "Project",
+      "workingDirectory": ".."
+    },
+    "build.cmd": {
+      "commandName": "Executable",
+      "executablePath": "build.cmd",
+      "workingDirectory": ".."
+    },
+    "build.sh": {
+      "commandName": "Executable",
+      "executablePath": "build.sh",
+      "workingDirectory": ".."
+    }
+  }
+}
