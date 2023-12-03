@@ -2,7 +2,9 @@ module SharedTypes
 
 open System
 open System.Threading.Tasks
+#if FABLE_COMPILER
 open Fable.Core
+#endif
 
 type Record = {
     Prop1 : string
@@ -55,8 +57,9 @@ type SomeEnum =
     | Val0 = 0
     | Val1 = 1
     | Val2 = 2
-
+#if FABLE_COMPILER
 [<StringEnum>]
+#endif
 type SomeStringEnum =
     | FirstString
     | SecondString
@@ -294,6 +297,8 @@ type IBinaryServer = {
 #endif
 }
 
+type PostTimestamp = string
+
 type IServer = {
     // primitive types
     simpleUnit : unit -> Async<int>
@@ -397,6 +402,8 @@ type IServer = {
     command: CommandLabel * RequesterIdentifier * Requests.Command -> Async<OperationErrorMessage>
     echoPosition : Position -> Async<Position>
     simulateLongComputation: int -> Async<unit>
+    getPostTimestamp: unit -> Async<PostTimestamp>
+    getPostTimestamp_Result: unit -> Async<Result<PostTimestamp, string>>
 
     // mixed Task on the server, Async in JS
 #if TASK_AS_ASYNC || FABLE_COMPILER

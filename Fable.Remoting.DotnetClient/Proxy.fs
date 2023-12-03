@@ -24,7 +24,10 @@ module Proxy =
 
     /// Parses a JSON iput string to a .NET type using Fable JSON converter
     let parseAs<'t> (json: string) =
-        JsonConvert.DeserializeObject<'t>(json, converter)
+        let options = JsonSerializerSettings()
+        options.Converters.Add converter
+        options.DateParseHandling <- DateParseHandling.None
+        JsonConvert.DeserializeObject<'t>(json, options)
 
     /// Parses a byte array to a .NET type using Message Pack
     let parseAsBinary<'t> (data: byte[]) =

@@ -128,6 +128,8 @@ let serverBinary : IBinaryServer = {
     echoMapTask = fun map -> Task.FromResult map
 }
 
+let staticTimestampText = "2023-12-03T11:49:41"
+
 // Async.result : 'a -> Async<'a>
 // a simple implementation, just return whatever value you get (echo the input)
 let server : IServer  = {
@@ -230,4 +232,11 @@ let server : IServer  = {
 
     pureTask = Task.FromResult 42
     echoMapTask = fun map -> Task.FromResult map
+    getPostTimestamp = fun () -> async {
+        return staticTimestampText
+    }
+
+    getPostTimestamp_Result = fun () -> async {
+        return Ok staticTimestampText
+    }
 }

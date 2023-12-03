@@ -546,6 +546,16 @@ let dotnetClientTests =
             let! output = server.echoMapTask expected |> Async.AwaitTask
             Expect.equal output expected "Echoed map is correct"
         }
+
+        testCaseAsync "IServer.getPostTimestamp" <| async {
+            let! output = server.getPostTimestamp()
+            Expect.equal output staticTimestampText "Timestamp is correct"
+        }
+        
+        testCaseAsync "IServer.getPostTimestamp_Result" <| async {
+            let! output = server.getPostTimestamp_Result()
+            Expect.equal output (Ok staticTimestampText) "Timestamp is correct"
+        }
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with
