@@ -12,6 +12,7 @@ open Suave.Http
 open System
 open Expecto
 open Types
+open Microsoft.IO
 
 // Test helpers
 
@@ -28,7 +29,7 @@ let app =
   |> Remoting.fromValue implementation  
   |> Remoting.withDiagnosticsLogger (printfn "%s")
   |> Remoting.withErrorHandler errorHandler 
-  |> Remoting.withRecyclableMemoryStreamManager (Microsoft.IO.RecyclableMemoryStreamManager (ThrowExceptionOnToArray = true))
+  |> Remoting.withRecyclableMemoryStreamManager (RecyclableMemoryStreamManager (RecyclableMemoryStreamManager.Options (ThrowExceptionOnToArray = true)))
   |> Remoting.buildWebPart
 
 let postContent (input: string) =  new StringContent(sprintf "[%s]" input, System.Text.Encoding.UTF8)

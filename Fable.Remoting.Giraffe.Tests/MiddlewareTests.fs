@@ -11,6 +11,7 @@ open Microsoft.AspNetCore.Http
 open Expecto
 open Types
 open System.Net
+open Microsoft.IO
 
 let readerTest = reader {
     let! context = resolve<HttpContext>()
@@ -35,7 +36,7 @@ module ServerParts =
         |> Remoting.withRouteBuilder builder
         |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
         |> Remoting.withBinarySerialization
-        |> Remoting.withRecyclableMemoryStreamManager (Microsoft.IO.RecyclableMemoryStreamManager (ThrowExceptionOnToArray = true))
+        |> Remoting.withRecyclableMemoryStreamManager (RecyclableMemoryStreamManager (RecyclableMemoryStreamManager.Options (ThrowExceptionOnToArray = true)))
         |> Remoting.fromValue binaryServer
 
     let otherWebApp =

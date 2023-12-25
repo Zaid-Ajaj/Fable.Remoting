@@ -11,6 +11,7 @@ open Suave.Operators
 open Suave.Filters
 open ServerImpl
 open System.Threading
+open Microsoft.IO
 
 module ServerParts =
 
@@ -22,7 +23,7 @@ module ServerParts =
         |> Remoting.fromValue server
         |> Remoting.withRouteBuilder routeBuilder
         |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
-        |> Remoting.withRecyclableMemoryStreamManager (Microsoft.IO.RecyclableMemoryStreamManager (ThrowExceptionOnToArray = true))
+        |> Remoting.withRecyclableMemoryStreamManager (RecyclableMemoryStreamManager (RecyclableMemoryStreamManager.Options (ThrowExceptionOnToArray = true)))
         |> Remoting.buildWebPart
 
     let webApp =
