@@ -8,9 +8,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;azure functions</PackageTags>
         <Authors>Zaid Ajaj;Roman Provaznik</Authors>
-        <Version>1.10.0</Version>
+        <Version>1.11.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update MsgPack to work on dotnet 8</PackageReleaseNotes>
+        <PackageReleaseNotes>Update Microsoft.IO.RecyclableMemoryStream to v3.0</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableAzureFunctionsAdapter.fs" />

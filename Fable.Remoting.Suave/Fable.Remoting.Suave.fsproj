@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.36.0</Version>
+        <Version>4.37.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.1</TargetFrameworks>
-        <PackageReleaseNotes>Update Suave to 2.6.0 and target netstandard2.1</PackageReleaseNotes>
+        <PackageReleaseNotes>Update Microsoft.IO.RecyclableMemoryStream to v3.0</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

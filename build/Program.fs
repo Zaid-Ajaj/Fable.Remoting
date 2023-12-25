@@ -134,7 +134,6 @@ createTarget "PublishServerDownstream" (fun ctx ->
     publish Suave ctx
     publish GiraffeNET5 ctx
     publish AspNetCore ctx
-    publish DotnetClient ctx
     publish AzureFunctionsWorker ctx
 )
 
