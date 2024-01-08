@@ -15,7 +15,7 @@
       ]
     },
     "fable": {
-      "version": "3.7.18",
+      "version": "4.9.0",
       "commands": [
         "fable"
       ]

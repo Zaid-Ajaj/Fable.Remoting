@@ -5,7 +5,7 @@ build:
   verbosity: detailed
 
 environment:
-  nodejs_version: "12.16.1"
+  nodejs_version: "20.5.1"
 
 cache:
   - "%LOCALAPPDATA%\\Yarn"
@@ -28,7 +28,5 @@ build_script:
   - cmd: dotnet tool restore
   - cmd: dotnet run --project ./build/Build.fsproj -- BuildRunAllTests
   - cmd: dotnet run --project ./build/Build.fsproj -- IntegrationTests
-  - cmd: dotnet run --project ./build/Build.fsproj -- IntegrationTestsNagareyama
-  - cmd: dotnet run --project ./build/Build.fsproj -- IntegrationTestsNagareyamaV4
 
 test: off

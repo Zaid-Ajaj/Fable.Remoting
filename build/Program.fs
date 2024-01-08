@@ -269,20 +269,6 @@ createTarget "BuildRunAllTests" <| fun _ ->
 let runHeadlessBrowserTests() =
     run clientUITests "dotnet" "restore --no-cache"
     run clientUITests "dotnet" "run --headless"
-   
-createTarget "IntegrationTests" <| fun _ ->
-    clean (getPath "Server")
-    clean (getPath "Json")
-    clean (getPath "MsgPack")
-    clean (getPath "Suave")
-    clean (getPath "UITests")
-    clean (getPath "IntegrationTests" </> "Server.Suave")
-    clean clientTests
-    Shell.rm (getPath "IntegrationTests" </> "client-dist" </> "bundle.js")
-    run (clientTests </> "src") "dotnet" "restore"
-    run clientTests "npm" "install"
-    run clientTests "npm" "run build"
-    runHeadlessBrowserTests()
 
 let runFableIntegrationTests() = 
     clean (getPath "Server")
@@ -295,9 +281,9 @@ let runFableIntegrationTests() =
     clean clientTests
     run (clientTests </> "src") "dotnet" "restore"
     run clientTests "npm" "install"
-    run clientTests "npm" "run build-nagareyama"
+    run clientTests "npm" "run build"
     runHeadlessBrowserTests()
-    
+
 let withDotnetTool (tool: string) (version: string) (f: unit -> unit) =
     let existingTools =
         execStdout cwd "dotnet" "tool list"
@@ -310,7 +296,7 @@ let withDotnetTool (tool: string) (version: string) (f: unit -> unit) =
             let version = parts[1]
             tool, version)
         |> Map.ofList
-        
+
     if not (existingTools.ContainsKey tool) then
         // tool doesn't exist
         run cwd "dotnet" $"tool install {tool} --version {version}"
@@ -331,13 +317,10 @@ let withDotnetTool (tool: string) (version: string) (f: unit -> unit) =
             run cwd "dotnet" $"tool uninstall {tool}"
             run cwd "dotnet" $"tool install {tool} --version {originalVersion}"
 
-createTarget "IntegrationTestsNagareyama" <| fun _ ->
+createTarget "IntegrationTests" <| fun _ ->
     runFableIntegrationTests()
-    
-createTarget "IntegrationTestsNagareyamaV4" <| fun _ ->
-    withDotnetTool "fable" "4.0.0-theta-014" (fun _ -> runFableIntegrationTests())
 
-createTarget "IntegrationTestsNagareyamaLive" <| fun _ ->
+createTarget "IntegrationTestsLive" <| fun _ ->
     clean (getPath "Server")
     clean (getPath "Json")
     clean (getPath "MsgPack")
@@ -347,19 +330,6 @@ createTarget "IntegrationTestsNagareyamaLive" <| fun _ ->
     Shell.rm (getPath "IntegrationTests" </> "client-dist" </> "bundle.js")
     clean clientTests
     run (clientTests </> "src") "dotnet" "restore"
-    run clientTests "npm" "install"
-    run clientTests "npm" "run build-nagareyama"
-    run clientUITests "dotnet" "restore --no-cache"
-    run clientUITests "dotnet" "run"
-
-createTarget "IntegrationTestsLive" <| fun _ ->
-    clean (getPath "Server")
-    clean (getPath "Json")
-    clean (getPath "MsgPack")
-    clean (getPath "Suave")
-    clean (getPath "UITests")
-    clean (getPath "IntegrationTests" </> "Server.Suave")
-    clean clientTests
     run clientTests "npm" "install"
     run clientTests "npm" "run build"
     run clientUITests "dotnet" "restore --no-cache"
