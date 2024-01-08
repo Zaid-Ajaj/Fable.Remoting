@@ -56,10 +56,11 @@ module Http =
             | Some f ->  f xhr
             | _ -> ignore()
 
-            token.Register(fun _ ->
-                xhr.abort()
-                cancel(System.OperationCanceledException(token))
-            ) |> ignore
+            let cancellationTokenRegistration =
+                token.Register(fun _ ->
+                    xhr.abort()
+                    cancel(System.OperationCanceledException(token))
+                )
 
             // set the headers, must be after opening the request
             for (key, value) in req.Headers do
@@ -70,6 +71,7 @@ module Http =
             xhr.onreadystatechange <- fun _ ->
                 match xhr.readyState with
                 | ReadyState.Done when not token.IsCancellationRequested ->
+                    (cancellationTokenRegistration :> System.IDisposable).Dispose()
                     xhr |> resultMapper |> resolve
                 | _ -> ignore()
 
