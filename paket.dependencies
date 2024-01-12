@@ -15,6 +15,14 @@ nuget PuppeteerSharp >= 7.1
 nuget Suave >= 2.6.0
 nuget Giraffe >= 4.1
 
+group AwsLambda
+    source https://api.nuget.org/v3/index.json
+    framework: net5
+    storage: none
+    lowest_matching: true
+    nuget FSharp.Core >= 6.0.0
+    nuget Amazon.Lambda.APIGatewayEvents 2.6.0
+
 group FunctionsWorker
     source https://api.nuget.org/v3/index.json
     framework: net5
