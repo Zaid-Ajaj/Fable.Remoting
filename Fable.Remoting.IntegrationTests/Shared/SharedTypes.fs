@@ -58,7 +58,7 @@ type SomeEnum =
     | Val1 = 1
     | Val2 = 2
 #if FABLE_COMPILER
-[<StringEnum>]
+[<StringEnum(CaseRules.None)>]
 #endif
 type SomeStringEnum =
     | FirstString
