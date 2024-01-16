@@ -57,12 +57,15 @@ type SomeEnum =
     | Val0 = 0
     | Val1 = 1
     | Val2 = 2
-#if FABLE_COMPILER
-[<StringEnum(CaseRules.None)>]
+
+#if !FABLE_COMPILER
+type StringEnumAttribute () =
+    inherit Attribute ()
 #endif
+[<StringEnumAttribute; RequireQualifiedAccess>]
 type SomeStringEnum =
-    | FirstString
-    | SecondString
+    | firstString
+    | secondString
 
 type HighScore = { Name: string; Score: int }
 

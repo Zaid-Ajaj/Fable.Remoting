@@ -1410,7 +1410,7 @@ let binaryServerTests =
             }
         testCaseAsync "IBinaryServer.stringEnum" <|
             async {
-                let input = SecondString
+                let input = SomeStringEnum.secondString
                 let! output = binaryServer.echoStringEnum input
                 test.equal true (input = output)
             }
