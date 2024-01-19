@@ -520,7 +520,7 @@ let serializeObj (x: obj) (out: Stream) =
 #endif
 
 module Fable =
-    let private serializerCache = System.Collections.Generic.Dictionary<string, obj -> ResizeArray<byte> -> unit> ()
+    let private serializerCache = System.Collections.Generic.Dictionary<string, Action<obj, ResizeArray<byte>>> ()
 
     let private cacheGetOrAdd (typ: Type, f) =
         match serializerCache.TryGetValue typ.FullName with
@@ -734,53 +734,53 @@ module Fable =
 
         match serializerCache.TryGetValue (t.FullName) with
         | true, writer ->
-            writer x out
+            writer.Invoke (x, out)
         | _ ->
             if FSharpType.IsRecord (t, true) then
                 let fieldTypes = FSharpType.GetRecordFields (t, true) |> Array.map (fun x -> x.PropertyType)
-                cacheGetOrAdd (t, fun x out -> writeRecord out fieldTypes (FSharpValue.GetRecordFields (x, true))) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeRecord out fieldTypes (FSharpValue.GetRecordFields (x, true)))).Invoke (x, out)
             elif t.IsArray then
                 let elementType = t.GetElementType ()
-                cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeArray out elementType (x :?> System.Collections.ICollection))).Invoke (x, out)
             elif FSharpType.IsUnion (t, true) then
-                cacheGetOrAdd (t, fun x out ->
+                cacheGetOrAdd(t, Action<_, _>(fun x out ->
                     let case, fields = FSharpValue.GetUnionFields (x, t, true)
                     let fieldTypes = case.GetFields () |> Array.map (fun x -> x.PropertyType)
-                    writeUnion out case.Tag fieldTypes fields) x out
+                    writeUnion out case.Tag fieldTypes fields)).Invoke (x, out)
             elif FSharpType.IsTuple t then
                 let fieldTypes = FSharpType.GetTupleElements t
-                cacheGetOrAdd (t, fun x out -> writeTuple out fieldTypes (FSharpValue.GetTupleFields x)) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeTuple out fieldTypes (FSharpValue.GetTupleFields x))).Invoke (x, out)
             elif t.IsEnum then
-                cacheGetOrAdd (t, fun x -> writeInt64 (box x :?> int64)) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeInt64 (box x :?> int |> int64) out)).Invoke (x, out)
             elif t.IsGenericType then
                 let tDef = t.GetGenericTypeDefinition()
                 let genArgs = t.GetGenericArguments ()
 
                 if tDef = typedefof<_ list> then
                     let elementType = genArgs |> Array.head
-                    cacheGetOrAdd (t, fun x out -> writeArray out elementType (x :?> System.Collections.ICollection)) x out
+                    cacheGetOrAdd(t, Action<_, _>(fun x out -> writeArray out elementType (x :?> System.Collections.ICollection))).Invoke (x, out)
                 elif tDef = typedefof<_ option> then
-                    cacheGetOrAdd (t, fun x out ->
+                    cacheGetOrAdd(t, Action<_, _>(fun x out ->
                         let opt = x :?> _ option
                         let tag, values = if Option.isSome opt then 1, [| opt.Value |] else 0, [| |]
-                        writeUnion out tag genArgs values) x out
+                        writeUnion out tag genArgs values)).Invoke (x, out)
                 elif tDef = typedefof<System.Collections.Generic.Dictionary<_, _>> || tDef = typedefof<Map<_, _>> then
                     let keyType = genArgs.[0]
                     let valueType = genArgs.[1]
-                    cacheGetOrAdd (t, fun x out -> writeMap out keyType valueType (box x :?> System.Collections.Generic.IDictionary<obj, obj>)) x out
+                    cacheGetOrAdd(t, Action<_, _>(fun x out -> writeMap out keyType valueType (box x :?> System.Collections.Generic.IDictionary<obj, obj>))).Invoke (x, out)
                 elif tDef = typedefof<Set<_>> then
                     let elementType = genArgs |> Array.head
-                    cacheGetOrAdd (t, fun x out -> writeSet out elementType (x :?> System.Collections.ICollection)) x out
+                    cacheGetOrAdd(t, Action<_, _>(fun x out -> writeSet out elementType (x :?> System.Collections.ICollection))).Invoke (x, out)
                 else
                     failwithf "Cannot serialize %s." t.Name
             elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
-                cacheGetOrAdd (t, fun x out -> writeInt64 (x :?> int64) out) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeInt64 (x :?> int64) out)).Invoke (x, out)
             elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
-                cacheGetOrAdd (t, fun x out -> writeDecimal (x :?> decimal) out) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeDecimal (x :?> decimal) out)).Invoke (x, out)
             elif t.FullName = "Microsoft.FSharp.Core.float`1" then
-                cacheGetOrAdd (t, fun x out -> writeDouble (x :?> float) out) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeDouble (x :?> float) out)).Invoke (x, out)
             elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
-                cacheGetOrAdd (t, fun x out -> writeSingle (x :?> float32) out) x out
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeSingle (x :?> float32) out)).Invoke (x, out)
             else
                 failwithf "Cannot serialize %s." t.Name
         #endif
