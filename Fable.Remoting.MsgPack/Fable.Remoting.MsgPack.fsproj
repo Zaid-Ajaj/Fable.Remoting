@@ -8,9 +8,9 @@
     <PackageIconUrl></PackageIconUrl>
     <PackageTags>fsharp;fable;remoting;msgpack</PackageTags>
     <Authors>Zaid Ajaj</Authors>
-    <Version>1.21.0</Version>
+    <Version>1.24.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageReleaseNotes>Fix inferred types when consumed from dotnet 8</PackageReleaseNotes>
+    <PackageReleaseNotes>Fix serialization bug in latest Fable compiler</PackageReleaseNotes>
     <TargetFrameworks>netstandard2.0;net462;netcoreapp3.1;net6.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
