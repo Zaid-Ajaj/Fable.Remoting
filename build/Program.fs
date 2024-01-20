@@ -72,6 +72,7 @@ let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
 let MsgPack = getPath "MsgPack"
 let AzureFunctionsWorker = getPath "AzureFunctions.Worker"
+let AwsLambda = getPath "AwsLambda"
 let clientTests = cwd </> "ClientTests"
 let clientUITests = cwd </> "UITests"
 let docs = cwd </> "documentation"
@@ -106,6 +107,7 @@ createTarget "PublishSuave" (publish Suave)
 createTarget "PublishGiraffeNET5" (publish GiraffeNET5)
 createTarget "PublishAspnetCore" (publish AspNetCore)
 createTarget "PublishMsgPack" (publish MsgPack)
+createTarget "PublishAwsLambda" (publish AwsLambda)
 
 
 createTarget "PublishMsgPackDownstream" (fun ctx ->
@@ -117,6 +119,7 @@ createTarget "PublishMsgPackDownstream" (fun ctx ->
     publish AspNetCore ctx
     publish DotnetClient ctx
     publish AzureFunctionsWorker ctx
+    publish AwsLambda ctx
 )
 
 createTarget "PublishJsonDownstream" (fun ctx ->
@@ -127,6 +130,7 @@ createTarget "PublishJsonDownstream" (fun ctx ->
     publish AspNetCore ctx
     publish DotnetClient ctx
     publish AzureFunctionsWorker ctx
+    publish AwsLambda ctx
 )
 
 createTarget "PublishServerDownstream" (fun ctx ->
