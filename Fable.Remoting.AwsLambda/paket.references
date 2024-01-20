@@ -1,0 +1,4 @@
+group AwsLambda
+
+FSharp.Core
+Amazon.Lambda.APIGatewayEvents

@@ -60,6 +60,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Fable.Remoting.AzureFunctio
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Build", "build\Build.fsproj", "{30D42110-503D-4671-B58C-C4FE9BD2BEB2}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.AwsLambda", "Fable.Remoting.AwsLambda\Fable.Remoting.AwsLambda.fsproj", "{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -334,6 +336,18 @@ Global
 		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|x64.Build.0 = Release|Any CPU
 		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|x86.ActiveCfg = Release|Any CPU
 		{30D42110-503D-4671-B58C-C4FE9BD2BEB2}.Release|x86.Build.0 = Release|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Debug|x64.Build.0 = Debug|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Debug|x86.Build.0 = Debug|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|x64.ActiveCfg = Release|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|x64.Build.0 = Release|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|x86.ActiveCfg = Release|Any CPU
+		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

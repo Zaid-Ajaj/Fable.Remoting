@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <Description>AWS Lambda-Fable adapter that generates routes for shared server spec with a Fable client. Client must use Fable.Remoting.Client</Description>
+        <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
+        <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageIconUrl></PackageIconUrl>
+        <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;azure functions</PackageTags>
+        <Authors>Zaid Ajaj;Roman Provaznik</Authors>
+        <Version>1.11.0</Version>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PackageReleaseNotes>Update Microsoft.IO.RecyclableMemoryStream to v3.0</PackageReleaseNotes>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="FableLambdaAdapter.fs" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
+    </ItemGroup>
+    <Import Project="..\.paket\Paket.Restore.targets" />
+
+</Project>
