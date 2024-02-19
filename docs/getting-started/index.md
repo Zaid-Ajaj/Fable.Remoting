@@ -63,11 +63,11 @@ let musicStore : IMusicStore = {
 ```
 Now you are almost ready to expose the API to your client and have these functions being callable directly. Start by setting up the server with your web framework of choice: 
 
-- [Setup Giraffe](#/server-setup/giraffe)
-- [Setup Saturn](#/server-setup/saturn)
-- [Setup Asp.Net Core](#/server-setup/aspnet-core)
-- [Setup Suave](#/server-setup/suave)
+- [Setup Giraffe](/server-setup/giraffe)
+- [Setup Saturn](/server-setup/saturn)
+- [Setup Asp.Net Core](/server-setup/aspnet-core)
+- [Setup Suave](/server-setup/suave)
 
 Afterwards you can either:
-- [Setup Fable client](#/client-setup/fable)
-- [Setup dotnet client](#/client-setup/dotnet)
+- [Setup Fable client](/client-setup/fable)
+- [Setup dotnet client](/client-setup/dotnet)
