@@ -2,7 +2,7 @@
 
 Although Fable.Remoting is initially implemented for communication between a .NET backend and a Fable frontend, the RPC story wouldn't be complete without a strongly typed dotnet client that can talk to the same backend using the protocol definition, that's why we have built one.
 
-In fact, you can use the dotnet client with a dotnet server without a Fable project involved, think client-server interactions purely in F#. This has proven to make [integration testing](dotnet-integration-tests.md) extremely simple through this client.
+In fact, you can use the dotnet client with a dotnet server without a Fable project involved, think client-server interactions purely in F#. This has proven to make [integration testing](/advanced/integration-tests-using-dotnet-client) extremely simple through this client.
 
 Install the library from [Nuget](https://www.nuget.org/packages/Fable.Remoting.DotnetClient/):
 ```bash
