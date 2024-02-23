@@ -178,7 +178,11 @@ module Proxy =
                     match inputArgumentTypes.Length with
                     | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->
                         let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
-                        let requestBodyJson = Convert.serialize inputArguments.[0] typeInfo
+                        let requestBodyJson =
+                            inputArguments
+                            |> Array.tryHead
+                            |> Option.map (fun arg -> Convert.serialize arg typeInfo)
+                            |> Option.defaultValue ""
                         RequestBody.Json requestBodyJson
                     | 1 ->
                         // for array-like types, use an explicit array surranding the input array argument
