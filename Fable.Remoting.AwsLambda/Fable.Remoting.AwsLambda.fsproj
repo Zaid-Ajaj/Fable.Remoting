@@ -7,14 +7,15 @@
         <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
         <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
         <PackageIconUrl></PackageIconUrl>
-        <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;azure functions</PackageTags>
+        <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;aws lambda</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>1.0.0</Version>
+        <Version>1.0.2</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <PackageReleaseNotes>Initial release</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableLambdaAdapter.fs" />
+        <Compile Include="FableLambdaApiGatewayAdapter.fs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />

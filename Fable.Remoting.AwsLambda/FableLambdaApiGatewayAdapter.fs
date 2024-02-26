@@ -1,5 +1,4 @@
-﻿namespace Fable.Remoting.AwsLambda.Worker
-// TODO? rename to Fable.Remoting.AwsLambda.ApiGatewayHttpApiV2 
+﻿namespace Fable.Remoting.AwsLambda.ApiGateway
 
 open System
 open System.Net
@@ -11,27 +10,32 @@ open Fable.Remoting.Server.Proxy
 open Amazon.Lambda.APIGatewayEvents
 open Newtonsoft.Json
 
-type HttpRequestData = APIGatewayHttpApiV2ProxyRequest
-type HttpResponseData = APIGatewayHttpApiV2ProxyResponse
+type HttpRequestData = APIGatewayProxyRequest
+type HttpResponseData = APIGatewayProxyResponse
 
 module private FuncsUtil =
 
   let private htmlString (html: string) (req: HttpRequestData) : Task<HttpResponseData option> =
     task {
-      let resp = HttpResponseData(StatusCode = int HttpStatusCode.OK, Body = html)
-      resp.SetHeaderValues("Content-Type", "text/html; charset=utf-8", false)
-
+      let resp = HttpResponseData(
+        StatusCode = int HttpStatusCode.OK, 
+        Body = html, 
+        Headers = dict [("Content-Type", "text/html; charset=utf-8")]
+      )
       return Some resp
     }
 
   let text (str: string) (req: HttpRequestData) : Task<HttpResponseData option> =
     task {
-      let resp = HttpResponseData(StatusCode = int HttpStatusCode.OK, Body = str)
-      resp.SetHeaderValues("Content-Type", "text/plain; charset=utf-8", false)
+      let resp = HttpResponseData(
+        StatusCode = int HttpStatusCode.OK, 
+        Body = str,
+        Headers = dict [("Content-Type", "text/plain; charset=utf-8")]
+      )
       return Some resp
     }
 
-  let private path (r: HttpRequestData) = r.RawPath
+  let private path (r: HttpRequestData) = r.Path
 
   let setJsonBody
     (res: HttpResponseData)
@@ -44,7 +48,7 @@ module private FuncsUtil =
       jsonSerialize response ms
       let responseBody = System.Text.Encoding.UTF8.GetString(ms.ToArray())
       Diagnostics.outputPhase logger responseBody
-      res.SetHeaderValues("Content-Type", "application/json; charset=utf-8", false)
+      res.Headers <- dict [("Content-Type", "application/json; charset=utf-8" )]
       res.Body <- responseBody
       return Some res
     }
@@ -99,7 +103,7 @@ module private FuncsUtil =
             EndpointName = path req
             Input = bodyAsStream
             IsProxyHeaderPresent = isProxyHeaderPresent
-            HttpVerb = req.RequestContext.Http.Method.ToUpper()
+            HttpVerb = req.HttpMethod.ToUpper()
             IsContentBinaryEncoded = isBinaryEncoded
             Output = output }
 
@@ -108,11 +112,11 @@ module private FuncsUtil =
           let resp = HttpResponseData(StatusCode = int HttpStatusCode.OK)
 
           if isBinaryOutput && isProxyHeaderPresent then
-            resp.SetHeaderValues("Content-Type", "application/octet-stream", false)
+            resp.Headers <- dict [("Content-Type", "application/octet-stream")]
           elif options.ResponseSerialization = SerializationType.Json then
-            resp.SetHeaderValues("Content-Type", "application/json; charset=utf-8", false)
+            resp.Headers <- dict [("Content-Type", "application/json; charset=utf-8")]
           else
-            resp.SetHeaderValues("Content-Type", "application/msgpack", false)
+            resp.Headers <- dict [("Content-Type", "application/msgpack")]
 
           let result = Encoding.UTF8.GetString(output.ToArray())
           resp.Body <- result
@@ -128,7 +132,7 @@ module private FuncsUtil =
           return! fail e routeInfo options req
         | InvalidHttpVerb -> return halt
         | EndpointNotFound ->
-          match req.RequestContext.Http.Method.ToUpper(), options.Docs with
+          match req.HttpMethod.ToUpper(), options.Docs with
           | "GET", (Some docsUrl, Some docs) when docsUrl = (path req) ->
             let (Documentation(docsName, docsRoutes)) = docs
             let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
@@ -153,12 +157,6 @@ module Remoting =
     | StaticValue impl -> FuncsUtil.buildFromImplementation (fun _ -> impl) options
     | FromContext createImplementationFrom -> FuncsUtil.buildFromImplementation createImplementationFrom options
     | Empty -> fun _ -> Task.FromResult None
-
-module FunctionsRouteBuilder =
-  /// Default RouteBuilder for Azure Functions running HttpTrigger on /api prefix
-  let apiPrefix = sprintf "/api/%s/%s"
-  /// RouteBuilder for Azure Functions running HttpTrigger without any prefix
-  let noPrefix = sprintf "/%s/%s"
 
 module HttpResponseData =
 
