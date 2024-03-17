@@ -7,9 +7,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>7.31.0</Version>
+        <Version>7.32.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Dispose of the CancellationTokenRegistration when HTTP requests are done</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix compatibility with Fable v4.13 by checking array bounds before accessing</PackageReleaseNotes>
         <TargetFramework>netstandard2.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>

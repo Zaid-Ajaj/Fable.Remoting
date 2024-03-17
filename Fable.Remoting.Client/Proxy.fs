@@ -182,7 +182,7 @@ module Proxy =
                             inputArguments
                             |> Array.tryHead
                             |> Option.map (fun arg -> Convert.serialize arg typeInfo)
-                            |> Option.defaultValue ""
+                            |> Option.defaultValue "{}"
                         RequestBody.Json requestBodyJson
                     | 1 ->
                         // for array-like types, use an explicit array surranding the input array argument
