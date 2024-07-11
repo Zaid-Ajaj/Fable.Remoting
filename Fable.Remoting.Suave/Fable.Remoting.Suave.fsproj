@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.38.0</Version>
+        <Version>4.39.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.1</TargetFrameworks>
-        <PackageReleaseNotes>Update Microsoft.IO.RecyclableMemoryStream to v3.0</PackageReleaseNotes>
+        <PackageReleaseNotes>avoid dictionary double lookups in JSON serialization</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

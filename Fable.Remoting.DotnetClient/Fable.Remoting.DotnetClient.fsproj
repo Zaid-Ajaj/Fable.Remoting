@@ -7,10 +7,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>3.33.0</Version>
+        <Version>3.34.0</Version>
         <TargetFrameworks>net462;netstandard2.0;net6.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Fix strings being inferred as dates when parsing the JSON</PackageReleaseNotes>
+        <PackageReleaseNotes>avoid dictionary double lookups in JSON serialization</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Http.fs" />

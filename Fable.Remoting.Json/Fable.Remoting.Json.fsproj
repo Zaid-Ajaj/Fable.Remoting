@@ -8,8 +8,8 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>2.23.0</Version>
-        <PackageReleaseNotes>Mutable records skip nulls when serializing to JSON</PackageReleaseNotes>
+        <Version>2.24.0</Version>
+        <PackageReleaseNotes>avoid dictionary double lookups</PackageReleaseNotes>
         <TargetFrameworks>netstandard2.0;net462;net6.0</TargetFrameworks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
