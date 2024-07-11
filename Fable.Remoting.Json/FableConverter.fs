@@ -568,9 +568,10 @@ type FableJsonConverter() =
         | true, Kind.MutableRecord -> 
             let content = serializer.Deserialize<JObject> reader
             let fields = t.GetProperties() |> Array.map (fun property -> 
-                if content.ContainsKey property.Name then 
-                    content[property.Name].ToObject(property.PropertyType, serializer)
-                else 
+                match content.TryGetValue property.Name with
+                | true, contentProp ->
+                    contentProp.ToObject(property.PropertyType, serializer)
+                | false, _ ->
                     null
             )
 

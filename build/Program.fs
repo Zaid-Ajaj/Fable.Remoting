@@ -340,10 +340,11 @@ createTarget "IntegrationTestsLive" <| fun _ ->
     run clientUITests "dotnet" "run"
 
 let runTarget targetName =
-    if targets.ContainsKey targetName then
+    match targets.TryGetValue targetName with
+    | true, target ->
         let input = Unchecked.defaultof<TargetParameter>
-        targets[targetName] input
-    else
+        target input
+    | false, _ -> 
         printfn $"Could not find build target {targetName}"
 
 [<EntryPoint>]
