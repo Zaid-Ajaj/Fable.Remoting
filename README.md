@@ -73,6 +73,7 @@ Use the [SAFE Simplified template](https://github.com/Zaid-Ajaj/SAFE.Simplified)
 | Fable.Remoting.AspNetCore   | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AspNetCore.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AspNetCore)     |
 | Fable.Remoting.DotnetClient | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.DotnetClient.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.DotnetClient) |
 | Fable.Remoting.AzureFunctions.Worker | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AzureFunctions.Worker.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AzureFunctions.Worker) |
+| Fable.Remoting.AwsLambda | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AwsLambda.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AwsLambda) |
 
 ## Scaffold from scratch - Suave
 Create a new F# console app:
