@@ -19,9 +19,13 @@ type ParsingArgumentsError = { ParsingArgumentsError: string }
 
 /// Route information that is propagated to error handler when exceptions are thrown
 type RouteInfo<'ctx> = {
+    /// The full path of the request
     path: string
+    /// The last part of the path of the request
     methodName: string
+    /// The HttpContext of the request
     httpContext: 'ctx
+    /// The text content of the request, if any
     requestBodyText: string option
 }
 
