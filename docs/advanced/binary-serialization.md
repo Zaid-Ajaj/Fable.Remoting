@@ -23,4 +23,4 @@ let musicStore : IMusicStore =
     |> Remoting.buildProxy<IMusicStore>
 ```
 
-In order to further reduce message size, you may want to consider enabling response compression for the `application/msgpack` MIME type.
+In order to further reduce message size, you may want to consider enabling response compression for the `application/vnd.msgpack` MIME type.
