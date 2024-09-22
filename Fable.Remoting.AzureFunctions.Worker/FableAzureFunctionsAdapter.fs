@@ -82,7 +82,7 @@ module private FuncsUtil =
                             elif options.ResponseSerialization = SerializationType.Json then
                                 r |> setContentType "application/json; charset=utf-8"
                             else
-                                r |> setContentType "application/msgpack"
+                                r |> setContentType "application/vnd.msgpack"
                         )
                     do! output.CopyToAsync resp.Body
                     return Some resp

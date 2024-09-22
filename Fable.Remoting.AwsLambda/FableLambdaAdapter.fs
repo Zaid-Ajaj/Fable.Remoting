@@ -112,7 +112,7 @@ module private FuncsUtil =
           elif options.ResponseSerialization = SerializationType.Json then
             resp.SetHeaderValues("Content-Type", "application/json; charset=utf-8", false)
           else
-            resp.SetHeaderValues("Content-Type", "application/msgpack", false)
+            resp.SetHeaderValues("Content-Type", "application/vnd.msgpack", false)
 
           let result = Encoding.UTF8.GetString(output.ToArray())
           resp.Body <- result

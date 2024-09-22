@@ -98,7 +98,7 @@ module SuaveUtil =
                   elif options.ResponseSerialization = SerializationType.Json then
                       "application/json; charset=utf-8"
                   else
-                      "application/msgpack"
+                      "application/vnd.msgpack"
 
               return! setBinaryResponseBody (output.ToArray ()) 200 mimeType ctx
           | Exception (e, functionName, requestBodyText) ->
