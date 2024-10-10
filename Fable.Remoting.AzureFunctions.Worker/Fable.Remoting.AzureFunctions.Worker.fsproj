@@ -8,9 +8,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;azure functions</PackageTags>
         <Authors>Zaid Ajaj;Roman Provaznik</Authors>
-        <Version>1.13.0</Version>
+        <Version>1.14.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>avoid dictionary double lookups in JSON serialization</PackageReleaseNotes>
+        <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableAzureFunctionsAdapter.fs" />

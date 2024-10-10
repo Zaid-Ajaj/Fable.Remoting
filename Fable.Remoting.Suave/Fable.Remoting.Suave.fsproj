@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.39.0</Version>
+        <Version>4.40.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetFrameworks>netstandard2.1</TargetFrameworks>
-        <PackageReleaseNotes>avoid dictionary double lookups in JSON serialization</PackageReleaseNotes>
+        <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
