@@ -69,7 +69,7 @@ module GiraffeUtil =
                 elif options.ResponseSerialization = SerializationType.Json then
                     ctx.Response.ContentType <- "application/json; charset=utf-8"
                 else
-                    ctx.Response.ContentType <- "application/msgpack"
+                    ctx.Response.ContentType <- "application/vnd.msgpack"
                 
                 do! output.CopyToAsync ctx.Response.Body
                 return! next ctx

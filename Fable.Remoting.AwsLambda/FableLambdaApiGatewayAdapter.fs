@@ -116,7 +116,7 @@ module private FuncsUtil =
           elif options.ResponseSerialization = SerializationType.Json then
             resp.Headers <- dict [("Content-Type", "application/json; charset=utf-8")]
           else
-            resp.Headers <- dict [("Content-Type", "application/msgpack")]
+            resp.Headers <- dict [("Content-Type", "application/vnd.msgpack")]
 
           let result = Encoding.UTF8.GetString(output.ToArray())
           resp.Body <- result
