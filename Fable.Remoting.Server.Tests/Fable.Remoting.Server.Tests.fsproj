@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,8 +10,8 @@
     <Compile Include="ServerDynamicInvokeTests.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
-  
-  <ItemGroup>    
+
+  <ItemGroup>
     <ProjectReference Include="..\Fable.Remoting.Server\Fable.Remoting.Server.fsproj" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />

@@ -5,12 +5,11 @@
         <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
         <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
-        <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;suave</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
         <Version>4.40.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <TargetFrameworks>netstandard2.1</TargetFrameworks>
+        <TargetFramework>net8.0</TargetFramework>
         <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
