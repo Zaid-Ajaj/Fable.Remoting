@@ -37,7 +37,7 @@ let execStdout workingDir fileName args =
     |> fun result -> result.Result.Output
 
 let proj file = $"Fable.Remoting.%s{file}" </> $"Fable.Remoting.%s{file}.fsproj"
-let testDll file = $"Fable.Remoting.%s{file}.Tests" </> "bin" </> "Release" </> "net6.0" </> $"Fable.Remoting.%s{file}.Tests.dll"
+let testDll file = $"Fable.Remoting.%s{file}.Tests" </> "bin" </> "Release" </> "net8.0" </> $"Fable.Remoting.%s{file}.Tests.dll"
 
 let JsonTestsDll = testDll "Json"
 let MsgPackTestsDll = testDll "MsgPack"
@@ -51,13 +51,13 @@ open System.IO
 open System.Linq
 
 /// Recursively tries to find the parent of a file starting from a directory
-let rec findParent (directory: string) (fileToFind: string) = 
+let rec findParent (directory: string) (fileToFind: string) =
     let path = if Directory.Exists(directory) then directory else Directory.GetParent(directory).FullName
     let files = Directory.GetFiles(path)
-    if files.Any(fun file -> Path.GetFileName(file).ToLower() = fileToFind.ToLower()) 
-    then path 
+    if files.Any(fun file -> Path.GetFileName(file).ToLower() = fileToFind.ToLower())
+    then path
     else findParent (DirectoryInfo(path).Parent.FullName) fileToFind
-    
+
 let cwd = findParent __SOURCE_DIRECTORY__ "Fable.Remoting.sln"
 
 let getPath x = cwd </> $"Fable.Remoting.%s{x}"
@@ -224,7 +224,7 @@ createTarget "PublishDocs" <| fun _ ->
 let buildRunAzureFunctionsTests onTestsFinished =
     let funcsPath = cwd </> "Fable.Remoting.AzureFunctions.Worker.Tests" </> "FunctionApp"
     let clientPath = cwd </> "Fable.Remoting.AzureFunctions.Worker.Tests" </> "Client"
-    
+
     let mutable started = false
     // Azure Functions Server
     let server = Tasks.Task.Run (fun () ->
@@ -238,11 +238,11 @@ let buildRunAzureFunctionsTests onTestsFinished =
         while started = false do
             printfn "Waiting for Azure Functions server to start"
             Thread.Sleep 2000
-        
+
         Thread.Sleep 5000 // give it time to start
         run clientPath "dotnet" "restore --no-cache"
         run clientPath "dotnet" "build --configuration=Release"
-        run cwd "dotnet" (clientPath </> "bin" </> "Release" </> "net6.0" </> "Fable.Remoting.AzureFunctions.Worker.Tests.Client.dll")
+        run cwd "dotnet" (clientPath </> "bin" </> "Release" </> "net8.0" </> "Fable.Remoting.AzureFunctions.Worker.Tests.Client.dll")
         onTestsFinished()
         Tasks.Task.CompletedTask
     )
@@ -274,7 +274,7 @@ let runHeadlessBrowserTests() =
     run clientUITests "dotnet" "restore --no-cache"
     run clientUITests "dotnet" "run --headless"
 
-let runFableIntegrationTests() = 
+let runFableIntegrationTests() =
     clean (getPath "Server")
     clean (getPath "Json")
     clean (getPath "MsgPack")
@@ -344,7 +344,7 @@ let runTarget targetName =
     | true, target ->
         let input = Unchecked.defaultof<TargetParameter>
         target input
-    | false, _ -> 
+    | false, _ ->
         printfn $"Could not find build target {targetName}"
 
 [<EntryPoint>]

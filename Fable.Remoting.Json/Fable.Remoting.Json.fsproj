@@ -10,7 +10,7 @@
         <Authors>Zaid Ajaj</Authors>
         <Version>2.25.0</Version>
         <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
-        <TargetFrameworks>netstandard2.0;net462;net6.0</TargetFrameworks>
+        <TargetFramework>net8.0</TargetFramework>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 

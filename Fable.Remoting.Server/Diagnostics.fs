@@ -1,13 +1,13 @@
-namespace Fable.Remoting.Server 
+namespace Fable.Remoting.Server
 
 open System
-open System.Text 
+open System.Text
 
-module Diagnostics = 
-    let writeLn text (builder: StringBuilder)  = builder.AppendLine(text)
+module Diagnostics =
+    let writeLn (text: string) (builder: StringBuilder)  = builder.AppendLine(text)
     let toLogger logf = string >> logf
-    
-    /// Simplifes the name of the type that is to be deserialized 
+
+    /// Simplifes the name of the type that is to be deserialized
     let rec typePrinter (valueType: Type) =
         let simplifyGeneric = function
             | "Microsoft.FSharp.Core.FSharpOption" -> "Option"
@@ -33,14 +33,14 @@ module Diagnostics =
                 |> String.concat ", "
                 |> sprintf "%s<%s>" (simplifyGeneric typeName)
 
-    let runPhase logger text = 
+    let runPhase logger text =
         logger |> Option.iter (fun logf ->
             StringBuilder()
             |> writeLn (sprintf "Fable.Remoting: invoking function %s" text)
-            |> toLogger logf 
+            |> toLogger logf
         )
 
-    /// Logs the JSON input and the corresponding types that the JSON will be converter into. 
+    /// Logs the JSON input and the corresponding types that the JSON will be converter into.
     let deserializationPhase logger (text: unit -> string) (inputTypes: System.Type[]) =
         logger |> Option.iter(fun logf ->
             StringBuilder()
