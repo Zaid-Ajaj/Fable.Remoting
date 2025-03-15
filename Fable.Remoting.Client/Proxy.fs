@@ -1,6 +1,5 @@
 namespace Fable.Remoting.Client
 
-open System
 open Fable.Core
 open Fable.SimpleJson
 open Browser.Types
@@ -63,12 +62,9 @@ module Proxy =
         let argumentCount = (Array.length funcArgs) - 1
         let returnTypeAsync = Array.last funcArgs
 
-        let binaryInput =
+        let isMultipart =
             match func.FieldType with
-            | TypeInfo.Func getArgs ->
-                match getArgs() with
-                | [| input; output |] -> isByteArray input
-                | otherwise -> false
+            | TypeInfo.Func getArgs -> getArgs () |> Array.exists isByteArray
             | otherwise -> false
 
         let route = options.RouteBuilder typeName func.FieldName
@@ -80,15 +76,13 @@ module Proxy =
             | [| TypeInfo.Unit; TypeInfo.Async _ |] -> false
             | otherwise -> true
 
-        let contentType =
-            if binaryInput
-            then "application/octet-stream"
-            else "application/json; charset=utf-8"
-
         let inputArgumentTypes = Array.take argumentCount funcArgs
 
         let headers = [
-            yield "Content-Type", contentType
+            // xhr will set content-type and boundary for multipart
+            if not isMultipart then
+                yield "Content-Type", "application/json; charset=utf-8"
+
             yield "x-remoting-proxy", "true"
             yield! options.CustomHeaders
             match options.Authorization with
@@ -172,8 +166,8 @@ module Proxy =
                else [| |]
 
             let requestBody =
-                if binaryInput then
-                    RequestBody.Binary (unbox arg0)
+                if isMultipart then
+                    RequestBody.Multipart inputArguments
                 else
                     match inputArgumentTypes.Length with
                     | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->

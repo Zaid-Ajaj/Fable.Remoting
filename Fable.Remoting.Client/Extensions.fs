@@ -24,7 +24,7 @@ module InternalUtilities =
     let revokeObjectUrl (dataUrl: string) : unit = jsNative
     /// Returns whether the input byte array is a typed array of type Uint8Array
     [<Emit "$0 instanceof Uint8Array">]
-    let isUInt8Array (data: byte[]) : bool = jsNative
+    let isUInt8Array (data: obj) : bool = jsNative
     /// Creates a typed byte array of binary data if it not already typed
     let toUInt8Array(data: byte[]) : byte[] =
         if isUInt8Array data

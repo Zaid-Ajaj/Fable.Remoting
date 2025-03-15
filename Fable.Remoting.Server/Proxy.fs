@@ -10,6 +10,8 @@ open System.IO
 open System.Collections.Concurrent
 open System.Text
 open System.Threading.Tasks
+open Microsoft.Net.Http.Headers
+open Microsoft.AspNetCore.WebUtilities
 
 let private fableConverter = new FableJsonConverter() :> JsonConverter
 
@@ -56,14 +58,45 @@ let private (|Task|_|) (s: TypeShape) =
     | Generic (td, ta) when td = typedefof<Task<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsyncOrTask<_>>(ta) :?> IShapeFSharpAsyncOrTask |> Some
     | _ -> None
 
+let private readMultipartArgs (contentType: string) s = task {
+    let mediaType = MediaTypeHeaderValue.Parse contentType
+    let boundary = HeaderUtilities.RemoveQuotes mediaType.Boundary
+
+    if Microsoft.Extensions.Primitives.StringSegment.IsNullOrEmpty boundary || boundary.Length > 70 then
+        failwith "Multipart boundary missing or too long"
+
+    let reader = MultipartReader (boundary.ToString (), s)
+    let parts = ResizeArray ()
+    let mutable go = true
+    
+    while go do
+        let! section = reader.ReadNextSectionAsync ()
+
+        if isNull section then
+            go <- false
+        else
+            if section.ContentType.Equals ("application/octet-stream", StringComparison.Ordinal) then
+                use ms = new MemoryStream ()
+                do! section.Body.CopyToAsync ms
+                parts.Add (ms.ToArray () |> Choice1Of2)
+            else
+                use sr = new StreamReader (section.Body)
+                let! text = sr.ReadToEndAsync ()
+                let token = JsonConvert.DeserializeObject<JToken> (text, settings)
+                parts.Add (Choice2Of2 token)
+
+    return Seq.toList parts
+}
+
 let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'fieldPart -> InvocationPropsInt -> Task<InvocationResult> =
     let wrap (p: 'a -> InvocationPropsInt -> Task<InvocationResult>) = unbox<'fieldPart -> InvocationPropsInt -> Task<InvocationResult>> p
 
+    // Check that no arguments are left
     let validateArgumentCount props makeProps =
         match props.Arguments with
-        | Choice2Of2 (_ :: _) ->
+        | _ :: _ ->
             let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
-            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount
+            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.Arguments.Length
         | _ -> ()
 
     let writeToOutputMemoryStream isBinaryOutput (props: InvocationPropsInt) result =
@@ -112,21 +145,21 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
 
                     wrap (fun (f: 'inp -> 'out) props ->
                         match props.Arguments with
-                        | Choice1Of2 bytes ->
+                        | Choice1Of2 bytes :: t ->
                             if typeof<'inp> <> typeof<byte[]> then
                                 failwithf "The record function '%s' expected an argument of type %s, but got binary input" makeProps.FieldName typeof<'inp>.Name
 
                             let inp = box bytes :?> 'inp
-                            outp (f inp) { props with Arguments = Choice1Of2 [||] }
-                        | Choice2Of2 (h :: t) ->
-                            let inp = h.ToObject<'inp> fableSerializer
-                            outp (f inp) { props with Arguments = Choice2Of2 t }
-                        | Choice2Of2 [] when typeof<'inp> = typeof<unit> ->
+                            outp (f inp) { props with Arguments = t }
+                        | Choice2Of2 json :: t ->
+                            let inp = json.ToObject<'inp> fableSerializer
+                            outp (f inp) { props with Arguments = t }
+                        | [] when typeof<'inp> = typeof<unit> ->
                             let inp = box () :?> _
-                            outp (f inp) { props with Arguments = Choice2Of2 [] }
-                        | _ ->
+                            outp (f inp) { props with Arguments = [] }
+                        | [] ->
                             let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
-                            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input JSON array" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.ArgumentCount)
+                            failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.Arguments.Length)
         }
     | _ ->
         failwithf "The type '%s' of the record field '%s' for record type '%s' is not valid. It must either be Async<'t>, Task<'t> or a function that returns either (i.e. 'u -> Async<'t>)" typeof<'fieldPart>.Name makeProps.FieldName makeProps.RecordName
@@ -146,10 +179,9 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                     try
                         if props.HttpVerb <> "POST" && not (isNoArg && props.HttpVerb = "GET") then
                             return InvalidHttpVerb
-                        elif props.IsContentBinaryEncoded then
-                            use ms = new MemoryStream ()
-                            do! props.Input.CopyToAsync ms
-                            let props' = { Arguments = Choice1Of2 (ms.ToArray ()); ArgumentCount = 1; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
+                        elif props.InputContentType.StartsWith ("multipart/form-data", StringComparison.Ordinal) then
+                            let! args = readMultipartArgs props.InputContentType props.Input
+                            let props' = { Arguments = args; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                         else
                             use sr = new StreamReader (props.Input)
@@ -164,9 +196,12 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                                     if token.Type <> JTokenType.Array then
                                         failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" shape.MemberInfo.Name (flattenedTypes.Length - 1)
 
-                                    token :?> JArray |> Seq.toList
+                                    token
+                                    :?> JArray
+                                    |> Seq.map Choice2Of2
+                                    |> Seq.toList
 
-                            let props' = { Arguments = Choice2Of2 args; ArgumentCount = args.Length; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
+                            let props' = { Arguments = args; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                     with e ->
                         return InvocationResult.Exception (e, shape.MemberInfo.Name, requestBodyText) }) }

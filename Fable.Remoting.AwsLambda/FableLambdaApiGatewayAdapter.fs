@@ -87,10 +87,10 @@ module private FuncsUtil =
         let isProxyHeaderPresent = req.Headers.Keys.Contains "x-remoting-proxy"
         use output = rmsManager.GetStream "remoting-output-stream"
 
-        let isBinaryEncoded =
+        let contentType =
           match req.Headers.TryGetValue "Content-Type" with
-          | true, "application/octet-stream" -> true
-          | _ -> false
+          | true, x -> x
+          | _ -> ""
 
         let bodyAsStream =
           if String.IsNullOrEmpty req.Body then
@@ -104,7 +104,7 @@ module private FuncsUtil =
             Input = bodyAsStream
             IsProxyHeaderPresent = isProxyHeaderPresent
             HttpVerb = req.HttpMethod.ToUpper()
-            IsContentBinaryEncoded = isBinaryEncoded
+            InputContentType = contentType
             Output = output }
 
         match! proxy props with

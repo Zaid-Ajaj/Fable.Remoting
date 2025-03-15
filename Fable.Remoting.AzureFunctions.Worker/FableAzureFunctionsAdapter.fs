@@ -1,14 +1,13 @@
 ﻿namespace Fable.Remoting.AzureFunctions.Worker
 
-open System
 open System.Net
 open System.Threading.Tasks
-open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
 open System.IO
 open Fable.Remoting.Server
 open Newtonsoft.Json
 open Fable.Remoting.Server.Proxy
+open System.Linq
 
 module private FuncsUtil =
     let private setContentType (t:string) (res:HttpResponseData) =
@@ -65,12 +64,13 @@ module private FuncsUtil =
             task {
                 let isProxyHeaderPresent = req.Headers.Contains "x-remoting-proxy"
                 use output = rmsManager.GetStream "remoting-output-stream"
-                let isBinaryEncoded =
+                let contentType =
                     match req.Headers.TryGetValues "Content-Type" with
-                    | true, values -> values |> Seq.contains "application/octet-stream"
-                    | false, _ -> false
+                    | true, values when values.Any () -> values.First ()
+                    | _ -> ""
+
                 let props = { ImplementationBuilder = (fun () -> implBuilder req); EndpointName = path req; Input = req.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
-                    HttpVerb = req.Method.ToUpper (); IsContentBinaryEncoded = isBinaryEncoded; Output = output }
+                    HttpVerb = req.Method.ToUpper (); InputContentType = contentType; Output = output }
 
                 match! proxy props with
                 | Success isBinaryOutput ->

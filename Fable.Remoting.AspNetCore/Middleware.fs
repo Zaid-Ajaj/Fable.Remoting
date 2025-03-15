@@ -111,7 +111,7 @@ module internal Middleware =
             use output = rmsManager.GetStream "remoting-output-stream"
 
             let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
-                HttpVerb = ctx.Request.Method.ToUpper (); IsContentBinaryEncoded = ctx.Request.ContentType = "application/octet-stream"; Output = output }
+                HttpVerb = ctx.Request.Method.ToUpper (); InputContentType = ctx.Request.ContentType; Output = output }
 
             match! proxy props with
             | Success isBinaryOutput ->

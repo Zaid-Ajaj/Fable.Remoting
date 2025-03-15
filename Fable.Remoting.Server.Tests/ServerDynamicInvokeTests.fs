@@ -51,7 +51,7 @@ let invoke<'out, 'impl> (funcName: string) (record: 'impl) (input: Choice<obj[],
     inp.Write (inputBytes, 0, inputBytes.Length)
     inp.Position <- 0L
 
-    match (proxy { ImplementationBuilder = (fun () -> record); Input = inp; EndpointName = funcName; HttpVerb = "POST"; IsContentBinaryEncoded = false; IsProxyHeaderPresent = true; Output = output }).Result with
+    match (proxy { ImplementationBuilder = (fun () -> record); Input = inp; EndpointName = funcName; HttpVerb = "POST"; InputContentType = "application/json"; IsProxyHeaderPresent = true; Output = output }).Result with
     | Success _ -> JsonConvert.DeserializeObject<'out>(System.Text.Encoding.UTF8.GetString (output.ToArray ()), converter)
     | InvocationResult.Exception (e, _, _) -> raise e
     | InvalidHttpVerb -> failwithf "Function %s does not expect POST" funcName

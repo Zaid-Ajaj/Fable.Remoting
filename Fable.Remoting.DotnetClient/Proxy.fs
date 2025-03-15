@@ -6,6 +6,8 @@ open System.Net.Http
 open System.Threading.Tasks
 open System.Linq.Expressions
 open System
+open System.Text
+open System.Net.Http.Headers
 
 [<RequireQualifiedAccess>]
 module Proxy =
@@ -33,15 +35,34 @@ module Proxy =
     let parseAsBinary<'t> (data: byte[]) =
         Fable.Remoting.MsgPack.Read.Reader(data).Read typeof<'t> :?> 't
 
+    let internal createRequestBody (functionArguments: obj list): HttpContent =
+        if functionArguments |> List.exists (fun x -> x :? byte[]) then
+            let f = new MultipartFormDataContent ()
+
+            for arg in functionArguments do
+                match arg with
+                | :? (byte[]) as data ->
+                    let c = new ByteArrayContent (data)
+                    c.Headers.ContentType <- MediaTypeHeaderValue "application/octet-stream"
+                    f.Add c
+                | _ ->
+                    let ser = JsonConvert.SerializeObject(arg, converter)
+                    f.Add (new StringContent (ser, Encoding.UTF8, "application/json"))
+            f
+        else
+            let ser = JsonConvert.SerializeObject(functionArguments, converter)
+            new StringContent(ser, Encoding.UTF8, "application/json")
+
     /// Sends a POST request to the specified url with the arguments of serialized to an input list
     let proxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization =
-        let serializedInputArgs = JsonConvert.SerializeObject(functionArguments, converter)
         task {
+            use content = createRequestBody functionArguments
+
             if isBinarySerialization then
-                let! data = Http.makePostRequestBinaryResponse client url serializedInputArgs
+                let! data = Http.makePostRequestBinaryResponse client url content
                 return parseAsBinary<'t> data
             else
-                let! responseText = Http.makePostRequest client url serializedInputArgs
+                let! responseText = Http.makePostRequest client url content
                 return parseAs<'t> responseText
         }
 
@@ -51,14 +72,15 @@ module Proxy =
 
     /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it catched
     let safeProxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization =
-        let serializedInputArgs = JsonConvert.SerializeObject(functionArguments, converter)
         task {
+            use content = createRequestBody functionArguments
+
             if isBinarySerialization then
-                match! taskCatch (fun () -> Http.makePostRequestBinaryResponse client url serializedInputArgs) with
+                match! taskCatch (fun () -> Http.makePostRequestBinaryResponse client url content) with
                 | Choice1Of2 data -> return Ok (parseAsBinary<'t> data)
                 | Choice2Of2 thrownException -> return Error thrownException
             else
-                match! taskCatch (fun () -> Http.makePostRequest client url serializedInputArgs) with
+                match! taskCatch (fun () -> Http.makePostRequest client url content) with
                 | Choice1Of2 responseText -> return Ok (parseAs<'t> responseText)
                 | Choice2Of2 thrownException -> return Error thrownException
         }

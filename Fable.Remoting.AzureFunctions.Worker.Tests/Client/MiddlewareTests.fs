@@ -53,8 +53,8 @@ let middlewareTests =
         }
 
         testCaseAsync "IServer.echoInteger with explicit quotes" <| async {
-            let! firstResult = proxy.call <@ fun server -> server.echoInteger 20 @>
-            let! secondResult = proxy.call <@ fun server -> server.echoInteger 0 @>
+            let! firstResult = proxy.call <@ fun (server: IServer) -> server.echoInteger 20 @>
+            let! secondResult = proxy.call <@ fun (server: IServer) -> server.echoInteger 0 @>
             Expect.equal 20 firstResult "result is echoed correctly"
             Expect.equal 0 secondResult "result is echoed correctly"
         }

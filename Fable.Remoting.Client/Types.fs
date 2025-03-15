@@ -7,7 +7,7 @@ type HttpMethod = GET | POST
 type RequestBody = 
     | Empty
     | Json of string 
-    | Binary of byte[] 
+    | Multipart of obj[]
 
 type CustomResponseSerializer = byte[] -> Type -> obj
 

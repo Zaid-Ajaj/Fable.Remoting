@@ -37,7 +37,7 @@ let execStdout workingDir fileName args =
     |> fun result -> result.Result.Output
 
 let proj file = $"Fable.Remoting.%s{file}" </> $"Fable.Remoting.%s{file}.fsproj"
-let testDll file = $"Fable.Remoting.%s{file}.Tests" </> "bin" </> "Release" </> "net6.0" </> $"Fable.Remoting.%s{file}.Tests.dll"
+let testDll file = $"Fable.Remoting.%s{file}.Tests" </> "bin" </> "Release" </> "net9.0" </> $"Fable.Remoting.%s{file}.Tests.dll"
 
 let JsonTestsDll = testDll "Json"
 let MsgPackTestsDll = testDll "MsgPack"
@@ -242,7 +242,7 @@ let buildRunAzureFunctionsTests onTestsFinished =
         Thread.Sleep 5000 // give it time to start
         run clientPath "dotnet" "restore --no-cache"
         run clientPath "dotnet" "build --configuration=Release"
-        run cwd "dotnet" (clientPath </> "bin" </> "Release" </> "net6.0" </> "Fable.Remoting.AzureFunctions.Worker.Tests.Client.dll")
+        run cwd "dotnet" (clientPath </> "bin" </> "Release" </> "net9.0" </> "Fable.Remoting.AzureFunctions.Worker.Tests.Client.dll")
         onTestsFinished()
         Tasks.Task.CompletedTask
     )

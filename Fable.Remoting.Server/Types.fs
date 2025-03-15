@@ -58,9 +58,8 @@ type internal ShapeFSharpAsyncOrTask<'T> () =
     interface IShapeFSharpAsyncOrTask  with
         member _.Element = shapeof<'T> :> _
 
-type InvocationPropsInt = {
-    Arguments: Choice<byte[], JToken list>
-    ArgumentCount: int
+type internal InvocationPropsInt = {
+    Arguments: Choice<byte[], JToken> list
     IsProxyHeaderPresent: bool
     Output: Stream
 }
@@ -71,7 +70,7 @@ type InvocationProps<'impl> = {
     ImplementationBuilder: unit -> 'impl
     EndpointName: string
     HttpVerb: string
-    IsContentBinaryEncoded: bool
+    InputContentType: string
     IsProxyHeaderPresent: bool
 }
 

@@ -80,15 +80,14 @@ module SuaveUtil =
           use output = new MemoryStream ()
 
           let isRemotingProxy = ctx.request.headers |> List.exists (fun x -> fst x = "x-remoting-proxy")
-          let isContentBinaryEncoded = 
+          let contentType = 
               ctx.request.headers
-              |> List.tryFind (fun (key, _) -> key.ToLowerInvariant() = "content-type")
+              |> List.tryFind (fun (key, _) -> key.Equals ("content-type", System.StringComparison.OrdinalIgnoreCase))
               |> Option.map (fun (_, value) -> value)
-              |> function 
-                | Some "application/octet-stream" -> true 
-                | otherwise -> false
+              |> Option.defaultValue ""
+
           let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.request.path; Input = inp; HttpVerb = ctx.request.rawMethod.ToUpper ();
-              IsContentBinaryEncoded = isContentBinaryEncoded; IsProxyHeaderPresent = isRemotingProxy; Output = output }
+              InputContentType = contentType; IsProxyHeaderPresent = isRemotingProxy; Output = output }
 
           match! proxy props with
           | Success isBinaryOutput ->
