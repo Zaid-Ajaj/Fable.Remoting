@@ -2,7 +2,6 @@ namespace Fable.Remoting.Client
 
 open Browser
 open Browser.Types
-open Fable.Core
 
 module Http =
 
@@ -78,18 +77,11 @@ module Http =
             match req.RequestBody with
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
-            | Multipart parts ->
+            | Multipart blobs ->
                 let form = Browser.XMLHttpRequest.FormData.Create ()
 
-                for i in 0 .. parts.Length - 1 do
-                    let part = parts.[i]
-                    let blob =
-                        if InternalUtilities.isUInt8Array part then
-                            InternalUtilities.createBlobFromBytesAndMimeType (part :?> _) "application/octet-stream"
-                        else
-                            Blob.Create ([| part |], JsInterop.jsOptions<BlobPropertyBag> (fun x -> x.``type`` <- "application/json"))
-
-                    form.append (i.ToString (), blob)
+                for i in 0 .. blobs.Length - 1 do
+                    form.append (i.ToString (), blobs.[i])
 
                 xhr.send form
 

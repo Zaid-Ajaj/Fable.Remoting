@@ -2,9 +2,10 @@ namespace Fable.Remoting.Client
 
 open Fable.Core
 open Fable.SimpleJson
+open Browser
 open Browser.Types
 
-module internal Blob =
+module internal BlobInternal =
     /// Creates a Blob from the given input string
     [<Emit("new Blob([$0.buffer], { type: 'text/plain' })")>]
     let fromBinaryEncodedText (value: byte[]) : Blob = jsNative
@@ -117,8 +118,8 @@ module Proxy =
                     | 200 ->
                         return onOk response
                     | n ->
-                        let responseAsBlob = Blob.fromBinaryEncodedText response
-                        let! responseText = Blob.readBlobAsText responseAsBlob
+                        let responseAsBlob = BlobInternal.fromBinaryEncodedText response
+                        let! responseText = BlobInternal.readBlobAsText responseAsBlob
                         let response = { StatusCode = statusCode; ResponseBody = responseText }
                         let errorMsg = if n = 500 then sprintf "Internal server error (500) while making request to %s" url else sprintf "Http error (%d) while making request to %s" n url
                         return! raise (ProxyRequestException(response, errorMsg, response.ResponseBody))
@@ -167,7 +168,15 @@ module Proxy =
 
             let requestBody =
                 if isMultipart then
-                    RequestBody.Multipart inputArguments
+                    inputArguments
+                    |> Array.mapi (fun i x ->
+                        if InternalUtilities.isUInt8Array x then
+                            InternalUtilities.createBlobFromBytesAndMimeType (x :?> _) "application/octet-stream"
+                        else
+                            let json = Convert.serialize x inputArgumentTypes.[i]
+                            Blob.Create ([| json |], JsInterop.jsOptions<BlobPropertyBag> (fun x -> x.``type`` <- "application/json"))
+                    )
+                    |> RequestBody.Multipart 
                 else
                     match inputArgumentTypes.Length with
                     | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->

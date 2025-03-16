@@ -6,8 +6,8 @@ type HttpMethod = GET | POST
 
 type RequestBody = 
     | Empty
-    | Json of string 
-    | Multipart of obj[]
+    | Json of string
+    | Multipart of Browser.Types.Blob[]
 
 type CustomResponseSerializer = byte[] -> Type -> obj
 
