@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../Fable.Remoting.DotnetClient/Fable.Remoting.DotnetClient.fsproj" />
-    <ProjectReference Include="../../Fable.Remoting.Suave/Fable.Remoting.Suave.fsproj" />
+    <ProjectReference Include="../../Fable.Remoting.Giraffe/Fable.Remoting.Giraffe.fsproj" />
   </ItemGroup>
 
   <Import Project="..\..\.paket\Paket.Restore.targets" />

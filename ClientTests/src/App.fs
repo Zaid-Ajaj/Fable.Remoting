@@ -759,7 +759,7 @@ let serverTests =
                 let bytes2 = Array.init (r.Next 50_000) byte
                 let num = r.Next 666_666 |> int64
 
-                let! output = binaryServer.multipart score bytes1 num bytes2
+                let! output = server.multipart score bytes1 num bytes2
                 let expected = int64 score.Score + num + (bytes1 |> Array.sumBy int64) + (bytes2 |> Array.sumBy int64)
 
                 test.equal output expected
