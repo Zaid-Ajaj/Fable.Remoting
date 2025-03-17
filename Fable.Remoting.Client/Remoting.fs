@@ -15,6 +15,7 @@ module Remoting =
         WithCredentials = false
         RouteBuilder = sprintf ("/%s/%s")
         CustomResponseSerialization = None
+        IsMultipartEnabled = false
     }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -41,6 +42,11 @@ module Remoting =
     let withBinarySerialization (options: RemoteBuilderOptions) =
         let serializer response returnType = MsgPack.Read.Reader(response).Read returnType
         { options with CustomResponseSerialization = Some serializer }
+
+    /// Enables top level byte array arguments (such as in `upload: Metadata -> byte[] -> Async<UploadResult>`) to be sent with minimal overhead using multipart/form-data.
+    ///
+    /// !!! Fable.Remoting.Suave servers do not support this option.
+    let withMultipartOptimization options = { options with IsMultipartEnabled = true }
 
 type Remoting() =
     /// For internal library use only.

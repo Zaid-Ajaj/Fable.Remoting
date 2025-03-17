@@ -65,7 +65,7 @@ module Proxy =
 
         let isMultipart =
             match func.FieldType with
-            | TypeInfo.Func getArgs -> getArgs () |> Array.exists isByteArray
+            | TypeInfo.Func getArgs when options.IsMultipartEnabled -> getArgs () |> Array.exists isByteArray
             | otherwise -> false
 
         let route = options.RouteBuilder typeName func.FieldName

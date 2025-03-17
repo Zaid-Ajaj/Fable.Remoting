@@ -51,6 +51,7 @@ module ClientParts =
     let server =
         Remoting.createApi "http://localhost:9090"
         |> Remoting.withRouteBuilder routeBuilder
+        |> Remoting.withMultipartOptimization
         |> Remoting.buildProxy<IServer>
 
 open ClientParts

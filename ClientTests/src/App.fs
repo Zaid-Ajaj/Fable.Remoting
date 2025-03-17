@@ -13,6 +13,7 @@ open System.Collections.Generic
 let server =
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withMultipartOptimization
     |> Remoting.buildProxy<IServer>
 
 let binaryServer =
@@ -1486,7 +1487,7 @@ let binaryServerTests =
                 test.equal true (input = output)
             }
 
-        testCaseAsync "IBinaryServer.multipart" <|
+        testCaseAsync "IBinaryServer.multiByteArrays" <|
             async {
                 let r = System.Random ()
 
@@ -1495,7 +1496,8 @@ let binaryServerTests =
                 let bytes2 = Array.init (r.Next 50_000) byte
                 let num = r.Next 666_666 |> int64
 
-                let! output = binaryServer.multipart score bytes1 num bytes2
+                // withMultipartOptimization is not enabled for binaryServer, so byte arrays should be encoded in JSON
+                let! output = binaryServer.multiByteArrays score bytes1 num bytes2
                 let expected = int64 score.Score + num + (bytes1 |> Array.sumBy int64) + (bytes2 |> Array.sumBy int64)
 
                 test.equal output expected

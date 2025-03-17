@@ -35,8 +35,8 @@ module Proxy =
     let parseAsBinary<'t> (data: byte[]) =
         Fable.Remoting.MsgPack.Read.Reader(data).Read typeof<'t> :?> 't
 
-    let internal createRequestBody (functionArguments: obj list): HttpContent =
-        if functionArguments |> List.exists (fun x -> x :? byte[]) then
+    let internal createRequestBody (functionArguments: obj list) isMultipartEnabled: HttpContent =
+        if isMultipartEnabled && functionArguments |> List.exists (fun x -> x :? byte[]) then
             let f = new MultipartFormDataContent ()
 
             for arg in functionArguments do
@@ -54,9 +54,9 @@ module Proxy =
             new StringContent(ser, Encoding.UTF8, "application/json")
 
     /// Sends a POST request to the specified url with the arguments of serialized to an input list
-    let proxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization =
+    let proxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization isMultipartEnabled =
         task {
-            use content = createRequestBody functionArguments
+            use content = createRequestBody functionArguments isMultipartEnabled
 
             if isBinarySerialization then
                 let! data = Http.makePostRequestBinaryResponse client url content
@@ -67,13 +67,13 @@ module Proxy =
         }
 
     /// Sends a POST request to the specified url with the arguments of serialized to an input list
-    let proxyPost<'t> (functionArguments: obj list) url client isBinarySerialization =
-        proxyPostTask<'t> functionArguments url client isBinarySerialization |> Async.AwaitTask
+    let proxyPost<'t> (functionArguments: obj list) url client isBinarySerialization isMultipartEnabled =
+        proxyPostTask<'t> functionArguments url client isBinarySerialization isMultipartEnabled |> Async.AwaitTask
 
-    /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it catched
-    let safeProxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization =
+    /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it caught
+    let safeProxyPostTask<'t> (functionArguments: obj list) url client isBinarySerialization isMultipartEnabled =
         task {
-            use content = createRequestBody functionArguments
+            use content = createRequestBody functionArguments isMultipartEnabled
 
             if isBinarySerialization then
                 match! taskCatch (fun () -> Http.makePostRequestBinaryResponse client url content) with
@@ -85,11 +85,12 @@ module Proxy =
                 | Choice2Of2 thrownException -> return Error thrownException
         }
 
-    /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it catched
-    let safeProxyPost<'t> (functionArguments: obj list) url client isBinarySerialization =
-        safeProxyPostTask<'t> functionArguments url client isBinarySerialization |> Async.AwaitTask
+    /// Sends a POST request to the specified url safely with the arguments of serialized to an input list, if an exception is thrown, is it caught
+    let safeProxyPost<'t> (functionArguments: obj list) url client isBinarySerialization isMultipartEnabled =
+        safeProxyPostTask<'t> functionArguments url client isBinarySerialization isMultipartEnabled |> Async.AwaitTask
 
-    type Proxy<'t>(builder, client: Option<HttpClient>, isBinarySerialization) =
+    type Proxy<'t>(builder, client: Option<HttpClient>, isBinarySerialization, ?isMultipartEnabled) =
+        let isMultipartEnabled = isMultipartEnabled |> Option.defaultValue false
         let typeName =
             let name = typeof<'t>.Name
             match typeof<'t>.GenericTypeArguments with
@@ -106,28 +107,28 @@ module Proxy =
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            proxyPostTask<'a> args route client isBinarySerialization
+            proxyPostTask<'a> args route client isBinarySerialization isMultipartEnabled
 
         member __.Call<'a, 'b> (expr: Expression<Func<'t, FSharpFunc<'a, Async<'b>>>>, input: 'a) : Task<'b> =
             let args = [ box input ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            proxyPostTask<'b> args route client isBinarySerialization
+            proxyPostTask<'b> args route client isBinarySerialization isMultipartEnabled
 
         member __.Call<'a, 'b, 'c> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, Async<'c>>>>>, arg1: 'a, arg2: 'b) : Task<'c> = 
             let args = [ box arg1; box arg2 ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            proxyPostTask<'c> args route client isBinarySerialization
+            proxyPostTask<'c> args route client isBinarySerialization isMultipartEnabled
 
         member __.Call<'a, 'b, 'c, 'd> (expr: Expression<Func<'t, FSharpFunc<'a, FSharpFunc<'b, FSharpFunc<'c, Async<'d>>>>>>, arg1: 'a, arg2: 'b, arg3: 'c) : Task<'d> = 
             let args = [ box arg1; box arg2; box arg3 ]
             let memberExpr = unbox<MemberExpression> expr.Body  
             let functionName = memberExpr.Member.Name
             let route = builder typeName functionName
-            proxyPostTask<'d> args route client isBinarySerialization
+            proxyPostTask<'d> args route client isBinarySerialization isMultipartEnabled
 
         /// Call the proxy function by wrapping it inside a quotation expr:
         /// ```
@@ -140,7 +141,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                proxyPost<'u> args route client isBinarySerialization
+                proxyPost<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function by wrapping it inside a quotation expr:
@@ -154,7 +155,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                proxyPost<'u> args route client isBinarySerialization
+                proxyPost<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
@@ -171,7 +172,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                safeProxyPost<'u> args route client isBinarySerialization
+                safeProxyPost<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
@@ -188,7 +189,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                safeProxyPost<'u> args route client isBinarySerialization
+                safeProxyPost<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function by wrapping it inside a quotation expr:
@@ -202,7 +203,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                proxyPostTask<'u> args route client isBinarySerialization
+                proxyPostTask<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function by wrapping it inside a quotation expr:
@@ -216,7 +217,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                proxyPostTask<'u> args route client isBinarySerialization
+                proxyPostTask<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process the following quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
@@ -233,7 +234,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                safeProxyPostTask<'u> args route client isBinarySerialization
+                safeProxyPostTask<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
         /// Call the proxy function safely by wrapping it inside a quotation expr and catching any thrown exception by the web request
@@ -250,7 +251,7 @@ module Proxy =
             match expr with
             | ProxyLambda(methodName, args) ->
                 let route = builder typeName methodName
-                safeProxyPostTask<'u> args route client isBinarySerialization
+                safeProxyPostTask<'u> args route client isBinarySerialization isMultipartEnabled
             | otherwise -> failwithf "Failed to process quotation expression\n%A\nThis could be due to the fact that you are providing complex function paramters to your called proxy function like nested records with generic paramters or lists, if that is the case, try binding the paramter to a value outside the qoutation expression and pass that value to the function instead" expr
 
     /// Creates a proxy for a type with a route builder

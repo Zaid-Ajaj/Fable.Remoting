@@ -290,7 +290,7 @@ type IBinaryServer = {
     echoAnonymousRecord : Maybe<{| name: string |}> -> Async<Maybe<{| name: string |}>>
     echoNestedAnonRecord : Maybe<{| nested: {| name: string |} |}> -> Async<Maybe<{| nested: {| name: string |} |}>>
 
-    multipart: HighScore -> byte[] -> int64 -> byte[] -> Async<int64>
+    multiByteArrays: HighScore -> byte[] -> int64 -> byte[] -> Async<int64>
 
     // mixed Task on the server, Async in JS
 #if TASK_AS_ASYNC || FABLE_COMPILER

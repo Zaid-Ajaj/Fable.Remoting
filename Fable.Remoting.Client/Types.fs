@@ -25,12 +25,13 @@ type HttpResponse = {
 }
 
 type RemoteBuilderOptions = {
-    CustomHeaders : (string * string) list
-    BaseUrl  : string option
-    Authorization : string option
-    WithCredentials : bool
-    RouteBuilder : (string -> string -> string)
-    CustomResponseSerialization : CustomResponseSerializer option
+    CustomHeaders: (string * string) list
+    BaseUrl: string option
+    Authorization: string option
+    WithCredentials: bool
+    RouteBuilder: (string -> string -> string)
+    CustomResponseSerialization: CustomResponseSerializer option
+    IsMultipartEnabled: bool
 }
 
 type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string) = 
