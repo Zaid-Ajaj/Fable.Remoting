@@ -200,7 +200,7 @@ module Remoting =
     /// </summary>
     let withCustomHeaders (headers: (string * string) list) options = { options with CustomHeaders = headers @ options.CustomHeaders }
 
-    /// Enables top level byte array arguments (such as in `upload: Metadata -> byte[] -> Async<UploadResult>`) to be sent with minimal overhead using multipart/form-data.
+    /// Enables top level byte array parameters (such as in `upload: Metadata -> byte[] -> Async<UploadResult>`) to be sent with minimal overhead using multipart/form-data.
     ///
     /// !!! Fable.Remoting.Suave servers do not support this option.
     let withMultipartOptimization options = { options with IsMultipartEnabled = true }

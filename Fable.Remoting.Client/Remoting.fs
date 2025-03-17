@@ -43,7 +43,7 @@ module Remoting =
         let serializer response returnType = MsgPack.Read.Reader(response).Read returnType
         { options with CustomResponseSerialization = Some serializer }
 
-    /// Enables top level byte array arguments (such as in `upload: Metadata -> byte[] -> Async<UploadResult>`) to be sent with minimal overhead using multipart/form-data.
+    /// Enables top level byte array parameters (such as in `upload: Metadata -> byte[] -> Async<UploadResult>`) to be sent with minimal overhead using multipart/form-data.
     ///
     /// !!! Fable.Remoting.Suave servers do not support this option.
     let withMultipartOptimization options = { options with IsMultipartEnabled = true }
