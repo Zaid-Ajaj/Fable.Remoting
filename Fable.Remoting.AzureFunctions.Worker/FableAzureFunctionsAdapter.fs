@@ -70,7 +70,7 @@ module private FuncsUtil =
                     | _ -> ""
 
                 let props = { ImplementationBuilder = (fun () -> implBuilder req); EndpointName = path req; Input = req.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
-                    HttpVerb = req.Method.ToUpper (); InputContentType = contentType; Output = output }
+                    HttpVerb = req.Method; InputContentType = contentType; Output = output }
 
                 match! proxy props with
                 | Success isBinaryOutput ->

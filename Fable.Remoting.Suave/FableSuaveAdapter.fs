@@ -86,7 +86,7 @@ module SuaveUtil =
               |> Option.map (fun (_, value) -> value)
               |> Option.defaultValue ""
 
-          let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.request.path; Input = inp; HttpVerb = ctx.request.rawMethod.ToUpper ();
+          let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.request.path; Input = inp; HttpVerb = ctx.request.rawMethod;
               InputContentType = contentType; IsProxyHeaderPresent = isRemotingProxy; Output = output }
 
           match! proxy props with

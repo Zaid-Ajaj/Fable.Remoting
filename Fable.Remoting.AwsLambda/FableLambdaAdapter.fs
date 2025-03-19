@@ -99,7 +99,7 @@ module private FuncsUtil =
             EndpointName = path req
             Input = bodyAsStream
             IsProxyHeaderPresent = isProxyHeaderPresent
-            HttpVerb = req.RequestContext.Http.Method.ToUpper()
+            HttpVerb = req.RequestContext.Http.Method
             InputContentType = contentType
             Output = output }
 

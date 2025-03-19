@@ -14,8 +14,8 @@ module InternalUtilities =
     [<Emit("new Uint8Array($0)")>]
     let createUInt8Array(x: 'a) : byte[]  = jsNative
     /// Creates a Blob from the given input string
-    [<Emit("new Blob([$0.buffer], { type: $1 })")>]
-    let createBlobFromBytesAndMimeType (value: byte[]) (mimeType: string) : Blob = jsNative
+    [<Emit("new Blob([$0], { type: $1 })")>]
+    let createBlobWithMimeType (value: U2<byte[], string>) (mimeType: string) : Blob = jsNative
     /// Creates an object URL (also known as data url) from a Blob
     [<Emit("window.URL.createObjectURL($0)")>]
     let createObjectUrl (blob: Blob) : string = jsNative
@@ -25,11 +25,22 @@ module InternalUtilities =
     /// Returns whether the input byte array is a typed array of type Uint8Array
     [<Emit "$0 instanceof Uint8Array">]
     let isUInt8Array (data: obj) : bool = jsNative
-    /// Creates a typed byte array of binary data if it not already typed
+
+    /// Creates a typed byte array of binary data if it is not already typed
     let toUInt8Array(data: byte[]) : byte[] =
         if isUInt8Array data
         then data
         else createUInt8Array data
+
+    /// Asynchronously reads the blob data content as string
+    let readBlobAsText (blob: Blob) : Async<string> =
+        Async.FromContinuations <| fun (resolve, _, _) ->
+            let reader = createFileReader()
+            reader.onload <- fun _ ->
+                if reader.readyState = FileReaderState.DONE
+                then resolve (unbox reader.result)
+
+            reader.readAsText(blob)
 
 [<AutoOpenAttribute>]
 module BrowserFileExtensions =
@@ -75,9 +86,8 @@ type ByteArrayExtensions =
         if String.IsNullOrWhiteSpace(fileName) then
             ()
         else
-        let mimeType = "application/octet-stream"
         let binaryData = InternalUtilities.toUInt8Array content
-        let blob = InternalUtilities.createBlobFromBytesAndMimeType binaryData mimeType
+        let blob = InternalUtilities.createBlobWithMimeType !^binaryData "application/octet-stream"
         let dataUrl = InternalUtilities.createObjectUrl blob
         let anchor =  (Browser.Dom.document.createElement "a")
         anchor?style <- "display: none"
@@ -99,7 +109,7 @@ type ByteArrayExtensions =
             ()
         else
         let binaryData = InternalUtilities.toUInt8Array content
-        let blob = InternalUtilities.createBlobFromBytesAndMimeType binaryData mimeType
+        let blob = InternalUtilities.createBlobWithMimeType !^binaryData mimeType
         let dataUrl = InternalUtilities.createObjectUrl blob
         let anchor =  Browser.Dom.document.createElement "a"
         anchor?style <- "display: none"
@@ -118,7 +128,7 @@ type ByteArrayExtensions =
     [<Extension>]
     static member AsDataUrl(content: byte[]) : string =
         let binaryData = InternalUtilities.toUInt8Array content
-        let blob = InternalUtilities.createBlobFromBytesAndMimeType binaryData "application/octet-stream"
+        let blob = InternalUtilities.createBlobWithMimeType !^binaryData "application/octet-stream"
         let dataUrl = InternalUtilities.createObjectUrl blob
         dataUrl
 
@@ -126,6 +136,6 @@ type ByteArrayExtensions =
     [<Extension>]
     static member AsDataUrl(content: byte[], mimeType:string) : string =
         let binaryData = InternalUtilities.toUInt8Array content
-        let blob = InternalUtilities.createBlobFromBytesAndMimeType binaryData mimeType
+        let blob = InternalUtilities.createBlobWithMimeType !^binaryData mimeType
         let dataUrl = InternalUtilities.createObjectUrl blob
         dataUrl
