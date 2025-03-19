@@ -15,6 +15,8 @@ open Microsoft.AspNetCore.WebUtilities
 
 let private fableConverter = new FableJsonConverter() :> JsonConverter
 
+let private settings = JsonSerializerSettings(DateParseHandling = DateParseHandling.None)
+
 let private fableSerializer =
     let serializer = JsonSerializer()
     serializer.Converters.Add fableConverter
@@ -80,7 +82,7 @@ let private readMultipartArgs (contentType: string) s = task {
             else
                 use sr = new StreamReader (section.Body)
                 let! text = sr.ReadToEndAsync ()
-                let token = JToken.Parse text
+                let token = JsonConvert.DeserializeObject<JToken> (text, settings)
                 parts.Add (Choice2Of2 token)
 
     return Seq.toList parts
@@ -190,7 +192,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                                     []
                                 else
                                     requestBodyText <- Some text
-                                    let token = JToken.Parse text
+                                    let token = JsonConvert.DeserializeObject<JToken> (text, settings)
                                     if token.Type <> JTokenType.Array then
                                         failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" shape.MemberInfo.Name (flattenedTypes.Length - 1)
 
