@@ -7,7 +7,6 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open Microsoft.AspNetCore.Http
 
-
 open Expecto
 open Types
 open System.Net
@@ -28,13 +27,13 @@ module ServerParts =
     let webApp =
         Remoting.createApi()
         |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ({ Message = ex.Message; RequestBody = sprintf "%A" routeInfo.requestBodyText }))
         |> Remoting.fromValue server
 
     let webAppBinary =
         Remoting.createApi()
         |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ({ Message = ex.Message; RequestBody = sprintf "%A" routeInfo.requestBodyText }))
         |> Remoting.withBinarySerialization
         |> Remoting.withRecyclableMemoryStreamManager (RecyclableMemoryStreamManager (RecyclableMemoryStreamManager.Options (ThrowExceptionOnToArray = true)))
         |> Remoting.fromValue binaryServer
@@ -42,7 +41,7 @@ module ServerParts =
     let otherWebApp =
         Remoting.createApi()
         |> Remoting.withRouteBuilder builder
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ({ Message = ex.Message; RequestBody = sprintf "%A" routeInfo.requestBodyText }))
         |> Remoting.fromContext (fun ctx -> implementation)
 
     let readerApp =
@@ -76,6 +75,7 @@ module ClientParts =
     let readerProxy = Proxy.custom<IReaderTest> builder client false
 
 open ClientParts
+open Fable.Remoting.DotnetClient
 
 let middlewareTests =
     testList "Middleware tests" [
@@ -314,6 +314,7 @@ let middlewareTests =
                 match ex with
                 | :? Fable.Remoting.DotnetClient.Http.ProxyRequestException as reqEx ->
                     Expect.isTrue (reqEx.ResponseText.Contains("Generating custom server error")) "Works"
+                    Expect.equal (reqEx.ParseCustomErrorResult<PropagatedError>().Value.error.Message) "Generating custom server error" "Works"
                 | other -> Expect.isTrue false "Should not happen"
         }
 
@@ -325,6 +326,7 @@ let middlewareTests =
                 match ex with
                 | :? Fable.Remoting.DotnetClient.Http.ProxyRequestException as reqEx ->
                     Expect.isTrue (reqEx.ResponseText.Contains("Generating custom server error")) "Works"
+                    Expect.equal (reqEx.ParseCustomErrorResult<PropagatedError>().Value.error.Message) "Generating custom server error" "Works"
                 | other -> Expect.isTrue false "Should not happen"
         }
 

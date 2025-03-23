@@ -29,11 +29,6 @@ type RouteInfo<'ctx> = {
     requestBodyText: string option
 }
 
-type CustomErrorResult<'a> =
-    { error: 'a;
-      ignored: bool;
-      handled: bool; }
-
 /// The ErrorResult lets you choose whether you want to propagate a custom error back to the client or to ignore it. Either case, an exception is thrown on the call-site from the client
 type ErrorResult =
     | Ignore

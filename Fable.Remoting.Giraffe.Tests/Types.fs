@@ -342,3 +342,7 @@ let binaryServer : IBinaryServer  = {
 
 type IReaderTest = { getPath: Async<string> }
 
+type PropagatedError = {
+    Message: string
+    RequestBody: string
+}

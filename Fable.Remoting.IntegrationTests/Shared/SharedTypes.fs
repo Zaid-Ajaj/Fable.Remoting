@@ -418,5 +418,10 @@ type IServer = {
 #endif
 }
 
+type PropagatedError = {
+    Message: string
+    RequestBody: string
+}
+
 let routeBuilder typeName methodName =
     sprintf "/api/%s/%s" typeName methodName

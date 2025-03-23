@@ -2,7 +2,7 @@
 
 You might ask: What happens when an exception is thrown on the server by one of the RPC methods? 
 
-Fable.Remoting provides a fine-grained way of dealing with errors. Unhandled exceptions are catched on the server and are passed off to the exception handler on the server of the type 
+Fable.Remoting provides a fine-grained way of dealing with errors. Unhandled exceptions are caught on the server and are passed off to the exception handler on the server of the type 
 ```fs
 Exception -> RouteInfo<HttpContext> -> ErrorResult
 ``` 
@@ -12,7 +12,7 @@ type ErrorResult =
     | Ignore
     | Propagate of obj
 ```
-With `ErrorResult` you choose either to propagate a custom message back to the client or just ignore the error. You don't want the exception data (message or stacktrace) to be returned to the client. When an error object is propagated, the exception of type `ProxyRequestException` (see below) will contain the error object serialized to JSON in the `ResponseText` field
+With `ErrorResult` you choose either to propagate a custom message back to the client or just ignore the error. You don't want the exception data (message or stacktrace) to be returned to the client. When an error object is propagated, the exception of type `ProxyRequestException` (see below) will contain the error object serialized to JSON in the `ResponseText` field. The serialized error object is of type `Fable.Remoting.ClientServer.CustomErrorResult<'userError>`
 ```fsharp
 open System
 
@@ -54,6 +54,7 @@ async {
         | :? ProxyRequestException as ex -> 
             let response : HttpResponse = ex.Response 
             let responseText : string = ex.ResponseText
+            let customError = ex.ParseCustomErrorResult<CustomError>()
             let statusCode : int = ex.StatusCode 
             (* do stuff with error information*) 
         
@@ -67,8 +68,9 @@ type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string
     member this.Response = response 
     member this.StatusCode = response.StatusCode
     member this.ResponseText = reponseText 
+    member this.ParseCustomErrorResult<'userError>() : CustomErrorResult<'userError> option = ...
 ```
-When an error is unhandled by the application (i.e. there was no error handler on the server) the `ResponseText` gives a generic error message to the client:
+When an error is unhandled by the application (i.e. there was no error handler on the server) the `ResponseText` gives a generic error message to the client, represented by type `Fable.Remoting.ClientServer.CustomErrorResult<'userError>`:
 ```json
 { 
     "error": "Error occured while running the function 'throwError'", 
@@ -95,3 +97,4 @@ Finally when a custom error like the `CustomError` shown above gets propagated, 
 }  
 ```
 Parsing the response text if needed becomes the responsibility of the consuming application.
+It can be done through the `ProxyRequestException.ParseCustomErrorResult<'userError>()` method.

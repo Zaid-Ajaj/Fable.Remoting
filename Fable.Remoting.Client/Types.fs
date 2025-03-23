@@ -1,6 +1,7 @@
 namespace Fable.Remoting.Client 
 
 open System
+open Fable.Remoting.ClientServer
 
 type HttpMethod = GET | POST 
 
@@ -38,3 +39,8 @@ type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string
     member this.Response = response 
     member this.StatusCode = response.StatusCode
     member this.ResponseText = reponseText 
+    /// Tries to parse the ResponseText into a typed error result.
+    member this.ParseCustomErrorResult<'userError>() : CustomErrorResult<'userError> option =
+        try
+            Fable.Core.JS.JSON.parse this.ResponseText |> unbox |> Some
+        with _ -> None

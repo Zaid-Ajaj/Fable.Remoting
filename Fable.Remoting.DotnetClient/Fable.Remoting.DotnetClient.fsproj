@@ -13,10 +13,12 @@
         <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
+        <Compile Include="..\Fable.Remoting.Server\Shared.fs" Link="Shared.fs" />
         <Compile Include="Http.fs" />
         <Compile Include="Patterns.fs" />
         <Compile Include="Proxy.fs" />
         <Compile Include="Remoting.fs" />
+        <Compile Include="Extensions.fs" />
     </ItemGroup>
 
     <!-- Need to conditionally bring in references for the .NET Framework 4.5 target -->

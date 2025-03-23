@@ -247,6 +247,7 @@ let middlewareTests =
                 match ex with
                 | :? Fable.Remoting.DotnetClient.Http.ProxyRequestException as reqEx ->
                     Expect.isTrue (reqEx.ResponseText.Contains("Generating custom server error")) "Works"
+                    Expect.equal (reqEx.ParseCustomErrorResult<PropagatedError>().Value.error.Message) "Generating custom server error" "Works"
                 | other -> Expect.isTrue false "Should not happen"
         }
 
