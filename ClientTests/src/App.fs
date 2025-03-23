@@ -594,6 +594,7 @@ let serverTests =
                     match error with
                     | :? ProxyRequestException as ex ->
                         if ex.ResponseText.Contains("Generating custom server error")
+                            && ex.ParseCustomErrorResult<PropagatedError>().Value.error.Message = "Generating custom server error"
                         then test.pass()
                         else test.fail()
                     | otherwise -> test.fail()
@@ -608,6 +609,7 @@ let serverTests =
                     match error with
                     | :? ProxyRequestException as ex ->
                         if ex.ResponseText.Contains("Generating custom server error for binary response")
+                            && ex.ParseCustomErrorResult<PropagatedError>().Value.error.Message = "Generating custom server error for binary response"
                         then test.pass()
                         else test.fail()
                     | otherwise -> test.fail()
@@ -1250,6 +1252,7 @@ let binaryServerTests =
                     match error with
                     | :? ProxyRequestException as ex ->
                         if ex.ResponseText.Contains("Generating custom server error")
+                            && ex.ParseCustomErrorResult<PropagatedError>().Value.error.Message = "Generating custom server error"
                         then test.pass()
                         else test.fail()
                     | otherwise -> test.fail()
@@ -1264,6 +1267,7 @@ let binaryServerTests =
                     match error with
                     | :? ProxyRequestException as ex ->
                         if ex.ResponseText.Contains("Generating custom server error for binary response")
+                            && ex.ParseCustomErrorResult<PropagatedError>().Value.error.Message = "Generating custom server error for binary response"
                         then test.pass()
                         else test.fail()
                     | otherwise -> test.fail()

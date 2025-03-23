@@ -5,20 +5,21 @@ open Fable.Remoting.AzureFunctions.Worker
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
 open Microsoft.Extensions.Logging
+open Types
 
 type Functions(log:ILogger<Functions>) =
     
     let webApp =
         Remoting.createApi()
         |> Remoting.withRouteBuilder FunctionsRouteBuilder.apiPrefix
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ({ Message = ex.Message; RequestBody = sprintf "%A" routeInfo.requestBodyText }))
         |> Remoting.fromValue Types.server
         |> Remoting.buildRequestHandler
 
     let webAppBinary =
         Remoting.createApi()
         |> Remoting.withRouteBuilder FunctionsRouteBuilder.apiPrefix
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ({ Message = ex.Message; RequestBody = sprintf "%A" routeInfo.requestBodyText }))
         |> Remoting.withBinarySerialization
         |> Remoting.fromValue Types.binaryServer
         |> Remoting.buildRequestHandler
@@ -26,7 +27,7 @@ type Functions(log:ILogger<Functions>) =
     let otherWebApp =
         Remoting.createApi()
         |> Remoting.withRouteBuilder FunctionsRouteBuilder.apiPrefix
-        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ({ Message = ex.Message; RequestBody = sprintf "%A" routeInfo.requestBodyText }))
         |> Remoting.fromValue Types.implementation
         |> Remoting.buildRequestHandler
 

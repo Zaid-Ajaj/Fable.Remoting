@@ -2,6 +2,8 @@ namespace Fable.Remoting.Server
 
 
 module Errors = 
+  open Fable.Remoting.ClientServer
+
   let unhandled (funcName: string) = 
     { error = sprintf "Error occured while running the function %s" funcName
       ignored = true 

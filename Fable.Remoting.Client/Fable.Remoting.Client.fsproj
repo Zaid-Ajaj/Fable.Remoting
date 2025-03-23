@@ -13,6 +13,7 @@
         <TargetFramework>netstandard2.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
+        <Compile Include="..\Fable.Remoting.Server\Shared.fs" Link="Shared.fs" />
         <Compile Include="Types.fs" />
         <Compile Include="Extensions.fs" />
         <Compile Include="Http.fs" />
