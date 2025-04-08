@@ -78,9 +78,7 @@ module private FuncsUtil =
     =
     let proxy = makeApiProxy options
 
-    let rmsManager =
-      options.RmsManager
-      |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
+    let rmsManager = getRecyclableMemoryStreamManager options
 
     fun (req: HttpRequestData) ->
       task {
@@ -113,7 +111,7 @@ module private FuncsUtil =
 
           if isBinaryOutput && isProxyHeaderPresent then
             resp.Headers <- dict [("Content-Type", "application/octet-stream")]
-          elif options.ResponseSerialization = SerializationType.Json then
+          elif options.ResponseSerialization.IsJson then
             resp.Headers <- dict [("Content-Type", "application/json; charset=utf-8")]
           else
             resp.Headers <- dict [("Content-Type", "application/vnd.msgpack")]

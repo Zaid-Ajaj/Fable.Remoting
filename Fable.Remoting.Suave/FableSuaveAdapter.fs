@@ -94,7 +94,7 @@ module SuaveUtil =
               let mimeType =
                   if isBinaryOutput && isRemotingProxy then
                       "application/octet-stream"
-                  elif options.ResponseSerialization = SerializationType.Json then
+                  elif options.ResponseSerialization.IsJson then
                       "application/json; charset=utf-8"
                   else
                       "application/vnd.msgpack"

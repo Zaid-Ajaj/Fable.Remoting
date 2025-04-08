@@ -51,7 +51,7 @@ module GiraffeUtil =
 
     let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
-        let rmsManager = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
+        let rmsManager = getRecyclableMemoryStreamManager options
         
         fun (next: HttpFunc) (ctx: HttpContext) -> task {
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
@@ -66,7 +66,7 @@ module GiraffeUtil =
 
                 if isBinaryOutput && isProxyHeaderPresent then
                     ctx.Response.ContentType <- "application/octet-stream"
-                elif options.ResponseSerialization = SerializationType.Json then
+                elif options.ResponseSerialization.IsJson then
                     ctx.Response.ContentType <- "application/json; charset=utf-8"
                 else
                     ctx.Response.ContentType <- "application/vnd.msgpack"

@@ -58,7 +58,7 @@ module private FuncsUtil =
     
     let buildFromImplementation<'impl> (implBuilder: HttpRequestData -> 'impl) (options: RemotingOptions<HttpRequestData, 'impl>) =
         let proxy = makeApiProxy options
-        let rmsManager = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
+        let rmsManager = getRecyclableMemoryStreamManager options
 
         fun (req:HttpRequestData) ->
             task {
@@ -79,7 +79,7 @@ module private FuncsUtil =
                         |> (fun r ->
                             if isBinaryOutput && isProxyHeaderPresent then
                                 r |> setContentType "application/octet-stream"
-                            elif options.ResponseSerialization = SerializationType.Json then
+                            elif options.ResponseSerialization.IsJson then
                                 r |> setContentType "application/json; charset=utf-8"
                             else
                                 r |> setContentType "application/vnd.msgpack"

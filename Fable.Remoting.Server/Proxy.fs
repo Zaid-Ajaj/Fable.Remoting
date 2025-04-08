@@ -5,21 +5,19 @@ open Newtonsoft.Json
 open TypeShape
 open Fable.Remoting
 open System
+open System.Buffers
 open Newtonsoft.Json.Linq
 open System.IO
-open System.Collections.Concurrent
 open System.Text
 open System.Threading.Tasks
 open Microsoft.Net.Http.Headers
 open Microsoft.AspNetCore.WebUtilities
 
-let private fableConverter = new FableJsonConverter() :> JsonConverter
-
 let private settings = JsonSerializerSettings(DateParseHandling = DateParseHandling.None)
 
 let private fableSerializer =
     let serializer = JsonSerializer()
-    serializer.Converters.Add fableConverter
+    serializer.Converters.Add (FableJsonConverter ())
     serializer
 
 let private jsonEncoding = UTF8Encoding false
@@ -29,18 +27,13 @@ let jsonSerialize (o: 'a) (stream: Stream) =
     use writer = new JsonTextWriter (sw, CloseOutput = false)
     fableSerializer.Serialize (writer, o)
 
-let private msgPackSerializerCache = ConcurrentDictionary<Type, obj -> Stream -> unit> ()
+type private MsgPackSerializer<'a> =
+    static let serializer = MsgPack.Write.makeSerializer<'a> ()
+    static member Serialize (o, stream) = serializer.Invoke (o, stream)
 
-let private msgPackSerialize (o: 'a) (stream: Stream) =
-    match msgPackSerializerCache.TryGetValue typeof<'a> with
-    | true, s -> s o stream
-    | _ ->
-        let s = MsgPack.Write.makeSerializer<'a> ()
-        let s = fun (o: obj) stream -> s.Invoke (o :?> 'a, stream)
-        msgPackSerializerCache.[typeof<'a>] <- s
-        s o stream
+let private recyclableMemoryStreamManager = Lazy<Microsoft.IO.RecyclableMemoryStreamManager> ()
 
-let recyclableMemoryStreamManager = Lazy<Microsoft.IO.RecyclableMemoryStreamManager> ()
+let getRecyclableMemoryStreamManager options = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
 
 let private typeNames inputTypes =
     inputTypes
@@ -58,14 +51,14 @@ let private (|Task|_|) (s: TypeShape) =
     | Generic (td, ta) when td = typedefof<Task<_>> -> Activator.CreateInstanceGeneric<ShapeFSharpAsyncOrTask<_>>(ta) :?> IShapeFSharpAsyncOrTask |> Some
     | _ -> None
 
-let private readMultipartArgs (contentType: string) s = task {
-    let mediaType = MediaTypeHeaderValue.Parse contentType
+let private readMultipartArgs props options = task {
+    let mediaType = MediaTypeHeaderValue.Parse props.InputContentType
     let boundary = HeaderUtilities.RemoveQuotes mediaType.Boundary
 
     if Microsoft.Extensions.Primitives.StringSegment.IsNullOrEmpty boundary || boundary.Length > 70 then
         failwith "Multipart boundary missing or too long"
 
-    let reader = MultipartReader (boundary.ToString (), s)
+    let reader = MultipartReader (boundary.ToString (), props.Input)
     let parts = ResizeArray ()
     let mutable go = true
     
@@ -76,9 +69,9 @@ let private readMultipartArgs (contentType: string) s = task {
             go <- false
         else
             if section.ContentType.Equals ("application/octet-stream", StringComparison.Ordinal) then
-                use ms = new MemoryStream ()
-                do! section.Body.CopyToAsync ms
-                parts.Add (ms.ToArray () |> Choice1Of2)
+                use buffer = (getRecyclableMemoryStreamManager options).GetStream "remoting-input-multipart"
+                do! section.Body.CopyToAsync buffer
+                parts.Add (buffer.GetReadOnlySequence().ToArray () |> Choice1Of2)
             else
                 use sr = new StreamReader (section.Body)
                 let! text = sr.ReadToEndAsync ()
@@ -100,13 +93,13 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
         | _ -> ()
 
     let writeToOutputMemoryStream isBinaryOutput (props: InvocationPropsInt) result =
-        if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization = SerializationType.Json then
+        if isBinaryOutput && props.IsProxyHeaderPresent && makeProps.ResponseSerialization.IsJson then
             let data = box result :?> byte[]
             props.Output.Write (data, 0, data.Length)
-        elif makeProps.ResponseSerialization = SerializationType.Json then
+        elif makeProps.ResponseSerialization.IsJson then
             jsonSerialize result props.Output
         else
-            msgPackSerialize result props.Output
+            MsgPackSerializer.Serialize (result, props.Output)
 
         props.Output.Position <- 0L
 
@@ -180,7 +173,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                         if not (props.HttpVerb.Equals ("POST", StringComparison.OrdinalIgnoreCase)) && not (isNoArg && props.HttpVerb.Equals ("GET", StringComparison.OrdinalIgnoreCase)) then
                             return InvalidHttpVerb
                         elif props.InputContentType.StartsWith ("multipart/form-data", StringComparison.Ordinal) then
-                            let! args = readMultipartArgs props.InputContentType props.Input
+                            let! args = readMultipartArgs props options
                             let props' = { Arguments = args; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                         else
