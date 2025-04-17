@@ -1,51 +1,47 @@
-﻿// Learn more about F# at http://fsharp.org
+﻿module DotnetClientTests
 
 open System
-open SharedTypes
 open Fable.Remoting.DotnetClient
-open Expecto
-open Expecto.Logging
-open Suave
-open Suave.Files
-open Suave.Operators
-open Suave.Filters
+open Fable.Remoting.Giraffe
+open Fable.Remoting.Server
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
 open ServerImpl
+open SharedTypes
 open System.Threading
+open Giraffe
 open Microsoft.IO
+open Expecto
 
 module ServerParts =
-
-    open Fable.Remoting.Server
-    open Fable.Remoting.Suave
-
     let fableWebPart =
         Remoting.createApi()
         |> Remoting.fromValue server
         |> Remoting.withRouteBuilder routeBuilder
         |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
         |> Remoting.withRecyclableMemoryStreamManager (RecyclableMemoryStreamManager (RecyclableMemoryStreamManager.Options (ThrowExceptionOnToArray = true)))
-        |> Remoting.buildWebPart
-
-    let webApp =
-      choose [ GET >=> browseHome
-               fableWebPart ]
+        |> Remoting.buildHttpHandler
 
     let cts = new CancellationTokenSource()
-    let suaveConfig =
-        { defaultConfig with
-            bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" 9090 ]
-            bufferSize = 2048
-            cancellationToken = cts.Token }
 
-let listening, server = startWebServerAsync ServerParts.suaveConfig ServerParts.webApp
-Async.Start server
+    let configureApp (app: IApplicationBuilder) =
+        app
+            .UseDefaultFiles()
+            .UseStaticFiles()
+            .UseGiraffe fableWebPart
+
+    let start () =
+        WebHostBuilder()
+            .Configure(configureApp)
+            .UseKestrel()
+            .UseUrls("http://localhost:9090")
+            .Build()
+            .RunAsync cts.Token
+
+let _shutdownTask = ServerParts.start ()
+
 printfn "Web server started"
 printfn "Getting server ready to listen for reqeusts"
-listening
-|> Async.RunSynchronously
-|> ignore
-printfn "Server listening to requests"
-
 
 module ClientParts =
     open Fable.Remoting.DotnetClient
@@ -55,6 +51,7 @@ module ClientParts =
     let server =
         Remoting.createApi "http://localhost:9090"
         |> Remoting.withRouteBuilder routeBuilder
+        |> Remoting.withMultipartOptimization
         |> Remoting.buildProxy<IServer>
 
 open ClientParts
@@ -557,11 +554,26 @@ let dotnetClientTests =
             let! output = server.getPostTimestamp_Result()
             Expect.equal output (Ok staticTimestampText) "Timestamp is correct"
         }
+
+        testCaseAsync "IServer.multipart" <|
+            async {
+                let r = System.Random ()
+
+                let score = { Name = "test"; Score = r.Next 100 }
+                let bytes1 = Array.init (r.Next 10_000) byte
+                let bytes2 = Array.init (r.Next 50_000) byte
+                let num = r.Next 666_666 |> int64
+
+                let! output = server.multipart score bytes1 num bytes2
+                let expected = int64 score.Score + num + (bytes1 |> Array.sumBy int64) + (bytes2 |> Array.sumBy int64)
+
+                Expect.equal output expected "Result is correct"
+            }
     ]
 
 let testConfig =  { Expecto.Tests.defaultConfig with
                         parallelWorkers = 1
-                        verbosity = LogLevel.Debug }
+                        verbosity = Logging.LogLevel.Debug }
 
 [<EntryPoint>]
 let main argv =

@@ -1,30 +1,30 @@
 open System
-open Suave
-open Suave.Successful
 open System.IO
 open Fable.Remoting.Server
-open Fable.Remoting.Suave
-open System.Threading
-open Suave.Operators
-open Suave.Filters
-open SharedTypes
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
 open ServerImpl
+open SharedTypes
+open Fable.Remoting.Giraffe
 open PuppeteerSharp
+open System.Threading
+open Giraffe
+open Microsoft.AspNetCore.Http
 
 let fableWebPart =
     Remoting.createApi()
-    |> Remoting.fromContext (fun ctx -> server)
+    |> Remoting.fromValue server
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
-    |> Remoting.buildWebPart
+    |> Remoting.buildHttpHandler
 
 let fableWebPartBinary = 
     Remoting.createApi()
-    |> Remoting.fromContext (fun ctx -> serverBinary)
+    |> Remoting.fromValue serverBinary
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
     |> Remoting.withBinarySerialization
-    |> Remoting.buildWebPart
+    |> Remoting.buildHttpHandler
 
 let (</>) x y = Path.Combine(x, y)
 
@@ -38,40 +38,29 @@ let rec findRoot dir =
         findRoot parent.FullName
 
 module AuthServer =
-
     // acquire the access token from here, returns an integer
-    let token = pathScan "/IAuthServer/token/%d" (sprintf "%d" >> OK)
+    let token = routef "/IAuthServer/token/%i" (string >> text)
 
     // WebPart to ensure that there is a non-empty authorization header
-    let requireAuthorized : WebPart =
-        fun (ctx: HttpContext) ->
-            async {
-                return ctx.request.headers
-                       |> List.tryFind (fun (key, value) -> key = "authorization" && value <> "")
-                       |> function
-                        | Some header -> Some ctx
-                        | None -> None
-            }
+    let requireAuthorized next (ctx: HttpContext) =
+        if ctx.Request.Headers.Authorization.Count > 0 then
+            next ctx
+        else
+            Tasks.Task.FromResult None
 
     // the actual secure api, cannot be reached unless an authorization header is present
     let authorizedServerApi =
         Remoting.createApi()
-        |> Remoting.fromContext (fun ctx ->
+        |> Remoting.fromContext (fun (ctx: HttpContext) ->
             {
                 // return the authorization header
                 getSecureValue = fun () ->
                     async {
-                        return ctx.request.headers
-                               |> List.tryFind (fun (key, value) -> key = "authorization" && value <> "")
-                               |> Option.map (snd >> int)
-                               |> function
-                                  | Some value -> value
-                                  | None -> -1
+                        return ctx.Request.Headers.Authorization.Item 0 |> int
                     }
             })
         |> Remoting.withRouteBuilder routeBuilder
-        |> Remoting.buildWebPart
-
+        |> Remoting.buildHttpHandler
 
     let api =
         choose [
@@ -81,34 +70,20 @@ module AuthServer =
             requireAuthorized >=> authorizedServerApi
         ]
 
-
 module CookieTest =
-    open Suave.Cookie
     let cookieName = "httpOnly-test-cookie"
 
-    let setCookie ctx =
-        let cookie = {
-            name = cookieName
-            value = "test value"
-            expires = None
-            path = Some "/"
-            domain = None
-            secure = false
-            httpOnly = true
-            sameSite = None
-        }
-        Cookie.setCookie cookie ctx
-
     let cookieWebPart =
-        let cookieServer (ctx:HttpContext) : ICookieServer =
-            cookieServer <| fun _ -> ctx.request.cookies |> Map.containsKey cookieName
+        let cookieServer (ctx: HttpContext): ICookieServer =
+            cookieServer <| fun _ ->
+                ctx.Response.Cookies.Append (cookieName, "test value", CookieOptions (Secure = false, HttpOnly = true))
+                ctx.Request.Cookies.ContainsKey cookieName
 
         Remoting.createApi()
         |> Remoting.fromContext cookieServer
         |> Remoting.withRouteBuilder routeBuilder
         |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate (sprintf "Message: %s, request body: %A" ex.Message routeInfo.requestBodyText))
-        |> Remoting.buildWebPart
-        >=> setCookie
+        |> Remoting.buildHttpHandler
 
 [<EntryPoint>]
 let main argv =
@@ -117,132 +92,131 @@ let main argv =
     let rnd = new Random()
     let port = rnd.Next(5000, 9000)
     let cts = new CancellationTokenSource()
-    let suaveConfig =
-        { defaultConfig with
-            homeFolder = Some (root </> "Fable.Remoting.IntegrationTests" </> "client-dist")
-            bindings   = [ HttpBinding.createSimple HTTP "127.0.0.1" port ]
-            bufferSize = 2048
-            cancellationToken = cts.Token }
+    let homeFolder = root </> "Fable.Remoting.IntegrationTests" </> "client-dist"
 
-    let testWebApp =
-        choose [
-            GET >=> Files.browseHome >=> Writers.setHeader "Set-Cookie" "dummy=value;"
-            fableWebPart
-            fableWebPartBinary
-            CookieTest.cookieWebPart
-            AuthServer.api
-            OK "Not Found"
-        ]
+    let configureApp (app: IApplicationBuilder) =
+        app
+            .UseDefaultFiles()
+            .UseStaticFiles()
+            .UseGiraffe(
+                choose [
+                    fableWebPart
+                    fableWebPartBinary
+                    CookieTest.cookieWebPart
+                    AuthServer.api
+                ]
+            )
 
-    if not (Array.contains "--headless" argv)
-    then
-      printfn "Starting web server..."
-      startWebServer { suaveConfig with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 5000 ] } testWebApp
-      0
+    let webhost port =
+        WebHostBuilder()
+            .UseWebRoot(homeFolder)
+            .UseContentRoot(homeFolder)
+            .Configure(configureApp)
+            .UseKestrel()
+            .UseUrls($"http://localhost:{port}")
+            .Build()
+
+    if not (Array.contains "--headless" argv) then
+        printfn "Starting web server..."
+        webhost(5000).Run ()
+        0
     else
-    printfn "Starting Integration Tests"
-    printfn ""
-    printfn "========== SETUP =========="
-    printfn ""
-    printfn "Downloading chromium browser..."
-    use browserFetcher = new BrowserFetcher()
-    browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision)
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
-    |> ignore
-    printfn "Chromium browser downloaded"
-    let listening, server = startWebServerAsync suaveConfig testWebApp
-
-    Async.Start server
-    printfn "Web server started"
-
-    printfn "Getting server ready to listen for reqeusts"
-    listening
-    |> Async.RunSynchronously
-    |> ignore
-
-    printfn "Server listening to requests"
-    let launchOptions = LaunchOptions()
-    launchOptions.ExecutablePath <- browserFetcher.GetExecutablePath(BrowserFetcher.DefaultChromiumRevision)
-    launchOptions.Headless <- true
-
-    async {
-        use! browser = Async.AwaitTask(Puppeteer.LaunchAsync(launchOptions))
-        use! page = Async.AwaitTask(browser.NewPageAsync())
+        printfn "Starting Integration Tests"
         printfn ""
-        printfn "Navigating to http://localhost:%d/index.html" port
-        let! _ = Async.AwaitTask (page.GoToAsync (sprintf "http://localhost:%d/index.html" port))
-        let stopwatch = System.Diagnostics.Stopwatch.StartNew()
-        let toArrayFunction = """
-        window.domArr = function(elements) {
-            var arr = [ ];
-            for(var i = 0; i < elements.length;i++) arr.push(elements.item(i));
-            return arr;
-        };
-        """
+        printfn "========== SETUP =========="
+        printfn ""
+        printfn "Downloading chromium browser..."
+        use browserFetcher = new BrowserFetcher()
+        browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision)
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+        |> ignore
+        printfn "Chromium browser downloaded"
 
-        let getResultsFunctions = """
-        window.getTests = function() {
-            var tests = document.querySelectorAll("div.passed, div.executing, div.failed, div.pending");
-            return domArr(tests).map(function(test) {
-                var name = test.getAttribute('data-test')
-                var type = test.classList[0]
-                var module =
-                    type === 'failed'
-                    ? test.parentNode.parentNode.parentNode.getAttribute('data-module')
-                    : test.parentNode.parentNode.getAttribute('data-module')
-                return [name, type, module];
-            });
+        let _shutdownTask = webhost(port).RunAsync cts.Token
+
+        printfn "Server listening to requests"
+        let launchOptions = LaunchOptions()
+        launchOptions.ExecutablePath <- browserFetcher.GetExecutablePath(BrowserFetcher.DefaultChromiumRevision)
+        launchOptions.Headless <- true
+
+        async {
+            use! browser = Async.AwaitTask(Puppeteer.LaunchAsync(launchOptions))
+            use! page = Async.AwaitTask(browser.NewPageAsync())
+            printfn ""
+            printfn "Navigating to http://localhost:%d" port
+            let! _ = Async.AwaitTask (page.GoToAsync (sprintf "http://localhost:%d" port))
+            let stopwatch = System.Diagnostics.Stopwatch.StartNew()
+            let toArrayFunction = """
+            window.domArr = function(elements) {
+                var arr = [ ];
+                for(var i = 0; i < elements.length;i++) arr.push(elements.item(i));
+                return arr;
+            };
+            """
+
+            let getResultsFunctions = """
+            window.getTests = function() {
+                var tests = document.querySelectorAll("div.passed, div.executing, div.failed, div.pending");
+                return domArr(tests).map(function(test) {
+                    var name = test.getAttribute('data-test')
+                    var type = test.classList[0]
+                    var module =
+                        type === 'failed'
+                        ? test.parentNode.parentNode.parentNode.getAttribute('data-module')
+                        : test.parentNode.parentNode.getAttribute('data-module')
+                    return [name, type, module];
+                });
+            }
+            """
+            let! _ = Async.AwaitTask (page.EvaluateExpressionAsync(toArrayFunction))
+            let! _ = Async.AwaitTask (page.EvaluateExpressionAsync(getResultsFunctions))
+            let! _ = Async.AwaitTask (page.WaitForExpressionAsync("document.getElementsByClassName('executing').length === 0"))
+            stopwatch.Stop()
+            printfn "Finished running tests, took %d ms" stopwatch.ElapsedMilliseconds
+            let passingTests = "document.getElementsByClassName('passed').length"
+            let! passedTestsCount = Async.AwaitTask (page.EvaluateExpressionAsync<int>(passingTests))
+            let failingTests = "document.getElementsByClassName('failed').length"
+            let! failedTestsCount = Async.AwaitTask (page.EvaluateExpressionAsync<int>(failingTests))
+            let pendingTests = "document.getElementsByClassName('pending').length"
+            let! pendingTestsCount = Async.AwaitTask(page.EvaluateExpressionAsync<int>(pendingTests))
+            let! testResults = Async.AwaitTask (page.EvaluateExpressionAsync<string [] []>("window.getTests()"))
+            printfn ""
+            printfn "========== SUMMARY =========="
+            printfn ""
+            printfn "Total test count %d" (passedTestsCount + failedTestsCount + pendingTestsCount)
+            printfn "Passed tests %d" passedTestsCount
+            printfn "Failed tests %d" failedTestsCount
+            printfn "Skipped tests %d" pendingTestsCount
+            printfn ""
+            printfn "========== TESTS =========="
+            printfn ""
+            let moduleGroups = testResults |> Array.groupBy (fun arr -> arr.[2])
+
+            for (moduleName, tests) in moduleGroups do
+                for test in tests do
+                    let name = test.[0]
+                    let testType = test.[1]
+
+                    match testType with
+                    | "passed" ->
+                        Console.ForegroundColor <- ConsoleColor.Green
+                        printfn "√ %s / %s" moduleName name
+                    | "failed" ->
+                        Console.ForegroundColor <- ConsoleColor.Red
+                        printfn "X %s / %s" moduleName name
+                    | "pending" ->
+                        Console.ForegroundColor <- ConsoleColor.Blue
+                        printfn "~ %s / %s" moduleName name
+                    | other ->
+                        printfn "~ %s / %s" moduleName name
+
+            Console.ResetColor()
+            printfn ""
+            printfn "Stopping web server..."
+            cts.Cancel()
+            printfn "Exit code: %d" failedTestsCount
+            return failedTestsCount
         }
-        """
-        let! _ = Async.AwaitTask (page.EvaluateExpressionAsync(toArrayFunction))
-        let! _ = Async.AwaitTask (page.EvaluateExpressionAsync(getResultsFunctions))
-        let! _ = Async.AwaitTask (page.WaitForExpressionAsync("document.getElementsByClassName('executing').length === 0"))
-        stopwatch.Stop()
-        printfn "Finished running tests, took %d ms" stopwatch.ElapsedMilliseconds
-        let passingTests = "document.getElementsByClassName('passed').length"
-        let! passedTestsCount = Async.AwaitTask (page.EvaluateExpressionAsync<int>(passingTests))
-        let failingTests = "document.getElementsByClassName('failed').length"
-        let! failedTestsCount = Async.AwaitTask (page.EvaluateExpressionAsync<int>(failingTests))
-        let pendingTests = "document.getElementsByClassName('pending').length"
-        let! pendingTestsCount = Async.AwaitTask(page.EvaluateExpressionAsync<int>(pendingTests))
-        let! testResults = Async.AwaitTask (page.EvaluateExpressionAsync<string [] []>("window.getTests()"))
-        printfn ""
-        printfn "========== SUMMARY =========="
-        printfn ""
-        printfn "Total test count %d" (passedTestsCount + failedTestsCount + pendingTestsCount)
-        printfn "Passed tests %d" passedTestsCount
-        printfn "Failed tests %d" failedTestsCount
-        printfn "Skipped tests %d" pendingTestsCount
-        printfn ""
-        printfn "========== TESTS =========="
-        printfn ""
-        let moduleGroups = testResults |> Array.groupBy (fun arr -> arr.[2])
 
-        for (moduleName, tests) in moduleGroups do
-            for test in tests do
-                let name = test.[0]
-                let testType = test.[1]
-
-                match testType with
-                | "passed" ->
-                    Console.ForegroundColor <- ConsoleColor.Green
-                    printfn "√ %s / %s" moduleName name
-                | "failed" ->
-                    Console.ForegroundColor <- ConsoleColor.Red
-                    printfn "X %s / %s" moduleName name
-                | "pending" ->
-                    Console.ForegroundColor <- ConsoleColor.Blue
-                    printfn "~ %s / %s" moduleName name
-                | other ->
-                    printfn "~ %s / %s" moduleName name
-
-        Console.ResetColor()
-        printfn ""
-        printfn "Stopping web server..."
-        cts.Cancel()
-        printfn "Exit code: %d" failedTestsCount
-        return failedTestsCount
-    }
-
-    |> Async.RunSynchronously
+        |> Async.RunSynchronously

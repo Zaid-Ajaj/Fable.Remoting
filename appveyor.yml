@@ -7,9 +7,6 @@ build:
 environment:
   nodejs_version: "20.5.1"
 
-cache:
-  - "%LOCALAPPDATA%\\Yarn"
-
 os: Visual Studio 2022
 
 # Install scripts. (runs after repo cloning)

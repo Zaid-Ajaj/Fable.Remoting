@@ -78,19 +78,17 @@ module private FuncsUtil =
     =
     let proxy = makeApiProxy options
 
-    let rmsManager =
-      options.RmsManager
-      |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
+    let rmsManager = getRecyclableMemoryStreamManager options
 
     fun (req: HttpRequestData) ->
       task {
         let isProxyHeaderPresent = req.Headers.Keys.Contains "x-remoting-proxy"
         use output = rmsManager.GetStream "remoting-output-stream"
 
-        let isBinaryEncoded =
+        let contentType =
           match req.Headers.TryGetValue "Content-Type" with
-          | true, "application/octet-stream" -> true
-          | _ -> false
+          | true, x -> x
+          | _ -> ""
 
         let bodyAsStream =
           if String.IsNullOrEmpty req.Body then
@@ -103,8 +101,8 @@ module private FuncsUtil =
             EndpointName = path req
             Input = bodyAsStream
             IsProxyHeaderPresent = isProxyHeaderPresent
-            HttpVerb = req.HttpMethod.ToUpper()
-            IsContentBinaryEncoded = isBinaryEncoded
+            HttpVerb = req.HttpMethod
+            InputContentType = contentType
             Output = output }
 
         match! proxy props with
@@ -113,7 +111,7 @@ module private FuncsUtil =
 
           if isBinaryOutput && isProxyHeaderPresent then
             resp.Headers <- dict [("Content-Type", "application/octet-stream")]
-          elif options.ResponseSerialization = SerializationType.Json then
+          elif options.ResponseSerialization.IsJson then
             resp.Headers <- dict [("Content-Type", "application/json; charset=utf-8")]
           else
             resp.Headers <- dict [("Content-Type", "application/vnd.msgpack")]

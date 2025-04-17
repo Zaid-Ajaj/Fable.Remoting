@@ -4,10 +4,10 @@ open BenchmarkDotNet.Order
 
 type Orderer () =
     interface IOrderer with
-        member _.GetExecutionOrder benchmarksCase = benchmarksCase :> _
+        member _.GetExecutionOrder (benchmarksCase, _) = benchmarksCase :> _
         member _.GetHighlightGroupKey benchmarkCase = null
         member _.GetLogicalGroupKey (allBenchmarksCases, benchmarkCase) = sprintf "%s_%s" benchmarkCase.Descriptor.Type.Name benchmarkCase.DisplayInfo 
-        member _.GetLogicalGroupOrder logicalGroups = logicalGroups
+        member _.GetLogicalGroupOrder (logicalGroups, _) = logicalGroups
         member _.GetSummaryOrder (benchmarksCases, summary) = benchmarksCases :> _
         member _.SeparateLogicalGroups = true
 

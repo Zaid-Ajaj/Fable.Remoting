@@ -6,8 +6,8 @@ type HttpMethod = GET | POST
 
 type RequestBody = 
     | Empty
-    | Json of string 
-    | Binary of byte[] 
+    | Json of string
+    | Multipart of Browser.Types.Blob[]
 
 type CustomResponseSerializer = byte[] -> Type -> obj
 
@@ -25,12 +25,13 @@ type HttpResponse = {
 }
 
 type RemoteBuilderOptions = {
-    CustomHeaders : (string * string) list
-    BaseUrl  : string option
-    Authorization : string option
-    WithCredentials : bool
-    RouteBuilder : (string -> string -> string)
-    CustomResponseSerialization : CustomResponseSerializer option
+    CustomHeaders: (string * string) list
+    BaseUrl: string option
+    Authorization: string option
+    WithCredentials: bool
+    RouteBuilder: (string -> string -> string)
+    CustomResponseSerialization: CustomResponseSerializer option
+    IsMultipartEnabled: bool
 }
 
 type ProxyRequestException(response: HttpResponse, errorMsg, reponseText: string) = 

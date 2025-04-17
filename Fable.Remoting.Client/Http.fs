@@ -1,6 +1,5 @@
 namespace Fable.Remoting.Client
 
-open System.Threading
 open Browser
 open Browser.Types
 
@@ -78,7 +77,13 @@ module Http =
             match req.RequestBody with
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
-            | Binary content -> xhr.send(InternalUtilities.toUInt8Array content)
+            | Multipart blobs ->
+                let form = Browser.XMLHttpRequest.FormData.Create ()
+
+                for i in 0 .. blobs.Length - 1 do
+                    form.append (i.ToString (), blobs.[i])
+
+                xhr.send form
 
         return! request
     }

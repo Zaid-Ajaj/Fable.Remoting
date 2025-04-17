@@ -1,2 +1,4 @@
 FSharp.Core
 Microsoft.IO.RecyclableMemoryStream
+Microsoft.AspNetCore.WebUtilities
+Microsoft.Net.Http.Headers

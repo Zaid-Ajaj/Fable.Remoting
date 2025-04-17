@@ -104,14 +104,14 @@ module internal Middleware =
 
     let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
         let proxy = makeApiProxy options
-        let rmsManager = options.RmsManager |> Option.defaultWith (fun _ -> recyclableMemoryStreamManager.Value)
+        let rmsManager = getRecyclableMemoryStreamManager options
 
         fun (next: HttpFunc) (ctx: HttpContext) -> task {
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
             use output = rmsManager.GetStream "remoting-output-stream"
 
             let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = ctx.Request.Path.Value; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
-                HttpVerb = ctx.Request.Method.ToUpper (); IsContentBinaryEncoded = ctx.Request.ContentType = "application/octet-stream"; Output = output }
+                HttpVerb = ctx.Request.Method; InputContentType = ctx.Request.ContentType; Output = output }
 
             match! proxy props with
             | Success isBinaryOutput ->
@@ -119,7 +119,7 @@ module internal Middleware =
 
                 if isBinaryOutput && isProxyHeaderPresent then
                     ctx.Response.ContentType <- "application/octet-stream"
-                elif options.ResponseSerialization = SerializationType.Json then
+                elif options.ResponseSerialization.IsJson then
                     ctx.Response.ContentType <- "application/json; charset=utf-8"
                 else
                     ctx.Response.ContentType <- "application/vnd.msgpack"

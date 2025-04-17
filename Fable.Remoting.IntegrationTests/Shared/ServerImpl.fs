@@ -126,6 +126,7 @@ let serverBinary : IBinaryServer = {
 
     pureTask = Task.FromResult 42
     echoMapTask = fun map -> Task.FromResult map
+    multiByteArrays = fun score bytes1 num bytes2 -> async { return int64 score.Score + num + (bytes1 |> Array.sumBy int64) + (bytes2 |> Array.sumBy int64) }
 }
 
 let staticTimestampText = "2023-12-03T11:49:41"
@@ -239,4 +240,6 @@ let server : IServer  = {
     getPostTimestamp_Result = fun () -> async {
         return Ok staticTimestampText
     }
+
+    multipart = fun score bytes1 num bytes2 -> async { return int64 score.Score + num + (bytes1 |> Array.sumBy int64) + (bytes2 |> Array.sumBy int64) }
 }

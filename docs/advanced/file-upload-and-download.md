@@ -1,10 +1,15 @@
 # File Upload And Download
 
 With Fable.Remoting, it is really simple to upload and download files and other binary content and it goes like this:
- - Use `byte[]` as input of a remoting function for _upload_ `Upload : byte[] -> Async<unit>`
- - Use `Async<byte[]>` as output of a remoting function to _download_ `Download : string -> Async<byte[]>`
+ - Use `byte[]` as a top level parameter (rather than storing it in a record) of a remoting function for _upload_ `Upload: FileMetadata -> UserId -> byte[] -> Async<UploadResult>`
+ - Use `Async<byte[]>` as output of a remoting function to _download_ `Download: string -> Async<byte[]>`
 
-> When using `byte[]` as input or output, the data transport is automatically optimized for binary content and will bypass the JSON serialization phase entirely.
+> When using `byte[]` as output, the HTTP response is automatically sent as `application/octet-stream`, bypassing JSON serialization entirely.
+
+> When using `byte[]` as input, the client proxy may be configured with `Remoting.withMultipartOptimization`, so that the HTTP request is sent as `multipart/form-data` with minimal overhead for binary data.
+> If this option is not enabled, the byte array will be encoded in JSON instead, which is much more inefficient.
+>
+> !!! `Fable.Remoting.Suave` **does not** support reading multipart requests, so if your backend runs on Suave, do not call `Remoting.withMultipartOptimization`.
 
 However, that is of course not the full story, because first of all, how do you get a `byte[]` from a file coming through the browser for upload. For downloading, once you get `byte[]` from the backend, how do you save it as a file on the user system?
 
@@ -15,9 +20,14 @@ When you use an `<input type="file" />` from the browser, you can obtain a `File
 open Fable.Remoting.Client
 open Browser.Types
 
-let upload (file: File) = async {
-    let! fileBytes = file.ReadAsByteArray()
-    let! output = BackendApi.Upload(fileBytes)
+let BackendApi = 
+    Remoting.createApi()
+    |> Remoting.withMultipartOptimization
+    |> Remoting.buildProxy<Api>
+
+let uploadProfilePicture (image: File) userId = async {
+    let! fileBytes = image.ReadAsByteArray()
+    let! output = BackendApi.Upload({ ImageAuthor = "blah" }, userId, fileBytes)
     return output
 }
 ```

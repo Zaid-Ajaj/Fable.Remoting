@@ -13,6 +13,7 @@ open System.Collections.Generic
 let server =
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
+    |> Remoting.withMultipartOptimization
     |> Remoting.buildProxy<IServer>
 
 let binaryServer =
@@ -750,6 +751,21 @@ let serverTests =
                 test.equal true (output = Some "Operation error")
             }
 
+        testCaseAsync "IServer.multipart" <|
+            async {
+                let r = System.Random ()
+
+                let score = { Name = "test"; Score = r.Next 100 }
+                let bytes1 = Array.init (r.Next 10_000) byte
+                let bytes2 = Array.init (r.Next 50_000) byte
+                let num = r.Next 666_666 |> int64
+
+                let! output = server.multipart score bytes1 num bytes2
+                let expected = int64 score.Score + num + (bytes1 |> Array.sumBy int64) + (bytes2 |> Array.sumBy int64)
+
+                test.equal output expected
+            }
+
 #if NAGAREYAMA
         testCaseAsync "IServer.echoDateOnlyMap" <|
             async {
@@ -1469,6 +1485,22 @@ let binaryServerTests =
                 let! output = binaryServer.echoArray3tuples input
 
                 test.equal true (input = output)
+            }
+
+        testCaseAsync "IBinaryServer.multiByteArrays" <|
+            async {
+                let r = System.Random ()
+
+                let score = { Name = "test"; Score = r.Next 100 }
+                let bytes1 = Array.init (r.Next 10_000) byte
+                let bytes2 = Array.init (r.Next 50_000) byte
+                let num = r.Next 666_666 |> int64
+
+                // withMultipartOptimization is not enabled for binaryServer, so byte arrays should be encoded in JSON
+                let! output = binaryServer.multiByteArrays score bytes1 num bytes2
+                let expected = int64 score.Score + num + (bytes1 |> Array.sumBy int64) + (bytes2 |> Array.sumBy int64)
+
+                test.equal output expected
             }
 
 #if NAGAREYAMA

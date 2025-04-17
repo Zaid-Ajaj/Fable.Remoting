@@ -1,24 +1,7 @@
 namespace Fable.Remoting.Client
 
-open System
-open Fable.Core
+open Fable.Core.JsInterop
 open Fable.SimpleJson
-open Browser.Types
-
-module internal Blob =
-    /// Creates a Blob from the given input string
-    [<Emit("new Blob([$0.buffer], { type: 'text/plain' })")>]
-    let fromBinaryEncodedText (value: byte[]) : Blob = jsNative
-
-    /// Asynchronously reads the blob data content as string
-    let readBlobAsText (blob: Blob) : Async<string> =
-        Async.FromContinuations <| fun (resolve, _, _) ->
-            let reader = InternalUtilities.createFileReader()
-            reader.onload <- fun _ ->
-                if reader.readyState = FileReaderState.DONE
-                then resolve (unbox reader.result)
-
-            reader.readAsText(blob)
 
 module Proxy =
     let combineRouteWithBaseUrl route (baseUrl: string option) =
@@ -63,12 +46,9 @@ module Proxy =
         let argumentCount = (Array.length funcArgs) - 1
         let returnTypeAsync = Array.last funcArgs
 
-        let binaryInput =
+        let isMultipart =
             match func.FieldType with
-            | TypeInfo.Func getArgs ->
-                match getArgs() with
-                | [| input; output |] -> isByteArray input
-                | otherwise -> false
+            | TypeInfo.Func getArgs -> options.IsMultipartEnabled && getArgs () |> Array.exists isByteArray
             | otherwise -> false
 
         let route = options.RouteBuilder typeName func.FieldName
@@ -80,15 +60,13 @@ module Proxy =
             | [| TypeInfo.Unit; TypeInfo.Async _ |] -> false
             | otherwise -> true
 
-        let contentType =
-            if binaryInput
-            then "application/octet-stream"
-            else "application/json; charset=utf-8"
-
         let inputArgumentTypes = Array.take argumentCount funcArgs
 
         let headers = [
-            yield "Content-Type", contentType
+            // xhr will set content-type and boundary for multipart
+            if not isMultipart then
+                yield "Content-Type", "application/json; charset=utf-8"
+
             yield "x-remoting-proxy", "true"
             yield! options.CustomHeaders
             match options.Authorization with
@@ -123,8 +101,8 @@ module Proxy =
                     | 200 ->
                         return onOk response
                     | n ->
-                        let responseAsBlob = Blob.fromBinaryEncodedText response
-                        let! responseText = Blob.readBlobAsText responseAsBlob
+                        let responseAsBlob = InternalUtilities.createBlobWithMimeType !^response "text/plain"
+                        let! responseText = InternalUtilities.readBlobAsText responseAsBlob
                         let response = { StatusCode = statusCode; ResponseBody = responseText }
                         let errorMsg = if n = 500 then sprintf "Internal server error (500) while making request to %s" url else sprintf "Http error (%d) while making request to %s" n url
                         return! raise (ProxyRequestException(response, errorMsg, response.ResponseBody))
@@ -172,8 +150,20 @@ module Proxy =
                else [| |]
 
             let requestBody =
-                if binaryInput then
-                    RequestBody.Binary (unbox arg0)
+                if isMultipart then
+                    inputArguments
+                    |> Array.mapi (fun i x ->
+                        let typ = inputArgumentTypes.[i]
+
+                        // in theory the input byte array could be untyped, so it's better to check the expected type
+                        // than `instanceof Uint8Array` on the actual value
+                        if isByteArray typ then
+                            InternalUtilities.createBlobWithMimeType (x :?> _) "application/octet-stream"
+                        else
+                            let json = Convert.serialize x typ
+                            InternalUtilities.createBlobWithMimeType !^json "application/json"
+                    )
+                    |> RequestBody.Multipart 
                 else
                     match inputArgumentTypes.Length with
                     | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->

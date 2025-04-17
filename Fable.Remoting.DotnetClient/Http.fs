@@ -1,7 +1,6 @@
 namespace Fable.Remoting.DotnetClient 
 
 open System.Net.Http
-open System.Text
 open System.Threading.Tasks
 
 [<RequireQualifiedAccess>]
@@ -13,12 +12,9 @@ module Http =
         member __.StatusCode = response.StatusCode
         member __.ResponseText = reponseText 
 
-    let internal makePostRequest (client: HttpClient) (url : string) (requestBody : string) : Task<string> = 
-        let contentType = "application/json"
-
+    let internal makePostRequest (client: HttpClient) (url : string) content : Task<string> = 
         task {
-            use postContent = new StringContent(requestBody, Encoding.UTF8, contentType)
-            let! response = client.PostAsync(url, postContent)
+            let! response = client.PostAsync(url, content)
             let! responseText = response.Content.ReadAsStringAsync()
             if response.IsSuccessStatusCode 
             then return responseText
@@ -31,12 +27,9 @@ module Http =
             else return raise ( ProxyRequestException(response, sprintf "Http error from server occured while making request to %s" url, responseText))
         }
 
-    let internal makePostRequestBinaryResponse (client: HttpClient) (url : string) (requestBody : string) : Task<byte[]> = 
-        let contentType = "application/json"
-
+    let internal makePostRequestBinaryResponse (client: HttpClient) (url : string) content : Task<byte[]> = 
         task {
-            use postContent = new StringContent(requestBody, Encoding.UTF8, contentType)
-            let! response = client.PostAsync(url, postContent)
+            let! response = client.PostAsync(url, content)
             let! responseData = response.Content.ReadAsByteArrayAsync()
             if response.IsSuccessStatusCode 
             then return responseData
