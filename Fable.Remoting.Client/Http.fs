@@ -2,6 +2,7 @@ namespace Fable.Remoting.Client
 
 open Browser
 open Browser.Types
+open Fable.Core.JsInterop
 
 module Http =
 
@@ -78,10 +79,10 @@ module Http =
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
             | Multipart blobs ->
-                let form = Browser.XMLHttpRequest.FormData.Create ()
+                let form = emitJsExpr () "new FormData()"
 
                 for i in 0 .. blobs.Length - 1 do
-                    form.append (i.ToString (), blobs.[i])
+                    form?append (i.ToString (), blobs.[i])
 
                 xhr.send form
 
