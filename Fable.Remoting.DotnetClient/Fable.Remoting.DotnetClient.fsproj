@@ -7,10 +7,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;json</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>3.35.0</Version>
+        <Version>3.36.0</Version>
         <TargetFrameworks>net462;netstandard2.0;net6.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
+        <PackageReleaseNotes>Implement multipart requests</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Http.fs" />

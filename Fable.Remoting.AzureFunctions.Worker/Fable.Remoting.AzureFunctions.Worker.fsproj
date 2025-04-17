@@ -8,9 +8,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;azure functions</PackageTags>
         <Authors>Zaid Ajaj;Roman Provaznik</Authors>
-        <Version>1.14.0</Version>
+        <Version>1.16.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
+        <PackageReleaseNotes>Implement multipart requests</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableAzureFunctionsAdapter.fs" />

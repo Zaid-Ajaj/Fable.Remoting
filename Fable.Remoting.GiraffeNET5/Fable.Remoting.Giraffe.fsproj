@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.21.0</Version>
+        <Version>5.23.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
+        <PackageReleaseNotes>Implement multipart requests</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

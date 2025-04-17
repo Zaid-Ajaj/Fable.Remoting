@@ -9,9 +9,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;aws lambda</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>1.2.0</Version>
+        <Version>1.4.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Update newtonsoft dependency</PackageReleaseNotes>
+        <PackageReleaseNotes>Implement multipart requests</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableLambdaAdapter.fs" />
