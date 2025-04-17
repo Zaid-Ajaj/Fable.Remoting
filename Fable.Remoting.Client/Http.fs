@@ -2,6 +2,7 @@ namespace Fable.Remoting.Client
 
 open Browser
 open Browser.Types
+open Fable.Core
 open Fable.Core.JsInterop
 
 module Http =
