@@ -25,6 +25,8 @@ module InternalUtilities =
     /// Returns whether the input byte array is a typed array of type Uint8Array
     [<Emit "$0 instanceof Uint8Array">]
     let isUInt8Array (data: obj) : bool = jsNative
+    [<Emit "new FormData()">]
+    let createFormData (): obj = jsNative
 
     /// Creates a typed byte array of binary data if it is not already typed
     let toUInt8Array(data: byte[]) : byte[] =
