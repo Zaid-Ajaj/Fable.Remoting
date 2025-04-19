@@ -7,6 +7,7 @@ type HttpMethod = GET | POST
 type RequestBody = 
     | Empty
     | Json of string
+    | MsgPack of byte[]
     | Multipart of Browser.Types.Blob[]
 
 type CustomResponseSerializer = byte[] -> Type -> obj
@@ -31,6 +32,7 @@ type RemoteBuilderOptions = {
     WithCredentials: bool
     RouteBuilder: (string -> string -> string)
     CustomResponseSerialization: CustomResponseSerializer option
+    CustomRequestSerialization: (obj[] -> Type[] -> ResizeArray<byte>) option
     IsMultipartEnabled: bool
 }
 

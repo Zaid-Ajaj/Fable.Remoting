@@ -78,6 +78,7 @@ module Http =
             match req.RequestBody with
             | Empty -> xhr.send()
             | RequestBody.Json content -> xhr.send(content)
+            | MsgPack bytes -> xhr.send bytes
             | Multipart blobs ->
                 let form = InternalUtilities.createFormData ()
 

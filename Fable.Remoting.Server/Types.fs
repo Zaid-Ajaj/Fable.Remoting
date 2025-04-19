@@ -59,7 +59,7 @@ type internal ShapeFSharpAsyncOrTask<'T> () =
         member _.Element = shapeof<'T> :> _
 
 type internal InvocationPropsInt = {
-    Arguments: Choice<byte[], JToken> list
+    Arguments: Choice<byte[], byte[], JToken> list
     IsProxyHeaderPresent: bool
     Output: Stream
 }

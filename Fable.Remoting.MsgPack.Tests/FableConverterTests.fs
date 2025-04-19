@@ -236,6 +236,9 @@ let converterTest =
             [ Just 4; Nothing ] |> serializeDeserializeCompare
             [ Just 4; Nothing ] |> serializeDeserializeCompare
         }
+        test "Nested anonymous" {
+            Just {| nested  = {| name = "John" |} |} |> serializeDeserializeCompare
+        }
         test "null string" {
             (null: string) |> serializeDeserializeCompare
         }
