@@ -11,7 +11,7 @@
     <Version>1.24.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReleaseNotes>Fix serialization bug in latest Fable compiler</PackageReleaseNotes>
-    <TargetFrameworks>netstandard2.0;net462;netcoreapp3.1;net6.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="TypeShape.fs" />

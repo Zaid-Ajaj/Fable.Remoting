@@ -71,12 +71,16 @@ let private readMultipartArgs props options = task {
             if section.ContentType.Equals ("application/octet-stream", StringComparison.Ordinal) then
                 use buffer = (getRecyclableMemoryStreamManager options).GetStream "remoting-input-multipart"
                 do! section.Body.CopyToAsync buffer
-                parts.Add (buffer.GetReadOnlySequence().ToArray () |> Choice1Of2)
+                parts.Add (buffer.GetReadOnlySequence().ToArray () |> Choice1Of3)
+            elif section.ContentType.Equals ("application/vnd.msgpack", StringComparison.Ordinal) then
+                use buffer = (getRecyclableMemoryStreamManager options).GetStream "remoting-input-multipart"
+                do! section.Body.CopyToAsync buffer
+                parts.Add (buffer.GetReadOnlySequence().ToArray () |> Choice2Of3)
             else
                 use sr = new StreamReader (section.Body)
                 let! text = sr.ReadToEndAsync ()
                 let token = JsonConvert.DeserializeObject<JToken> (text, settings)
-                parts.Add (Choice2Of2 token)
+                parts.Add (Choice3Of3 token)
 
     return Seq.toList parts
 }
@@ -138,18 +142,23 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
 
                     wrap (fun (f: 'inp -> 'out) props ->
                         match props.Arguments with
-                        | Choice1Of2 bytes :: t ->
+                        | Choice1Of3 bytes :: t ->
                             if typeof<'inp> <> typeof<byte[]> then
                                 failwithf "The record function '%s' expected an argument of type %s, but got binary input" makeProps.FieldName typeof<'inp>.Name
 
                             let inp = box bytes :?> 'inp
                             outp (f inp) { props with Arguments = t }
-                        | Choice2Of2 json :: t ->
+                        | Choice2Of3 bytes :: t ->
+                            let inp =
+                                if typeof<'inp> = typeof<unit> then
+                                    Unchecked.defaultof<'inp>
+                                else
+                                    MsgPack.Read.Reader(bytes).Read typeof<'inp> :?> 'inp
+
+                            outp (f inp) { props with Arguments = t }
+                        | Choice3Of3 json :: t ->
                             let inp = json.ToObject<'inp> fableSerializer
                             outp (f inp) { props with Arguments = t }
-                        | [] when typeof<'inp> = typeof<unit> ->
-                            let inp = box () :?> _
-                            outp (f inp) { props with Arguments = [] }
                         | [] ->
                             let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
                             failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.Arguments.Length)
@@ -172,9 +181,17 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                     try
                         if not (props.HttpVerb.Equals ("POST", StringComparison.OrdinalIgnoreCase)) && not (isNoArg && props.HttpVerb.Equals ("GET", StringComparison.OrdinalIgnoreCase)) then
                             return InvalidHttpVerb
+                        elif isNoArg then
+                            let props' = { Arguments = []; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
+                            return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                         elif props.InputContentType.StartsWith ("multipart/form-data", StringComparison.Ordinal) then
                             let! args = readMultipartArgs props options
                             let props' = { Arguments = args; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
+                            return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
+                        elif props.InputContentType.Equals ("application/vnd.msgpack", StringComparison.Ordinal) then
+                            let ms = new MemoryStream ()
+                            do! props.Input.CopyToAsync ms
+                            let props' = { Arguments = [ Choice2Of3 (ms.ToArray ()) ]; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'
                         else
                             use sr = new StreamReader (props.Input)
@@ -191,7 +208,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
 
                                     token
                                     :?> JArray
-                                    |> Seq.map Choice2Of2
+                                    |> Seq.map Choice3Of3
                                     |> Seq.toList
 
                             let props' = { Arguments = args; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }

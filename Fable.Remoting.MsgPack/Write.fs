@@ -522,11 +522,29 @@ let serializeObj (x: obj) (out: Stream) =
 module Fable =
     let private serializerCache = System.Collections.Generic.Dictionary<string, Action<obj, ResizeArray<byte>>> ()
 
+    let rec private getTypeName (t: Type) =
+        let full = t.FullName
+
+        // anonymous records have no name, but we need one for the cache
+        if String.IsNullOrWhiteSpace full then
+            let fields =
+                FSharpType.GetRecordFields t
+                |> Array.map (fun x -> x.Name + ":" + getTypeName x.PropertyType)
+                |> String.concat ";"
+
+            "{" + fields + "}"
+        else
+            if t.IsGenericType then
+                full + "<" + (t.GetGenericArguments () |> Array.map getTypeName |> String.concat ",") + ">"
+            else
+                full
+
     let private cacheGetOrAdd (typ: Type, f) =
-        match serializerCache.TryGetValue typ.FullName with
+        let key = getTypeName typ
+        match serializerCache.TryGetValue key with
         | true, f -> f
         | _ ->
-            serializerCache.Add (typ.FullName, f)
+            serializerCache.Add (key, f)
             f
 
     let inline private write32bitNumber b1 b2 b3 b4 (out: ResizeArray<byte>) writeFormat =
@@ -652,7 +670,7 @@ module Fable =
         writeUInt64 (uint64 time.Ticks) out
 #endif
 
-    let private writeArrayHeader len (out: ResizeArray<byte>) =
+    let writeArrayHeader len (out: ResizeArray<byte>) =
         if len < 16 then
             out.Add (Format.fixarr len)
         elif len < 65536 then
@@ -732,7 +750,7 @@ module Fable =
         #else
         if isNull x then writeNil out else
 
-        match serializerCache.TryGetValue (t.FullName) with
+        match serializerCache.TryGetValue (getTypeName t) with
         | true, writer ->
             writer.Invoke (x, out)
         | _ ->
