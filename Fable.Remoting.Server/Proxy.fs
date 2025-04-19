@@ -159,6 +159,9 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
                         | Choice3Of3 json :: t ->
                             let inp = json.ToObject<'inp> fableSerializer
                             outp (f inp) { props with Arguments = t }
+                        | [] when typeof<'inp> = typeof<unit> ->
+                            let inp = Unchecked.defaultof<'inp>
+                            outp (f inp) { props with Arguments = [] }
                         | [] ->
                             let typeInfo = typeNames makeProps.FlattenedTypes.[ 0 .. makeProps.FlattenedTypes.Length - 2]
                             failwithf "The record function '%s' expected %d argument(s) of the types %s but got %d argument(s) in the input" makeProps.FieldName (makeProps.FlattenedTypes.Length - 1) typeInfo props.Arguments.Length)
