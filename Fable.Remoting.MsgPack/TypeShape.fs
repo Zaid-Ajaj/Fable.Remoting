@@ -1057,7 +1057,7 @@ type [<Sealed>] ShapeFSharpUnionCase<'Union> private (uci : UnionCaseInfo) =
             let underlyingType = properties.[0].DeclaringType
             let allFields = underlyingType.GetFields(AllInstanceMembers)
             let mkUnionField (p : PropertyInfo) =
-                let fieldInfo = allFields |> Array.find (fun f -> f.Name = "_" + p.Name || f.Name.ToLowerInvariant() = p.Name.ToLowerInvariant())
+                let fieldInfo = allFields |> Array.find (fun f -> f.Name = "_" + p.Name || f.Name.Equals (p.Name, StringComparison.OrdinalIgnoreCase))
                 mkWriteMemberUntyped<'Union> p.Name p [|fieldInfo|]
 
             Array.map mkUnionField properties
