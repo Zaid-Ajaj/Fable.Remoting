@@ -8,10 +8,10 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>5.23.0</Version>
+        <Version>5.24.0</Version>
         <TargetFrameworks>net5.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Implement multipart requests</PackageReleaseNotes>
+        <PackageReleaseNotes>Fix turkish locale breaks discriminated union deserialization</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
