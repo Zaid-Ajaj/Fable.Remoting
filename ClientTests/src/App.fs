@@ -14,6 +14,7 @@ let server =
     Remoting.createApi()
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.withMultipartOptimization
+    |> Remoting.withBinaryRequestSerialization
     |> Remoting.buildProxy<IServer>
 
 let binaryServer =
@@ -1819,6 +1820,9 @@ let msgPackTests =
             -5y |> serializeDeserializeCompare typeof<sbyte>
             [| 0uy; 255uy; 100uy; 5uy |] |> serializeDeserializeCompare typeof<byte[]>
             [| 0y; 100y; -100y; -5y |] |> serializeDeserializeCompare typeof<sbyte[]>
+
+        testCase "Nested anonymous" <| fun () ->
+            Just {| nested  = {| name = "John" |} |} |> serializeDeserializeCompare typeof<Maybe<{| nested: {| name: string |} |}>>
 
 #if NAGAREYAMA
         testCase "DateOnlyMap" <| fun () ->

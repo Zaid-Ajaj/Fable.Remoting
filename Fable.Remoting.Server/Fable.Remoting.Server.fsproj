@@ -10,7 +10,7 @@
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
         <Version>5.41.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <TargetFrameworks>netstandard2.0;net462</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0</TargetFrameworks>
         <PackageReleaseNotes>Implement multipart requests</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>

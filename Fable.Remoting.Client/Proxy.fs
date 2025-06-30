@@ -2,6 +2,8 @@ namespace Fable.Remoting.Client
 
 open Fable.Core.JsInterop
 open Fable.SimpleJson
+open System
+open FSharp.Reflection
 
 module Proxy =
     let combineRouteWithBaseUrl route (baseUrl: string option) =
@@ -27,13 +29,22 @@ module Proxy =
         | otherwise -> false
 
     let rec getReturnType typ =
-        if Reflection.FSharpType.IsFunction typ then
-            let _, res = Reflection.FSharpType.GetFunctionElements typ
+        if FSharpType.IsFunction typ then
+            let _, res = FSharpType.GetFunctionElements typ
             getReturnType res
         elif typ.IsGenericType then
             typ.GetGenericArguments () |> Array.head
         else
             typ
+
+    let rec flattenFuncTypes typ = [|
+        if FSharpType.IsFunction typ then
+            let (domain, range) = FSharpType.GetFunctionElements typ 
+            yield! flattenFuncTypes domain 
+            yield! flattenFuncTypes range
+        else
+            yield typ
+    |]
 
     let proxyFetch options typeName (func: RecordField) fieldType =
         let funcArgs : (TypeInfo [ ]) =
@@ -48,7 +59,9 @@ module Proxy =
 
         let isMultipart =
             match func.FieldType with
-            | TypeInfo.Func getArgs -> options.IsMultipartEnabled && getArgs () |> Array.exists isByteArray
+            | TypeInfo.Func getArgs ->
+                let args = getArgs ()
+                options.IsMultipartEnabled && (Array.exists isByteArray args || (args.Length > 2 && options.CustomRequestSerialization.IsSome))
             | otherwise -> false
 
         let route = options.RouteBuilder typeName func.FieldName
@@ -60,12 +73,15 @@ module Proxy =
             | [| TypeInfo.Unit; TypeInfo.Async _ |] -> false
             | otherwise -> true
 
+        let flattenedFuncType = flattenFuncTypes fieldType |> Array.take argumentCount
         let inputArgumentTypes = Array.take argumentCount funcArgs
 
         let headers = [
             // xhr will set content-type and boundary for multipart
-            if not isMultipart then
-                yield "Content-Type", "application/json; charset=utf-8"
+            match options.CustomRequestSerialization with
+            | _ when isMultipart -> ()
+            | Some _ -> yield "Content-Type", "application/vnd.msgpack"
+            | _ -> yield "Content-Type", "application/json; charset=utf-8"
 
             yield "x-remoting-proxy", "true"
             yield! options.CustomHeaders
@@ -157,30 +173,42 @@ module Proxy =
 
                         // in theory the input byte array could be untyped, so it's better to check the expected type
                         // than `instanceof Uint8Array` on the actual value
-                        if isByteArray typ then
-                            InternalUtilities.createBlobWithMimeType (x :?> _) "application/octet-stream"
-                        else
+                        match options.CustomRequestSerialization with
+                        | _ when isByteArray typ ->
+                            InternalUtilities.createBlobWithMimeType !^(InternalUtilities.toUInt8Array !!x) "application/octet-stream"
+                        | Some msgPackSerializer ->
+                            let data =
+                                msgPackSerializer [| x |] [| flattenedFuncType.[i] |]
+                                |> InternalUtilities.createUInt8Array
+                            InternalUtilities.createBlobWithMimeType !^data "application/vnd.msgpack"
+                        | None ->
                             let json = Convert.serialize x typ
                             InternalUtilities.createBlobWithMimeType !^json "application/json"
                     )
                     |> RequestBody.Multipart 
                 else
-                    match inputArgumentTypes.Length with
-                    | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->
-                        let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
-                        let requestBodyJson =
-                            inputArguments
-                            |> Array.tryHead
-                            |> Option.map (fun arg -> Convert.serialize arg typeInfo)
-                            |> Option.defaultValue "{}"
-                        RequestBody.Json requestBodyJson
-                    | 1 ->
-                        // for array-like types, use an explicit array surranding the input array argument
-                        let requestBodyJson = Convert.serialize [| inputArguments.[0] |] (TypeInfo.Array (fun _ -> inputArgumentTypes.[0]))
-                        RequestBody.Json requestBodyJson
-                    | n ->
-                        let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
-                        let requestBodyJson = Convert.serialize inputArguments typeInfo
-                        RequestBody.Json requestBodyJson
+                    match options.CustomRequestSerialization with
+                    | Some msgPackSerializer ->
+                        msgPackSerializer inputArguments flattenedFuncType
+                        |> InternalUtilities.createUInt8Array
+                        |> RequestBody.MsgPack
+                    | _ ->
+                        match inputArgumentTypes.Length with
+                        | 1 when not (Convert.arrayLike inputArgumentTypes.[0]) ->
+                            let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
+                            let requestBodyJson =
+                                inputArguments
+                                |> Array.tryHead
+                                |> Option.map (fun arg -> Convert.serialize arg typeInfo)
+                                |> Option.defaultValue "{}"
+                            RequestBody.Json requestBodyJson
+                        | 1 ->
+                            // for array-like types, use an explicit array surrounding the input array argument
+                            let requestBodyJson = Convert.serialize [| inputArguments.[0] |] (TypeInfo.Array (fun _ -> inputArgumentTypes.[0]))
+                            RequestBody.Json requestBodyJson
+                        | n ->
+                            let typeInfo = TypeInfo.Tuple(fun _ -> inputArgumentTypes)
+                            let requestBodyJson = Convert.serialize inputArguments typeInfo
+                            RequestBody.Json requestBodyJson
 
             executeRequest requestBody
