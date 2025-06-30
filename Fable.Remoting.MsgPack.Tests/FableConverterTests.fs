@@ -13,6 +13,9 @@ let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass() = Expect.equal true true ""
 let fail () = Expect.equal false true ""
 
+type private TestUnion =
+    | Foo of string
+
 let serializeDeserializeCompare<'a when 'a: equality> (value: 'a) =
     use ms = new MemoryStream ()
     MsgPack.Write.serializeObj value ms
@@ -138,6 +141,21 @@ let converterTest =
         test "String32 with non-ASCII characters" {
             String.init 70_000 (fun _ -> "ΰ") |> serializeDeserializeCompare
         }
+
+        test "Culture-sensitive string comparison in discriminated unions" {
+            let currentCulture = System.Threading.Thread.CurrentThread.CurrentCulture
+            let currentUICulture = System.Threading.Thread.CurrentThread.CurrentUICulture
+            try
+                let turkishCulture = System.Globalization.CultureInfo("tr-TR")
+                System.Threading.Thread.CurrentThread.CurrentCulture <- turkishCulture
+                System.Threading.Thread.CurrentThread.CurrentUICulture <- turkishCulture
+                Foo "test" |> serializeDeserializeCompare
+                [ Foo "test1"; Foo "test2"; ] |> serializeDeserializeCompare
+            finally
+                System.Threading.Thread.CurrentThread.CurrentCulture <- currentCulture
+                System.Threading.Thread.CurrentThread.CurrentUICulture <- currentUICulture
+        }
+
         test "Decimal" {
             32313213121.1415926535m |> serializeDeserializeCompare
         }
