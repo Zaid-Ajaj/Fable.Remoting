@@ -44,4 +44,5 @@ group Client
     nuget Fable.Mocha >= 2.5
     nuget Fable.SimpleJson >= 3.24.0
     nuget Fable.Browser.XMLHttpRequest
+    nuget Fable.Browser.Dom
     nuget Fable.Core
