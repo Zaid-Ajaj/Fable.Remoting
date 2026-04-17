@@ -5,7 +5,7 @@ build:
   verbosity: detailed
 
 environment:
-  nodejs_version: "24.15.0"
+  nodejs_version: "20.5.1"
 
 os: Visual Studio 2022
 
