@@ -34,6 +34,9 @@ let webApp =
     |> Remoting.fromValue server
     |> Remoting.withRouteBuilder routeBuilder
     |> Remoting.withDocs "/api/server/docs" serverDocs
+    |> Remoting.withErrorHandler (fun ex routeInfo -> 
+        printfn "%A" ex
+        Ignore)
     |> Remoting.buildHttpHandler
 
 let configureApp (app : IApplicationBuilder) =

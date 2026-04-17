@@ -5,12 +5,12 @@
         <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
         <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
-        <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>4.22.0</Version>
-        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <Version>6.0.0</Version>
+        <TargetFrameworks>net8.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PackageReleaseNotes>Fix turkish locale breaks discriminated union deserialization</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

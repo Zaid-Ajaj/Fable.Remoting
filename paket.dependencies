@@ -5,48 +5,38 @@ storage: none
 lowest_matching: true
 nuget benchmarkdotnet 0.13.2
 nuget Expecto 9.0.2
-nuget FSharp.Core >= 6.0.0
+nuget FSharp.Core >= 10.1.202
 nuget Microsoft.AspNetCore.Server.Kestrel ~> 2.2
 nuget Microsoft.AspNetCore.TestHost ~> 3.1
 nuget Microsoft.AspNetCore.WebUtilities >= 2.3
-nuget Microsoft.IO.RecyclableMemoryStream ~> 3
+nuget Microsoft.IO.RecyclableMemoryStream ~> 3.0.1
 nuget Microsoft.Net.Http.Headers >= 2.3
 nuget Newtonsoft.Json >= 13.0
 nuget NUnit >= 3.12
 nuget PuppeteerSharp >= 7.1
 nuget Suave >= 2.6.0
-nuget Giraffe >= 4.1
+nuget Giraffe >= 8.2.0
 nuget System.Formats.Asn1 >= 6.0.1
 nuget System.Security.Cryptography.Pkcs >= 6.0.4
 
 group AwsLambda
     source https://api.nuget.org/v3/index.json
-    framework: net5
+    framework: net8
     storage: none
     lowest_matching: true
-    nuget FSharp.Core >= 6.0.0
-    nuget Amazon.Lambda.APIGatewayEvents 2.6.0
+    nuget FSharp.Core >= 10.1.202
+    nuget Amazon.Lambda.APIGatewayEvents 2.7.3
 
 group FunctionsWorker
     source https://api.nuget.org/v3/index.json
-    framework: net5
+    framework: net8
     storage: none
     lowest_matching: true
-    nuget FSharp.Core >= 6.0.0
-    nuget Microsoft.Azure.Functions.Worker ~> 1
-    nuget Microsoft.Azure.Functions.Worker.Sdk ~> 1
+    nuget FSharp.Core >= 10.1.202
+    nuget Microsoft.Azure.Functions.Worker ~> 2
+    nuget Microsoft.Azure.Functions.Worker.Sdk ~> 2
     nuget Microsoft.Azure.Functions.Worker.Extensions.Http ~> 3
-    nuget Newtonsoft.Json
     nuget Expecto 9.0.2
-
-group LatestNet5
-    source https://api.nuget.org/v3/index.json
-    framework: net5
-    storage: none
-    lowest_matching: true
-    nuget Giraffe >= 5.0.0
-    nuget FSharp.Core >= 6.0
-    nuget Microsoft.IO.RecyclableMemoryStream ~> 3
 
 group Client
     source https://api.nuget.org/v3/index.json

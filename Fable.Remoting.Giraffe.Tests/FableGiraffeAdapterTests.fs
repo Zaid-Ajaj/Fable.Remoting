@@ -7,13 +7,13 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open Giraffe
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open Fable.Remoting.Json
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Expecto
 open Types
 open Newtonsoft.Json
-open Fable.Remoting.Json
+
 
 let equal x y = Expect.equal true (x = y) (sprintf "%A = %A" x y)
 let pass () = Expect.equal true true ""

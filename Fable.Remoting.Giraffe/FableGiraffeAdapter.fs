@@ -57,8 +57,18 @@ module GiraffeUtil =
             let isProxyHeaderPresent = ctx.Request.Headers.ContainsKey "x-remoting-proxy"
             use output = rmsManager.GetStream "remoting-output-stream"
 
-            let props = { ImplementationBuilder = (fun () -> implBuilder ctx); EndpointName = SubRouting.getNextPartOfPath ctx; Input = ctx.Request.Body; IsProxyHeaderPresent = isProxyHeaderPresent;
-                HttpVerb = ctx.Request.Method; InputContentType = ctx.Request.ContentType; Output = output }
+            let props = { 
+                ImplementationBuilder = fun _ -> implBuilder ctx 
+                EndpointName = SubRouting.getNextPartOfPath ctx
+                Input = ctx.Request.Body
+                IsProxyHeaderPresent = isProxyHeaderPresent
+                HttpVerb = ctx.Request.Method
+                InputContentType = 
+                    if isNull ctx.Request.ContentType 
+                    then ""
+                    else ctx.Request.ContentType
+                Output = output 
+            }
 
             match! proxy props with
             | Success isBinaryOutput ->

@@ -1,7 +1,3 @@
 FSharp.Core
 Giraffe
 Microsoft.AspNetCore.Hosting
-Microsoft.AspNetCore.Server.Kestrel
-
-group Client
-Fable.Core

@@ -1,13 +1,13 @@
 ﻿namespace Fable.Remoting.AzureFunctions.Worker
 
 open System.Net
-open System.Threading.Tasks
-open Microsoft.Azure.Functions.Worker.Http
 open System.IO
-open Fable.Remoting.Server
-open Newtonsoft.Json
-open Fable.Remoting.Server.Proxy
 open System.Linq
+open System.Threading.Tasks
+open Newtonsoft.Json
+open Microsoft.Azure.Functions.Worker.Http
+open Fable.Remoting.Server
+open Fable.Remoting.Server.Proxy
 
 module private FuncsUtil =
     let private setContentType (t:string) (res:HttpResponseData) =
