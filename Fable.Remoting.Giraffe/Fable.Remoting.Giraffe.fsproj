@@ -7,10 +7,10 @@
         <PackageLicenseUrl>https://github.com/Zaid-Ajaj/Fable.Remoting/blob/master/LICENSE</PackageLicenseUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;giraffe</PackageTags>
         <Authors>Zaid Ajaj;Diego Esmerio</Authors>
-        <Version>6.0.0</Version>
+        <Version>6.1.0</Version>
         <TargetFrameworks>net8.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Fix turkish locale breaks discriminated union deserialization</PackageReleaseNotes>
+        <PackageReleaseNotes>Update target framework to NET8 LTS</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
