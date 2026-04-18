@@ -11,9 +11,9 @@ os: Visual Studio 2022
 
 # Install scripts. (runs after repo cloning)
 install:
-  # .NET SDK 6.0.100 comes installed on the base image
-  # - cmd: choco install dotnet-sdk --version 6.0.100
-  # Get the latest stable version of Node.js
+  - ps: Invoke-WebRequest -Uri 'https://dot.net/v1/dotnet-install.ps1' -UseBasicParsing -OutFile ".\dotnet-install.ps1"
+  - ps: .\dotnet-install.ps1 -Architecture x64 -Version '10.0.100' -InstallDir "$env:ProgramFiles\dotnet"
+  - ps: dotnet --version
   - ps: Install-Product node $env:nodejs_version
 
   # # Update npm

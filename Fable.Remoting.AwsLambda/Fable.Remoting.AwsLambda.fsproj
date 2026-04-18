@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <Description>AWS Lambda-Fable adapter that generates routes for shared server spec with a Fable client. Client must use Fable.Remoting.Client</Description>
         <PackageProjectUrl>https://github.com/Zaid-Ajaj/Fable.Remoting</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Zaid-Ajaj/Fable.Remoting.git</RepositoryUrl>
@@ -9,9 +9,9 @@
         <PackageIconUrl></PackageIconUrl>
         <PackageTags>fsharp;fable;remoting;rpc;webserver;serverless;aws lambda</PackageTags>
         <Authors>Zaid Ajaj</Authors>
-        <Version>1.5.0</Version>
+        <Version>2.1.0</Version>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageReleaseNotes>Fix turkish locale breaks discriminated union deserialization</PackageReleaseNotes>
+        <PackageReleaseNotes>Update target framework to NET8 LTS</PackageReleaseNotes>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="FableLambdaAdapter.fs" />

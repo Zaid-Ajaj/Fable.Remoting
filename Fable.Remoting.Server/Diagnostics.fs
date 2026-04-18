@@ -4,7 +4,7 @@ open System
 open System.Text 
 
 module Diagnostics = 
-    let writeLn text (builder: StringBuilder)  = builder.AppendLine(text)
+    let writeLn (text: string) (builder: StringBuilder)  = builder.AppendLine(text)
     let toLogger logf = string >> logf
     
     /// Simplifes the name of the type that is to be deserialized 

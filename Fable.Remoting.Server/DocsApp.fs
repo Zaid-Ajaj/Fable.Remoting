@@ -169,6 +169,9 @@ module DocsApp =
                     }
 
                     function buildDocsUI(schema) {
+                        if (typeof schema === 'string' || schema instanceof String) {
+                            schema = JSON.parse(schema);
+                        }
                         const apiName = document.querySelector('#api-name');
                         if (apiName) {
                             apiName.innerText = schema.name;

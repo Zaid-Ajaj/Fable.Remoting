@@ -3,4 +3,5 @@ group Client
 FSharp.Core
 Fable.Core
 Fable.Browser.XMLHttpRequest
+Fable.Browser.Dom
 Fable.SimpleJson
