@@ -68,7 +68,6 @@ let Json = getPath "Json"
 let Server = getPath "Server"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
-let GiraffeNET5 = getPath "GiraffeNET5"
 let Falco = getPath "Falco"
 let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
@@ -106,19 +105,18 @@ createTarget "PublishJson" (publish Json)
 createTarget "PublishServer" (publish Server)
 createTarget "PublishDotnetClient" (publish DotnetClient)
 createTarget "PublishSuave" (publish Suave)
-createTarget "PublishGiraffeNET5" (publish GiraffeNET5)
+createTarget "PublishGiraffe" (publish Giraffe)
 createTarget "PublishFalco" (publish Falco)
 createTarget "PublishAspnetCore" (publish AspNetCore)
 createTarget "PublishMsgPack" (publish MsgPack)
 createTarget "PublishAwsLambda" (publish AwsLambda)
-
 
 createTarget "PublishMsgPackDownstream" (fun ctx ->
     publish MsgPack ctx
     publish Client ctx
     publish Server ctx
     publish Suave ctx
-    publish GiraffeNET5 ctx
+    publish Giraffe ctx
     publish Falco ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
@@ -130,7 +128,7 @@ createTarget "PublishJsonDownstream" (fun ctx ->
     publish Json ctx
     publish Server ctx
     publish Suave ctx
-    publish GiraffeNET5 ctx
+    publish Giraffe ctx
     publish Falco ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
@@ -141,7 +139,7 @@ createTarget "PublishJsonDownstream" (fun ctx ->
 createTarget "PublishServerDownstream" (fun ctx ->
     publish Server ctx
     publish Suave ctx
-    publish GiraffeNET5 ctx
+    publish Giraffe ctx
     publish Falco ctx
     publish AspNetCore ctx
     publish AzureFunctionsWorker ctx
