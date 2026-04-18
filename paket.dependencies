@@ -16,6 +16,7 @@ nuget NUnit >= 3.12
 nuget PuppeteerSharp >= 7.1
 nuget Suave >= 2.6.0
 nuget Giraffe >= 4.1
+nuget Falco >= 5.1.0
 nuget System.Formats.Asn1 >= 6.0.1
 nuget System.Security.Cryptography.Pkcs >= 6.0.4
 

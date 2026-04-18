@@ -25,6 +25,9 @@
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>Fable.Remoting.Server</_Parameter1>
     </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Fable.Remoting.Falco</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
   <ItemGroup>
    <PackageReference Update="FSharp.Core" Version="4.7.2" />

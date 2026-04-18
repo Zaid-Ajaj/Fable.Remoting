@@ -62,6 +62,10 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Build", "build\Build.fsproj
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.AwsLambda", "Fable.Remoting.AwsLambda\Fable.Remoting.AwsLambda.fsproj", "{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Falco", "Fable.Remoting.Falco\Fable.Remoting.Falco.fsproj", "{142B0D23-DEBB-476A-A9C6-292BE40687F3}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fable.Remoting.Falco.Tests", "Fable.Remoting.Falco.Tests\Fable.Remoting.Falco.Tests.fsproj", "{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -348,6 +352,30 @@ Global
 		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|x64.Build.0 = Release|Any CPU
 		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|x86.ActiveCfg = Release|Any CPU
 		{2D66CF7F-43B7-4EE5-9E0C-2DFC5315DFCF}.Release|x86.Build.0 = Release|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Debug|x64.Build.0 = Debug|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Debug|x86.Build.0 = Debug|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Release|x64.ActiveCfg = Release|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Release|x64.Build.0 = Release|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Release|x86.ActiveCfg = Release|Any CPU
+		{142B0D23-DEBB-476A-A9C6-292BE40687F3}.Release|x86.Build.0 = Release|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Debug|x64.Build.0 = Debug|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Debug|x86.Build.0 = Debug|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Release|x64.ActiveCfg = Release|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Release|x64.Build.0 = Release|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Release|x86.ActiveCfg = Release|Any CPU
+		{F29937CF-8C1C-4154-93BA-FCEB5FF4C7E5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
