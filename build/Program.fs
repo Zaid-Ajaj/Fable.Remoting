@@ -44,6 +44,7 @@ let MsgPackTestsDll = testDll "MsgPack"
 let ServerTestsDll = testDll "Server"
 let SuaveTestDll = testDll "Suave"
 let GiraffeTestDll = testDll "Giraffe"
+let FalcoTestDll = testDll "Falco"
 
 let dotnet = "dotnet"
 
@@ -68,6 +69,7 @@ let Server = getPath "Server"
 let Suave = getPath "Suave"
 let Giraffe = getPath "Giraffe"
 let GiraffeNET5 = getPath "GiraffeNET5"
+let Falco = getPath "Falco"
 let DotnetClient = getPath "DotnetClient"
 let AspNetCore = getPath "AspNetCore"
 let MsgPack = getPath "MsgPack"
@@ -105,6 +107,7 @@ createTarget "PublishServer" (publish Server)
 createTarget "PublishDotnetClient" (publish DotnetClient)
 createTarget "PublishSuave" (publish Suave)
 createTarget "PublishGiraffeNET5" (publish GiraffeNET5)
+createTarget "PublishFalco" (publish Falco)
 createTarget "PublishAspnetCore" (publish AspNetCore)
 createTarget "PublishMsgPack" (publish MsgPack)
 createTarget "PublishAwsLambda" (publish AwsLambda)
@@ -116,6 +119,7 @@ createTarget "PublishMsgPackDownstream" (fun ctx ->
     publish Server ctx
     publish Suave ctx
     publish GiraffeNET5 ctx
+    publish Falco ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
     publish AzureFunctionsWorker ctx
@@ -127,6 +131,7 @@ createTarget "PublishJsonDownstream" (fun ctx ->
     publish Server ctx
     publish Suave ctx
     publish GiraffeNET5 ctx
+    publish Falco ctx
     publish AspNetCore ctx
     publish DotnetClient ctx
     publish AzureFunctionsWorker ctx
@@ -137,6 +142,7 @@ createTarget "PublishServerDownstream" (fun ctx ->
     publish Server ctx
     publish Suave ctx
     publish GiraffeNET5 ctx
+    publish Falco ctx
     publish AspNetCore ctx
     publish AzureFunctionsWorker ctx
 )
@@ -162,6 +168,13 @@ createTarget "BuildGiraffeTests" <| fun _ ->
     clean (getPath "Giraffe")
     clean (getPath "Giraffe.Tests")
     let path = getPath "Giraffe.Tests"
+    run path "dotnet" "restore --no-cache"
+    run path "dotnet" "build -c Debug"
+
+createTarget "BuildFalcoTests" <| fun _ ->
+    clean (getPath "Falco")
+    clean (getPath "Falco.Tests")
+    let path = getPath "Falco.Tests"
     run path "dotnet" "restore --no-cache"
     run path "dotnet" "build -c Debug"
 
@@ -207,6 +220,18 @@ createTarget "BuildRunGiraffeTests" <| fun _ ->
 
 createTarget "RunGiraffeTests" <| fun _ ->
     run cwd "dotnet" GiraffeTestDll
+
+createTarget "RestoreBuildRunFalcoTests" <| fun _ ->
+    run cwd "dotnet"  ("restore " + proj "Falco.Tests")
+    run cwd "dotnet" ("build " + proj "Falco.Tests" + " --configuration=Release")
+    run cwd "dotnet" FalcoTestDll
+
+createTarget "BuildRunFalcoTests" <| fun _ ->
+    run cwd "dotnet" ("build " + proj "Falco.Tests" + " --configuration=Release")
+    run cwd "dotnet" FalcoTestDll
+
+createTarget "RunFalcoTests" <| fun _ ->
+    run cwd "dotnet" FalcoTestDll
 
 createTarget "BuildDocs" <| fun _ ->
     run docs "npm" "install"
@@ -269,6 +294,9 @@ createTarget "BuildRunAllTests" <| fun _ ->
     // Giraffe
     run cwd "dotnet" ("build " + proj "Giraffe.Tests" + " --configuration=Release")
     run cwd "dotnet" GiraffeTestDll
+    // Falco
+    run cwd "dotnet" ("build " + proj "Falco.Tests" + " --configuration=Release")
+    run cwd "dotnet" FalcoTestDll
 
 let runHeadlessBrowserTests() =
     run clientUITests "dotnet" "restore --no-cache"
