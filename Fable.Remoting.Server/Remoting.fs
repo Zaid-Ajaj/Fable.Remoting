@@ -4,14 +4,15 @@ module Remoting =
     
     let documentation (name: string) (routes: RouteDocs list) : Documentation = Documentation (name, routes)
 
-    /// Starts with the default configuration for building an API 
-    let createApi()  = 
-        { Implementation = Empty 
-          RouteBuilder = sprintf "/%s/%s" 
-          ErrorHandler = None 
+    /// Starts with the default configuration for building an API
+    let createApi()  =
+        { Implementation = Empty
+          RouteBuilder = sprintf "/%s/%s"
+          ErrorHandler = None
           DiagnosticsLogger = None
           Docs = None, None
           ResponseSerialization = Json
+          JsonSerializer = NewtonsoftJson
           RmsManager = None }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -31,8 +32,28 @@ module Remoting =
         { options with ErrorHandler = Some handler }
 
     /// Specifies that the API only uses binary serialization
-    let withBinarySerialization (options: RemotingOptions<'t, 'implementation>) = 
+    let withBinarySerialization (options: RemotingOptions<'t, 'implementation>) =
         { options with ResponseSerialization = MessagePack }
+
+    /// Opt in to System.Text.Json for JSON serialization on this API.
+    ///
+    /// Pass a fully-configured `JsonSerializerOptions` — typically
+    /// `Fable.Remoting.Json.SystemTextJson.FableConverters.create()`, which
+    /// registers the byte-compatible converter set so the wire format matches
+    /// the default Newtonsoft path. Without `withSerializerOptions`, the API
+    /// uses Newtonsoft (existing behaviour).
+    ///
+    /// ```fsharp
+    /// open Fable.Remoting.Server
+    /// open Fable.Remoting.Json.SystemTextJson
+    ///
+    /// let api =
+    ///     Remoting.createApi()
+    ///     |> Remoting.fromValue myImpl
+    ///     |> Remoting.withSerializerOptions (FableConverters.create())
+    /// ```
+    let withSerializerOptions (jsonOptions: System.Text.Json.JsonSerializerOptions) (options: RemotingOptions<'t, 'implementation>) =
+        { options with JsonSerializer = SystemTextJson jsonOptions }
 
     /// Enables you to provide your own instance of a recyclable memory stream manager
     let withRecyclableMemoryStreamManager rmsManager options =

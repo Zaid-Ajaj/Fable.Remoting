@@ -9,6 +9,7 @@
     <Compile Include="Types.fs" />
     <Compile Include="FableGiraffeAdapterTests.fs" />
     <Compile Include="MiddlewareTests.fs" />
+    <Compile Include="StjHttpIntegrationTests.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
 

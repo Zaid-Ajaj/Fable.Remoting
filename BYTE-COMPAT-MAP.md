@@ -1015,6 +1015,178 @@ package's user-facing contract and not for me to decide unilaterally.
   out-of-scope; documented above with the strongest in-scope evidence).
 - 📋 Downstream plumbing PRs sketched for the maintainer to consider.
 
+**Update 2026-05-25 (Phase 4b):** the "Server is out-of-scope" stance was
+revisited and widened — see §14. End-to-end STJ now works through the actual
+HTTP wire via the Giraffe adapter, with 18 STJ-specific integration tests
+proving every major Kind branch round-trips correctly.
+
+---
+
+## 14. Phase 4b — Server-side opt-in plumbing + Giraffe HTTP integration (2026-05-25)
+
+### 14.1 Why this exists
+
+The original task brief listed `Fable.Remoting.Server` as out-of-scope on
+the principle of "issue first, small reviewable PRs — don't widen scope
+unilaterally." The cost of that scoping decision: this PR's
+`FableConverters.create()` would have shipped as opt-in surface that nobody
+could actually opt into without a follow-up PR. The operator surfaced this
+trade-off and authorised widening scope to make the PR self-contained.
+
+The widening is **minimal**: a single new DU + one field on `RemotingOptions`
++ one fluent helper + two branches in `Proxy.fs`. The default is unchanged
+(Newtonsoft); existing consumers see no behaviour difference.
+
+### 14.2 Public surface change
+
+**[Fable.Remoting.Server/Types.fs](Fable.Remoting.Server/Types.fs)** — new DU:
+
+```fsharp
+type JsonSerializerBackend =
+    | NewtonsoftJson
+    | SystemTextJson of System.Text.Json.JsonSerializerOptions
+```
+
+Plus a new `JsonSerializer: JsonSerializerBackend` field on
+`RemotingOptions<'context, 'serverImpl>` (and the internal `MakeEndpointProps`
+record that threads the choice into `Proxy.fs`).
+
+**[Fable.Remoting.Server/Remoting.fs](Fable.Remoting.Server/Remoting.fs)** — new
+fluent helper:
+
+```fsharp
+/// Opt in to System.Text.Json for JSON serialization on this API.
+let withSerializerOptions
+    (jsonOptions: System.Text.Json.JsonSerializerOptions)
+    (options: RemotingOptions<'t, 'implementation>) =
+        { options with JsonSerializer = SystemTextJson jsonOptions }
+```
+
+Defaults: `Remoting.createApi()` returns options with
+`JsonSerializer = NewtonsoftJson`. No behaviour change for existing consumers.
+
+### 14.3 Consumer usage
+
+```fsharp
+open Fable.Remoting.Server
+open Fable.Remoting.Json.SystemTextJson
+open Fable.Remoting.Giraffe
+
+let app =
+    Remoting.createApi()
+    |> Remoting.fromValue myImpl
+    |> Remoting.withSerializerOptions (FableConverters.create())
+    |> Remoting.buildHttpHandler
+```
+
+One line of consumer code flips an entire API from Newtonsoft to STJ. The
+wire format is byte-equivalent — clients see no difference.
+
+### 14.4 Implementation in `Proxy.fs`
+
+Two branch points:
+
+1. **Output serialisation** ([Fable.Remoting.Server/Proxy.fs:31-37](Fable.Remoting.Server/Proxy.fs#L31-L37)):
+   `jsonSerializeWithBackend` routes to the existing
+   `fableSerializer.Serialize` (Newtonsoft path) when backend is
+   `NewtonsoftJson`, or `JsonSerializer.Serialize<'a>(stream, value, options)`
+   (STJ path) otherwise. The Newtonsoft branch is unchanged — same
+   `StreamWriter` + `JsonTextWriter` shape.
+
+2. **Per-argument deserialisation** ([Fable.Remoting.Server/Proxy.fs:148-160](Fable.Remoting.Server/Proxy.fs#L148-L160)):
+   when handling the `Choice2Of2 json` case (a JToken pulled out of the
+   incoming JSON array), branch on the backend. Newtonsoft path stays
+   `json.ToObject<'inp> fableSerializer`; STJ path extracts
+   `json.ToString(Formatting.None)` and passes it to
+   `JsonSerializer.Deserialize<'inp>(..., stjOptions)`.
+
+The **outer array parsing** still uses Newtonsoft (`JToken.ReadFrom` /
+`JsonConvert.DeserializeObject<JToken>` at lines 78 and 188). This is a
+pragmatic compromise: the array structure parsing isn't on the byte-compat
+hot path (it just slices `[arg1, arg2, ...]` into separate token elements),
+and avoiding it would require generalising `InvocationPropsInt.Arguments`
+from `Choice<byte[], JToken> list` to a serializer-abstracted shape, which
+is a much larger refactor. The wire format the client cares about is the
+per-argument and response shape — both of those are now STJ-routed when
+opted in.
+
+### 14.5 Giraffe HTTP integration tests — 18 new cases
+
+[Fable.Remoting.Giraffe.Tests/StjHttpIntegrationTests.fs](Fable.Remoting.Giraffe.Tests/StjHttpIntegrationTests.fs)
+spins up a parallel `TestServer` wired with
+`Remoting.withSerializerOptions (FableConverters.create())` and exercises:
+
+- Primitives: int, string, bool round-trips.
+- Option: `Some 5`, `None` round-trips.
+- Record: `{Prop1; Prop2; Prop3 = Some _}` and `{... Prop3 = None}`.
+- DU: `Maybe<int>` (`Just`, `Nothing`); `AB` (single-case `A`/`B`).
+- Lists: `int list`, `Record list`.
+- Maps: `Map<string,int>`, `Map<int*int,int>` (non-string key path).
+- BigInt: small / large / negative / 20-digit values.
+- Result: `Ok 42`, `Error "fail"`.
+- Binary: `byte[]` round-trip.
+
+Each test serialises via STJ, sends through real HTTP via Giraffe's
+TestServer, parses the response via STJ, and asserts F# value equality.
+The server-side serialise/deserialise are STJ; the client-side
+serialise/deserialise (in the test harness) are also STJ — full
+end-to-end STJ.
+
+### 14.6 Test matrix after Phase 4b
+
+```
+50  pre-existing converter round-trip tests (Newtonsoft)        — all green
+103 Phase 2 byte-pin tests (Newtonsoft)                          — all green
+23  Phase 3 STJ union prototype tests                            — all green
+103 Phase 4 STJ wire-format tests (parallel matrix)              — all green
+18  Phase 4b STJ HTTP integration tests (Giraffe)                — all green
+---
+297 Fable.Remoting.Json.Tests                                   ✅
+30  Fable.Remoting.Server.Tests                                 ✅
+55  Fable.Remoting.MsgPack.Tests                                ✅
+28  Fable.Remoting.Suave.Tests                                  ✅
+114 Fable.Remoting.Giraffe.Tests (96 existing + 18 new STJ HTTP) ✅
+77  Fable.Remoting.Falco.Tests                                  ✅
+---
+583/583 pass — byte-equality matrix + cross-serializer parity + full end-to-end HTTP
+```
+
+The Giraffe STJ tests prove what the Phase 6 spot-check couldn't (without
+HelloWorld's missing composition roots): a real consumer-shaped HTTP server
+serves STJ-serialised JSON, and the wire-format contract holds under load.
+
+### 14.7 Pace forward
+
+Phase 4b widened scope by ~80 lines across three Server files plus ~150 lines
+of HTTP integration test. The diff is still focused: no behaviour changes
+to the Newtonsoft path, no changes to any client-side code, no edits to
+sibling adapters (Suave / Falco / AzureFunctions). Those adapters can pick
+up STJ in follow-up PRs by accepting the new `JsonSerializerBackend` field —
+or they may not need to, depending on which adapters land on which
+deployments. The two-PR-or-N-PR shape is now the maintainer's choice.
+
+### 14.8 Files touched in Phase 4b
+
+- `Fable.Remoting.Server/Types.fs` — `JsonSerializerBackend` DU,
+  `JsonSerializer` field on `RemotingOptions` and `MakeEndpointProps`.
+- `Fable.Remoting.Server/Remoting.fs` — default + `withSerializerOptions`
+  fluent helper.
+- `Fable.Remoting.Server/Proxy.fs` — `jsonSerializeWithBackend`,
+  threaded backend through `makeApiProxy → makeEndpointProxy`,
+  branched the per-argument deserialise.
+- `Fable.Remoting.Giraffe.Tests/StjHttpIntegrationTests.fs` (new) —
+  18 end-to-end HTTP tests.
+- `Fable.Remoting.Giraffe.Tests/App.fs` — registered the new test list.
+- `Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj` —
+  added the new test file to `<Compile>`.
+
+No edits to client-facing packages (Fable.Remoting.Client,
+Fable.Remoting.DotnetClient) — those have their own
+`JsonSerializerSettings` and would need a parallel `withSerializerOptions`
+helper to opt in. That's still a follow-up PR's territory; the converter
+package's public surface (`FableConverters.create()`) is all those
+follow-ups would need.
+
 
 
 

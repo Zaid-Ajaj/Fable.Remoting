@@ -51,6 +51,21 @@ type SerializationType =
     | Json
     | MessagePack
 
+/// Which JSON serializer to use for the API's wire format.
+///
+/// `NewtonsoftJson` (the default) keeps the existing behaviour:
+/// `Fable.Remoting.Json.FableJsonConverter` registered against a
+/// `JsonSerializerSettings`. Existing consumers see no change.
+///
+/// `SystemTextJson opts` opts in to the System.Text.Json path. Pass a fully
+/// configured `JsonSerializerOptions` (typically `FableConverters.create()`
+/// from `Fable.Remoting.Json.SystemTextJson`). The STJ converter set produces
+/// byte-equal wire output to the Newtonsoft converters across the
+/// Fable.Remoting.Json byte-compat matrix.
+type JsonSerializerBackend =
+    | NewtonsoftJson
+    | SystemTextJson of System.Text.Json.JsonSerializerOptions
+
 type internal IShapeFSharpAsyncOrTask  =
     abstract Element: TypeShape
 
@@ -78,6 +93,7 @@ type MakeEndpointProps = {
     FieldName: string
     RecordName: string
     ResponseSerialization: SerializationType
+    JsonSerializer: JsonSerializerBackend
     FlattenedTypes: Type[]
 }
 
@@ -103,11 +119,12 @@ type RouteDocs =
 type Documentation = Documentation of string * RouteDocs list
 
 type RemotingOptions<'context, 'serverImpl> = {
-    Implementation: ProtocolImplementation<'context, 'serverImpl> 
-    RouteBuilder : string -> string -> string 
-    ErrorHandler : ErrorHandler<'context> option 
-    DiagnosticsLogger : (string -> unit) option 
+    Implementation: ProtocolImplementation<'context, 'serverImpl>
+    RouteBuilder : string -> string -> string
+    ErrorHandler : ErrorHandler<'context> option
+    DiagnosticsLogger : (string -> unit) option
     Docs : string option * Option<Documentation>
     ResponseSerialization : SerializationType
+    JsonSerializer : JsonSerializerBackend
     RmsManager : Microsoft.IO.RecyclableMemoryStreamManager option
 }

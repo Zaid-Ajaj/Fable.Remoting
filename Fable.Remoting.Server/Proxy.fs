@@ -27,6 +27,16 @@ let jsonSerialize (o: 'a) (stream: Stream) =
     use writer = new JsonTextWriter (sw, CloseOutput = false)
     fableSerializer.Serialize (writer, o)
 
+/// Serialise the value to the output stream using the configured backend.
+/// `NewtonsoftJson` → existing FableJsonConverter path; `SystemTextJson opts`
+/// → System.Text.Json.JsonSerializer.Serialize with the provided options.
+let private jsonSerializeWithBackend (backend: JsonSerializerBackend) (o: 'a) (stream: Stream) =
+    match backend with
+    | NewtonsoftJson ->
+        jsonSerialize o stream
+    | SystemTextJson stjOptions ->
+        System.Text.Json.JsonSerializer.Serialize<'a>(stream, o, stjOptions)
+
 type private MsgPackSerializer<'a> =
     static let serializer = MsgPack.Write.makeSerializer<'a> ()
     static member Serialize (o, stream) = serializer.Invoke (o, stream)
@@ -97,7 +107,7 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
             let data = box result :?> byte[]
             props.Output.Write (data, 0, data.Length)
         elif makeProps.ResponseSerialization.IsJson then
-            jsonSerialize result props.Output
+            jsonSerializeWithBackend makeProps.JsonSerializer result props.Output
         else
             MsgPackSerializer.Serialize (result, props.Output)
 
@@ -145,7 +155,18 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
                             let inp = box bytes :?> 'inp
                             outp (f inp) { props with Arguments = t }
                         | Choice2Of2 json :: t ->
-                            let inp = json.ToObject<'inp> fableSerializer
+                            let inp =
+                                match makeProps.JsonSerializer with
+                                | NewtonsoftJson ->
+                                    json.ToObject<'inp> fableSerializer
+                                | SystemTextJson stjOptions ->
+                                    // The outer argument array is still parsed via Newtonsoft into
+                                    // JTokens (see Proxy.fs:188); per-arg deserialisation routes
+                                    // through STJ by extracting the JToken's raw JSON and feeding it
+                                    // to JsonSerializer.Deserialize. Byte-equivalent input shapes
+                                    // produce byte-equivalent F# values via the matching converter
+                                    // set in Fable.Remoting.Json.SystemTextJson.
+                                    System.Text.Json.JsonSerializer.Deserialize<'inp>(json.ToString(Formatting.None), stjOptions)
                             outp (f inp) { props with Arguments = t }
                         | [] when typeof<'inp> = typeof<unit> ->
                             let inp = box () :?> _
@@ -163,7 +184,7 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
     let memberVisitor (shape: IShapeMember<'impl>, flattenedTypes: Type[]) =
         shape.Accept { new IReadOnlyMemberVisitor<'impl, InvocationProps<'impl> -> Task<InvocationResult>> with
             member _.Visit (shape: ReadOnlyMember<'impl, 'field>) =
-                let fieldProxy = makeEndpointProxy<'field> { FieldName = shape.MemberInfo.Name; RecordName = typeof<'impl>.Name; ResponseSerialization = options.ResponseSerialization; FlattenedTypes = flattenedTypes }
+                let fieldProxy = makeEndpointProxy<'field> { FieldName = shape.MemberInfo.Name; RecordName = typeof<'impl>.Name; ResponseSerialization = options.ResponseSerialization; JsonSerializer = options.JsonSerializer; FlattenedTypes = flattenedTypes }
                 let isNoArg = flattenedTypes.Length = 1 || (flattenedTypes.Length = 2 && flattenedTypes.[0] = typeof<unit>)
 
                 wrap (fun (props: InvocationProps<'impl>) -> task {
