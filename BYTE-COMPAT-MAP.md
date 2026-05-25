@@ -562,6 +562,128 @@ grouped by Kind branch (primitives, longs/bigints, options, lists/arrays,
 tuples, records, unions, maps, sets, dates, combinations).
 
 ### 10.6 `dotnet test` does NOT work for this suite — use `dotnet run`
+<!-- (anchor preserved — content unchanged from Phase 2 commit) -->
+
+---
+
+## 11. Phase 3 — STJ union converter prototype (2026-05-25)
+
+### 11.1 Design choice: `JsonConverterFactory` + typed `JsonConverter<'T>`
+
+The STJ port uses a **factory pattern** rather than a single non-generic
+converter with runtime dispatch. Concretely:
+[`FSharpUnionConverter<'T>`](Fable.Remoting.Json/FableSystemTextJsonConverter.fs)
+is the per-union-type typed converter; [`FSharpUnionConverterFactory`](Fable.Remoting.Json/FableSystemTextJsonConverter.fs)
+matches any F# union (excluding `FSharpList`/`FSharpOption`, which are dispatched
+separately in Phase 4) and constructs the typed converter on demand.
+
+**Why factory, not single dispatch:**
+
+1. **STJ idiom.** The maintainer reads STJ patterns daily; converter-factories
+   that produce typed `JsonConverter<T>` instances are the BCL's own approach for
+   `Nullable<T>`, `KeyValuePair<,>`, etc. A non-generic dispatch class would
+   compile and work, but it looks foreign next to other STJ extension points and
+   would invite review friction.
+2. **Per-type reflection caching for free.** `FSharpUnionConverter<'T>`'s
+   constructor pre-computes the `UnionInfo` for `typeof<'T>` once. STJ caches
+   converter instances per type (via `JsonSerializerOptions`'s internal
+   converter-resolution cache), so each DU type pays the reflection cost once
+   across the lifetime of the options object — same shape as the existing
+   `unionInfoCache: ConcurrentDictionary<Type, UnionInfo>` in the Newtonsoft
+   path, but without us having to maintain the dictionary by hand. (The shared
+   `UnionReflection.cache` is still there as a belt-and-braces fallback for
+   reflection lookups outside the converter, since `FSharpType.GetUnionCases`
+   is hot.)
+3. **No `box`/`unbox` on the hot path.** A non-generic converter would receive
+   `value: obj` and have to constantly cast to compare runtime types. The
+   typed converter has `value: 'T` directly — the only `box` in `Write` is the
+   one demanded by `FSharpValue.PreComputeUnionTagReader`'s signature, which is
+   unavoidable.
+4. **`HandleNull` correctness.** A typed converter's `Write` is never called
+   with a null reference-typed value (STJ writes the JSON `null` token directly
+   when `HandleNull = false`, which is the default for ref types). The
+   Newtonsoft path needs an explicit `if isNull value then ...` guard at the top
+   of `WriteJson`; STJ's factory removes the need. Only `Read` has to handle
+   the `JsonTokenType.Null` branch — and that's an explicit check at the top of
+   the `match`, mirroring the Newtonsoft "`JsonToken.Null -> null`" arm.
+
+**Trade-off acknowledged.** `Activator.CreateInstance(typedefof<FSharpUnionConverter<_>>.MakeGenericType(t))`
+runs once per union type at first encounter. That's the same cost the
+`unionInfoCache.GetOrAdd` in the existing Newtonsoft path pays, plus one
+generic-type construction. Not measurable in any real workload.
+
+### 11.2 Writer wire format — verified byte-equal
+
+The prototype's `Write` produces byte-identical output to the Newtonsoft path
+for every DU shape in the supported subset (13/13 writer tests pass against
+the Phase 2 pin strings, see
+[StjUnionPrototypeTests.fs](Fable.Remoting.Json.Tests/StjUnionPrototypeTests.fs)).
+
+Key implementation note: **the multi-field path must serialise each field with
+its declared `FieldType`, not as `obj`.** The Newtonsoft path uses
+`serializer.Serialize(writer, fields)` where `fields : obj[]`, and Newtonsoft
+figures out the runtime type per element. STJ's
+`JsonSerializer.Serialize<obj>(writer, fields[i], options)` would route through
+`obj`'s converter (none → fails, or with polymorphic handling enabled would add
+type discriminators — wrong shape). The fix is the non-generic overload:
+
+```fsharp
+JsonSerializer.Serialize(writer, fields.[i], case.FieldTypes.[i], options)
+```
+
+The `case.FieldTypes.[i]` comes from `FSharpType.GetUnionCases(...).[i].GetFields().[j].PropertyType`
+— STJ then picks the right typed converter for that field. This is more
+robust than Newtonsoft's runtime-type approach: a boxed `int` whose runtime
+type is `int` serialises identically regardless of which converter discovered
+it first.
+
+### 11.3 Reader subset — single-property object + bare string
+
+Phase 3 implements the writer-roundtrippable read paths only:
+
+- `JsonTokenType.Null` → `Unchecked.defaultof<'T>` (matches Newtonsoft's
+  `JsonToken.Null -> null`).
+- `JsonTokenType.String` → no-field case lookup by name.
+- `JsonTokenType.StartObject` with a single property → case = property name;
+  value is the single field (1-field case) or a JSON array of typed elements
+  (N-field case).
+
+The four additional input shapes Newtonsoft's reader accepts (per §3.9 — the
+`__typename` shape, the `{"tag", "name", "fields"}` Fable-runtime shape, the
+`["<CaseName>", <f>, ...]` string-prefixed-array shape, plus the lower-case-
+`__typename` matching of union-of-records) are **deferred to Phase 4**. They're
+read-only — no writer produces them — but they're part of the existing wire
+compatibility surface and must land before the PR opens.
+
+### 11.4 No wire-shape surprises encountered
+
+Both the writer (13 cases) and the reader (10 cases) round-trip byte-equally
+with the Newtonsoft pins on first run — no surprises caught in this phase.
+The Phase 2 encoder finding (UTF-8 passthrough requires
+`JavaScriptEncoder.UnsafeRelaxedJsonEscaping`) is the only `JsonSerializerOptions`
+configuration the prototype depends on; without that setting, all string-
+containing DU tests would have failed.
+
+The private-constructor case (`String50` from [Types.fs](Fable.Remoting.Json.Tests/Types.fs#L21-L29))
+round-trips through both writer and reader paths — confirms
+`BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance` is
+correctly threaded through both `FSharpType.GetUnionCases` and
+`FSharpValue.PreComputeUnionConstructor`.
+
+### 11.5 Test matrix after Phase 3
+
+```
+50  pre-existing converter round-trip tests (Newtonsoft)        — all green
+103 Phase 2 byte-pin tests (Newtonsoft)                          — all green
+23  Phase 3 STJ union prototype tests (13 writer + 10 reader)    — all green
+---
+176/176 pass
+```
+
+Phase 4 will lift the test count substantially: every Phase 2 pin gets a
+parallel STJ assertion (parameterise the serializer per fixture), and the four
+additional reader input shapes get explicit Phase-4 read tests.
+
 
 The brief said tests must "run via `dotnet test` and exit zero". The suite is
 an Expecto **console runner** (`<OutputType>Exe</OutputType>`,
