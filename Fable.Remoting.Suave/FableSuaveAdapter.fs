@@ -7,18 +7,18 @@ open Newtonsoft.Json
 open System.IO
 open Fable.Remoting.Server.Proxy
 
-module SuaveUtil = 
-  
-  let outputContent (json: string) = 
-    HttpContent.Bytes (System.Text.Encoding.UTF8.GetBytes(json))  
+module SuaveUtil =
 
-  let setResponseBody (asyncResult: obj) (logger: Option<string -> unit>) =
+  let outputContent (json: string) =
+    HttpContent.Bytes (System.Text.Encoding.UTF8.GetBytes(json))
+
+  let setResponseBody (backend: JsonSerializerBackend) (asyncResult: obj) (logger: Option<string -> unit>) =
     fun (ctx: HttpContext) -> async {
       use ms = new MemoryStream ()
-      jsonSerialize asyncResult ms
+      jsonSerializeWithBackend backend asyncResult ms
       let json = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
-      Diagnostics.outputPhase logger json  
-      return Some { ctx with response = { ctx.response with content = outputContent json  } } 
+      Diagnostics.outputPhase logger json
+      return Some { ctx with response = { ctx.response with content = outputContent json  } }
     }
 
   let setBinaryResponseBody (content: byte[]) statusCode mimeType = 
@@ -36,39 +36,40 @@ module SuaveUtil =
     } 
 
   /// Returns output from dynamic functions as JSON
-  let success value (logger: Option<string -> unit>) = 
-    setResponseBody value logger 
+  let success backend value (logger: Option<string -> unit>) =
+    setResponseBody backend value logger
     >=> setStatusCode 200
     >=> Writers.setMimeType "application/json; charset=utf-8"
 
-  let html content : WebPart = 
+  let html content : WebPart =
     fun ctx -> async {
-      return Some { ctx with response = { ctx.response with content = outputContent content  } } 
-    } 
+      return Some { ctx with response = { ctx.response with content = outputContent content  } }
+    }
     >=> setStatusCode 200
     >=> Writers.setMimeType "text/html; charset=utf-8"
 
   /// Used to halt the forwarding of the Http context
-  let halt : WebPart = 
-    fun (_: HttpContext) -> 
+  let halt : WebPart =
+    fun (_: HttpContext) ->
       async { return None }
 
   /// Sets the error object in the response and makes the status code 500 (Internal Server Error)
-  let sendError error logger = 
-    setResponseBody error logger
-    >=> setStatusCode 500 
+  let sendError backend error logger =
+    setResponseBody backend error logger
+    >=> setStatusCode 500
     >=> Writers.setMimeType "application/json; charset=utf-8"
 
   /// Handles thrown exceptions
-  let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : WebPart = 
+  let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : WebPart =
     let logger = options.DiagnosticsLogger
+    let backend = options.JsonSerializer
     fun (context: HttpContext) -> async {
-      match options.ErrorHandler with 
-      | None -> return! sendError (Errors.unhandled routeInfo.methodName) logger context 
-      | Some errorHandler -> 
-          match errorHandler ex routeInfo with 
-          | Ignore -> return! sendError (Errors.ignored routeInfo.methodName) logger context 
-          | Propagate error -> return! sendError (Errors.propagated error) logger context 
+      match options.ErrorHandler with
+      | None -> return! sendError backend (Errors.unhandled routeInfo.methodName) logger context
+      | Some errorHandler ->
+          match errorHandler ex routeInfo with
+          | Ignore -> return! sendError backend (Errors.ignored routeInfo.methodName) logger context
+          | Propagate error -> return! sendError backend (Errors.propagated error) logger context
     }
 
   let buildFromImplementation<'impl> (implBuilder: HttpContext -> 'impl) (options: RemotingOptions<HttpContext, 'impl>) =
@@ -112,12 +113,12 @@ module SuaveUtil =
                   let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                   let docsApp = DocsApp.embedded docsName docsUrl schema
                   return! html docsApp ctx
-              | HttpMethod.OPTIONS, (Some docsUrl, Some docs) 
+              | HttpMethod.OPTIONS, (Some docsUrl, Some docs)
                     when sprintf "/%s/$schema" docsUrl = ctx.request.path
                       || sprintf "%s/$schema" docsUrl = ctx.request.path ->
                   let schema = Docs.makeDocsSchema typeof<'impl> docs options.RouteBuilder
                   let serializedSchema =  schema.ToString(Formatting.None)
-                  return! success serializedSchema None ctx   
+                  return! success options.JsonSerializer serializedSchema None ctx
               | _ -> 
                   return! halt ctx
       }

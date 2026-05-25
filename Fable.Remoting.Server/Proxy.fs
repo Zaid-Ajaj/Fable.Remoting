@@ -30,7 +30,14 @@ let jsonSerialize (o: 'a) (stream: Stream) =
 /// Serialise the value to the output stream using the configured backend.
 /// `NewtonsoftJson` → existing FableJsonConverter path; `SystemTextJson opts`
 /// → System.Text.Json.JsonSerializer.Serialize with the provided options.
-let private jsonSerializeWithBackend (backend: JsonSerializerBackend) (o: 'a) (stream: Stream) =
+///
+/// Public so sibling adapters (Suave, Falco, AspNetCore, AwsLambda,
+/// AzureFunctions.Worker, Giraffe) can route their response-path serialisation
+/// (docs schema, error bodies, etc.) through the same backend-aware path the
+/// main proxy uses. Without this, those adapters' helper functions would
+/// silently fall back to Newtonsoft for docs / error responses even when
+/// the consumer opted in to STJ.
+let jsonSerializeWithBackend (backend: JsonSerializerBackend) (o: 'a) (stream: Stream) =
     match backend with
     | NewtonsoftJson ->
         jsonSerialize o stream

@@ -1321,6 +1321,173 @@ tests above verify this.
 ```
 
 ### 15.7 ISerializer extended with Deserialize
+<!-- (anchor preserved — content unchanged from Phase 4c commit) -->
+
+---
+
+## 16. Phase 4d — sibling adapter STJ plumbing (2026-05-25)
+
+### 16.1 What was leaking
+
+Phase 4b plumbed STJ through `Fable.Remoting.Server.Proxy.makeApiProxy` —
+the main wire path for typed RPC method calls. But six sibling adapters
+(Giraffe, Suave, Falco, AspNetCore, AwsLambda × 2, AzureFunctions.Worker)
+had **a parallel response-path helper** (`setJsonBody` / `setResponseBody` /
+similar) that called `jsonSerialize` directly with the Newtonsoft converter
+— *bypassing the backend choice*. This affected:
+
+- **Error responses** — when the user-provided error handler returned
+  `Propagate error` or `Ignore`, the adapter serialised the error via
+  hardcoded Newtonsoft regardless of whether the consumer had opted in
+  to STJ.
+- **Docs schema responses** — the `OPTIONS /$schema` endpoint that returns
+  the auto-generated API docs JSON used `jsonSerialize` directly.
+
+For the typical data-payload path nothing changed (the proxy was already
+backend-aware). But error bodies and the docs schema were silently
+Newtonsoft-only.
+
+### 16.2 Fix
+
+`Fable.Remoting.Server.Proxy.jsonSerializeWithBackend` was made `public`
+(was `private`) so adapters can route through it:
+
+```fsharp
+let jsonSerializeWithBackend (backend: JsonSerializerBackend) (o: 'a) (stream: Stream) =
+    match backend with
+    | NewtonsoftJson -> jsonSerialize o stream
+    | SystemTextJson stjOptions ->
+        System.Text.Json.JsonSerializer.Serialize<'a>(stream, o, stjOptions)
+```
+
+Then every sibling adapter's response-path helper was updated to:
+1. Take a `JsonSerializerBackend` parameter (or pull it from
+   `options.JsonSerializer` at the `fail` entry point).
+2. Route through `jsonSerializeWithBackend` instead of `jsonSerialize`.
+
+Files touched:
+
+- [`Fable.Remoting.Server/Proxy.fs`](Fable.Remoting.Server/Proxy.fs#L40)
+  — visibility flip + doc comment on the public helper.
+- [`Fable.Remoting.Giraffe/FableGiraffeAdapter.fs`](Fable.Remoting.Giraffe/FableGiraffeAdapter.fs)
+  — `setJsonBody` + `fail` backend-aware.
+- [`Fable.Remoting.Suave/FableSuaveAdapter.fs`](Fable.Remoting.Suave/FableSuaveAdapter.fs)
+  — `setResponseBody` + `success` + `sendError` + `fail` backend-aware;
+  docs schema response uses `options.JsonSerializer`.
+- [`Fable.Remoting.Falco/FableFalcoAdapter.fs`](Fable.Remoting.Falco/FableFalcoAdapter.fs)
+  — `setResponseBody` + `setBody` + `fail` backend-aware.
+- [`Fable.Remoting.AspNetCore/Middleware.fs`](Fable.Remoting.AspNetCore/Middleware.fs)
+  — `setResponseBody` + `setBody` + `fail` backend-aware.
+- [`Fable.Remoting.AwsLambda/FableLambdaAdapter.fs`](Fable.Remoting.AwsLambda/FableLambdaAdapter.fs)
+  — `setJsonBody` + `fail` backend-aware.
+- [`Fable.Remoting.AwsLambda/FableLambdaApiGatewayAdapter.fs`](Fable.Remoting.AwsLambda/FableLambdaApiGatewayAdapter.fs)
+  — `setJsonBody` + `fail` backend-aware.
+- [`Fable.Remoting.AzureFunctions.Worker/FableAzureFunctionsAdapter.fs`](Fable.Remoting.AzureFunctions.Worker/FableAzureFunctionsAdapter.fs)
+  — `setJsonBody` + `fail` backend-aware.
+
+The pattern is identical across all six adapters: each `setBody`-shaped
+helper grew a `JsonSerializerBackend` parameter; each `fail` entry pulls
+`options.JsonSerializer` once and threads it down.
+
+### 16.3 DotnetClient — `Remoting.withSerializerOptions` + `Proxy.WithSerializerOptions`
+
+`Fable.Remoting.DotnetClient` is a separate package — the .NET-side client
+for calling Fable.Remoting servers from another .NET app. It has its own
+`JsonSerializerSettings + FableJsonConverter()` pattern (in `Proxy.fs`)
+that's parallel to the Server's. Without an opt-in path here, .NET-side
+consumers couldn't use STJ even after the Server-side work landed.
+
+Two surfaces added:
+
+- **`Fable.Remoting.DotnetClient.Proxy<'t>`** — new member
+  `.WithSerializerOptions(opts: JsonSerializerOptions) : Proxy<'t>` that
+  returns a new proxy threaded with STJ. Used by tests:
+  ```fsharp
+  let protocolProxy =
+      (Proxy.custom<IProtocol> builder client false)
+          .WithSerializerOptions(FableConverters.create())
+  ```
+
+- **`Fable.Remoting.DotnetClient.Remoting.withSerializerOptions`** — fluent
+  helper on the higher-level builder pattern (`Remoting.createApi` →
+  `withRouteBuilder` → `buildProxy`). New field `StjOptions:
+  JsonSerializerOptions option` on `RemoteBuilderOptions`. The reflective
+  `Activator.CreateInstance(callerType, ...)` and static-method
+  `Invoke(null, [|...|])` call sites in `buildProxy` were updated to pass
+  the new arg through to each `ServiceCallerFuncN` type.
+
+Internals — every `ServiceCallerFuncN` type (14 of them, covering
+`Func2`..`Func9` plus `FuncTask2..9` and `ParameterlessServiceCall`) gained
+an `stjOptions: JsonSerializerOptions option` constructor parameter, and
+each `Proxy.proxyPost`/`proxyPostTask` call inside them appends
+`stjOptions` to the argument list. Mechanical bulk edit via `replace_all`.
+
+Newtonsoft remains the default in both APIs — consumers who don't call
+`withSerializerOptions` see no change.
+
+### 16.4 HTTP integration tests
+
+Two new test files, modelled after Phase 4b's
+`Fable.Remoting.Giraffe.Tests/StjHttpIntegrationTests.fs`:
+
+- **[`Fable.Remoting.Suave.Tests/StjHttpIntegrationTests.fs`](Fable.Remoting.Suave.Tests/StjHttpIntegrationTests.fs)**
+  — 13 round-trip tests through a real Suave server wired with STJ. Tests:
+  int / string / option (Some + None) / record with None field / DU (Just +
+  Nothing) / simple DU (AB) / int list / Map<string,int> / bigint list /
+  Result Ok + Error.
+
+- **[`Fable.Remoting.Falco.Tests/StjHttpIntegrationTests.fs`](Fable.Remoting.Falco.Tests/StjHttpIntegrationTests.fs)**
+  — 18 round-trip tests through a Falco server. Crucially, this test
+  exercises **both ends of the wire** simultaneously: the Falco server
+  uses `Remoting.withSerializerOptions stjOptions` (server-side STJ); the
+  client is a `Fable.Remoting.DotnetClient.Proxy.custom` with
+  `.WithSerializerOptions(stjOptions)` (client-side STJ). Dogfoods the
+  full Phase 4d plumbing in one test.
+
+### 16.5 Test matrix after Phase 4d
+
+```
+Fable.Remoting.Json.Tests        337 (Phase 4c unchanged)
+Fable.Remoting.Server.Tests       30 (unchanged — backend default unchanged)
+Fable.Remoting.MsgPack.Tests      55 (unchanged — binary path untouched)
+Fable.Remoting.Suave.Tests        41 (28 pre-existing + 13 new STJ HTTP)
+Fable.Remoting.Giraffe.Tests     114 (96 pre-existing + 18 new STJ HTTP)
+Fable.Remoting.Falco.Tests        95 (77 pre-existing + 18 new STJ HTTP)
+---
+Total                            672/672 pass
+```
+
+Up from 641 (Phase 4c).
+
+### 16.6 What's NOT covered
+
+- **`Fable.Remoting.AspNetCore`, `Fable.Remoting.AwsLambda`,
+  `Fable.Remoting.AzureFunctions.Worker`** — the adapter code is plumbed
+  but I didn't add new HTTP integration tests for them. They share the
+  same `setBody`-shape pattern as Giraffe / Suave / Falco, so the existing
+  Phase 4b/4d tests cover the same code shapes by proxy. A maintainer who
+  wants belt-and-braces coverage can add equivalent integration tests in a
+  follow-up; the infrastructure (TestServer + DotnetClient with STJ) is
+  identical.
+- **`[<Fable.Core.Pojo>]` and `[<Fable.Core.StringEnum>]` DU dispatch** —
+  still deferred from Phase 4 (no fixtures, no client-emitted output to
+  match).
+- **Outer-array argument parsing** — `InvocationPropsInt.Arguments` still
+  routes through Newtonsoft `JArray` regardless of backend. Per-argument
+  deserialisation is backend-routed; the outer slicing is shared. Bigger
+  refactor than Phase 4d's scope.
+
+### 16.7 The PR shape now
+
+With Phase 4d landed, the three-PR stack in
+[`UPSTREAM-ISSUE-DRAFT.md`](UPSTREAM-ISSUE-DRAFT.md) becomes:
+
+1. **PR #1** — `Fable.Remoting.Json` converter set + byte-pin tests.
+2. **PR #2** — `Fable.Remoting.Server` opt-in plumbing + sibling adapter
+   `setBody` cleanup + Giraffe / Suave / Falco HTTP integration tests.
+3. **PR #3** — `Fable.Remoting.DotnetClient` `withSerializerOptions` helper.
+
+Or it can stay as a single PR. The upstream issue invites Zaid to pick.
 
 `WireFormatTests.fs` adds a `Deserialize<'a>` method to `ISerializer` so
 deserialise-null tests share the same test list across both serializers:

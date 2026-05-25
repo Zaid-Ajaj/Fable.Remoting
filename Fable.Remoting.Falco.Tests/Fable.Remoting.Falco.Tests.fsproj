@@ -15,6 +15,7 @@
     <ItemGroup>
       <Compile Include="Types.fs" />
       <Compile Include="FableFalcoAdapterTests.fs" />
+      <Compile Include="StjHttpIntegrationTests.fs" />
       <Compile Include="App.fs" />
     </ItemGroup>
 

@@ -48,11 +48,11 @@ module internal Middleware =
 
     let (>=>) = compose
 
-    let setResponseBody (response: obj) logger : HttpHandler =
+    let setResponseBody (backend: JsonSerializerBackend) (response: obj) logger : HttpHandler =
         fun (next : HttpFunc) (ctx : HttpContext) ->
             task {
                 use ms = new MemoryStream ()
-                jsonSerialize response ms
+                jsonSerializeWithBackend backend response ms
                 let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
                 return! writeStringAsync responseBody ctx logger
             }
@@ -66,8 +66,8 @@ module internal Middleware =
             }
 
     /// Sets the body of the response to type of JSON
-    let setBody value logger : HttpHandler =
-        setResponseBody value logger
+    let setBody backend value logger : HttpHandler =
+        setResponseBody backend value logger
         >=> setContentType "application/json; charset=utf-8"
 
     /// Used to forward of the Http context
@@ -76,14 +76,15 @@ module internal Middleware =
 
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
       let logger = options.DiagnosticsLogger
+      let backend = options.JsonSerializer
       fun (next : HttpFunc) (ctx : HttpContext) ->
         task {
             match options.ErrorHandler with
-            | None -> return! setBody (Errors.unhandled routeInfo.methodName) logger next ctx
+            | None -> return! setBody backend (Errors.unhandled routeInfo.methodName) logger next ctx
             | Some errorHandler ->
                 match errorHandler ex routeInfo with
-                | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) logger next ctx
-                | Propagate error -> return! setBody (Errors.propagated error) logger next ctx
+                | Ignore -> return! setBody backend (Errors.ignored routeInfo.methodName) logger next ctx
+                | Propagate error -> return! setBody backend (Errors.propagated error) logger next ctx
         }
 
     let notFound (options: RemotingOptions<HttpContext, 'impl>) next (ctx: HttpContext) =
