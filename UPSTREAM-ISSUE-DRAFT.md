@@ -92,13 +92,17 @@ let app =
     |> Remoting.buildHttpHandler
 ```
 
-The Giraffe adapter inherits STJ support transitively because it delegates to
-`Server.Proxy.makeApiProxy`, which is backend-aware. The Suave / Falco /
-AspNetCore / AwsLambda / AzureFunctions adapters work today for the
-main-payload path through the proxy, but each has a small response-path
-helper (`setJsonBody` / `setResponseBody` / etc.) that hardcodes `jsonSerialize`
-for docs schema responses and error responses. Cleaning that up is a small
-follow-up I'd like guidance on — see "Known follow-ups" below.
+All six sibling adapters (Giraffe, Suave, Falco, AspNetCore, AwsLambda ×
+2, AzureFunctions.Worker) are plumbed: each adapter's `setBody`-shape
+helper takes a `JsonSerializerBackend` parameter, and each `fail` entry
+pulls `options.JsonSerializer` once and threads it down. So both the
+main wire payload AND error / docs-schema responses respect the opt-in.
+
+`Fable.Remoting.DotnetClient` has its own opt-in surface — a parallel
+`Remoting.withSerializerOptions` fluent helper on the
+`Remoting.createApi → buildProxy` path, plus a
+`Proxy<'t>.WithSerializerOptions(opts)` builder member on the lower-level
+constructor API. Same pattern as Server-side.
 
 **3. Byte-compatible wire output.** This is the load-bearing constraint:
 every Fable client ever deployed against `Fable.Remoting.Json` decodes the
@@ -120,16 +124,23 @@ must equal `X`.
 | `Fable.Remoting.Json.Tests` | 337 | ✅ |
 | `Fable.Remoting.Server.Tests` | 30 | ✅ |
 | `Fable.Remoting.MsgPack.Tests` | 55 | ✅ |
-| `Fable.Remoting.Suave.Tests` | 28 | ✅ |
+| `Fable.Remoting.Suave.Tests` | 41 (28 pre-existing + 13 new STJ HTTP integration) | ✅ |
 | `Fable.Remoting.Giraffe.Tests` | 114 (96 pre-existing + 18 new STJ HTTP integration) | ✅ |
-| `Fable.Remoting.Falco.Tests` | 77 | ✅ |
-| **Total** | **641/641** | ✅ |
+| `Fable.Remoting.Falco.Tests` | 95 (77 pre-existing + 18 new STJ HTTP integration) | ✅ |
+| **Total** | **672/672** | ✅ |
 
-The 18 Giraffe HTTP integration tests are end-to-end through `TestServer` —
-serialise via STJ → real HTTP → deserialise via STJ → assert. Covers every
-major shape (primitives, options, records with None fields, DUs including
-`Maybe<int>` and simple `AB`, lists, Maps with string + tuple keys, bigint,
-Result, byte[]).
+The 49 new HTTP integration tests are end-to-end through a real
+`TestServer` (Giraffe / Suave / Falco) — serialise via STJ → real HTTP →
+deserialise via STJ → assert. Covers every major shape (primitives,
+options, records with None fields, DUs including `Maybe<int>` and simple
+`AB`, lists, Maps with string + tuple keys, bigint, Result, byte[]).
+
+The Falco STJ tests are particularly load-bearing — they exercise **both
+ends of the wire** in one test: Falco server wired with
+`Remoting.withSerializerOptions stjOptions` (server-side STJ) and a
+`Fable.Remoting.DotnetClient.Proxy.custom` with
+`.WithSerializerOptions(stjOptions)` (client-side STJ). Dogfoods the
+entire opt-in surface in one round-trip.
 
 ## Unintentional improvement: pre-existing Newtonsoft bug surfaced
 
@@ -151,47 +162,42 @@ PR (one-line null guard).
 This can be **one PR** or **a stack of three**, whichever you prefer:
 
 **One PR** — `Fable.Remoting.Json` STJ converter set + `Fable.Remoting.Server`
-opt-in plumbing + the test suite. ~1500 lines of converter code + ~600 lines
+opt-in plumbing + all six sibling adapters + `Fable.Remoting.DotnetClient`
+opt-in + HTTP integration tests. ~2100 lines of converter code + ~900 lines
 of tests; default unchanged. The branch as it stands today.
 
 **Three-PR stack** if you'd rather review in chunks:
 
 1. **PR #1 — `Fable.Remoting.Json` converter set + byte-pin tests.** Lands
-   the STJ converters in a new sub-namespace with the 103 byte-equality tests
-   running against both serializers. No `Fable.Remoting.Server` changes, no
-   opt-in surface yet — the converters are addressable directly via
-   `FableConverters.create()`. Dependency-free in terms of breaking changes.
-2. **PR #2 — `Fable.Remoting.Server` opt-in plumbing.** Adds
-   `JsonSerializerBackend` DU, threads it through `Proxy.fs`, exposes
-   `Remoting.withSerializerOptions` helper. Plus the Giraffe HTTP integration
-   tests as end-to-end validation. Default stays Newtonsoft.
-3. **PR #3 — sibling adapter cleanup.** The Suave / Falco / AspNetCore /
-   AwsLambda / AzureFunctions adapters call `jsonSerialize` directly for
-   docs/error response paths instead of routing through the backend-aware
-   helper. Cosmetic for the data wire (the main payload already uses STJ
-   when opted in) but worth tidying. Plus a `withSerializerOptions` helper
-   on `Fable.Remoting.DotnetClient`.
+   the STJ converters in a new sub-namespace with the byte-equality tests
+   running against both serializers (337 Json tests, including 52 explicit
+   null-handling cases). No downstream changes, no opt-in surface yet — the
+   converters are addressable directly via `FableConverters.create()`.
+   Dependency-free in terms of breaking changes.
+2. **PR #2 — `Fable.Remoting.Server` + sibling adapters opt-in plumbing.**
+   Adds `JsonSerializerBackend` DU, threads it through `Server.Proxy.fs` +
+   the six sibling adapters (`setBody`-shape helpers + `fail` entries take
+   the backend). Plus the Giraffe / Suave / Falco HTTP integration tests as
+   end-to-end validation (49 tests). Default stays Newtonsoft.
+3. **PR #3 — `Fable.Remoting.DotnetClient` opt-in.** Adds
+   `Remoting.withSerializerOptions` fluent helper +
+   `Proxy<'t>.WithSerializerOptions` builder member. Threads `stjOptions`
+   through the 14 `ServiceCallerFuncN` types. This PR is what makes the
+   Falco STJ tests' client side work (the tests live in PR #2 in this split,
+   but those specific Falco tests would need a small skip-or-defer for the
+   client-side STJ assertions until PR #3 lands).
 
 I have a preference for the three-PR stack — easier review, easier rollback
 if anything surprises us — but it's your call.
 
 ## Known follow-ups (not part of the initial PR(s))
 
-- **`Fable.Remoting.DotnetClient`** has its own `JsonSerializerSettings` +
-  `FableJsonConverter()` in `Proxy.fs`. A parallel `withSerializerOptions`
-  helper would let .NET-side clients opt in to STJ the same way servers do.
-  Trivial — same pattern as the Server-side wiring.
 - **`[<Fable.Core.Pojo>]` and `[<Fable.Core.StringEnum>]` DU dispatch** —
   the Newtonsoft `FableJsonConverter` has explicit branches for these
   (`Kind.PojoDU`, `Kind.StringEnum`). The STJ port doesn't yet — there are
   no test fixtures using these attributes in the existing suite, and no
   client-emitted output to byte-match against. Would land as a follow-up
   once we decide on test shapes.
-- **Sibling-adapter response-path leak.** Six adapters call `jsonSerialize`
-  directly bypassing the backend choice for docs / error responses (the
-  main data payload already routes through the backend-aware
-  `jsonSerializeWithBackend` in `Server/Proxy.fs`). PR #3 in the suggested
-  stack handles this.
 - **Outer-array argument parsing.** The proxy parses `[arg1, arg2, ...]`
   into `Choice<byte[], JToken> list` using Newtonsoft regardless of
   backend. The per-argument deserialisation IS backend-routed (the byte-compat
@@ -199,6 +205,13 @@ if anything surprises us — but it's your call.
   this would mean abstracting `InvocationPropsInt.Arguments` over the JSON
   DOM — bigger refactor than the rest of the PR, and not necessary for
   byte-compat. Worth doing one day but not today.
+- **Belt-and-braces HTTP integration tests for AspNetCore / AwsLambda /
+  AzureFunctions.Worker.** The adapter code in all three is plumbed; the
+  shape is identical to Giraffe / Suave / Falco (all use the same
+  `setBody`-with-backend pattern). Existing Phase 4b/4d tests cover the
+  shape by proxy. A maintainer who wants per-adapter coverage could add
+  equivalent test files in a small follow-up — same TestServer-or-
+  equivalent pattern as the existing three.
 
 ## Sign-off request
 
