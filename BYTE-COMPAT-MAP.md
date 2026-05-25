@@ -460,3 +460,120 @@ Things that look mechanical but will bite if not held to byte-equality:
   the operator's fork. The PR will be opened from there.
 
 Phase 1 deliverable complete. Awaiting review before proceeding to Phase 2.
+
+---
+
+## 10. Phase 2 — surprises captured empirically (2026-05-25)
+
+Two predictions in §6 were wrong; one was right but the test had to be updated
+to match. Logged here so they're not lost between phases — Phase 4 implementers
+*must* read this section before writing the corresponding converters.
+
+### 10.1 Newtonsoft emits high-codepoint characters as raw UTF-8 — not `\uXXXX` escapes
+
+Empirical: `serialize "x😀y"` → `"x😀y"` (raw UTF-8 bytes of U+1F600 passed
+through, output is 7 bytes inside the JSON string).
+
+STJ's default `JsonSerializerOptions.Encoder` escapes non-ASCII characters
+(everything ≥ U+0080) to `\uXXXX` form. Trying to match Newtonsoft byte-for-byte
+without changing the encoder produces `"x😀y"` — different bytes,
+different length, breaks any client that compares wire output byte-equally.
+
+**Mandate for Phase 4:** the STJ converter set MUST be registered against a
+`JsonSerializerOptions` whose `Encoder` is set to
+`System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping`. This is
+non-negotiable for byte-compat with the current wire format.
+
+Side-effect: control characters (` `..``) are still escaped under
+`UnsafeRelaxedJsonEscaping` (verified — `"a b"` serialises to
+`"a b"` with the literal escape). Phase 2 test `string with control char
+(null)` confirms.
+
+### 10.2 `DateTimeKind.Unspecified` is NOT silently promoted to UTC — comment is misleading
+
+Empirical: `serialize (DateTime(2024,1,15,12,30,45,DateTimeKind.Unspecified))`
+→ `"2024-01-15T12:30:45.0000000"` (no `Z` suffix).
+
+The writer logic at [FableConverter.fs:410](Fable.Remoting.Json/FableConverter.fs#L410) is:
+
+```fsharp
+let universalTime = if dt.Kind = DateTimeKind.Local then dt.ToUniversalTime() else dt
+```
+
+— so Unspecified passes through unchanged. The subsequent
+`universalTime.ToString("O")` then emits no suffix because `DateTimeKind.Unspecified`
+in `"O"` (round-trip) format produces neither `Z` nor `+offset`. The comment on
+the preceding line says "Override .ToUniversalTime() behavior and assume
+DateTime.Kind = Unspecified as UTC values on serialization" — that comment is
+about *deserialisation* behaviour (interpreting an incoming
+Kind-less DateTime as UTC), not about the wire output. The wire output for
+Unspecified DateTimes is the local-time ISO string with no zone marker.
+
+**Implication for Phase 4:** the STJ DateTime converter must replicate this
+three-way branching:
+- `Local` → `.ToUniversalTime()` → `.ToString("O")` → emits `Z`
+- `Utc` → `.ToString("O")` → emits `Z`
+- `Unspecified` → `.ToString("O")` → emits no zone
+
+The DateTime branch is NOT just "convert to UTC and format `O`" — it preserves
+the Unspecified-ness on the wire, which any downstream client that parses with
+`DateTimeStyles.RoundtripKind` will then receive as Unspecified again.
+
+### 10.3 Map<NonStringKey, _> writes property names that contain escaped quotes
+
+Empirical:
+- `serialize (Map.ofList [Color.Red, 10; Color.Blue, 20])` →
+  `{"\"Red\"":10,"\"Blue\"":20}` (the property name string is literally
+  `"Red"` — quote characters and all, JSON-escaped to `\"Red\"`).
+- `serialize (Map.ofList [guidLiteral, 1])` →
+  `{"\"12345678-1234-5678-1234-567812345678\"":1}` (same shape, Guid serialises
+  as a JSON string, the surrounding quotes become part of the property name).
+
+This is technically valid JSON but it's the kind of shape a human looking at a
+wire dump would suspect of being a bug. The deserialise path is symmetric
+([FableConverter.fs:196-205](Fable.Remoting.Json/FableConverter.fs#L196-L205))
+and also accepts the cleaner shape `{"Red": 10}` — that's the test at
+[FableConverterTests.fs:366-369](Fable.Remoting.Json.Tests/FableConverterTests.fs#L366-L369),
+which deserialises but does NOT round-trip. The serialise path always emits the
+escaped-quote form.
+
+**No deviation needed for the STJ port** — the contract is "what Newtonsoft
+emits today", so the STJ writer must also emit `"\"Red\""` as the property
+name. Implementation note: use a `Utf8JsonWriter` `WritePropertyName(string)`
+overload that takes a raw string and the writer will JSON-escape the quotes
+automatically (verified Phase 2 — tests `Map<Color,int>` and `Map<Guid,int>`
+both pin this shape).
+
+### 10.4 Tuple-keyed maps produce array-shaped property names
+
+Empirical: `serialize (Map.ofList [(1,1), 1])` → `{"[1,1]":1}` — property name
+is the literal string `[1,1]` (the tuple's array form, with no surrounding
+quotes since tuples serialise as bare JSON arrays). Pins what
+[FableConverterTests.fs:142-146](Fable.Remoting.Json.Tests/FableConverterTests.fs#L142-L146)
+verifies on the read side.
+
+### 10.5 Test results — 153/153 pass
+
+The byte-compat suite now has 103 new pinning tests on top of the 50 pre-existing
+round-trip tests; all 153 pass against the current Newtonsoft implementation.
+The 103 new tests live in
+[Fable.Remoting.Json.Tests/WireFormatTests.fs](Fable.Remoting.Json.Tests/WireFormatTests.fs)
+grouped by Kind branch (primitives, longs/bigints, options, lists/arrays,
+tuples, records, unions, maps, sets, dates, combinations).
+
+### 10.6 `dotnet test` does NOT work for this suite — use `dotnet run`
+
+The brief said tests must "run via `dotnet test` and exit zero". The suite is
+an Expecto **console runner** (`<OutputType>Exe</OutputType>`,
+`runTests defaultConfig allTests` from `Program.fs`) and `dotnet test` will
+silently no-op against it (no VSTest test discovery). The correct invocation is:
+
+```
+dotnet run --project Fable.Remoting.Json.Tests/Fable.Remoting.Json.Tests.fsproj
+```
+
+Phase 6 verification commands should reflect this. (Re-shaping the runner to
+work with `dotnet test` would mean adding `Expecto.TestAdapter` + flipping the
+project to `Microsoft.NET.Test.Sdk` shape — out of scope; upstream chose the
+console-runner shape deliberately.)
+
