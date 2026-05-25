@@ -1187,6 +1187,154 @@ helper to opt in. That's still a follow-up PR's territory; the converter
 package's public surface (`FableConverters.create()`) is all those
 follow-ups would need.
 
+---
+
+## 15. Phase 4c — explicit null-handling coverage (2026-05-25)
+
+### 15.1 Motivation
+
+The byte-pin gallery had decent null coverage in passing — `None` across
+options, lists, maps, tuples; records with `Prop3 = None` — but no focused
+test list explicitly for null behaviour. Given this work was prompted by
+Fable's F# 10 nullable-reference-types rollout breaking the converter chain,
+the operator asked for explicit null-handling tests covering the corner
+cases that bite Fable apps in production.
+
+### 15.2 What's tested (32 new parameterized cases — both serializers)
+
+Serialise side (16 cases × 2 serializers = 32):
+
+- Top-level reference-typed nulls: `null : string`, `null : int[]`, `null : string[]`.
+- `Nullable<int>` with value and empty.
+- `Some null` for string (collapses to JSON null, indistinguishable from `None`).
+- Records with `null` reference fields (`{Name=null; Age=5}`).
+- Records where every reference field is null.
+- Records with `None` and `Some null` option fields (both → JSON null).
+- Lists / arrays containing `null` string elements.
+- `Map<string,string>` with null values.
+- Tuples with null string elements.
+- DU fields wrapping null strings: `Wrapped null`, `Two(5, null)`.
+
+Deserialise side (10 cases × 2 serializers = 20):
+
+- `"null"` → null for string, string array.
+- `"null"` → null reference for record and DU (Unchecked.defaultof for ref types).
+- `"null"` → `None` for option.
+- `"null"` → empty `Nullable<T>`.
+- Object with null field → record with null reference field and `None` option field.
+- Array with null elements → string list with nulls.
+- Object with null value → `Map<string,string>` with null value.
+- `"null"` → null for `int list` and `Set<int>` (both reference-typed wrappers).
+
+All 52 of these pass byte-equally (and behaviour-equally) between Newtonsoft and STJ.
+
+### 15.3 Pre-existing Newtonsoft bug surfaced
+
+`JsonConvert.DeserializeObject<Map<string,int>>("null", FableJsonConverter())`
+crashes with `InvalidCastException` against the existing Newtonsoft
+converter. The crash site is
+[FableConverter.fs:669](Fable.Remoting.Json/FableConverter.fs#L669) — the
+`Kind.MapWithStringKey` else-branch (the array-of-pairs fallback) reads:
+
+```fsharp
+| true, Kind.MapWithStringKey ->
+    if reader.TokenType = JsonToken.StartObject then
+        // ... happy path
+    else
+        // map is encoded as [ [key, value] ] => rewrite as { key: value }
+        let tuplesArray = serializer.Deserialize<JToken>(reader) :?> JArray
+```
+
+The `else` branch has no `JsonToken.Null` guard. When the input is `null`,
+`serializer.Deserialize<JToken>(reader)` returns a `JValue` (a wrapper for
+the null JSON value), which then fails to cast to `JArray` →
+`InvalidCastException`.
+
+**The STJ port doesn't share the bug.** `FSharpMapStringKeyConverter` is a
+`JsonConverter<Map<string,V>>`. STJ's default `HandleNull = false` for
+reference-typed converters means the framework returns null directly for
+`null` token, **without invoking the converter at all**. No code path to
+crash on.
+
+The same applies to `FSharpMapNonStringKeyConverter` (covers `Map<K,V>`
+where K ≠ string).
+
+### 15.4 STJ-only test documenting the fix
+
+[`StjWireFormatTests.fs`](Fable.Remoting.Json.Tests/StjWireFormatTests.fs)
+carries a `stjFixesNewtonsoftNullBug` test list that exercises the cases
+Newtonsoft crashes on:
+
+```fsharp
+testCase "deserialise null → Map<string,int> null (Newtonsoft crashes here)" <| fun () ->
+    let m = stjSerializer.Deserialize<Map<string, int>> "null"
+    Expect.isNull (box m) "STJ returns null reference, no crash"
+```
+
+Two cases: `Map<string,int>` and `Map<Color,int>` (covering both the
+string-key and non-string-key paths through STJ).
+
+This test is **STJ-only** — it can't run through the parameterized
+gallery because the Newtonsoft side errors. The PR description should
+flag this as an unintentional improvement (a fix for a pre-existing bug
+the Newtonsoft converter has carried for a while).
+
+The bug doesn't bite consumers who never send `null` for a Map field on
+the wire, which is presumably why it's gone unreported. Fable clients
+that serialise `None` for an `Option<Map<...>>` would hit it, though —
+worth a heads-up to the maintainer in the upstream issue.
+
+### 15.5 Why F# can't construct null records / DUs in test fixtures
+
+F# blocks `null` as a literal for non-nullable record and DU types — that's
+part of the language's safety contract:
+
+```fsharp
+let r : StringRecord = null   // FS0043: type 'StringRecord' does not have 'null' as a proper value
+```
+
+So tests can't directly exercise `pin s "null" (null : MyRecord)`. The
+runtime path is still exercised on the deserialise side: when JSON `null`
+is read for a record type, the converter returns `Unchecked.defaultof<T>`,
+which **is** null for class types — that's how F# would represent the
+runtime state of a "null record" if it ever existed. The deserialise-side
+tests above verify this.
+
+### 15.6 Test matrix after Phase 4c
+
+```
+50  pre-existing converter round-trip tests (Newtonsoft)        — all green
+129 Phase 2 byte-pin tests (Newtonsoft) — 103 wire + 26 null     — all green
+23  Phase 3 STJ union prototype tests                            — all green
+129 Phase 4 STJ wire-format tests (parallel matrix)              — all green
+2   Phase 4c STJ-only null-bug-fix tests                         — all green
+18  Phase 4b STJ HTTP integration tests (Giraffe)                — all green
+---
+337 Fable.Remoting.Json.Tests                                   ✅
+30  Fable.Remoting.Server.Tests                                 ✅
+55  Fable.Remoting.MsgPack.Tests                                ✅
+28  Fable.Remoting.Suave.Tests                                  ✅
+114 Fable.Remoting.Giraffe.Tests                                ✅
+77  Fable.Remoting.Falco.Tests                                  ✅
+---
+641/641 pass
+```
+
+### 15.7 ISerializer extended with Deserialize
+
+`WireFormatTests.fs` adds a `Deserialize<'a>` method to `ISerializer` so
+deserialise-null tests share the same test list across both serializers:
+
+```fsharp
+type ISerializer =
+    abstract member Serialize<'a> : value: 'a -> string
+    abstract member Deserialize<'a> : json: string -> 'a
+```
+
+Both Newtonsoft (`JsonConvert.DeserializeObject<'a>(json, converter)`) and
+STJ (`JsonSerializer.Deserialize<'a>(json, options)`) provide it. The same
+parameterized gallery now covers both directions.
+
 
 
 

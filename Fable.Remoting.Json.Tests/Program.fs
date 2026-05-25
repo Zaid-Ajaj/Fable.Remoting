@@ -11,6 +11,7 @@ let allTests = testList "Fable.Remoting.Json tests" [
     wireFormatTests
     unionStjPrototypeTests
     stjWireFormatTests
+    stjFixesNewtonsoftNullBug
 ]
 
 [<EntryPoint>]
