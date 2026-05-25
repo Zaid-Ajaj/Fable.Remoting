@@ -154,7 +154,19 @@ module private ReflectionHelpers =
             false
 
     let getUnionKind (t: Type) =
-        t.GetCustomAttributes(false)
+        // F# emits each union case as a nested subtype of the DU. For a
+        // value `PojoOne 42` of type `PojoDU`, `value.GetType()` is
+        // `PojoDU+PojoOne`, NOT `PojoDU`. The [<Fable.Core.Pojo>] and
+        // [<Fable.Core.StringEnum>] attributes are applied to the DU type
+        // and are NOT inherited by the case subtypes — so reading attributes
+        // from the case subtype always misses them. Normalise to the
+        // declaring (canonical) DU type first.
+        let canonicalT =
+            if FSharpType.IsUnion(t, bindingFlags) then
+                FSharpType.GetUnionCases(t, bindingFlags).[0].DeclaringType
+            else
+                t
+        canonicalT.GetCustomAttributes(false)
         |> Array.tryPick (fun o ->
             match o.GetType().FullName with
             | "Fable.Core.PojoAttribute" -> Some Kind.PojoDU

@@ -279,6 +279,19 @@ type FSharpUnionConverter<'T>() =
         | other ->
             failwithf "Unexpected token %A when reading union %s" other typeof<'T>.FullName
 
+/// Detect Fable.Core.PojoAttribute / StringEnumAttribute on a type without
+/// requiring a reference to Fable.Core (matches by attribute FullName, same
+/// approach as the Newtonsoft path's `getUnionKind` at
+/// FableConverter.fs:156-163).
+module private UnionAttributes =
+    let hasPojoAttribute (t: Type) =
+        t.GetCustomAttributes(false)
+        |> Array.exists (fun a -> a.GetType().FullName = "Fable.Core.PojoAttribute")
+
+    let hasStringEnumAttribute (t: Type) =
+        t.GetCustomAttributes(false)
+        |> Array.exists (fun a -> a.GetType().FullName = "Fable.Core.StringEnumAttribute")
+
 type FSharpUnionConverterFactory() =
     inherit JsonConverterFactory()
 
@@ -286,11 +299,130 @@ type FSharpUnionConverterFactory() =
         t.Name <> "FSharpList`1"
         && t.Name <> "FSharpOption`1"
         && FSharpType.IsUnion(t, UnionReflection.bindingFlags)
+        && not (UnionAttributes.hasPojoAttribute t)
+        && not (UnionAttributes.hasStringEnumAttribute t)
 
     override _.CanConvert(typeToConvert: Type) = isUnionTypeWeConvert typeToConvert
 
     override _.CreateConverter(typeToConvert: Type, _options: JsonSerializerOptions) =
         let converterType = typedefof<FSharpUnionConverter<_>>.MakeGenericType(typeToConvert)
+        Activator.CreateInstance(converterType) :?> JsonConverter
+
+// =============================================================================
+// F# `[<Fable.Core.Pojo>]` DU converter (Kind.PojoDU)
+// =============================================================================
+//
+// Wire format (matches FableJsonConverter.fs:425-434 byte-for-byte):
+//
+//   {"type": "<CaseName>", "<Field1>": <v1>, "<Field2>": <v2>, ...}
+//
+// "type" is the case discriminator; remaining keys are the union case's
+// declared field names (from FSharpType.GetUnionCases(t).[i].GetFields()).
+
+type FSharpPojoDUConverter<'T>() =
+    inherit JsonConverter<'T>()
+
+    let info = UnionReflection.getInfo typeof<'T>
+    let [<Literal>] PojoDuTag = "type"
+
+    override _.Write(writer: Utf8JsonWriter, value: 'T, options: JsonSerializerOptions) =
+        let case = info.Cases.[info.TagReader (box value)]
+        writer.WriteStartObject()
+        writer.WriteString(PojoDuTag, case.Uci.Name)
+        match case.FieldReader with
+        | ValueNone -> ()
+        | ValueSome reader ->
+            let fields = reader (box value)
+            let fieldInfos = case.Uci.GetFields()
+            for i in 0 .. fields.Length - 1 do
+                writer.WritePropertyName(fieldInfos.[i].Name)
+                JsonSerializer.Serialize(writer, fields.[i], case.FieldTypes.[i], options)
+        writer.WriteEndObject()
+
+    override _.Read(reader: byref<Utf8JsonReader>, _: Type, options: JsonSerializerOptions) =
+        match reader.TokenType with
+        | JsonTokenType.Null -> Unchecked.defaultof<'T>
+        | JsonTokenType.StartObject ->
+            use doc = JsonDocument.ParseValue(&reader)
+            let root = doc.RootElement
+            match root.TryGetProperty(PojoDuTag) with
+            | true, typeElement ->
+                let caseName = typeElement.GetString()
+                let case =
+                    match info.CaseByName.TryGetValue(caseName) with
+                    | true, c -> c
+                    | false, _ ->
+                        failwithf "Unknown PojoDU case '%s' for union type %s" caseName typeof<'T>.FullName
+                let values =
+                    case.Uci.GetFields()
+                    |> Array.mapi (fun i fi ->
+                        match root.TryGetProperty(fi.Name) with
+                        | true, fieldEl -> fieldEl.Deserialize(case.FieldTypes.[i], options)
+                        | false, _ -> null)
+                case.Constructor values :?> 'T
+            | false, _ ->
+                failwithf "PojoDU JSON missing 'type' discriminator for %s" typeof<'T>.FullName
+        | other ->
+            failwithf "Unexpected token %A when reading PojoDU %s" other typeof<'T>.FullName
+
+type FSharpPojoDUConverterFactory() =
+    inherit JsonConverterFactory()
+
+    override _.CanConvert(t: Type) =
+        FSharpType.IsUnion(t, UnionReflection.bindingFlags) && UnionAttributes.hasPojoAttribute t
+
+    override _.CreateConverter(t: Type, _options: JsonSerializerOptions) =
+        let converterType = typedefof<FSharpPojoDUConverter<_>>.MakeGenericType(t)
+        Activator.CreateInstance(converterType) :?> JsonConverter
+
+// =============================================================================
+// F# `[<Fable.Core.StringEnum>]` DU converter (Kind.StringEnum)
+// =============================================================================
+//
+// Wire format (matches FableJsonConverter.fs:444-450 byte-for-byte):
+//
+//   "<caseName>"   — default: case name with first char lowercased
+//   "<compiled>"   — if the case has [<CompiledName "...">], that override
+//
+// Reader accepts either shape (CompiledName override + lowercased convention).
+
+type FSharpStringEnumConverter<'T>() =
+    inherit JsonConverter<'T>()
+
+    let info = UnionReflection.getInfo typeof<'T>
+
+    let nameForCase (uci: UnionCaseInfo) =
+        match uci.GetCustomAttributes(typeof<CompiledNameAttribute>) with
+        | [| :? CompiledNameAttribute as att |] -> att.CompiledName
+        | _ -> uci.Name.Substring(0, 1).ToLowerInvariant() + uci.Name.Substring(1)
+
+    override _.Write(writer: Utf8JsonWriter, value: 'T, _: JsonSerializerOptions) =
+        let case = info.Cases.[info.TagReader (box value)]
+        writer.WriteStringValue(nameForCase case.Uci)
+
+    override _.Read(reader: byref<Utf8JsonReader>, _: Type, _: JsonSerializerOptions) =
+        match reader.TokenType with
+        | JsonTokenType.Null -> Unchecked.defaultof<'T>
+        | JsonTokenType.String ->
+            let wire = reader.GetString()
+            let matched =
+                info.Cases
+                |> Array.tryFind (fun c -> nameForCase c.Uci = wire)
+            match matched with
+            | Some case -> case.Constructor [||] :?> 'T
+            | None ->
+                failwithf "Unknown StringEnum value '%s' for %s" wire typeof<'T>.FullName
+        | other ->
+            failwithf "Unexpected token %A when reading StringEnum %s" other typeof<'T>.FullName
+
+type FSharpStringEnumConverterFactory() =
+    inherit JsonConverterFactory()
+
+    override _.CanConvert(t: Type) =
+        FSharpType.IsUnion(t, UnionReflection.bindingFlags) && UnionAttributes.hasStringEnumAttribute t
+
+    override _.CreateConverter(t: Type, _options: JsonSerializerOptions) =
+        let converterType = typedefof<FSharpStringEnumConverter<_>>.MakeGenericType(t)
         Activator.CreateInstance(converterType) :?> JsonConverter
 
 // =============================================================================
@@ -1010,6 +1142,12 @@ module FableConverters =
         options.Converters.Add(FSharpTupleConverterFactory())
         options.Converters.Add(FSharpCliMutableRecordConverterFactory())
         options.Converters.Add(FSharpRecordConverterFactory())
+        // Pojo + StringEnum DU factories must come BEFORE the regular union
+        // factory so the attribute-tagged DUs are caught first (the regular
+        // union factory's CanConvert excludes them, but ordering guards
+        // against future factory edits that might forget the exclusion).
+        options.Converters.Add(FSharpPojoDUConverterFactory())
+        options.Converters.Add(FSharpStringEnumConverterFactory())
         options.Converters.Add(FSharpUnionConverterFactory())
 
         // Single-type converters — strings (raw UTF-8 passthrough), then numbers/dates.

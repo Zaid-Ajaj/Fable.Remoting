@@ -7,6 +7,7 @@
     <ProjectReference Include="..\Fable.Remoting.Json\Fable.Remoting.Json.fsproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FableCoreShim.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="FableConverterTests.fs" />
     <Compile Include="WireFormatTests.fs" />
