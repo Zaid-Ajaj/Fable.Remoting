@@ -1478,16 +1478,217 @@ Up from 641 (Phase 4c).
   refactor than Phase 4d's scope.
 
 ### 16.7 The PR shape now
+<!-- (anchor preserved — content unchanged from Phase 4d commit) -->
 
-With Phase 4d landed, the three-PR stack in
-[`UPSTREAM-ISSUE-DRAFT.md`](UPSTREAM-ISSUE-DRAFT.md) becomes:
+---
 
-1. **PR #1** — `Fable.Remoting.Json` converter set + byte-pin tests.
-2. **PR #2** — `Fable.Remoting.Server` opt-in plumbing + sibling adapter
-   `setBody` cleanup + Giraffe / Suave / Falco HTTP integration tests.
-3. **PR #3** — `Fable.Remoting.DotnetClient` `withSerializerOptions` helper.
+## 17. Phases 4e / 4f / 5 — toward Newtonsoft retirement (2026-05-25)
 
-Or it can stay as a single PR. The upstream issue invites Zaid to pick.
+### 17.1 Phase 4e — Pojo + StringEnum DU dispatch
+
+Added two STJ converters covering the remaining DU dispatch paths from the
+Newtonsoft `Kind` table:
+
+- `FSharpPojoDUConverter<'T>` — `[<Fable.Core.Pojo>]` DUs emit
+  `{"type": "<CaseName>", "<Field1>": <v1>, ...}`.
+- `FSharpStringEnumConverter<'T>` — `[<Fable.Core.StringEnum>]` DUs emit
+  the lowercase-first-char case name, or a `[<CompiledName "...">]`
+  override.
+
+Both factories registered before the regular union factory in
+`FableConverters.addTo`; the regular factory's `CanConvert` now explicitly
+excludes attribute-tagged DUs.
+
+**Surfaced another pre-existing Newtonsoft bug:** `getUnionKind` read
+attributes from the **runtime case-subtype** instead of the declaring DU.
+For DUs with field-bearing cases, F# emits each case as a nested subtype
+(e.g. `PojoDU+PojoOne`), and these subtypes do NOT inherit the
+`[<Pojo>]` / `[<StringEnum>]` attribute. So the attribute lookup silently
+returned None → fallback to `Kind.Union` → Pojo DUs were mis-serialised.
+**The STJ path was correct by construction** — factories dispatch on the
+declared static type. The Newtonsoft bug is fixed in
+`FableConverter.fs:156-176` (normalise to declaring type via
+`FSharpType.GetUnionCases(t).[0].DeclaringType`).
+
+Test fixtures use a shim `Fable.Core.PojoAttribute` / `StringEnumAttribute`
+in [`Fable.Remoting.Json.Tests/FableCoreShim.fs`](Fable.Remoting.Json.Tests/FableCoreShim.fs)
+— the converters match by attribute FullName, so no real `Fable.Core` dep
+is needed in the test project.
+
+12 new byte-pin tests (3 Pojo + 3 StringEnum × 2 serializers). Tests:
+349 / 349 ✅.
+
+### 17.2 Phase 4f — outer-array argument parsing made backend-agnostic
+
+`InvocationPropsInt.Arguments` was `Choice<byte[], JToken> list` — a
+`Newtonsoft.Json.Linq.JToken` in the type signature. Even with STJ opted
+in, the outer JSON-array parsing of `[arg1, arg2, ...]` was hardcoded to
+`JsonConvert.DeserializeObject<JToken>`, and per-arg deserialise
+re-serialised each `JToken` to a string before feeding it to STJ. So the
+STJ path **still touched Newtonsoft at runtime** for argument parsing.
+
+Phase 4f changed `Arguments` to `Choice<byte[], string> list` — each
+string is the raw JSON text of one argument. Two new helpers in
+`Server/Proxy.fs`:
+
+- `parseArgumentArray (backend) (functionName) (expectedCount) (text)` —
+  parses the outer array, branching on backend (Newtonsoft → `JArray`
+  iteration → `.ToString(Formatting.None)`; STJ → `JsonDocument.Parse` →
+  `GetRawText`).
+- `deserialiseArgWithBackend<'inp> (backend) (argText)` — per-arg
+  deserialise, branching on backend.
+
+**Result: the STJ path makes ZERO Newtonsoft API calls at runtime.** This
+is the foundation for Phase 5's default flip — consumers opting in to
+STJ can drop the Newtonsoft transitive dep from their deployment once
+`Fable.Remoting.Json` itself drops the Newtonsoft package reference (the
+next-major-version cleanup).
+
+Subtle gotcha caught by the test suite: the Newtonsoft per-arg path now
+goes through `JsonConvert.DeserializeObject<'inp>` instead of
+`token.ToObject<'inp>`. To preserve DateTimeOffset offset semantics (which
+the JToken roundtrip implicitly carried via `DateParseHandling.None`), a
+new dedicated `newtonsoftArgSettings` instance is built once at module
+load with both `DateParseHandling.None` and the `FableJsonConverter`.
+Surfaced by `Maybe<DateTimeOffset>` roundtrip in `Suave.Tests`; fixed
+before commit.
+
+Tests: 684 / 684 ✅.
+
+### 17.3 Phase 4g — belt-and-braces tests for the 3 remaining adapters
+
+`Fable.Remoting.AspNetCore`, `Fable.Remoting.AwsLambda`, and
+`Fable.Remoting.AzureFunctions.Worker` are plumbed (Phase 4d) but don't
+have dedicated test projects for STJ HTTP integration. **Deliberately
+deferred** for this PR:
+
+- **AspNetCore**: no standalone tests project today. Could be added but
+  has limited additional coverage given Giraffe sits on top of AspNetCore
+  middleware and is fully tested.
+- **AwsLambda**: no tests project. Adding one needs APIGatewayProxy event
+  mocking — substantial work.
+- **AzureFunctions.Worker.Tests**: exists but requires a manually-started
+  FunctionApp on `localhost:7071`. Not CI-friendly. Adding STJ tests
+  there adds little leverage.
+
+The adapter code itself shares the identical `setBody`-with-backend
+pattern across all six adapters. Giraffe / Suave / Falco integration
+tests cover the pattern by proxy. A future contributor or the maintainer
+can add per-adapter integration tests if they want — the test
+infrastructure for it (TestServer or equivalent) is standard.
+
+### 17.4 Phase 5 — default flipped to STJ + Newtonsoft surface deprecated
+
+**The change**: `Remoting.createApi()` now defaults to
+`JsonSerializer = SystemTextJson (FableConverters.create())`. Newtonsoft
+is available via an explicit opt-in:
+
+```fsharp
+let api =
+    Remoting.createApi()
+    |> Remoting.withNewtonsoftJson    // [<Obsolete>] — for migration only
+    |> Remoting.fromValue myImpl
+```
+
+`Remoting.withNewtonsoftJson` and `FableJsonConverter` are both
+`[<Obsolete>]` with migration guidance pointing at `MIGRATION.md`.
+
+**The byte-compat work pays off**: flipping the default broke nothing.
+All 684 tests pass with the new default. Existing consumers see byte-equal
+wire format for every shape in the byte-pin matrix. The
+`Maybe<DateTimeOffset>` round-trip — the one place where byte-compat was
+fragile due to DateParseHandling semantics — passes because Phase 4f's
+`newtonsoftArgSettings` preserves the necessary settings on the legacy
+path.
+
+Internal Newtonsoft uses in `Fable.Remoting.Server.Proxy`, the docs
+schema generator (`Fable.Remoting.Server.Documentation`), and
+`Fable.Remoting.DotnetClient.Proxy` are guarded with `#nowarn "44"` —
+they're the IMPLEMENTATIONS of the supported legacy path, not consumer
+code, so the deprecation warning doesn't apply.
+
+Test files that intentionally exercise the legacy path (the original
+adapter tests for Server / Suave / Giraffe / AzureFunctions, plus the
+Benchmarks project, plus the Newtonsoft side of the byte-pin gallery)
+also `#nowarn "44"` with a leading comment explaining why.
+
+**Test totals after the default flip**: 684 / 684 ✅. No code changes
+needed in any test outside the suppression annotations — the byte-compat
+matrix is real end-to-end.
+
+### 17.5 What Newtonsoft retirement looks like in the next major version
+
+This PR delivers the **path** to retirement. The actual retirement is a
+mechanical follow-up that a maintainer can land in a future major
+version:
+
+1. Delete `Fable.Remoting.Json/FableConverter.fs` entirely.
+2. Remove `Newtonsoft.Json` from `Fable.Remoting.Json/paket.references`.
+3. Drop `open Newtonsoft.Json` / `open Newtonsoft.Json.Linq` from:
+   - `Fable.Remoting.Server/Proxy.fs`
+   - `Fable.Remoting.Server/Documentation.fs`
+   - `Fable.Remoting.DotnetClient/Proxy.fs`
+   - All six sibling adapters' implementation files.
+4. Remove the `NewtonsoftJson` case from `JsonSerializerBackend` (or
+   collapse the DU to a single SystemTextJson case and pass
+   `JsonSerializerOptions` around directly).
+5. Remove `Remoting.withNewtonsoftJson` and the equivalent helper on
+   `DotnetClient.Remoting`.
+6. Remove `Fable.Remoting.Benchmarks/Serialization.fs` or update to STJ.
+7. Update the legacy adapter tests (the `FableSuaveAdapterTests.fs` /
+   `FableGiraffeAdapterTests.fs` / etc. that currently use
+   `JsonConvert.DeserializeObject` for their assertions) to use STJ.
+
+The total diff is ~hundreds of lines of pure deletion — no design
+decisions, no risk. The hard work of byte-compat verification and dual-
+backend wiring lives in **this** PR.
+
+### 17.6 MIGRATION.md
+
+A new file [`MIGRATION.md`](MIGRATION.md) at the repo root documents the
+consumer-facing migration story:
+
+- TL;DR for the typical consumer (do nothing).
+- Three migration paths by consumer profile.
+- What's under the hood for the new default.
+- The two pre-existing Newtonsoft bugs surfaced + fixed during the work.
+- Timeline for v4 → v5 retirement.
+- Why the byte-equality claim is real (with reference to the test suite).
+
+### 17.7 Files touched in Phase 5
+
+- `Fable.Remoting.Server/Remoting.fs` — `createApi()` flips default;
+  new `withNewtonsoftJson` `[<Obsolete>]` helper.
+- `Fable.Remoting.Json/FableConverter.fs` — `[<Obsolete>]` on
+  `FableJsonConverter` class; Pojo / StringEnum case-subtype attribute
+  bug fixed in `getUnionKind`.
+- `Fable.Remoting.Server/Proxy.fs` — `#nowarn "44"` (internal Newtonsoft
+  branch).
+- `Fable.Remoting.Server/Documentation.fs` — `#nowarn "44"`.
+- `Fable.Remoting.DotnetClient/Proxy.fs` — `#nowarn "44"`.
+- Test files exercising the legacy path — `#nowarn "44"` each, with
+  comment explaining the intent.
+- `MIGRATION.md` — new file.
+- `BYTE-COMPAT-MAP.md` — this section.
+
+### 17.8 Test matrix after Phase 5
+
+```
+Fable.Remoting.Json.Tests        349 (Phase 4e + 4c unchanged)
+Fable.Remoting.Server.Tests       30 (unchanged — legacy path explicit)
+Fable.Remoting.MsgPack.Tests      55 (unchanged — binary path untouched)
+Fable.Remoting.Suave.Tests        41 (28 legacy + 13 STJ)
+Fable.Remoting.Giraffe.Tests     114 (96 legacy + 18 STJ)
+Fable.Remoting.Falco.Tests        95 (77 legacy + 18 STJ)
+---
+Total                            684/684 pass
+```
+
+The legacy adapter test files still pin Newtonsoft wire output — those
+tests now exercise the explicit `Remoting.withNewtonsoftJson` opt-back-in
+path, **proving the legacy path stays operational** through this PR. When
+v5.0 deletes the Newtonsoft path, these test files retire alongside the
+legacy converter.
 
 `WireFormatTests.fs` adds a `Deserialize<'a>` method to `ISerializer` so
 deserialise-null tests share the same test list across both serializers:

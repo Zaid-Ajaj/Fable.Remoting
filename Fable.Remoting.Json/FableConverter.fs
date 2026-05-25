@@ -341,6 +341,18 @@ type InternalLong = { high : int; low: int; unsigned: bool }
 /// Converts F# options, tuples and unions to a format understandable
 /// by Fable. Code adapted from Lev Gorodinski's original.
 /// See https://goo.gl/F6YiQk
+///
+/// **DEPRECATED**: this is the legacy Newtonsoft.Json converter. The default
+/// serializer for `Fable.Remoting.Server.Remoting.createApi()` is now
+/// `Fable.Remoting.Json.SystemTextJson.FableConverters.create()` — a
+/// byte-equivalent System.Text.Json converter set. New code should not
+/// reference `FableJsonConverter` directly; pipe through
+/// `Remoting.withSerializerOptions` (or accept the new default).
+///
+/// This class will be removed in a future major version when the
+/// `Newtonsoft.Json` package reference is dropped from `Fable.Remoting.Json`.
+/// See MIGRATION.md for the migration path.
+[<System.Obsolete "Use Fable.Remoting.Json.SystemTextJson.FableConverters.create() — produces byte-equal wire output via System.Text.Json with no Newtonsoft.Json transitive dep. See MIGRATION.md.">]
 type FableJsonConverter() =
     inherit Newtonsoft.Json.JsonConverter()
 

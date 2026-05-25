@@ -1,5 +1,9 @@
 ﻿module FableGiraffeAdapterTests
 
+// Legacy Newtonsoft Giraffe adapter tests. The STJ default path is exercised
+// separately in StjHttpIntegrationTests.fs (Phase 4b).
+#nowarn "44"
+
 open System
 open System.Net.Http
 open System.IO

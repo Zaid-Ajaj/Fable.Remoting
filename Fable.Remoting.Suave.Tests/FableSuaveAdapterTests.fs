@@ -1,5 +1,10 @@
 ﻿module FableSuaveAdapterTests
 
+// Legacy Newtonsoft adapter tests — kept to verify the legacy path remains
+// operational after the STJ-default flip. Phase 4d's STJ Suave HTTP tests
+// (StjHttpIntegrationTests.fs) exercise the new default path.
+#nowarn "44"
+
 open Fable.Remoting.Server
 open Fable.Remoting.Suave
 open Fable.Remoting.Json

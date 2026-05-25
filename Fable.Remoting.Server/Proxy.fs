@@ -1,5 +1,13 @@
 ﻿module Fable.Remoting.Server.Proxy
 
+// This module is the INTERNAL implementation of both serializer paths. It
+// uses `Fable.Remoting.Json.FableJsonConverter` (deprecated) for the
+// Newtonsoft branch the consumer opted into via `Remoting.withNewtonsoftJson`.
+// External consumers see the deprecation warning if they touch the type
+// directly; the internal Newtonsoft branch is a supported legacy path until
+// the next major version, so suppress here.
+#nowarn "44"
+
 open Fable.Remoting.Json
 open Newtonsoft.Json
 open TypeShape

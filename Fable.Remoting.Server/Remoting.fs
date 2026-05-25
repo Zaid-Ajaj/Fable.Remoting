@@ -1,10 +1,23 @@
 ﻿namespace Fable.Remoting.Server
 
-module Remoting = 
-    
+module Remoting =
+
     let documentation (name: string) (routes: RouteDocs list) : Documentation = Documentation (name, routes)
 
-    /// Starts with the default configuration for building an API
+    /// Starts with the default configuration for building an API.
+    ///
+    /// **Default JSON serializer is now System.Text.Json** (since the
+    /// Newtonsoft-retirement work). The wire format is byte-equal to the
+    /// previous Newtonsoft default — verified by 349 byte-pin tests in
+    /// `Fable.Remoting.Json.Tests/WireFormatTests.fs` running the same
+    /// assertions against both serializers. Existing Fable / DotnetClient
+    /// clients see no change in the bytes they read on the wire.
+    ///
+    /// To opt back into Newtonsoft.Json (e.g. during migration), pipe
+    /// through `Remoting.withNewtonsoftJson`. That helper is marked
+    /// `[<Obsolete>]` — it will be removed in a future major version when
+    /// the legacy Newtonsoft path is deleted from `Fable.Remoting.Json`
+    /// entirely.
     let createApi()  =
         { Implementation = Empty
           RouteBuilder = sprintf "/%s/%s"
@@ -12,7 +25,7 @@ module Remoting =
           DiagnosticsLogger = None
           Docs = None, None
           ResponseSerialization = Json
-          JsonSerializer = NewtonsoftJson
+          JsonSerializer = SystemTextJson (Fable.Remoting.Json.SystemTextJson.FableConverters.create())
           RmsManager = None }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -54,6 +67,15 @@ module Remoting =
     /// ```
     let withSerializerOptions (jsonOptions: System.Text.Json.JsonSerializerOptions) (options: RemotingOptions<'t, 'implementation>) =
         { options with JsonSerializer = SystemTextJson jsonOptions }
+
+    /// Opt back into the legacy Newtonsoft.Json serializer path. Useful for
+    /// migration — pin an API to the old serializer while you verify the
+    /// STJ path is byte-equal in your specific deployment. Will be removed
+    /// in a future major version along with the Newtonsoft converter and
+    /// the transitive Newtonsoft package reference.
+    [<System.Obsolete "The Newtonsoft.Json path is deprecated and will be removed in a future major version. The new default (System.Text.Json with Fable.Remoting.Json.SystemTextJson.FableConverters.create()) produces byte-equal wire output. See MIGRATION.md for the migration path.">]
+    let withNewtonsoftJson (options: RemotingOptions<'t, 'implementation>) =
+        { options with JsonSerializer = NewtonsoftJson }
 
     /// Enables you to provide your own instance of a recyclable memory stream manager
     let withRecyclableMemoryStreamManager rmsManager options =

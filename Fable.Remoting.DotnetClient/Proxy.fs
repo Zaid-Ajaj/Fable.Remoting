@@ -1,5 +1,11 @@
 namespace Fable.Remoting.DotnetClient
 
+// Internal Newtonsoft branch implementation — `FableJsonConverter` is
+// deprecated for external consumers; here it's the supported legacy path
+// triggered via the default (when no JsonSerializerOptions are passed) and
+// will be removed in the next major version.
+#nowarn "44"
+
 open Fable.Remoting.Json
 open Newtonsoft.Json
 open System.Net.Http
