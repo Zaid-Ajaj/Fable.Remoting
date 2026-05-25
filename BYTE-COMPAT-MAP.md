@@ -684,6 +684,210 @@ Phase 4 will lift the test count substantially: every Phase 2 pin gets a
 parallel STJ assertion (parameterise the serializer per fixture), and the four
 additional reader input shapes get explicit Phase-4 read tests.
 
+---
+
+## 12. Phase 4 — full STJ converter set + parallel test matrix (2026-05-25)
+
+### 12.1 Final converter inventory
+
+[FableSystemTextJsonConverter.fs](Fable.Remoting.Json/FableSystemTextJsonConverter.fs)
+now contains the full STJ converter set covering every Kind branch the
+Newtonsoft path exercises (excluding PojoDU and StringEnum — see §12.6):
+
+| Converter | Kind branch (Newtonsoft) | Wire-format role |
+|---|---|---|
+| `FSharpUnionConverter<'T>` + factory | `Kind.Union` | DU dispatch; writer + 5-shape reader |
+| `FSharpOptionConverter<'T>` + factory | `Kind.Option` | `Some x` → `x`; `None` → null |
+| `FSharpTupleConverter<'T>` + factory | `Kind.Tuple` | `(a,b,c)` → `[a,b,c]` |
+| `FSharpRecordConverter<'T>` + factory | `Kind.Other` (plain records) | declaration-ordered `{"F":v,...}` |
+| `FSharpCliMutableRecordConverter<'T>` + factory | `Kind.MutableRecord` | `GetProperties` order; null-valued props omitted |
+| `FSharpSetConverter<'T>` + factory | (was `Kind.Other`) | sorted JSON array |
+| `FSharpListConverter<'T>` + factory | (was `Kind.Other`) | JSON array, per-element typed dispatch |
+| `FSharpMapStringKeyConverter<'V>` + factory | `Kind.MapWithStringKey` | `{"k": v,...}` |
+| `FSharpMapNonStringKeyConverter<'K,'V>` + factory | `Kind.MapOrDictWithNonStringKey` | serialised key → property name (escaped-quotes pattern) |
+| `Int64Converter` | `Kind.Long` (`int64`) | `"+N"` string (signed) |
+| `UInt64Converter` | `Kind.Long` (`uint64`) | `"N"` string (unsigned) |
+| `BigIntConverter` | `Kind.BigInt` | string |
+| `DoubleConverter` | (was `Kind.Other`) | Newtonsoft-style `0.0` not `0` for whole values |
+| `StringConverter` | (was `Kind.Other`) | raw UTF-8 passthrough via `WriteRawValue` |
+| `DateTimeConverter` | `Kind.DateTime` | `"O"` format, three-way Kind branching |
+| `TimeSpanConverter` | `Kind.TimeSpan` | total milliseconds via Newtonsoft-style double format |
+| `DateOnlyConverter` | `Kind.DateOnly` | day number as JSON int |
+| `TimeOnlyConverter` | `Kind.TimeOnly` | ticks as JSON string |
+| `DataTableConverter` / `DataSetConverter` | `Kind.DataTable` / `Kind.DataSet` | `{"schema":xml,"data":xml}` |
+
+Plus the `FableConverters` setup module exposing:
+- `FableConverters.addTo(options: JsonSerializerOptions) : unit`
+- `FableConverters.create() : JsonSerializerOptions`
+
+Registration order matters in STJ — `FableConverters.addTo` adds factories in
+specificity order (Option → List → Set → MapStringKey → MapNonStringKey → Tuple
+→ CliMutableRecord → Record → Union), then the single-type converters
+(String → numbers → dates → DataSet).
+
+### 12.2 Surprises caught during Phase 4 implementation
+
+Four wire-format divergences surfaced when running the 103-pin gallery through
+the STJ serializer for the first time. Each one is now reproduced byte-equally
+by the converter set, but the divergences themselves are noteworthy for anyone
+maintaining the port:
+
+**12.2.1 STJ's `WriteNumberValue(double)` drops trailing zeros on whole values.**
+`0.0` writes as `"0"`, not `"0.0"`. Newtonsoft writes `"0.0"`. Same divergence
+applies to `TimeSpan` (which serialises as a double via `TotalMilliseconds`).
+**Fix**: explicit `DoubleConverter` that uses `value.ToString("R", ...)` plus a
+trailing `".0"` if the result has no decimal/exponent marker. The same helper
+(`DoubleFormat.newtonsoftStyle`) is used by `TimeSpanConverter`.
+
+This divergence affects `float`/`double` only — `decimal` round-trips
+correctly via STJ defaults because STJ preserves decimal trailing zeros.
+
+**12.2.2 `JavaScriptEncoder.UnsafeRelaxedJsonEscaping` still escapes
+supplementary-plane codepoints.** `"x😀y"` writes as `"x😀y"`
+(surrogate-pair escape) rather than the raw UTF-8 bytes Newtonsoft emits. This
+is despite the Microsoft docs claiming UnsafeRelaxedJsonEscaping permits all
+characters except those JSON specifically requires escaping. Verified
+empirically against .NET 9 runtime.
+
+`JavaScriptEncoder.Create(UnicodeRanges.All)` was tried as an alternative —
+it's strictly worse: it also escapes `+` to `+` and inline `"` to
+`"` instead of `\"`, breaking three more byte-pins.
+
+**Fix**: keep `UnsafeRelaxedJsonEscaping` as the default encoder (correct for
+99% of cases), but route all `string` serialisation through an explicit
+`StringConverter` that uses `Utf8JsonWriter.WriteRawValue` to bypass the
+encoder. The converter does its own RFC-8259-required escaping (`"`, `\`,
+control chars) and emits everything else as raw UTF-8 — surrogate pairs
+included.
+
+`WriteRawValue` with `skipInputValidation = true` is safe here because we
+build the JSON string by construction.
+
+**12.2.3 Map-with-non-string-key key serialisation needs its own
+`JsonWriterOptions`.** When the converter writes each key to a temporary
+`Utf8JsonWriter` to compute the property-name string, it needs to inherit the
+same `Encoder` setting from the parent options. The implementation copies
+`options.Encoder` into a `JsonWriterOptions` instance for the temp writer.
+Without this, the temp writer would default to escaping non-ASCII and
+produce different property-name bytes than Newtonsoft.
+
+**12.2.4 `DateTimeKind.Unspecified` test passes empty `'O'` format
+without surprise.** The DateTime converter's three-way branch (Local →
+`.ToUniversalTime()` → `Z`; Utc → `Z`; Unspecified → no zone) is implemented
+as documented in §10.2 and round-trips byte-equally. No new surprise here —
+just confirms the §10.2 finding holds for the STJ writer.
+
+### 12.3 Reader extensions for `FSharpUnionConverter` (Phase 3 defer)
+
+The Phase 3 prototype's reader handled only `Null` / `String` / single-property
+`StartObject`. Phase 4's reader handles all five shapes per §3.9:
+
+1. `JsonTokenType.Null` → default-of-T.
+2. `JsonTokenType.String` → no-field case by name.
+3. `JsonTokenType.StartObject` with `__typename` key + union-of-records →
+   case-insensitive `__typename` → case; whole root deserialises to the
+   single record field.
+4. `JsonTokenType.StartObject` with `tag` + `name` + `fields` keys (Fable
+   runtime form) → case = `name`; fields = elements of `fields` array.
+5. `JsonTokenType.StartObject` single-property (writer roundtrip).
+6. `JsonTokenType.StartArray` with `["<Case>", <f>, ...]`.
+
+Detection order matters: Fable-runtime shape (`tag`+`name`+`fields`) is
+checked first because it has the most-specific signature; then `__typename`
+(only for union-of-records, per the Newtonsoft path's `unionOfRecords`
+check); then single-property as the fallback.
+
+### 12.4 ISerializer abstraction — same gallery, two serializers
+
+[WireFormatTests.fs](Fable.Remoting.Json.Tests/WireFormatTests.fs) was
+refactored to a `buildWireFormatTests (label: string) (s: ISerializer)`
+function so the entire 103-test gallery runs against both serializers from a
+single source of truth. The Newtonsoft and STJ instantiations live at
+[WireFormatTests.fs:18-25](Fable.Remoting.Json.Tests/WireFormatTests.fs) and
+[StjWireFormatTests.fs:10-14](Fable.Remoting.Json.Tests/StjWireFormatTests.fs)
+respectively.
+
+The interface uses a generic method (`Serialize<'a>`) to preserve static type
+information at call sites — STJ's `JsonSerializer.Serialize<'a>(value,
+options)` overload then routes to the right typed converter.
+
+### 12.5 Test matrix after Phase 4
+
+```
+50  pre-existing converter round-trip tests (Newtonsoft)        — all green
+103 Phase 2 byte-pin tests (Newtonsoft)                          — all green
+23  Phase 3 STJ union prototype tests (13 writer + 10 reader)    — all green
+103 Phase 4 STJ wire-format tests (same gallery, STJ serializer) — all green
+---
+279/279 pass — byte-identical output across both serializers.
+```
+
+### 12.6 Pojo / StringEnum DU dispatch — deliberately deferred
+
+The Newtonsoft path has three union dispatch branches: `Kind.Union` (regular
+DUs), `Kind.PojoDU` (DUs tagged with `[<Fable.Core.Pojo>]`), and
+`Kind.StringEnum` (DUs tagged with `[<Fable.Core.StringEnum>]`). Phase 4 only
+implements `Kind.Union`.
+
+**Reason for deferral**:
+- No `[<Pojo>]` or `[<StringEnum>]` DUs exist in either the existing test
+  gallery or the Phase 2 byte-pin gallery — there's no client-emitted output
+  to byte-match against.
+- Adding test fixtures requires shim attributes (since this repo doesn't pull
+  `Fable.Core` as a paket dep), which adds complexity for an uncovered area.
+- These are Fable-client-specific concerns; server-side consumers
+  (`Fable.Remoting.Server`, `Fable.Remoting.DotnetClient`) rarely emit them.
+
+These two factories should land as a follow-up PR (or as part of the same PR
+if the maintainer wants them in scope). The implementation pattern would
+mirror the existing `FSharpUnionConverterFactory`, with the factory's
+`CanConvert` testing for the attribute via `getCustomAttributes` against the
+attribute's `FullName`. The writer wire formats are documented in §3.10
+(`Kind.PojoDU`) and §3.11 (`Kind.StringEnum`).
+
+### 12.7 Opt-in surface (Phase 5 effectively delivered)
+
+`FableConverters.create()` and `FableConverters.addTo(options)` are the
+user-facing opt-in for the STJ path. Newtonsoft remains the default — current
+consumers who don't touch the API see no change. STJ consumers opt in
+explicitly:
+
+```fsharp
+open Fable.Remoting.Json.SystemTextJson
+
+let myOptions = FableConverters.create()
+// ... pass myOptions to your HTTP layer (Fable.Remoting.Server / DotnetClient
+// / your own dispatcher) wherever it accepts a JsonSerializerOptions
+```
+
+The downstream packages (`Fable.Remoting.Server`, `Fable.Remoting.DotnetClient`,
+`Fable.Remoting.Giraffe`, etc.) currently hard-wire
+`JsonSerializerSettings + FableJsonConverter`. Plumbing STJ through their
+config surface is an explicit out-of-scope item per the task brief — it's a
+maintainer decision (one-line-touches per downstream package) and a follow-up
+PR. The base `Fable.Remoting.Json` package already exposes everything those
+plumbing PRs would need.
+
+### 12.8 Files touched in Phase 4
+
+- `Fable.Remoting.Json/FableSystemTextJsonConverter.fs` — extended from Phase 3
+  (180 lines → ~900 lines): all converter types, reflection caches for records
+  and tuples, encoder + string handling, `FableConverters` setup module.
+- `Fable.Remoting.Json/Fable.Remoting.Json.fsproj` — unchanged from Phase 3
+  (the file was already in the `<Compile>` list).
+- `Fable.Remoting.Json.Tests/WireFormatTests.fs` — refactored to extract
+  `buildWireFormatTests` parameterised by `ISerializer`.
+- `Fable.Remoting.Json.Tests/StjWireFormatTests.fs` — new; STJ instantiation
+  of the Phase 2 gallery.
+- `Fable.Remoting.Json.Tests/Fable.Remoting.Json.Tests.fsproj` — added the
+  new test file to `<Compile>`.
+- `Fable.Remoting.Json.Tests/Program.fs` — registered `stjWireFormatTests` in
+  the top-level test list.
+
+No edits to `FableConverter.fs` (the existing Newtonsoft path) — Phase 4 lives
+strictly alongside, parallel to the existing implementation. Opt-in only.
+
+
 
 The brief said tests must "run via `dotnet test` and exit zero". The suite is
 an Expecto **console runner** (`<OutputType>Exe</OutputType>`,
