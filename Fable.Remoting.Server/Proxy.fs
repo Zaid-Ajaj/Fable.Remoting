@@ -44,6 +44,48 @@ let jsonSerializeWithBackend (backend: JsonSerializerBackend) (o: 'a) (stream: S
     | SystemTextJson stjOptions ->
         System.Text.Json.JsonSerializer.Serialize<'a>(stream, o, stjOptions)
 
+/// Parse the outer arguments-array JSON text into a list of raw per-argument
+/// JSON strings, branching on backend. The result is backend-agnostic — any
+/// parser the per-argument deserialise path picks can re-parse each element's
+/// text. STJ consumers therefore exercise no Newtonsoft code path at runtime.
+let private parseArgumentArray (backend: JsonSerializerBackend) (functionName: string) (expectedArgCount: int) (text: string) : string list =
+    match backend with
+    | NewtonsoftJson ->
+        let token = JsonConvert.DeserializeObject<JToken>(text, settings)
+        if token.Type <> JTokenType.Array then
+            failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" functionName expectedArgCount
+        token :?> JArray
+        |> Seq.map (fun el -> el.ToString(Formatting.None))
+        |> Seq.toList
+    | SystemTextJson _ ->
+        use doc = System.Text.Json.JsonDocument.Parse(text)
+        if doc.RootElement.ValueKind <> System.Text.Json.JsonValueKind.Array then
+            failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" functionName expectedArgCount
+        doc.RootElement.EnumerateArray()
+        |> Seq.map (fun el -> el.GetRawText())
+        |> Seq.toList
+
+// Settings for per-argument Newtonsoft deserialisation. Mirrors the
+// `settings` value (DateParseHandling.None — required to preserve
+// DateTimeOffset original offsets) but also includes the FableJsonConverter
+// so F# types deserialise correctly. Constructed lazily once per process.
+let private newtonsoftArgSettings =
+    let s = JsonSerializerSettings(DateParseHandling = DateParseHandling.None)
+    s.Converters.Add(FableJsonConverter())
+    s
+
+/// Parse one already-extracted argument's raw JSON text into 'inp using the
+/// configured backend. STJ path doesn't touch Newtonsoft; Newtonsoft path
+/// uses the existing FableJsonConverter + DateParseHandling.None to preserve
+/// DateTimeOffset offsets and other date-handling semantics that the
+/// pre-Phase-4f JToken-based path inherited from the outer `settings`.
+let private deserialiseArgWithBackend<'inp> (backend: JsonSerializerBackend) (argText: string) : 'inp =
+    match backend with
+    | NewtonsoftJson ->
+        JsonConvert.DeserializeObject<'inp>(argText, newtonsoftArgSettings)
+    | SystemTextJson stjOptions ->
+        System.Text.Json.JsonSerializer.Deserialize<'inp>(argText, stjOptions)
+
 type private MsgPackSerializer<'a> =
     static let serializer = MsgPack.Write.makeSerializer<'a> ()
     static member Serialize (o, stream) = serializer.Invoke (o, stream)
@@ -92,8 +134,10 @@ let private readMultipartArgs props options = task {
             else
                 use sr = new StreamReader (section.Body)
                 let! text = sr.ReadToEndAsync ()
-                let token = JsonConvert.DeserializeObject<JToken> (text, settings)
-                parts.Add (Choice2Of2 token)
+                // Multipart JSON sections are single values (one argument per
+                // multipart part), so the section's text IS the raw JSON text
+                // for that argument — no outer array unwrap required.
+                parts.Add (Choice2Of2 text)
 
     return Seq.toList parts
 }
@@ -161,19 +205,14 @@ let rec private makeEndpointProxy<'fieldPart> (makeProps: MakeEndpointProps): 'f
 
                             let inp = box bytes :?> 'inp
                             outp (f inp) { props with Arguments = t }
-                        | Choice2Of2 json :: t ->
-                            let inp =
-                                match makeProps.JsonSerializer with
-                                | NewtonsoftJson ->
-                                    json.ToObject<'inp> fableSerializer
-                                | SystemTextJson stjOptions ->
-                                    // The outer argument array is still parsed via Newtonsoft into
-                                    // JTokens (see Proxy.fs:188); per-arg deserialisation routes
-                                    // through STJ by extracting the JToken's raw JSON and feeding it
-                                    // to JsonSerializer.Deserialize. Byte-equivalent input shapes
-                                    // produce byte-equivalent F# values via the matching converter
-                                    // set in Fable.Remoting.Json.SystemTextJson.
-                                    System.Text.Json.JsonSerializer.Deserialize<'inp>(json.ToString(Formatting.None), stjOptions)
+                        | Choice2Of2 argText :: t ->
+                            // Per-Phase 4f: argText is the raw JSON text for
+                            // this single argument. The outer array was
+                            // already parsed (in the request body parser or
+                            // multipart reader, branched on backend), so the
+                            // per-arg path is also fully backend-agnostic —
+                            // STJ consumers exercise no Newtonsoft code path.
+                            let inp = deserialiseArgWithBackend<'inp> makeProps.JsonSerializer argText
                             outp (f inp) { props with Arguments = t }
                         | [] when typeof<'inp> = typeof<unit> ->
                             let inp = box () :?> _
@@ -213,14 +252,12 @@ let makeApiProxy<'impl, 'ctx> (options: RemotingOptions<'ctx, 'impl>): Invocatio
                                     []
                                 else
                                     requestBodyText <- Some text
-                                    let token = JsonConvert.DeserializeObject<JToken> (text, settings)
-                                    if token.Type <> JTokenType.Array then
-                                        failwithf "The record function '%s' expected %d argument(s) to be received in the form of a JSON array but the input JSON was not an array" shape.MemberInfo.Name (flattenedTypes.Length - 1)
-
-                                    token
-                                    :?> JArray
-                                    |> Seq.map Choice2Of2
-                                    |> Seq.toList
+                                    parseArgumentArray
+                                        options.JsonSerializer
+                                        shape.MemberInfo.Name
+                                        (flattenedTypes.Length - 1)
+                                        text
+                                    |> List.map Choice2Of2
 
                             let props' = { Arguments = args; IsProxyHeaderPresent = props.IsProxyHeaderPresent; Output = props.Output }
                             return! fieldProxy (props.ImplementationBuilder () |> shape.Get) props'

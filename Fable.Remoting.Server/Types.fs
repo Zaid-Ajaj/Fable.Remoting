@@ -1,10 +1,9 @@
 namespace Fable.Remoting.Server
 
-open System 
+open System
 open FSharp.Reflection
 open TypeShape
 open System.IO
-open Newtonsoft.Json.Linq
 
 [<RequireQualifiedAccess>]
 module TypeInfo = 
@@ -73,8 +72,15 @@ type internal ShapeFSharpAsyncOrTask<'T> () =
     interface IShapeFSharpAsyncOrTask  with
         member _.Element = shapeof<'T> :> _
 
+/// One per-argument value passed from the HTTP layer into the proxy:
+///   * `Choice1Of2 bytes`  — binary input (multipart byte[] section)
+///   * `Choice2Of2 jsonText` — the raw JSON text of one element from the
+///     outer arguments array. Backend-agnostic by construction: any JSON
+///     parser the deserialise path picks can re-parse this text. Previously
+///     this carried a `Newtonsoft.Json.Linq.JToken`, which prevented STJ-only
+///     consumers from dropping the Newtonsoft transitive dep.
 type internal InvocationPropsInt = {
-    Arguments: Choice<byte[], JToken> list
+    Arguments: Choice<byte[], string> list
     IsProxyHeaderPresent: bool
     Output: Stream
 }
