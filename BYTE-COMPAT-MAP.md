@@ -1968,6 +1968,52 @@ Fable.Remoting.Falco.Tests       102
 Total                            725/725 pass
 ```
 
-IntegrationTests (the failing Fable browser run) re-verified against
-the AppVeyor CI on push — should now pass the same 218 tests that
-previously failed 9.
+IntegrationTests (the failing Fable browser run) verified locally
+**post-fix: 218/218 pass** (was 209/218 on AppVeyor build #747 with
+the 9 listed tests failing). The fix re-greens the entire matrix.
+
+### 19.6 Local repro recipe — running IntegrationTests headless
+
+The Phase 6 verification matrix only covered the .NET test suites
+(Json / Server / MsgPack / Suave / Giraffe / Falco); IntegrationTests
+require a Fable browser client + Puppeteer headless browser. The recipe
+takes ~5 min on first run (npm install + Chromium download), ~90 s
+thereafter:
+
+```powershell
+# One-line: build the Fable bundle + run UITests headless against it.
+dotnet run --project ./build/Build.fsproj -- IntegrationTests
+```
+
+Behind the scenes:
+
+1. **`ClientTests/`** — `dotnet restore` + `npm install` (caches under
+   `ClientTests/node_modules/`; ~325 packages, ~150 MB).
+2. **`ClientTests/`** — `npm run build` → `dotnet fable src --noCache
+   --define NAGAREYAMA && webpack-cli --mode production --config
+   webpack.nagareyama.js`. Emits
+   `Fable.Remoting.IntegrationTests/client-dist/bundle.js`.
+3. **`UITests/`** — `dotnet restore` + `dotnet run --headless`. The
+   `Program.fs` `--headless` branch uses Puppeteer to (a) download
+   Chromium on first run (caches under
+   `UITests/.local-chromium/Win64-<version>/`, ~409 MB), (b) start a
+   Giraffe webhost serving the bundle, (c) navigate Chromium to the
+   page, (d) wait for `document.getElementsByClassName('executing')
+   .length === 0`, (e) collect pass/fail counts via DOM scraping, (f)
+   exit with code = failed test count.
+
+Failing-test markers in the output are `X` lines; passing-test
+markers are `√`. The `========== SUMMARY ==========` block reports
+`Total test count`, `Passed tests`, `Failed tests`, `Skipped tests`.
+Build #747 surfaced 9 failures; after Phase 10 the same harness reports
+218 passed / 0 failed.
+
+**Notes on iteration speed:** the Build.fs target intentionally cleans
+`Server` / `Json` / `MsgPack` / `Suave` / `UITests` /
+`IntegrationTests/Server.Suave` / `ClientTests` between runs to force
+a full rebuild against the latest converter set. If iterating on the
+F# side only, `dotnet build` the touched project and re-run
+`ClientTests`-related steps only when client-visible types change.
+First-time setup caches (`ClientTests/node_modules/`,
+`UITests/.local-chromium/`) survive the cleans and aren't re-downloaded
+on subsequent runs.
