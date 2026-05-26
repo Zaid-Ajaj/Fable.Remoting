@@ -5,6 +5,7 @@ open Expecto.Logging
 
 open FableSuaveAdapterTests
 open StjHttpIntegrationTests
+open LegacyNewtonsoftIntegrationTests
 
 let testConfig =  { Expecto.Tests.defaultConfig with
                         verbosity = LogLevel.Debug
@@ -14,6 +15,7 @@ let testConfig =  { Expecto.Tests.defaultConfig with
 let allTests = testList "All Suave tests" [
     fableSuaveAdapterTests
     stjSuaveIntegrationTests
+    legacyNewtonsoftSuaveTests
 ]
 
 [<EntryPoint>]

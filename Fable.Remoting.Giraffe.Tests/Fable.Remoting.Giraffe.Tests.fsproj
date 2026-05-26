@@ -10,6 +10,7 @@
     <Compile Include="FableGiraffeAdapterTests.fs" />
     <Compile Include="MiddlewareTests.fs" />
     <Compile Include="StjHttpIntegrationTests.fs" />
+    <Compile Include="LegacyNewtonsoftIntegrationTests.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
 

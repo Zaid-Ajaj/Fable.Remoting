@@ -16,6 +16,7 @@
       <Compile Include="Types.fs" />
       <Compile Include="FableFalcoAdapterTests.fs" />
       <Compile Include="StjHttpIntegrationTests.fs" />
+      <Compile Include="LegacyNewtonsoftIntegrationTests.fs" />
       <Compile Include="App.fs" />
     </ItemGroup>
 

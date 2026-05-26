@@ -110,6 +110,45 @@ opt-back-in helper from Section 2.
 
 ---
 
+## Security note — `UnsafeRelaxedJsonEscaping`
+
+The default `JsonSerializerOptions` registered by
+`FableConverters.create()` uses
+`JavaScriptEncoder.UnsafeRelaxedJsonEscaping`. This encoder does **not**
+escape HTML-sensitive characters: `<`, `>`, `&`, `'`, `+`.
+
+This matches the **existing behaviour of the Newtonsoft `FableJsonConverter`**
+under default settings — so no consumer's threat model changes with the
+flip. But if your application interpolates Fable.Remoting's JSON output
+directly into HTML (e.g. server-side-rendered pages embedding the JSON
+response body into a `<script>` tag) without applying separate HTML-context
+escaping, the JSON output is **not** safe to embed: a malicious string
+field could contain `</script>` and break out of the script context.
+
+If your deployment relies on JSON output being HTML-safe, configure a
+stricter encoder explicitly:
+
+```fsharp
+open Fable.Remoting.Json.SystemTextJson
+open System.Text.Encodings.Web
+
+let opts = FableConverters.create()
+opts.Encoder <- JavaScriptEncoder.Default  // escapes <, >, &, ', +
+
+let api =
+    Remoting.createApi()
+    |> Remoting.withSerializerOptions opts
+    |> Remoting.fromValue myImpl
+```
+
+Note that swapping to a stricter encoder breaks the byte-equality guarantee
+for any string containing those characters — the wire output will diverge
+from the legacy Newtonsoft default. Existing Fable / DotnetClient clients
+should still parse it correctly (JSON is JSON), but the bytes won't match
+Phase 2 byte-pin tests.
+
+---
+
 ## What's actually under the hood
 
 The new default is functionally equivalent to:

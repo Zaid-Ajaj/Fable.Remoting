@@ -756,9 +756,12 @@ type FSharpMapNonStringKeyConverter<'K, 'V when 'K : comparison>() =
 
     let writerOptionsFor (options: JsonSerializerOptions) =
         // Copy the relevant encoder so key-side serialisation produces the same
-        // raw-UTF-8 bytes the value-side does (no \uXXXX escapes).
+        // raw-UTF-8 bytes the value-side does (no \uXXXX escapes). Fall back
+        // to UnsafeRelaxedJsonEscaping (NOT JavaScriptEncoder.Default — the
+        // latter escapes far more aggressively and would diverge from the
+        // value-side encoder set by FableConverters.addTo).
         JsonWriterOptions(
-            Encoder = (if isNull options.Encoder then JavaScriptEncoder.Default else options.Encoder),
+            Encoder = (if isNull options.Encoder then JavaScriptEncoder.UnsafeRelaxedJsonEscaping else options.Encoder),
             Indented = false,
             SkipValidation = false)
 
@@ -785,15 +788,22 @@ type FSharpMapNonStringKeyConverter<'K, 'V when 'K : comparison>() =
         s.StartsWith "\"" && s.EndsWith "\""
 
     override _.Write(writer: Utf8JsonWriter, value: Map<'K, 'V>, options: JsonSerializerOptions) =
+        // Allocate the temp stream + writer ONCE per Map (not per key) — reset
+        // between keys via stream.SetLength(0L) + keyWriter.Reset(). Saves N
+        // pairs of allocations for an N-entry map; correctness unchanged
+        // because each key is independently serialised and the buffer is
+        // emptied before the next.
+        use stream = new MemoryStream()
+        use keyWriter = new Utf8JsonWriter(stream, writerOptionsFor options)
         writer.WriteStartObject()
         for KeyValue(k, v) in value do
             // Serialise key via STJ to capture its JSON form, then use that
             // string verbatim as the property name. Newtonsoft does the same
             // by routing through a temp StringWriter.
-            use stream = new MemoryStream()
-            do
-                use keyWriter = new Utf8JsonWriter(stream, writerOptionsFor options)
-                JsonSerializer.Serialize(keyWriter, k, typeof<'K>, options)
+            stream.SetLength 0L
+            keyWriter.Reset()
+            JsonSerializer.Serialize(keyWriter, k, typeof<'K>, options)
+            keyWriter.Flush()
             let keyJson = Encoding.UTF8.GetString(stream.ToArray())
             writer.WritePropertyName(keyJson)
             JsonSerializer.Serialize(writer, v, typeof<'V>, options)
@@ -1124,6 +1134,18 @@ module FableConverters =
     /// JsonSerializerOptions. The encoder is overwritten to
     /// UnsafeRelaxedJsonEscaping for byte-compat with Newtonsoft's wire format.
     let addTo (options: JsonSerializerOptions) : unit =
+        // STJ freezes JsonSerializerOptions after first use against a
+        // JsonSerializer. addTo mutates options.Encoder and options.Converters,
+        // so it has to be called BEFORE any serialize call. Fail fast with a
+        // clear message if the options have already been used (the default
+        // STJ error is opaque — "this instance is in use").
+        if options.IsReadOnly then
+            invalidOp
+                "FableConverters.addTo must be called before the JsonSerializerOptions \
+                 has been used for serialization. Either pass a fresh \
+                 JsonSerializerOptions instance, or use FableConverters.create() \
+                 to get one configured from scratch."
+
         // UnsafeRelaxedJsonEscaping is the closest STJ pre-built encoder to
         // Newtonsoft's behaviour for most characters (no escaping of +, <, >,
         // &, ', and inline " uses \" not "). It still escapes

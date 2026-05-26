@@ -65,13 +65,12 @@ module Proxy =
             match stjOptions with
             | None -> JsonConvert.SerializeObject(args, converter)
             | Some opts ->
-                // Serialise as a typed obj[] so STJ writes [arg1, arg2, ...]
-                // with each element going through its appropriate typed converter.
-                let arr = args |> List.toArray
+                // STJ needs the static type per element to dispatch typed
+                // converters. We can't pass `args : obj list` directly (STJ
+                // would route through the obj converter), so build the JSON
+                // array manually — each element gets its runtime type passed
+                // explicitly to JsonSerializer.Serialize.
                 let sb = StringBuilder()
-                use sw = new System.IO.StringWriter(sb)
-                use writer = new Utf8JsonWriter(new System.IO.MemoryStream())
-                // Simpler: build a JSON array manually
                 sb.Append '[' |> ignore
                 args
                 |> List.iteri (fun i a ->

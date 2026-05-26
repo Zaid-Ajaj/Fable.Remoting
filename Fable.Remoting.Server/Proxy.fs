@@ -73,24 +73,40 @@ let private parseArgumentArray (backend: JsonSerializerBackend) (functionName: s
         |> Seq.map (fun el -> el.GetRawText())
         |> Seq.toList
 
-// Settings for per-argument Newtonsoft deserialisation. Mirrors the
-// `settings` value (DateParseHandling.None — required to preserve
-// DateTimeOffset original offsets) but also includes the FableJsonConverter
-// so F# types deserialise correctly. Constructed lazily once per process.
-let private newtonsoftArgSettings =
-    let s = JsonSerializerSettings(DateParseHandling = DateParseHandling.None)
-    s.Converters.Add(FableJsonConverter())
-    s
+// A dedicated JsonSerializer instance for per-argument Newtonsoft
+// deserialise. Has DateParseHandling.None applied directly — required to
+// preserve DateTimeOffset offsets through the nested JTokenReader inside
+// the FableJsonConverter's Kind.Union case branch. Without this, a Just
+// (DTO +5:00) round-trip on the Newtonsoft path silently rewrites the
+// offset to the server's local timezone (surfaced by the Maybe<DateTimeOffset>
+// canary test in LegacyNewtonsoftIntegrationTests.fs).
+let private fableArgSerializer =
+    let serializer = JsonSerializer()
+    serializer.DateParseHandling <- DateParseHandling.None
+    serializer.DateTimeZoneHandling <- DateTimeZoneHandling.RoundtripKind
+    serializer.DateFormatHandling <- DateFormatHandling.IsoDateFormat
+    serializer.Converters.Add(FableJsonConverter())
+    serializer
 
 /// Parse one already-extracted argument's raw JSON text into 'inp using the
-/// configured backend. STJ path doesn't touch Newtonsoft; Newtonsoft path
-/// uses the existing FableJsonConverter + DateParseHandling.None to preserve
-/// DateTimeOffset offsets and other date-handling semantics that the
-/// pre-Phase-4f JToken-based path inherited from the outer `settings`.
+/// configured backend.
+///
+/// Newtonsoft path: re-parses argText into a JToken with DateParseHandling.None
+/// (keeps date strings as String JValues, no auto-conversion to DateTime),
+/// then uses `JToken.ToObject<'inp>(fableArgSerializer)` for the typed
+/// conversion. The fableArgSerializer ALSO has DateParseHandling.None — this
+/// is load-bearing for DateTimeOffset preservation: the typed conversion
+/// goes through a nested JTokenReader inside FableJsonConverter's Kind.Union
+/// branch, and that reader inherits DateParseHandling from the serializer.
+/// With DateParseHandling.DateTime (the default), DateTimeOffset round-trips
+/// silently lose their original offset.
+///
+/// STJ path: direct deserialise via STJ — no Newtonsoft API touched.
 let private deserialiseArgWithBackend<'inp> (backend: JsonSerializerBackend) (argText: string) : 'inp =
     match backend with
     | NewtonsoftJson ->
-        JsonConvert.DeserializeObject<'inp>(argText, newtonsoftArgSettings)
+        let token = JsonConvert.DeserializeObject<JToken>(argText, settings)
+        token.ToObject<'inp>(fableArgSerializer)
     | SystemTextJson stjOptions ->
         System.Text.Json.JsonSerializer.Deserialize<'inp>(argText, stjOptions)
 

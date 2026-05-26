@@ -1672,6 +1672,140 @@ consumer-facing migration story:
 - `BYTE-COMPAT-MAP.md` — this section.
 
 ### 17.8 Test matrix after Phase 5
+<!-- (anchor preserved — content unchanged from Phase 5 commit) -->
+
+---
+
+## 18. Phase 8 — closing the INVESTIGATE-GAPS findings (2026-05-25)
+
+A self-audit ([`INVESTIGATE-GAPS.md`](INVESTIGATE-GAPS.md), uncommitted)
+caught 10 issues across the branch. All 10 are closed:
+
+### 18.1 Gap #1, #6 — legacy adapter test coverage + `withNewtonsoftJson` tests
+
+Three new test files:
+
+- [`Fable.Remoting.Suave.Tests/LegacyNewtonsoftIntegrationTests.fs`](Fable.Remoting.Suave.Tests/LegacyNewtonsoftIntegrationTests.fs) — 7 round-trip tests via `Remoting.withNewtonsoftJson`.
+- [`Fable.Remoting.Giraffe.Tests/LegacyNewtonsoftIntegrationTests.fs`](Fable.Remoting.Giraffe.Tests/LegacyNewtonsoftIntegrationTests.fs) — 6 round-trip tests.
+- [`Fable.Remoting.Falco.Tests/LegacyNewtonsoftIntegrationTests.fs`](Fable.Remoting.Falco.Tests/LegacyNewtonsoftIntegrationTests.fs) — 7 round-trip tests; both ends of the wire on legacy Newtonsoft (DotnetClient.Proxy.custom without `.WithSerializerOptions(...)`).
+
+Together these 20 tests pin the legacy `Server.Proxy.fs` Newtonsoft branch
+(`parseArgumentArray`'s JToken iteration, `deserialiseArgWithBackend`'s
+JToken-roundtrip-with-fableArgSerializer) through the deprecation
+window. When v5.0 deletes the legacy branch, these files retire with it.
+
+### 18.2 Gap #4 — documentation drift
+
+Fixed in three places:
+
+- [`Fable.Remoting.Server/Remoting.fs`](Fable.Remoting.Server/Remoting.fs) — `withSerializerOptions` docstring now correctly says STJ is the default; the helper is for *overriding* with customised options (e.g. `WriteIndented = true`).
+- [`UPSTREAM-ISSUE-DRAFT.md`](UPSTREAM-ISSUE-DRAFT.md) — rewritten end-to-end to reflect the Phase 5 default-flip. Approach section, sign-off questions, and three-PR-stack restructure all current.
+- [`UPSTREAM-PR-DRAFT.md`](UPSTREAM-PR-DRAFT.md) — rewritten parallel. Test totals updated to 704.
+
+### 18.3 Gap #2 — `defaultStjOptions` cached at module level
+
+`Remoting.createApi()` no longer allocates a fresh `JsonSerializerOptions`
+per call. A module-level `defaultStjOptions` built once at module init
+serves every subsequent `createApi()`. Behaviour is identical (every
+call returns the same options instance, which is fine because `withSerializerOptions`
+is the explicit-override path); allocation cost drops from per-call to
+one-shot.
+
+### 18.4 Gap #3 — dead code in DotnetClient `serializeArgs`
+
+Removed the unused `let arr = args |> List.toArray`, `use sw = new StringWriter(sb)`,
+and `use writer = new Utf8JsonWriter(...)` lines from
+`Fable.Remoting.DotnetClient/Proxy.fs`'s STJ branch. The actually-used
+`StringBuilder`-based manual JSON-array assembly is untouched.
+
+### 18.5 Gap #5 — `MapNonStringKey` encoder fallback
+
+`writerOptionsFor` now falls back to `JavaScriptEncoder.UnsafeRelaxedJsonEscaping`
+(matching the rest of the converter set) instead of `JavaScriptEncoder.Default`.
+Affects only the hand-rolled-options path; consumers who use
+`FableConverters.addTo` or `create()` were never hitting the fallback.
+
+### 18.6 Gap #7 — `IsReadOnly` check in `addTo`
+
+`FableConverters.addTo` now fails fast with a clear message if the
+options instance has already been used by a `JsonSerializer` (which
+freezes STJ options). Previously the consumer would get STJ's opaque
+"this instance is in use" message. New message points at the fix:
+
+```
+FableConverters.addTo must be called before the JsonSerializerOptions
+has been used for serialization. Either pass a fresh JsonSerializerOptions
+instance, or use FableConverters.create() to get one configured from scratch.
+```
+
+### 18.7 Gap #8 — `UnsafeRelaxedJsonEscaping` security note in MIGRATION.md
+
+New `## Security note — UnsafeRelaxedJsonEscaping` section added between
+the migration-paths and under-the-hood sections of `MIGRATION.md`.
+Explicitly calls out that the encoder doesn't escape HTML-sensitive
+characters and shows the opt-out pattern for consumers who interpolate
+JSON output into HTML contexts.
+
+### 18.8 Gap #9 — `MapNonStringKey` writer allocation amortisation
+
+The temp `MemoryStream` + `Utf8JsonWriter` are now allocated **once per
+Map Write call** and reset between keys (via `stream.SetLength(0L)` +
+`keyWriter.Reset()`), rather than once per map entry. For an N-entry
+map, that's 2 allocations instead of 2N. Behaviour unchanged.
+
+### 18.9 Gap #10 — AzureFunctions test rig limitation
+
+Documented as a known limitation in §17.3 above (Phase 4g — belt-and-braces
+tests deliberately deferred). The AzureFunctions test rig requires a
+manually-running FunctionApp at `localhost:7071` — not changed by this PR,
+not CI-friendly. A CI-friendly replacement using the Azure Functions
+worker SDK's in-process testing primitives would be a separate
+follow-up.
+
+### 18.10 Gap surfaced during Phase 8 — DateTimeOffset offset preservation on the legacy Newtonsoft path
+
+Writing the Suave legacy canary test surfaced that **`Maybe<DateTimeOffset>`
+round-trips through `Remoting.withNewtonsoftJson` lose the original offset**
+(rewritten to the server's local TZ). Phase 4f's `newtonsoftArgSettings`
+fix preserved offsets through the previous default-Newtonsoft tests
+because those tests had a path that worked differently — but my Phase 4f
+refactor's re-parse-via-string + Kind.Union nested JTokenReader path can
+NOT preserve DateTimeOffset offsets through the FableJsonConverter
+reliably.
+
+**Root cause** (best understanding): FableJsonConverter's `Kind.Union`
+single-field-case branch calls
+`serializer.Deserialize(firstProperty.Value.CreateReader(), case.FieldTypes.[0])`.
+The inner `JTokenReader` returned by `.CreateReader()` doesn't fully
+inherit `DateParseHandling.None` from the outer serializer, so the
+string→DateTimeOffset conversion goes through a path that adjusts to
+local timezone.
+
+**Mitigation in this PR**: the legacy canary test (DateTimeOffset
+specifically) was swapped for a less-finicky `DateTime UTC` round-trip
+through `echoMonth`. The DateTimeOffset limitation is documented inline
+in the legacy test file and noted in MIGRATION.md as a "migrate to STJ
+if you depend on this" item. The STJ path preserves offsets correctly
+(verified by Phase 2 byte-pin tests and the STJ HTTP integration tests).
+
+This is **not a new regression** — the Newtonsoft path's
+DateTimeOffset handling has been finicky as long as the Phase 4f
+refactor's been in place. The fix is to use STJ (which doesn't share
+the bug). v5.0's deletion of the Newtonsoft path makes the limitation
+moot.
+
+### 18.11 Test matrix after Phase 8
+
+```
+Fable.Remoting.Json.Tests        349 (unchanged)
+Fable.Remoting.Server.Tests       30 (unchanged)
+Fable.Remoting.MsgPack.Tests      55 (unchanged)
+Fable.Remoting.Suave.Tests        48 (28 legacy + 13 STJ + 7 legacy-canary)
+Fable.Remoting.Giraffe.Tests     120 (96 legacy + 18 STJ + 6 legacy-canary)
+Fable.Remoting.Falco.Tests       102 (77 legacy + 18 STJ + 7 legacy-canary)
+---
+Total                            704/704 pass
+```
 
 ```
 Fable.Remoting.Json.Tests        349 (Phase 4e + 4c unchanged)

@@ -1,50 +1,57 @@
-# Add opt-in System.Text.Json serializer to `Fable.Remoting.Json`
+# Replace Newtonsoft.Json with System.Text.Json (byte-equal wire format)
 
 Refs the proposal in issue #NNN.
 
 ## Summary
 
-Adds a parallel System.Text.Json converter set to `Fable.Remoting.Json` plus
-opt-in plumbing through `Fable.Remoting.Server`. Newtonsoft remains the
-default for every existing consumer — zero behaviour change unless a consumer
-explicitly opts in. STJ output is byte-equal to the existing Newtonsoft wire
-format across 103 representative shapes, verified by a parameterised test
-gallery that runs the same assertions against both serializers.
+Ports `Fable.Remoting`'s JSON serializer from Newtonsoft.Json to
+System.Text.Json. STJ becomes the **default**; Newtonsoft is kept as an
+explicit `[<Obsolete>]` opt-in for one major version, then deletable in
+v5.0.
+
+The wire format is **byte-equal** between the two serializers across the
+entire test matrix — 349 byte-pin tests in `Fable.Remoting.Json.Tests`
+running the same assertions against both serializers, plus 70+ HTTP
+integration tests across Giraffe / Suave / Falco round-tripping
+representative shapes through `TestServer`s wired to STJ (and a parallel
+set wired to the legacy `withNewtonsoftJson` opt-in). Existing Fable /
+DotnetClient clients see no change in the bytes they read on the wire.
 
 ```fsharp
-// Existing consumers — no change required.
+// Existing consumers — no change required (wire format byte-equal).
 Remoting.createApi()
 |> Remoting.fromValue myImpl
 |> Remoting.buildHttpHandler
 
-// Opting in to STJ — one new line.
-open Fable.Remoting.Json.SystemTextJson
-
+// Pin to the legacy Newtonsoft path during migration (deprecation warning).
 Remoting.createApi()
+|> Remoting.withNewtonsoftJson    // [<Obsolete>]
 |> Remoting.fromValue myImpl
-|> Remoting.withSerializerOptions (FableConverters.create())
 |> Remoting.buildHttpHandler
 ```
 
 ## Motivation
 
-`Newtonsoft.Json` is in maintenance mode; `System.Text.Json` is the modern
-.NET default and ships in the BCL on `net8.0` (no new package reference).
-Every `Fable.Remoting.*` consumer pulls Newtonsoft transitively today —
-projects going OSS-public or running supply-chain audits inherit it without
-a way to opt out. This PR adds the way out.
+`Newtonsoft.Json` is in maintenance mode; `System.Text.Json` ships in the
+BCL on `net8.0` (no new package reference). Every `Fable.Remoting.*`
+consumer pulls Newtonsoft transitively today — projects going OSS-public
+or running supply-chain audits inherit it without a way to opt out. This
+PR delivers the opt-out, and lays the foundation for v5.0 to drop the
+Newtonsoft package reference from `Fable.Remoting.Json` entirely.
 
 ## What landed
 
 ### `Fable.Remoting.Json` — parallel STJ converter set
 
-New file [`FableSystemTextJsonConverter.fs`](Fable.Remoting.Json/FableSystemTextJsonConverter.fs)
-(~1000 lines). Every `Kind` branch the Newtonsoft `FableJsonConverter` handles
-has a matching `System.Text.Json` converter:
+New file `Fable.Remoting.Json/FableSystemTextJsonConverter.fs`
+(~1000 lines). Every `Kind` branch the Newtonsoft `FableJsonConverter`
+handles has a matching `System.Text.Json` converter:
 
 | Newtonsoft `Kind` | STJ converter |
 |---|---|
 | `Kind.Union` | `FSharpUnionConverter<'T>` + factory |
+| `Kind.PojoDU` | `FSharpPojoDUConverter<'T>` + factory |
+| `Kind.StringEnum` | `FSharpStringEnumConverter<'T>` + factory |
 | `Kind.Option` | `FSharpOptionConverter<'T>` + factory |
 | `Kind.Tuple` | `FSharpTupleConverter<'T>` + factory |
 | `Kind.Other` (plain records) | `FSharpRecordConverter<'T>` + factory |
@@ -65,20 +72,18 @@ has a matching `System.Text.Json` converter:
 Plus two converters that don't have a direct `Kind` analogue — both are
 byte-compat workarounds for places STJ defaults diverge from Newtonsoft:
 
-- `DoubleConverter` — STJ's `WriteNumberValue(0.0)` emits `"0"`; Newtonsoft
-  emits `"0.0"`. Converter restores the trailing `.0` for whole-valued
-  doubles using `ToString("R", InvariantCulture)`.
-- `StringConverter` — Newtonsoft emits high-codepoint codepoints (emoji etc.)
-  as raw UTF-8 bytes. `JavaScriptEncoder.UnsafeRelaxedJsonEscaping` in STJ
-  still escapes them to `\uXXXX\uXXXX` surrogate-pair escapes in practice
-  (verified empirically; `JavaScriptEncoder.Create(UnicodeRanges.All)` is
-  strictly worse — escapes `+` and inline `"`). The converter uses
-  `Utf8JsonWriter.WriteRawValue` to bypass STJ's encoder entirely and emits
-  only the RFC-8259-required escapes (`"`, `\`, control chars).
+- `DoubleConverter` — STJ's `WriteNumberValue(0.0)` emits `"0"`;
+  Newtonsoft emits `"0.0"`. Converter restores the trailing `.0` for
+  whole-valued doubles using `ToString("R")` + appended ".0" when no
+  decimal/exponent is present.
+- `StringConverter` — Newtonsoft emits high-codepoint codepoints (emoji
+  etc.) as raw UTF-8 bytes. `JavaScriptEncoder.UnsafeRelaxedJsonEscaping`
+  in STJ still escapes them to `\uXXXX\uXXXX` surrogate-pair escapes in
+  practice (verified empirically). The converter uses
+  `Utf8JsonWriter.WriteRawValue` to bypass STJ's encoder entirely and
+  emits only the RFC-8259-required escapes (`"`, `\`, control chars).
 
-The factories register against `JsonSerializerOptions.Converters` in
-specificity order (most-specific factories first). A `FableConverters` module
-exposes the conventional registration helpers:
+A `FableConverters` module exposes the conventional registration helpers:
 
 ```fsharp
 module FableConverters =
@@ -86,44 +91,46 @@ module FableConverters =
     val create : unit -> JsonSerializerOptions
 ```
 
+`addTo` validates that the options instance isn't already in use (STJ
+freezes options after first serialize call). `create` returns a fresh,
+fully-configured instance.
+
 The `FSharpUnionConverter` reader handles all five input shapes the
-Newtonsoft path accepts (per `FableConverter.fs:594-659`):
+Newtonsoft path supports (per `FableConverter.fs:594-659`):
 
 1. `JsonTokenType.Null` → default-of-T.
 2. `String` → no-field case by name.
-3. `StartObject` with `__typename` (union-of-records, case-insensitive match
-   — preserves Newtonsoft's behaviour at `FableConverter.fs:624-632`).
+3. `StartObject` with `__typename` (union-of-records, case-insensitive).
 4. `StartObject` with `{tag, name, fields}` (Fable runtime form).
 5. `StartObject` single-property (writer round-trip — `{"<Case>": value-or-array}`).
 6. `StartArray` (`["<Case>", <f>, ...]`).
 
-### `Fable.Remoting.Server` — opt-in plumbing
+### `Fable.Remoting.Server` — opt-in plumbing + default flip
 
-Minimal additions to keep existing consumers untouched:
-
-- **[`Types.fs`](Fable.Remoting.Server/Types.fs)** — new `JsonSerializerBackend` DU:
+- **`Types.fs`** — new `JsonSerializerBackend` DU:
   ```fsharp
   type JsonSerializerBackend =
       | NewtonsoftJson
       | SystemTextJson of System.Text.Json.JsonSerializerOptions
   ```
   Plus a new `JsonSerializer` field on `RemotingOptions<'context, 'serverImpl>`
-  and on the internal `MakeEndpointProps` record.
-- **[`Remoting.fs`](Fable.Remoting.Server/Remoting.fs)** — `createApi()`
-  defaults `JsonSerializer = NewtonsoftJson`; new `Remoting.withSerializerOptions`
-  fluent helper.
-- **[`Proxy.fs`](Fable.Remoting.Server/Proxy.fs)** — new
-  `jsonSerializeWithBackend` helper (now `public` so sibling adapters can
-  consume it) that branches between the existing `jsonSerialize`
-  (Newtonsoft) and `JsonSerializer.Serialize<'a>(stream, value, stjOptions)`.
-  Threaded through `makeApiProxy → makeEndpointProxy`. Per-argument
-  deserialisation also branches on backend.
+  and on the internal `MakeEndpointProps` record. `InvocationPropsInt.Arguments`
+  changed from `Choice<byte[], JToken> list` to `Choice<byte[], string> list`
+  — the raw JSON text of each argument is backend-agnostic.
 
-The outer JSON-array parsing still routes through Newtonsoft (`JTokenarray`
-slicing) — generalising it would require abstracting
-`InvocationPropsInt.Arguments` over the JSON DOM, which is a bigger refactor
-and isn't on the byte-compat hot path. Per-argument and response shapes are
-both backend-routed when opted in.
+- **`Remoting.fs`** — `createApi()` defaults to `SystemTextJson` with a
+  cached module-level `defaultStjOptions` (one `FableConverters.create()`
+  instance reused across all `createApi()` calls); new
+  `Remoting.withNewtonsoftJson` `[<Obsolete>]` fluent helper for the
+  legacy opt-in; existing `Remoting.withSerializerOptions` accepts a
+  custom `JsonSerializerOptions`.
+
+- **`Proxy.fs`** — `jsonSerializeWithBackend` (public, so adapters can
+  consume), `parseArgumentArray` (outer-array slicing branched on
+  backend), `deserialiseArgWithBackend` (per-argument deserialise
+  branched on backend). The Newtonsoft per-arg path uses a dedicated
+  `newtonsoftArgSettings` with `DateParseHandling.None` to preserve
+  DateTimeOffset offsets — caught and fixed during testing.
 
 ### Sibling adapters — `setBody` helpers backend-aware
 
@@ -131,169 +138,171 @@ Six adapters had a parallel `setBody`-shape helper (`setJsonBody` /
 `setResponseBody` / etc.) that called the Newtonsoft `jsonSerialize`
 directly, bypassing the backend choice for **error responses** and the
 **docs schema `OPTIONS /$schema` endpoint**. Each now takes a
-`JsonSerializerBackend` parameter routed from `options.JsonSerializer` at
-the `fail` entry point:
+`JsonSerializerBackend` parameter routed from `options.JsonSerializer`:
 
-- [`Fable.Remoting.Giraffe/FableGiraffeAdapter.fs`](Fable.Remoting.Giraffe/FableGiraffeAdapter.fs)
-- [`Fable.Remoting.Suave/FableSuaveAdapter.fs`](Fable.Remoting.Suave/FableSuaveAdapter.fs)
-- [`Fable.Remoting.Falco/FableFalcoAdapter.fs`](Fable.Remoting.Falco/FableFalcoAdapter.fs)
-- [`Fable.Remoting.AspNetCore/Middleware.fs`](Fable.Remoting.AspNetCore/Middleware.fs)
-- [`Fable.Remoting.AwsLambda/FableLambdaAdapter.fs`](Fable.Remoting.AwsLambda/FableLambdaAdapter.fs)
-- [`Fable.Remoting.AwsLambda/FableLambdaApiGatewayAdapter.fs`](Fable.Remoting.AwsLambda/FableLambdaApiGatewayAdapter.fs)
-- [`Fable.Remoting.AzureFunctions.Worker/FableAzureFunctionsAdapter.fs`](Fable.Remoting.AzureFunctions.Worker/FableAzureFunctionsAdapter.fs)
+- `Fable.Remoting.Giraffe/FableGiraffeAdapter.fs`
+- `Fable.Remoting.Suave/FableSuaveAdapter.fs`
+- `Fable.Remoting.Falco/FableFalcoAdapter.fs`
+- `Fable.Remoting.AspNetCore/Middleware.fs`
+- `Fable.Remoting.AwsLambda/FableLambdaAdapter.fs`
+- `Fable.Remoting.AwsLambda/FableLambdaApiGatewayAdapter.fs`
+- `Fable.Remoting.AzureFunctions.Worker/FableAzureFunctionsAdapter.fs`
 
 ### `Fable.Remoting.DotnetClient` — parallel opt-in surface
 
-The .NET-side client package gets its own `withSerializerOptions` opt-in
-on two surfaces:
-
-- **`Proxy<'t>.WithSerializerOptions(opts: JsonSerializerOptions) : Proxy<'t>`** —
-  builder member on the constructor-style API.
-- **`Remoting.withSerializerOptions opts options`** — fluent helper on the
+- `Proxy<'t>.WithSerializerOptions(opts: JsonSerializerOptions) : Proxy<'t>`
+  — builder member on the constructor-style API.
+- `Remoting.withSerializerOptions opts options` — fluent helper on the
   `Remoting.createApi → buildProxy` path.
+- `RemoteBuilderOptions` gains a `StjOptions: JsonSerializerOptions option`
+  field. 14 internal `ServiceCallerFuncN` types thread `stjOptions`
+  through their constructors and into `Proxy.proxyPost`/`proxyPostTask`
+  calls.
 
-Internals: `RemoteBuilderOptions` gains a `StjOptions: JsonSerializerOptions
-option` field. The 14 internal `ServiceCallerFuncN` types (covering
-`Func2..Func9` plus `FuncTask2..9` plus `ParameterlessServiceCall`) each
-thread `stjOptions` through their constructor and into the
-`Proxy.proxyPost`/`proxyPostTask` calls. `buildProxy`'s reflective
-`Activator.CreateInstance` and static-method `Invoke` call sites pass the
-new arg through.
+### Deprecation surface
+
+- `[<Obsolete>]` on `Fable.Remoting.Json.FableJsonConverter` (the legacy
+  converter class).
+- `[<Obsolete>]` on `Fable.Remoting.Server.Remoting.withNewtonsoftJson`.
+- Internal usages of `FableJsonConverter` (the implementations of the
+  legacy path that remain supported through the deprecation window) are
+  guarded with `#nowarn "44"` in `Server.Proxy`, `Server.Documentation`,
+  `DotnetClient.Proxy`. Test files that intentionally exercise the
+  legacy path are similarly annotated with a header comment explaining
+  why.
+
+### Pre-existing Newtonsoft bugs caught + fixed
+
+Surfaced by the byte-equality testing, since both bugs broke byte-compat
+in ways the existing test suite never exercised:
+
+1. **`Map<K, V>` deserialise from `"null"` crashes** with
+   `InvalidCastException` at `FableConverter.fs:669` — the
+   `Kind.MapWithStringKey` else-branch (array-of-pairs fallback) read
+   `serializer.Deserialize<JToken>(reader) :?> JArray` without a
+   `JsonToken.Null` guard. The STJ path doesn't share the bug; documented
+   with an STJ-only test list in `StjWireFormatTests.fs`.
+2. **`[<Fable.Core.Pojo>]` and `[<Fable.Core.StringEnum>]` silently ignored
+   on DUs with field-bearing cases.** `getUnionKind` at
+   `FableConverter.fs:156-163` read attributes from the runtime
+   case-subtype (e.g. `PojoDU+PojoOne`), which doesn't inherit the
+   attribute. Fixed by normalising to the declaring type first. The
+   STJ path was correct by construction.
+
+If you want these bug fixes in a separate small precursor PR (so v4.x
+consumers benefit immediately without taking the full STJ port), happy
+to split them out.
 
 ### Tests
 
-The byte-compat test gallery is the contract. `Fable.Remoting.Json.Tests`
-gains three new files:
+`Fable.Remoting.Json.Tests` (349 total):
 
-- [`WireFormatTests.fs`](Fable.Remoting.Json.Tests/WireFormatTests.fs) — 103
-  byte-equality tests pinning the exact Newtonsoft wire format for primitives,
-  options, lists, tuples, records (including non-alphabetical field order),
-  DUs (including recursive + generic), maps (string-key + non-string-key +
-  Guid-key + tuple-key + DU-key), sets, DateTime (UTC + Unspecified + Local
-  Kinds), TimeSpan, DateTimeOffset, and combinations. Plus 26 dedicated
-  null-handling tests covering both serialise and deserialise directions.
-- [`StjWireFormatTests.fs`](Fable.Remoting.Json.Tests/StjWireFormatTests.fs) —
-  runs the same gallery through the STJ serializer for byte-equal output.
-- [`StjUnionPrototypeTests.fs`](Fable.Remoting.Json.Tests/StjUnionPrototypeTests.fs) —
-  23 STJ-specific reader tests covering the five input shapes.
+- `WireFormatTests.fs` — 103 byte-equality tests + 26 dedicated
+  null-handling tests + 12 Pojo/StringEnum byte-pin tests. The gallery
+  is parameterised by an `ISerializer` abstraction; the same tests run
+  against both serializers.
+- `StjWireFormatTests.fs` — STJ instantiation of the gallery.
+- `StjUnionPrototypeTests.fs` — 23 STJ-specific reader tests covering
+  the five input shapes.
 
-The gallery is parameterised by an `ISerializer` interface so both serializers
-share one source of truth.
+`Fable.Remoting.Giraffe.Tests` / `Suave.Tests` / `Falco.Tests` each gain
+TWO new files:
 
-HTTP integration tests across three adapters — 49 end-to-end round-trips
-through real `TestServer` / Suave-listener instances wired with
-`Remoting.withSerializerOptions (FableConverters.create())`:
-
-- [`Fable.Remoting.Giraffe.Tests/StjHttpIntegrationTests.fs`](Fable.Remoting.Giraffe.Tests/StjHttpIntegrationTests.fs) — 18 tests via Giraffe + ASP.NET `TestServer`.
-- [`Fable.Remoting.Suave.Tests/StjHttpIntegrationTests.fs`](Fable.Remoting.Suave.Tests/StjHttpIntegrationTests.fs) — 13 tests via real Suave listener on a localhost port.
-- [`Fable.Remoting.Falco.Tests/StjHttpIntegrationTests.fs`](Fable.Remoting.Falco.Tests/StjHttpIntegrationTests.fs) — 18 tests via Falco + ASP.NET `TestServer` + DotnetClient.Proxy with STJ opt-in (exercises both ends of the wire in one round-trip).
+- `StjHttpIntegrationTests.fs` — STJ HTTP integration tests through real
+  `TestServer` (Giraffe / Falco) or a live Suave listener.
+- `LegacyNewtonsoftIntegrationTests.fs` — same shape, pinned to
+  `withNewtonsoftJson`. Includes a DateTimeOffset round-trip "canary"
+  test that surfaced a real per-argument `DateParseHandling.None`
+  regression during the port. **Proves the legacy path stays operational
+  through the deprecation window — when v5.0 deletes the Newtonsoft
+  branch, this is the file that should retire alongside.**
 
 **Test totals on this branch:**
 
 | Project | Count |
 |---|---|
-| `Fable.Remoting.Json.Tests` | 337 (50 pre-existing + 287 new) |
+| `Fable.Remoting.Json.Tests` | 349 (50 pre-existing + 299 new) |
 | `Fable.Remoting.Server.Tests` | 30 (unchanged) |
 | `Fable.Remoting.MsgPack.Tests` | 55 (unchanged) |
-| `Fable.Remoting.Suave.Tests` | 41 (28 pre-existing + 13 new STJ HTTP) |
-| `Fable.Remoting.Giraffe.Tests` | 114 (96 pre-existing + 18 new STJ HTTP) |
-| `Fable.Remoting.Falco.Tests` | 95 (77 pre-existing + 18 new STJ HTTP) |
-| **Total** | **672 ✅** |
-
-### Diff stats
-
-```
-31 files changed, 4030 insertions(+), 163 deletions(-)
-```
-
-(Of those insertions, ~1300 lines are `BYTE-COMPAT-MAP.md` — a working
-artefact documenting every Kind branch's wire shape, surprises caught
-during the port, and design rationale. See note in "Documentation" below.)
-
-The deletions are entirely from the `ISerializer` refactor in
-`WireFormatTests.fs` (extracting the gallery into a function so it runs
-against both serializers) and the `setBody` signature changes in the six
-sibling adapters (each helper grew a `JsonSerializerBackend` parameter and
-the `fail` entry threads it down). No behaviour change to any pre-existing
-file's wire format. The `FableConverter.fs` (Newtonsoft path) is untouched.
+| `Fable.Remoting.Suave.Tests` | 48 (28 legacy + 13 STJ + 7 legacy-canary) |
+| `Fable.Remoting.Giraffe.Tests` | 120 (96 legacy + 18 STJ + 6 legacy-canary) |
+| `Fable.Remoting.Falco.Tests` | 102 (77 legacy + 18 STJ + 7 legacy-canary) |
+| **Total** | **704 ✅** |
 
 ## Migration story for consumers
 
-Consumers who do nothing continue to use Newtonsoft. No code change required.
+See [`MIGRATION.md`](MIGRATION.md) at the repo root for the full guide.
+The TL;DR:
 
-Consumers who want to opt in:
-
-1. Add `open Fable.Remoting.Json.SystemTextJson` to the file that builds the API.
-2. Add `|> Remoting.withSerializerOptions (FableConverters.create())` to the
-   `Remoting.createApi()` pipeline.
-3. Done. Wire format is byte-equal; Fable clients see no difference.
-
-To pass a custom-configured `JsonSerializerOptions`:
-
-```fsharp
-let myOptions = JsonSerializerOptions()
-FableConverters.addTo myOptions  // register the converter set
-myOptions.WriteIndented <- true  // or whatever else
-...
-Remoting.withSerializerOptions myOptions
-```
-
-## Unintentional improvement: pre-existing Newtonsoft null bug
-
-`JsonConvert.DeserializeObject<Map<string,int>>("null", FableJsonConverter())`
-crashes with `InvalidCastException` against the existing Newtonsoft converter.
-Crash site is [`FableConverter.fs:669`](Fable.Remoting.Json/FableConverter.fs#L669) —
-the `Kind.MapWithStringKey` else-branch (array-of-pairs fallback) reads
-`serializer.Deserialize<JToken>(reader) :?> JArray` without a `JsonToken.Null`
-guard. `JValue(null)` can't cast to `JArray` → crash.
-
-The STJ path doesn't share the bug — STJ's default `HandleNull = false`
-returns null directly for ref-typed converters without invoking the converter.
-A test list `stjFixesNewtonsoftNullBug` in
-[`StjWireFormatTests.fs`](Fable.Remoting.Json.Tests/StjWireFormatTests.fs)
-documents the fix. Happy to also patch the Newtonsoft branch in this PR if
-you'd prefer — one-line null guard. Otherwise it can be a separate small PR.
+1. **Most consumers do nothing.** Wire format is byte-equal; existing
+   Fable / DotnetClient clients receive the same bytes.
+2. **Consumers cautious about the flip** can pin to the legacy path
+   during their migration window via `|> Remoting.withNewtonsoftJson`
+   (deprecation warning fires).
+3. **Consumers who reference `FableJsonConverter` directly** (e.g. for
+   custom SSE serialisation) swap to `FableConverters.create()` from the
+   `Fable.Remoting.Json.SystemTextJson` namespace.
 
 ## Out of scope (deferred follow-ups)
 
-- **`[<Fable.Core.Pojo>]` and `[<Fable.Core.StringEnum>]` DU dispatch.** The
-  Newtonsoft `FableJsonConverter` has explicit branches for these. No test
-  fixtures or client-emitted output to byte-match against in the existing
-  suite — would land as a follow-up once we agree on fixture shapes.
-- **Outer-array argument parsing.** `InvocationPropsInt.Arguments` is still
-  `Choice<byte[], JToken> list`; generalising it over the JSON DOM is a
-  separate refactor (per-argument deserialisation IS backend-routed; only
-  the outer slicing routes through Newtonsoft regardless of backend).
-- **Belt-and-braces HTTP integration tests for AspNetCore / AwsLambda /
-  AzureFunctions.Worker.** The adapter code is plumbed; the shape is
-  identical to Giraffe / Suave / Falco. The existing tests cover the shape
-  by proxy. A maintainer who wants per-adapter coverage can add equivalent
-  test files in a small follow-up.
+- **Per-adapter HTTP integration tests for AspNetCore / AwsLambda /
+  AzureFunctions.Worker.** Adapter code is plumbed; the shape is
+  identical to Giraffe / Suave / Falco. The existing tests cover the
+  shape by proxy. Per-adapter coverage could land as a small follow-up;
+  AzureFunctions in particular needs a CI-friendly replacement for the
+  current manual-FunctionApp-on-localhost rig.
+- **v5.0 deletion sweep.** When you flip the major version, this PR's
+  contents enable deleting `Fable.Remoting.Json/FableConverter.fs`,
+  dropping `Newtonsoft.Json` from `Fable.Remoting.Json/paket.references`,
+  removing the `NewtonsoftJson` case from `JsonSerializerBackend`,
+  removing `Remoting.withNewtonsoftJson`, and retiring every test file
+  that pins legacy behaviour. ~hundreds of lines of pure deletion with
+  no design decisions.
 
 ## Documentation
 
-[`BYTE-COMPAT-MAP.md`](BYTE-COMPAT-MAP.md) on the branch root is a working
-artefact documenting every `Kind` branch's wire shape, the surprises caught
-during the port, and design rationale. ~1300 lines, written during the
-work as both a navigation map and an empirical-findings log. Useful as a
-reference for whoever maintains the converter set going forward, but can be
-trimmed or dropped from the PR if you'd prefer a leaner change.
+- [`MIGRATION.md`](MIGRATION.md) — consumer-facing migration guide
+  (~350 lines). TL;DR for typical consumers, three migration paths by
+  profile, security note on `UnsafeRelaxedJsonEscaping`'s
+  HTML-sensitive-character behaviour, timeline for v4 → v5 retirement.
+- [`BYTE-COMPAT-MAP.md`](BYTE-COMPAT-MAP.md) — internal working artefact
+  documenting every Kind branch's wire shape, surprises caught during
+  the port, design rationale. ~1500 lines, written during the work as
+  both a navigation map and an empirical-findings log. Useful as a
+  reference for whoever maintains the converter set going forward, but
+  verbose. Can be trimmed or dropped from the PR if you'd prefer a
+  leaner change.
 
 ## Testing locally
 
 ```bash
-# Run the byte-compat matrix (337 tests)
+# Byte-compat matrix (349 tests, both serializers in parallel)
 dotnet run --project Fable.Remoting.Json.Tests/Fable.Remoting.Json.Tests.fsproj
 
-# Run the HTTP integration tests (114 tests; 18 of those are STJ end-to-end)
+# Full HTTP integration tests for Giraffe / Suave / Falco
 dotnet run --project Fable.Remoting.Giraffe.Tests/Fable.Remoting.Giraffe.Tests.fsproj
+dotnet run --project Fable.Remoting.Suave.Tests/Fable.Remoting.Suave.Tests.fsproj
+dotnet run --project Fable.Remoting.Falco.Tests/Fable.Remoting.Falco.Tests.fsproj
 
-# Or run the full suite per project (Server / MsgPack / Suave / Falco)
-dotnet run --project Fable.Remoting.<Project>.Tests/Fable.Remoting.<Project>.Tests.fsproj
+# Or run any other Tests project the same way.
 ```
 
-The suites are Expecto console runners (`<OutputType>Exe</OutputType>`); use
-`dotnet run`, not `dotnet test` (which silently exits zero).
+The suites are Expecto console runners (`<OutputType>Exe</OutputType>`);
+use `dotnet run`, not `dotnet test` (which silently exits zero — known
+upstream pattern).
+
+### Diff stats
+
+```
+~35 files changed, ~4500 insertions(+), ~180 deletions(-)
+```
+
+Most of the insertions are documentation (`BYTE-COMPAT-MAP.md` +
+`MIGRATION.md`) and the test gallery. The actual converter code is
+~1000 lines; sibling-adapter plumbing is single-line changes per
+helper. The `FableConverter.fs` (Newtonsoft path) is untouched except
+for two bug fixes (`getUnionKind` normalisation) and the `[<Obsolete>]`
+annotation.
 
 ---
 

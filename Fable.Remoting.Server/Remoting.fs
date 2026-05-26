@@ -2,6 +2,17 @@
 
 module Remoting =
 
+    /// Cached default System.Text.Json options for the new default serializer
+    /// path. Built once at module init — registering the converter set against
+    /// a fresh JsonSerializerOptions does ~24 reflection-driven Add calls, so
+    /// allocating per createApi() would be wasteful for app patterns that
+    /// build multiple APIs in a loop (test harnesses, per-tenant proxies, etc).
+    /// Once any serializer call has used these options STJ freezes them, which
+    /// is also fine for shared use — every caller gets the same byte-compat
+    /// converter registration.
+    let private defaultStjOptions =
+        Fable.Remoting.Json.SystemTextJson.FableConverters.create()
+
     let documentation (name: string) (routes: RouteDocs list) : Documentation = Documentation (name, routes)
 
     /// Starts with the default configuration for building an API.
@@ -25,7 +36,7 @@ module Remoting =
           DiagnosticsLogger = None
           Docs = None, None
           ResponseSerialization = Json
-          JsonSerializer = SystemTextJson (Fable.Remoting.Json.SystemTextJson.FableConverters.create())
+          JsonSerializer = SystemTextJson defaultStjOptions
           RmsManager = None }
 
     /// Defines how routes are built using the type name and method name. By default, the generated routes are of the form `/typeName/methodName`.
@@ -48,22 +59,28 @@ module Remoting =
     let withBinarySerialization (options: RemotingOptions<'t, 'implementation>) =
         { options with ResponseSerialization = MessagePack }
 
-    /// Opt in to System.Text.Json for JSON serialization on this API.
+    /// Override the System.Text.Json options used by this API.
     ///
-    /// Pass a fully-configured `JsonSerializerOptions` — typically
-    /// `Fable.Remoting.Json.SystemTextJson.FableConverters.create()`, which
-    /// registers the byte-compatible converter set so the wire format matches
-    /// the default Newtonsoft path. Without `withSerializerOptions`, the API
-    /// uses Newtonsoft (existing behaviour).
+    /// `Remoting.createApi()` already defaults to a cached
+    /// `Fable.Remoting.Json.SystemTextJson.FableConverters.create()` instance
+    /// — use this helper only when you need a customised `JsonSerializerOptions`
+    /// (e.g. additional converters, different `WriteIndented`, a stricter
+    /// encoder). The byte-compatible converter set is registered automatically
+    /// by `FableConverters.addTo` / `FableConverters.create()`; if you pass an
+    /// `options` instance you constructed yourself, call `addTo` first to
+    /// ensure the Fable wire shape is preserved.
     ///
     /// ```fsharp
     /// open Fable.Remoting.Server
     /// open Fable.Remoting.Json.SystemTextJson
     ///
+    /// let myOptions = System.Text.Json.JsonSerializerOptions(WriteIndented = true)
+    /// FableConverters.addTo myOptions
+    ///
     /// let api =
     ///     Remoting.createApi()
     ///     |> Remoting.fromValue myImpl
-    ///     |> Remoting.withSerializerOptions (FableConverters.create())
+    ///     |> Remoting.withSerializerOptions myOptions
     /// ```
     let withSerializerOptions (jsonOptions: System.Text.Json.JsonSerializerOptions) (options: RemotingOptions<'t, 'implementation>) =
         { options with JsonSerializer = SystemTextJson jsonOptions }
