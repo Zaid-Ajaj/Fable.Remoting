@@ -1854,3 +1854,120 @@ work with `dotnet test` would mean adding `Expecto.TestAdapter` + flipping the
 project to `Microsoft.NET.Test.Sdk` shape — out of scope; upstream chose the
 console-runner shape deliberately.)
 
+
+---
+
+## 19. Phase 10 — IntegrationTests CI regression: Fable.SimpleJson wire compatibility (2026-05-26)
+
+After PR #393 opened, AppVeyor build #747 surfaced **9 IntegrationTests
+failures** that the Phase 6 verification matrix never reached — the
+IntegrationTests run a Fable browser client (via `Fable.SimpleJson`)
+against a real Giraffe + Suave server, and the new STJ default exposed
+three Newtonsoft-leniency gaps that the byte-pin gallery (write-side
+only) did not catch.
+
+### 19.1 The failing tests + root causes
+
+| Test | Cause |
+|---|---|
+| `IServer.echoIntKeyMap`, `IBinaryServer.echoIntKeyMap` | `Map<int,_>` reader wrapped prop.Name in quotes; STJ default `int` reader rejects quoted form. |
+| `IServer.echoDecimalKeyMap`, `IBinaryServer.echoDecimalKeyMap` | Same as above for `decimal`. |
+| `IServer.echoTimeOnlyMap`, `IBinaryServer.echoTimeOnlyMap` | `Map<TimeOnly,_>` reader did NOT wrap prop.Name (TimeOnly absent from `isNonStringPrimitive`); our `TimeOnlyConverter` then rejected the bare-number token. |
+| `IBinaryServer.binaryContentInOut`, `IBinaryServer.multiByteArrays` | `byte[]` arguments arrive as JSON arrays `[1,2,3]` from Fable.SimpleJson; STJ default `byte[]` reader accepts only base64 strings. |
+| `IBinaryServer.unitOfMeasure` | Sub-assertion `echoDecimalWithMeasure 32313213121.1415926535m<SomeUnit>` — Fable.SimpleJson writes direct decimal args as quoted JSON strings (`"3.14"`); STJ default `decimal` reader rejects the quoted form. |
+
+The byte-pin gallery (Phase 2 + Phase 4) compares STJ vs Newtonsoft
+**write** output and round-trips each serializer against itself; it
+never exercises the **cross-library** read path where the bytes come
+from one serialiser (Fable.SimpleJson) and the read happens in another
+(our STJ converter set). That blind spot is what let the regression
+slip past 704 green tests.
+
+### 19.2 Fix shape — three changes in `FableSystemTextJsonConverter.fs`
+
+**1. `JsonNumberHandling.AllowReadingFromString | AllowNamedFloatingPointLiterals`**
+on the default options. STJ now accepts a quoted-number JSON string for
+every numeric primitive — matches Newtonsoft's read-side leniency. Does
+NOT change write output (the flags are read-only), so the byte-pin
+gallery stays green.
+
+**2. New `ByteArrayConverter`.** Reads three shapes:
+- `null` → null
+- JSON string → base64 decode (matches our + Newtonsoft writer output)
+- JSON array of numbers → byte-by-byte (the Fable.SimpleJson wire shape)
+
+Writes base64 string, byte-equal to Newtonsoft and STJ default.
+
+**3. `isNonStringPrimitive` rebuilt.** The old list naively included every
+"non-string primitive numeric type", which conflated *wire form is a JSON
+string* with *runtime type is not System.String*. The fixed list
+identifies **types whose JSON wire form is a JSON string** — these are
+the cases where the Map<K,V> reader has to re-add quotes around the
+extracted property-name content:
+
+```fsharp
+let isNonStringPrimitive (t: Type) =
+    t = typeof<DateTimeOffset>
+    || t = typeof<DateTime>
+    || t = typeof<TimeOnly>                          // ADDED
+    || t = typeof<int64> || t = typeof<uint64>
+    || t = typeof<System.Numerics.BigInteger>
+    // REMOVED: int32, uint32, int16, uint16, sbyte, byte,
+    //          decimal, float, float32 — their JSON wire form
+    //          is a bare number, and either STJ default or our
+    //          custom converter reads the number token directly.
+```
+
+`TimeOnlyConverter.Read` also accepts `JsonTokenType.Number` (interpret
+as ticks) for defensiveness — covers wire shapes from clients that
+might emit the bare-number form without our specific converter set.
+
+### 19.3 Why Newtonsoft worked and STJ didn't
+
+Newtonsoft is broadly **lenient** about token shape — `JsonConvert
+.DeserializeObject<int>("\"42\"")` returns `42`, same for decimal / int16 /
+byte / float. `JsonConvert.DeserializeObject<byte[]>("[1,2,3]")` returns
+`[|1uy;2uy;3uy|]`. Both behaviours are off-spec for strict JSON but
+ship by default; consumer libraries (Fable.SimpleJson included)
+implicitly took advantage of them.
+
+STJ is strict by default. `JsonSerializer.Deserialize<int>("\"42\"")`
+throws; `Deserialize<byte[]>("[1,2,3]")` throws. The fix restores the
+needed leniency only where Fable.SimpleJson genuinely produces the
+alternate wire form — no global relaxation, no change to write output.
+
+### 19.4 Regression gate
+
+New test list `stjFableClientWireTests` in
+`Fable.Remoting.Json.Tests/StjFableClientWireTests.fs` (21 cases) pins
+the exact Fable.SimpleJson wire bytes our STJ reader has to accept:
+
+- 11 Map<K,V> non-string-key shapes (int, int16, byte, float, decimal,
+  int64, bigint, TimeOnly, DateOnly, DateTimeOffset, Guid).
+- 5 byte[] forms (array, base64, empty array, empty base64, null).
+- 3 numeric leniency cases (decimal from quoted string, decimal from
+  bare number, int from quoted string).
+- 2 outer-argument-slice cases that replay the per-arg JSON text a
+  Fable client sends for `echoMapInt` and `multiByteArrays`.
+
+The source-of-truth for the wire bytes is
+`packages/client/Fable.SimpleJson/fable/Json.Converter.fs:serialize`
+(the Map branch at line 786 + per-type primitive branches at
+656–688 + `quote.js`).
+
+### 19.5 Test matrix after Phase 10
+
+```
+Fable.Remoting.Json.Tests        370 (349 existing + 21 Phase 10)
+Fable.Remoting.Server.Tests       30
+Fable.Remoting.MsgPack.Tests      55
+Fable.Remoting.Suave.Tests        48
+Fable.Remoting.Giraffe.Tests     120
+Fable.Remoting.Falco.Tests       102
+---
+Total                            725/725 pass
+```
+
+IntegrationTests (the failing Fable browser run) re-verified against
+the AppVeyor CI on push — should now pass the same 218 tests that
+previously failed 9.

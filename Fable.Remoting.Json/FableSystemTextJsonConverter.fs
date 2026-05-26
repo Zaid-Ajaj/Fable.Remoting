@@ -773,16 +773,43 @@ type FSharpMapNonStringKeyConverter<'K, 'V when 'K : comparison>() =
             | false, _ -> false
         else false
 
+    // Fable clients (via Fable.SimpleJson) emit Map<K, V> object form with
+    // unquoted property names: `{"<value>": ...}`. When the JSON parser
+    // extracts prop.Name, it strips the surrounding `"`s (they're JSON
+    // delimiters). For types whose wire form is a JSON STRING (`"value"`),
+    // our STJ converter expects a JsonTokenType.String — so we must re-add
+    // the quotes before feeding prop.Name back into JsonSerializer.Deserialize.
+    //
+    // The list below pins which types' wire form IS a JSON string:
+    //   - int64 / uint64: our Int64Converter / UInt64Converter writes "+N" / "N"
+    //   - BigInteger:     our BigIntConverter writes "N"
+    //   - DateTime / DateTimeOffset: our DateTimeConverter writes "<ISO>"
+    //   - TimeOnly:       our TimeOnlyConverter writes "<ticks>"
+    //
+    // Types deliberately EXCLUDED (their wire form is a JSON number, and
+    // either STJ default handling or our converter reads from the number
+    // token directly — no quoting needed):
+    //   - int32 / uint32 / int16 / uint16 / sbyte / byte: STJ default
+    //   - decimal / float / float32: STJ default
+    //     (NumberHandling.AllowReadingFromString below also lets the reader
+    //      accept the alternate quoted-string form Fable.SimpleJson uses
+    //      for direct decimal args.)
+    //   - DateOnly: our DateOnlyConverter accepts both Number (day number)
+    //              and String (stringified day number); no quoting needed.
+    //   - TimeSpan: our TimeSpanConverter writes a JSON Number (ms).
+    //
+    // Before the IntegrationTests CI regression (PR #393), this list quoted
+    // int/decimal/float (causing STJ to reject the quoted form) and did NOT
+    // quote TimeOnly (causing STJ to see a number instead of a string). The
+    // current list aligns the read-side quoting with each type's actual
+    // wire form. See Phase 10 in BYTE-COMPAT-MAP / INVESTIGATE-GAPS for the
+    // root cause analysis.
     let isNonStringPrimitive (t: Type) =
         t = typeof<DateTimeOffset>
         || t = typeof<DateTime>
+        || t = typeof<TimeOnly>
         || t = typeof<int64> || t = typeof<uint64>
-        || t = typeof<int32> || t = typeof<uint32>
-        || t = typeof<int16> || t = typeof<uint16>
-        || t = typeof<sbyte> || t = typeof<byte>
-        || t = typeof<decimal>
         || t = typeof<System.Numerics.BigInteger>
-        || t = typeof<float> || t = typeof<float32>
 
     let quoted (s: string) =
         s.StartsWith "\"" && s.EndsWith "\""
@@ -1057,7 +1084,66 @@ type TimeOnlyConverter() =
     override _.Read(reader: byref<Utf8JsonReader>, _: Type, _: JsonSerializerOptions) =
         match reader.TokenType with
         | JsonTokenType.String -> TimeOnly(Int64.Parse(reader.GetString()))
+        | JsonTokenType.Number -> TimeOnly(reader.GetInt64())
         | other -> failwithf "Unexpected token %A when reading TimeOnly" other
+
+// =============================================================================
+// byte[] (lenient read; matches Newtonsoft + Fable.SimpleJson)
+// =============================================================================
+//
+// Wire shape divergence between server-side libraries and Fable clients:
+//
+//   - Newtonsoft.Json default: writes byte[] as a base64 JSON string ("AQID")
+//                              and is lenient on read — accepts BOTH a JSON
+//                              array of byte-valued numbers ([1,2,3]) AND a
+//                              base64 string.
+//   - System.Text.Json default: writes byte[] as a base64 JSON string
+//                               and is STRICT on read — accepts ONLY the
+//                               base64 string. Throws on [1,2,3].
+//   - Fable.SimpleJson (browser client): writes byte[] arguments as a JSON
+//                                        array of numbers ([1,2,3]) on the
+//                                        request body wire.
+//
+// Without this converter, IBinaryServer.binaryContentInOut and any other
+// endpoint that takes a byte[] argument from a Fable client fails to
+// deserialize the request body under the new STJ default. The converter
+// accepts both forms on read so consumers don't see a regression; the write
+// side stays base64 (byte-equal to the Newtonsoft default), so existing
+// byte-pin tests don't regress.
+
+type ByteArrayConverter() =
+    inherit JsonConverter<byte[]>()
+
+    override _.Write(writer: Utf8JsonWriter, value: byte[], _: JsonSerializerOptions) =
+        if isNull value then writer.WriteNullValue()
+        else writer.WriteBase64StringValue(ReadOnlySpan(value))
+
+    override _.Read(reader: byref<Utf8JsonReader>, _: Type, _: JsonSerializerOptions) =
+        match reader.TokenType with
+        | JsonTokenType.Null -> null
+        | JsonTokenType.String ->
+            // Standard base64 form — matches Newtonsoft / STJ default write.
+            reader.GetBytesFromBase64()
+        | JsonTokenType.StartArray ->
+            // Fable.SimpleJson sends byte[] arguments as [n, n, ...].
+            // Newtonsoft accepted this by default; STJ default does not, so
+            // we re-add the leniency here for Fable client compatibility.
+            let result = ResizeArray<byte>()
+            let mutable continueLoop = true
+            while continueLoop do
+                if not (reader.Read()) then
+                    failwith "Unexpected end of stream while reading byte[]"
+                else
+                    match reader.TokenType with
+                    | JsonTokenType.EndArray -> continueLoop <- false
+                    | JsonTokenType.Number -> result.Add(reader.GetByte())
+                    | other ->
+                        failwithf
+                            "Unexpected token %A inside byte[] array body (expected number)"
+                            other
+            result.ToArray()
+        | other ->
+            failwithf "Unexpected token %A when reading byte[]" other
 
 // =============================================================================
 // DataTable / DataSet
@@ -1155,6 +1241,33 @@ module FableConverters =
         // BYTE-COMPAT-MAP.md §12.
         options.Encoder <- JavaScriptEncoder.UnsafeRelaxedJsonEscaping
 
+        // Newtonsoft is lenient about reading numeric primitives from JSON
+        // strings: JsonConvert.DeserializeObject<int>("\"42\"") returns 42,
+        // and the same holds for decimal / float / int16 / byte / etc. STJ
+        // default is strict — it throws on the quoted form. Two paths in the
+        // Fable.SimpleJson wire format depend on this leniency:
+        //
+        //   1. Map<K, V> non-string-key reader (this file): the keys come
+        //      through as bare property names; for primitive numeric keys
+        //      the wire is `{"10": ...}` and we want to read `10` as int /
+        //      decimal / etc. With AllowReadingFromString, either form
+        //      (quoted "10" or bare 10) is accepted.
+        //   2. Direct decimal arguments: Fable.SimpleJson writes decimal
+        //      values as JSON strings ("3.14") on the wire, even though
+        //      the byte-pin contract for our server writes decimals as
+        //      JSON numbers (3.14). Without AllowReadingFromString, a
+        //      decimal request argument from a Fable client fails to
+        //      deserialize on the server.
+        //
+        // Lenient READ does not change WRITE — our writers continue to emit
+        // bare JSON numbers for decimal / int / etc., so byte-pin tests
+        // remain green. AllowNamedFloatingPointLiterals additionally
+        // accepts "NaN" / "Infinity" / "-Infinity" on read, which
+        // Fable.SimpleJson emits for NaN doubles.
+        options.NumberHandling <-
+            JsonNumberHandling.AllowReadingFromString
+            ||| JsonNumberHandling.AllowNamedFloatingPointLiterals
+
         // Factories — order from most-specific to most-general.
         options.Converters.Add(FSharpOptionConverterFactory())
         options.Converters.Add(FSharpListConverterFactory())
@@ -1182,6 +1295,7 @@ module FableConverters =
         options.Converters.Add(TimeSpanConverter())
         options.Converters.Add(DateOnlyConverter())
         options.Converters.Add(TimeOnlyConverter())
+        options.Converters.Add(ByteArrayConverter())
         options.Converters.Add(DataTableConverter())
         options.Converters.Add(DataSetConverter())
 

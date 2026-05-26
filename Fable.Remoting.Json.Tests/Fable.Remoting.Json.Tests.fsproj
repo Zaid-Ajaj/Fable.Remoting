@@ -13,6 +13,7 @@
     <Compile Include="WireFormatTests.fs" />
     <Compile Include="StjUnionPrototypeTests.fs" />
     <Compile Include="StjWireFormatTests.fs" />
+    <Compile Include="StjFableClientWireTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />

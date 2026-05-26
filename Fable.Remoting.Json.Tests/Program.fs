@@ -5,6 +5,7 @@ open JsonConverterTests
 open WireFormatTests
 open StjUnionPrototypeTests
 open StjWireFormatTests
+open StjFableClientWireTests
 
 let allTests = testList "Fable.Remoting.Json tests" [
     converterTest
@@ -12,6 +13,7 @@ let allTests = testList "Fable.Remoting.Json tests" [
     unionStjPrototypeTests
     stjWireFormatTests
     stjFixesNewtonsoftNullBug
+    stjFableClientWireTests
 ]
 
 [<EntryPoint>]
