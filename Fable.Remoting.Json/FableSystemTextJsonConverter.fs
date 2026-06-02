@@ -98,6 +98,15 @@ module private RecordReflection =
                 FieldIndexByName = nameIndex
             })
 
+/// CLR default for a Type, boxed. Value types → boxed zero (0, false, 0.0,
+/// DateTime.MinValue, …); reference types → null. Used by record / CLIMutable
+/// record / Pojo DU readers to populate slots for JSON-omitted fields, where
+/// the F# constructor would otherwise NRE when unboxing null into a value-type
+/// parameter (Newtonsoft supplied the zero value instead).
+module private TypeDefaults =
+    let boxedDefault (t: Type) : obj =
+        if t.IsValueType then Activator.CreateInstance(t) else null
+
 [<AutoOpen>]
 module private TupleReflection =
     type TupleInfo = {
@@ -358,7 +367,7 @@ type FSharpPojoDUConverter<'T>() =
                     |> Array.mapi (fun i fi ->
                         match root.TryGetProperty(fi.Name) with
                         | true, fieldEl -> fieldEl.Deserialize(case.FieldTypes.[i], options)
-                        | false, _ -> null)
+                        | false, _ -> TypeDefaults.boxedDefault case.FieldTypes.[i])
                 case.Constructor values :?> 'T
             | false, _ ->
                 failwithf "PojoDU JSON missing 'type' discriminator for %s" typeof<'T>.FullName
@@ -512,6 +521,12 @@ type FSharpRecordConverter<'T>() =
 
     let info = RecordReflection.getInfo typeof<'T>
 
+    // Template of per-field CLR defaults (boxed zero for value types, null for
+    // refs). Array.zeroCreate gives nulls everywhere — fine for ref fields, but
+    // unboxing null into a value-type ctor parameter (int64, DateTime, …) NREs.
+    // Newtonsoft supplied the zero value for JSON-omitted fields; we match that.
+    let defaultValues = info.FieldTypes |> Array.map TypeDefaults.boxedDefault
+
     override _.Write(writer: Utf8JsonWriter, value: 'T, options: JsonSerializerOptions) =
         let values = info.Reader (box value)
         writer.WriteStartObject()
@@ -525,7 +540,7 @@ type FSharpRecordConverter<'T>() =
         | JsonTokenType.Null -> Unchecked.defaultof<'T>
         | JsonTokenType.StartObject ->
             use doc = JsonDocument.ParseValue(&reader)
-            let values = Array.zeroCreate<obj> info.FieldNames.Length
+            let values = Array.copy defaultValues
             for prop in doc.RootElement.EnumerateObject() do
                 match info.FieldIndexByName.TryGetValue(prop.Name) with
                 | true, idx ->
@@ -584,7 +599,7 @@ type FSharpCliMutableRecordConverter<'T>() =
                 |> Array.map (fun prop ->
                     match root.TryGetProperty(prop.Name) with
                     | true, el -> el.Deserialize(prop.PropertyType, options)
-                    | false, _ -> null)
+                    | false, _ -> TypeDefaults.boxedDefault prop.PropertyType)
             Activator.CreateInstance(typeof<'T>, args) :?> 'T
         | other ->
             failwithf "Unexpected token %A when reading CLIMutable record %s" other typeof<'T>.FullName
@@ -971,7 +986,11 @@ type DateTimeConverter() =
 
     override _.Read(reader: byref<Utf8JsonReader>, _: Type, _: JsonSerializerOptions) =
         match reader.TokenType with
-        | JsonTokenType.String -> DateTime.Parse(reader.GetString())
+        | JsonTokenType.String ->
+            DateTime.Parse(
+                reader.GetString(),
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind)
         | other -> failwithf "Unexpected token %A when reading DateTime" other
 
 // =============================================================================
