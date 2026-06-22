@@ -265,7 +265,7 @@ You can follow the Suave part up to the library installation, where it will beco
 paket add Fable.Remoting.Falco --project /path/to/Project.fsproj
 ```
 
-Opening the `Fable.Remoting.Falco` namespace, you will get a [HttpHandler seq](https://www.falcoframework.com/docs/response.html) from the value `studentApi`. This can be combined with additonal applications and api endpoints by combining endpoint sequecnces:
+Opening the `Fable.Remoting.Falco` namespace, you will get a [HttpHandler seq](https://www.falcoframework.com/docs/response.html) from the value `studentApi`. This can be combined with additional applications and api endpoints by combining endpoint sequences:
 ```fs
 open Falco
 open Falco.Routing
