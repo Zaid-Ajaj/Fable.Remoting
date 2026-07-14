@@ -10,149 +10,149 @@ open System.Threading.Tasks
 module Remoting =
 
     type private ParameterlessServiceCall<'a>() =
-        static member _Invoke(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) : Async<'a> =
-            Proxy.proxyPost<'a> [] route client isBinarySerialization isMultipartEnabled
+        static member _Invoke(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) : Async<'a> =
+            Proxy.proxyPost<'a> [] route client isBinarySerialization isMultipartEnabled stjOptions
 
-        static member _InvokeTask(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled): Task<'a> =
-            Proxy.proxyPostTask<'a> [] route client isBinarySerialization isMultipartEnabled
+        static member _InvokeTask(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option): Task<'a> =
+            Proxy.proxyPostTask<'a> [] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc2<'a, 'b>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc2<'a, 'b>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, Async<'b>>()
 
         override _.Invoke(a) =
-            Proxy.proxyPost<'b> [ box a ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPost<'b> [ box a ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc3<'a, 'b, 'c>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc3<'a, 'b, 'c>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, Async<'c>>()
 
         override _.Invoke a =
-            fun b -> Proxy.proxyPost<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled
+            fun b -> Proxy.proxyPost<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b) =
-            Proxy.proxyPost<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPost<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc4<'a, 'b, 'c, 'd>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc4<'a, 'b, 'c, 'd>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, Async<'d>>()
 
         override _.Invoke a =
-            fun b c -> Proxy.proxyPost<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled
+            fun b c -> Proxy.proxyPost<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c) =
-            Proxy.proxyPost<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPost<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc5<'a, 'b, 'c, 'd, 'e>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc5<'a, 'b, 'c, 'd, 'e>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, Async<'e>>()
 
         override _.Invoke a =
-            fun b c d -> Proxy.proxyPost<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled
+            fun b c d -> Proxy.proxyPost<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d) =
-            Proxy.proxyPost<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPost<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc6<'a, 'b, 'c, 'd, 'e, 'f>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc6<'a, 'b, 'c, 'd, 'e, 'f>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, Async<'f>>()
 
         override _.Invoke a =
-            fun b c d e -> Proxy.proxyPost<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e -> Proxy.proxyPost<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            Proxy.proxyPost<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPost<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc7<'a, 'b, 'c, 'd, 'e, 'f, 'g>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc7<'a, 'b, 'c, 'd, 'e, 'f, 'g>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, FSharpFunc<'f, Async<'g>>>()
 
         override _.Invoke a =
-            fun b c d e f -> Proxy.proxyPost<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e f -> Proxy.proxyPost<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            fun f -> Proxy.proxyPost<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled
+            fun f -> Proxy.proxyPost<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc8<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc8<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, FSharpFunc<'f, FSharpFunc<'g, Async<'h>>>>() // the compiler will optimize `fun f g -> ...` to FSharpFunc<'f, 'g, 'h>
 
         override _.Invoke a =
-            fun b c d e f g -> Proxy.proxyPost<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e f g -> Proxy.proxyPost<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            fun f g -> Proxy.proxyPost<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled
+            fun f g -> Proxy.proxyPost<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFunc9<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFunc9<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, FSharpFunc<'f, FSharpFunc<'g, FSharpFunc<'h, Async<'i>>>>>()
 
         override _.Invoke a =
-            fun b c d e f g h -> Proxy.proxyPost<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e f g h -> Proxy.proxyPost<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            fun f g h -> Proxy.proxyPost<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled
+            fun f g h -> Proxy.proxyPost<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask2<'a, 'b>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask2<'a, 'b>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, Task<'b>>()
 
         override _.Invoke(a) =
-            Proxy.proxyPostTask<'b> [ box a ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPostTask<'b> [ box a ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask3<'a, 'b, 'c>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask3<'a, 'b, 'c>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, Task<'c>>()
 
         override _.Invoke a =
-            fun b -> Proxy.proxyPostTask<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled
+            fun b -> Proxy.proxyPostTask<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b) =
-            Proxy.proxyPostTask<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPostTask<'c> [ box a; box b ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask4<'a, 'b, 'c, 'd>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask4<'a, 'b, 'c, 'd>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, Task<'d>>()
 
         override _.Invoke a =
-            fun b c -> Proxy.proxyPostTask<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled
+            fun b c -> Proxy.proxyPostTask<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c) =
-            Proxy.proxyPostTask<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPostTask<'d> [ box a; box b; box c ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask5<'a, 'b, 'c, 'd, 'e>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask5<'a, 'b, 'c, 'd, 'e>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, Task<'e>>()
 
         override _.Invoke a =
-            fun b c d -> Proxy.proxyPostTask<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled
+            fun b c d -> Proxy.proxyPostTask<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d) =
-            Proxy.proxyPostTask<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPostTask<'e> [ box a; box b; box c; box d ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask6<'a, 'b, 'c, 'd, 'e, 'f>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask6<'a, 'b, 'c, 'd, 'e, 'f>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, Task<'f>>()
 
         override _.Invoke a =
-            fun b c d e -> Proxy.proxyPostTask<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e -> Proxy.proxyPostTask<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            Proxy.proxyPostTask<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled
+            Proxy.proxyPostTask<'f> [ box a; box b; box c; box d; box e ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask7<'a, 'b, 'c, 'd, 'e, 'f, 'g>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask7<'a, 'b, 'c, 'd, 'e, 'f, 'g>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, FSharpFunc<'f, Task<'g>>>()
 
         override _.Invoke a =
-            fun b c d e f -> Proxy.proxyPostTask<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e f -> Proxy.proxyPostTask<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            fun f -> Proxy.proxyPostTask<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled
+            fun f -> Proxy.proxyPostTask<'g> [ box a; box b; box c; box d; box e; box f ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask8<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask8<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, FSharpFunc<'f, FSharpFunc<'g, Task<'h>>>>() // the compiler will optimize `fun f g -> ...` to FSharpFunc<'f, 'g, 'h>
 
         override _.Invoke a =
-            fun b c d e f g -> Proxy.proxyPostTask<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e f g -> Proxy.proxyPostTask<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            fun f g -> Proxy.proxyPostTask<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled
+            fun f g -> Proxy.proxyPostTask<'h> [ box a; box b; box c; box d; box e; box f; box g ] route client isBinarySerialization isMultipartEnabled stjOptions
 
-    type private ServiceCallerFuncTask9<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled) =
+    type private ServiceCallerFuncTask9<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>(route: string, client: HttpClient, isBinarySerialization, isMultipartEnabled, stjOptions: System.Text.Json.JsonSerializerOptions option) =
         inherit FSharpFunc<'a, 'b, 'c, 'd, 'e, FSharpFunc<'f, FSharpFunc<'g, FSharpFunc<'h, Task<'i>>>>>()
 
         override _.Invoke a =
-            fun b c d e f g h -> Proxy.proxyPostTask<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled
+            fun b c d e f g h -> Proxy.proxyPostTask<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled stjOptions
 
         override _.Invoke(a, b, c, d, e) =
-            fun f g h -> Proxy.proxyPostTask<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled
+            fun f g h -> Proxy.proxyPostTask<'i> [ box a; box b; box c; box d; box e; box f; box g; box h ] route client isBinarySerialization isMultipartEnabled stjOptions
 
     type RemoteBuilderOptions = {
         RouteBuilder: (string -> string -> string) option
@@ -162,6 +162,7 @@ module Remoting =
         IsBinarySerialization: bool
         IsMultipartEnabled: bool
         CustomHeaders: (string * string) list
+        StjOptions: System.Text.Json.JsonSerializerOptions option
     }
 
     /// <summary>
@@ -176,6 +177,7 @@ module Remoting =
             IsBinarySerialization = false
             IsMultipartEnabled = false
             CustomHeaders = []
+            StjOptions = None
         }
 
     let withRouteBuilder (routeBuilder: string -> string -> string) options = { options with RouteBuilder = Some routeBuilder }
@@ -204,6 +206,16 @@ module Remoting =
     ///
     /// !!! Fable.Remoting.Suave servers do not support this option.
     let withMultipartOptimization options = { options with IsMultipartEnabled = true }
+
+    /// <summary>
+    /// Opts in to the System.Text.Json serialiser path. Pair with
+    /// `Fable.Remoting.Json.SystemTextJson.FableConverters.create()` to get
+    /// an options bundle pre-configured for byte-compat with the Newtonsoft
+    /// default. When omitted, the proxy uses the existing Newtonsoft path
+    /// (no behaviour change for current consumers).
+    /// </summary>
+    let withSerializerOptions (opts: System.Text.Json.JsonSerializerOptions) options =
+        { options with StjOptions = Some opts }
 
     /// <summary>
     /// Generates an instance of the protocol F# record using the provided options
@@ -251,12 +263,12 @@ module Remoting =
                         typedefof<ParameterlessServiceCall<_>>
                             .MakeGenericType(argType)
                             .GetMethod(nameof ParameterlessServiceCall._InvokeTask, BindingFlags.NonPublic ||| BindingFlags.Static)
-                            .Invoke(null, [| route; client; options.IsBinarySerialization; options.IsMultipartEnabled |])
+                            .Invoke(null, [| box route; box client; box options.IsBinarySerialization; box options.IsMultipartEnabled; box options.StjOptions |])
                     else
                         typedefof<ParameterlessServiceCall<_>>
                             .MakeGenericType(argType)
                             .GetMethod(nameof ParameterlessServiceCall._Invoke, BindingFlags.NonPublic ||| BindingFlags.Static)
-                            .Invoke(null, [| route; client; options.IsBinarySerialization; options.IsMultipartEnabled |])
+                            .Invoke(null, [| box route; box client; box options.IsBinarySerialization; box options.IsMultipartEnabled; box options.StjOptions |])
                 else
                     let isTask = Array.last argTypes |> snd
                     let argTypes = Array.map fst argTypes
@@ -285,7 +297,7 @@ module Remoting =
                             | 9 -> typedefof<ServiceCallerFunc9<_,_,_,_,_,_,_,_,_>>.MakeGenericType(argTypes)
                             | _ -> failwith "RPC methods with at most 8 curried arguments are supported"
 
-                    Activator.CreateInstance(callerType, route, client, options.IsBinarySerialization, options.IsMultipartEnabled)
+                    Activator.CreateInstance(callerType, route, client, options.IsBinarySerialization, options.IsMultipartEnabled, options.StjOptions)
             )
 
         FSharpValue.MakeRecord(t, parameters) :?> 't

@@ -10,10 +10,10 @@ open Fable.Remoting.Server.Proxy
 open System.Threading.Tasks
 
 module GiraffeUtil =
-    let setJsonBody (response: obj) (logger: Option<string -> unit>) : HttpHandler =
+    let setJsonBody (backend: JsonSerializerBackend) (response: obj) (logger: Option<string -> unit>) : HttpHandler =
         fun (next : HttpFunc) (ctx : HttpContext) ->
             use ms = new MemoryStream ()
-            jsonSerialize response ms
+            jsonSerializeWithBackend backend response ms
             let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
             Diagnostics.outputPhase logger responseBody
             ctx.Response.ContentType <- "application/json; charset=utf-8"
@@ -22,13 +22,14 @@ module GiraffeUtil =
     /// Handles thrown exceptions
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
         let logger = options.DiagnosticsLogger
+        let backend = options.JsonSerializer
         fun (next : HttpFunc) (ctx : HttpContext) ->
             match options.ErrorHandler with
-            | None -> setJsonBody (Errors.unhandled routeInfo.methodName) logger next ctx
+            | None -> setJsonBody backend (Errors.unhandled routeInfo.methodName) logger next ctx
             | Some errorHandler ->
                 match errorHandler ex routeInfo with
-                | Ignore -> setJsonBody (Errors.ignored routeInfo.methodName) logger next ctx
-                | Propagate error -> setJsonBody (Errors.propagated error) logger next ctx
+                | Ignore -> setJsonBody backend (Errors.ignored routeInfo.methodName) logger next ctx
+                | Propagate error -> setJsonBody backend (Errors.propagated error) logger next ctx
 
     /// Used to halt the forwarding of the Http context
     let halt: HttpContext option = None

@@ -1,10 +1,9 @@
 namespace Fable.Remoting.Server
 
-open System 
+open System
 open FSharp.Reflection
 open TypeShape
 open System.IO
-open Newtonsoft.Json.Linq
 
 [<RequireQualifiedAccess>]
 module TypeInfo = 
@@ -51,6 +50,21 @@ type SerializationType =
     | Json
     | MessagePack
 
+/// Which JSON serializer to use for the API's wire format.
+///
+/// `NewtonsoftJson` (the default) keeps the existing behaviour:
+/// `Fable.Remoting.Json.FableJsonConverter` registered against a
+/// `JsonSerializerSettings`. Existing consumers see no change.
+///
+/// `SystemTextJson opts` opts in to the System.Text.Json path. Pass a fully
+/// configured `JsonSerializerOptions` (typically `FableConverters.create()`
+/// from `Fable.Remoting.Json.SystemTextJson`). The STJ converter set produces
+/// byte-equal wire output to the Newtonsoft converters across the
+/// Fable.Remoting.Json byte-compat matrix.
+type JsonSerializerBackend =
+    | NewtonsoftJson
+    | SystemTextJson of System.Text.Json.JsonSerializerOptions
+
 type internal IShapeFSharpAsyncOrTask  =
     abstract Element: TypeShape
 
@@ -58,8 +72,15 @@ type internal ShapeFSharpAsyncOrTask<'T> () =
     interface IShapeFSharpAsyncOrTask  with
         member _.Element = shapeof<'T> :> _
 
+/// One per-argument value passed from the HTTP layer into the proxy:
+///   * `Choice1Of2 bytes`  — binary input (multipart byte[] section)
+///   * `Choice2Of2 jsonText` — the raw JSON text of one element from the
+///     outer arguments array. Backend-agnostic by construction: any JSON
+///     parser the deserialise path picks can re-parse this text. Previously
+///     this carried a `Newtonsoft.Json.Linq.JToken`, which prevented STJ-only
+///     consumers from dropping the Newtonsoft transitive dep.
 type internal InvocationPropsInt = {
-    Arguments: Choice<byte[], JToken> list
+    Arguments: Choice<byte[], string> list
     IsProxyHeaderPresent: bool
     Output: Stream
 }
@@ -78,6 +99,7 @@ type MakeEndpointProps = {
     FieldName: string
     RecordName: string
     ResponseSerialization: SerializationType
+    JsonSerializer: JsonSerializerBackend
     FlattenedTypes: Type[]
 }
 
@@ -103,11 +125,12 @@ type RouteDocs =
 type Documentation = Documentation of string * RouteDocs list
 
 type RemotingOptions<'context, 'serverImpl> = {
-    Implementation: ProtocolImplementation<'context, 'serverImpl> 
-    RouteBuilder : string -> string -> string 
-    ErrorHandler : ErrorHandler<'context> option 
-    DiagnosticsLogger : (string -> unit) option 
+    Implementation: ProtocolImplementation<'context, 'serverImpl>
+    RouteBuilder : string -> string -> string
+    ErrorHandler : ErrorHandler<'context> option
+    DiagnosticsLogger : (string -> unit) option
     Docs : string option * Option<Documentation>
     ResponseSerialization : SerializationType
+    JsonSerializer : JsonSerializerBackend
     RmsManager : Microsoft.IO.RecyclableMemoryStreamManager option
 }

@@ -1,5 +1,11 @@
 ﻿module AdapterTests
 
+// Legacy Newtonsoft path tests for the AzureFunctions adapter. Requires a
+// manually-running FunctionApp on localhost:7071. The STJ-default path is
+// covered by the Phase 4b/4d HTTP integration tests in Giraffe/Suave/Falco
+// (the adapter code uses the identical setBody-with-backend pattern).
+#nowarn "44"
+
 open System
 open System.Net.Http
 open Expecto

@@ -29,19 +29,19 @@ module FalcoUtils =
     let setContentType (contentType: string) (ctx: HttpContext) : HttpContext =
         Response.withContentType contentType ctx
     
-    let setResponseBody (response: obj) logger (ctx: HttpContext ) =
+    let setResponseBody (backend: JsonSerializerBackend) (response: obj) logger (ctx: HttpContext ) =
             task {
                 use ms = new MemoryStream ()
-                jsonSerialize response ms
+                jsonSerializeWithBackend backend response ms
                 let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
                 do! writeStringAsync responseBody ctx logger
             }
 
     /// Sets the body of the response to type of JSON
-    let setBody value logger  (ctx: HttpContext)=
+    let setBody backend value logger (ctx: HttpContext)=
                 setContentType "application/json; charset=utf-8" ctx
-                |> setResponseBody value logger
-            
+                |> setResponseBody backend value logger
+
 
     /// If no endpoints are found send an empty response
     let halt : HttpHandler =
@@ -49,14 +49,15 @@ module FalcoUtils =
 
     let fail (ex: exn) (routeInfo: RouteInfo<HttpContext>) (options: RemotingOptions<HttpContext, 't>) : HttpHandler =
       let logger = options.DiagnosticsLogger
+      let backend = options.JsonSerializer
       fun (ctx : HttpContext) ->
         task {
             match options.ErrorHandler with
-            | None -> return! setBody (Errors.unhandled routeInfo.methodName) logger ctx
+            | None -> return! setBody backend (Errors.unhandled routeInfo.methodName) logger ctx
             | Some errorHandler ->
                 match errorHandler ex routeInfo with
-                | Ignore -> return! setBody (Errors.ignored routeInfo.methodName) logger ctx
-                | Propagate error -> return! setBody (Errors.propagated error) logger ctx
+                | Ignore -> return! setBody backend (Errors.ignored routeInfo.methodName) logger ctx
+                | Propagate error -> return! setBody backend (Errors.propagated error) logger ctx
         }
 
     let notFound (options: RemotingOptions<HttpContext, 'impl>) : HttpHandler=

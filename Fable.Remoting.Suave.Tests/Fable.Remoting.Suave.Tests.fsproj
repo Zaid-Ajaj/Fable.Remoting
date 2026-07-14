@@ -9,6 +9,8 @@
     <Compile Include="Types.fs" />
     <Compile Include="SuaveTester.fs" />
     <Compile Include="FableSuaveAdapterTests.fs" />
+    <Compile Include="StjHttpIntegrationTests.fs" />
+    <Compile Include="LegacyNewtonsoftIntegrationTests.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
   

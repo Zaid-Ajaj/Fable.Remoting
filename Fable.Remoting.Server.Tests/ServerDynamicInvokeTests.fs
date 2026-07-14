@@ -1,5 +1,8 @@
 ﻿module ServerDynamicInvokeTests
 
+// Tests that exercise the legacy Newtonsoft serializer for the Server proxy.
+#nowarn "44"
+
 open Expecto
 open Fable.Remoting.Server.Proxy
 open Types

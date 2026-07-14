@@ -1,5 +1,10 @@
 ﻿module Serialization
 
+// Benchmarks for the legacy Newtonsoft path. STJ-default benchmarks would
+// be a follow-up — left here as a reference point for any future
+// retirement-PR performance comparison.
+#nowarn "44"
+
 open BenchmarkDotNet.Attributes
 open Fable.Remoting.Json
 open Newtonsoft.Json

@@ -1,5 +1,10 @@
 ﻿module JsonConverterTests
 
+// Round-trip tests for the legacy Newtonsoft FableJsonConverter.
+// Intentional deprecation-warning suppression — these tests pin the legacy
+// path's behaviour so we can verify byte-compat with the STJ default.
+#nowarn "44"
+
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 open System

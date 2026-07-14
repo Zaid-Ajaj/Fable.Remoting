@@ -1,5 +1,10 @@
 namespace Fable.Remoting.Server
 
+// Docs schema serialisation still uses FableJsonConverter (Newtonsoft).
+// Generating the API documentation is not on the byte-compat hot path; the
+// Newtonsoft path here is supported until the next major version.
+#nowarn "44"
+
 open Microsoft.FSharp.Quotations
 open Fable.Remoting.Json
 open Newtonsoft.Json

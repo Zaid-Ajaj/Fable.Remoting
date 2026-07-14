@@ -32,10 +32,10 @@ module private FuncsUtil =
     
     let private path (r:HttpRequestData) = r.Url.PathAndQuery.Split("?").[0]
 
-    let setJsonBody (res:HttpResponseData) (response: obj) (logger: Option<string -> unit>) (req:HttpRequestData) : Task<HttpResponseData option> =
+    let setJsonBody (backend: JsonSerializerBackend) (res:HttpResponseData) (response: obj) (logger: Option<string -> unit>) (req:HttpRequestData) : Task<HttpResponseData option> =
         task {
             use ms = new MemoryStream ()
-            jsonSerialize response ms
+            jsonSerializeWithBackend backend response ms
             let responseBody = System.Text.Encoding.UTF8.GetString (ms.ToArray ())
             Diagnostics.outputPhase logger responseBody
             let res = res |> setContentType "application/json; charset=utf-8"
@@ -47,12 +47,13 @@ module private FuncsUtil =
     let fail (ex: exn) (routeInfo: RouteInfo<HttpRequestData>) (options: RemotingOptions<HttpRequestData, 't>) (req:HttpRequestData) : Task<HttpResponseData option> =
         let resp = req.CreateResponse(HttpStatusCode.InternalServerError)
         let logger = options.DiagnosticsLogger
+        let backend = options.JsonSerializer
         match options.ErrorHandler with
-        | None -> setJsonBody resp (Errors.unhandled routeInfo.methodName) logger req
+        | None -> setJsonBody backend resp (Errors.unhandled routeInfo.methodName) logger req
         | Some errorHandler ->
             match errorHandler ex routeInfo with
-            | Ignore -> setJsonBody resp (Errors.ignored routeInfo.methodName) logger req
-            | Propagate error -> setJsonBody resp (Errors.propagated error) logger req
+            | Ignore -> setJsonBody backend resp (Errors.ignored routeInfo.methodName) logger req
+            | Propagate error -> setJsonBody backend resp (Errors.propagated error) logger req
     
     let halt: HttpResponseData option = None
     

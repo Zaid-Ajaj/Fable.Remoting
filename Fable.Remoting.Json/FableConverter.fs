@@ -154,7 +154,19 @@ module private ReflectionHelpers =
             false
 
     let getUnionKind (t: Type) =
-        t.GetCustomAttributes(false)
+        // F# emits each union case as a nested subtype of the DU. For a
+        // value `PojoOne 42` of type `PojoDU`, `value.GetType()` is
+        // `PojoDU+PojoOne`, NOT `PojoDU`. The [<Fable.Core.Pojo>] and
+        // [<Fable.Core.StringEnum>] attributes are applied to the DU type
+        // and are NOT inherited by the case subtypes — so reading attributes
+        // from the case subtype always misses them. Normalise to the
+        // declaring (canonical) DU type first.
+        let canonicalT =
+            if FSharpType.IsUnion(t, bindingFlags) then
+                FSharpType.GetUnionCases(t, bindingFlags).[0].DeclaringType
+            else
+                t
+        canonicalT.GetCustomAttributes(false)
         |> Array.tryPick (fun o ->
             match o.GetType().FullName with
             | "Fable.Core.PojoAttribute" -> Some Kind.PojoDU
@@ -329,6 +341,18 @@ type InternalLong = { high : int; low: int; unsigned: bool }
 /// Converts F# options, tuples and unions to a format understandable
 /// by Fable. Code adapted from Lev Gorodinski's original.
 /// See https://goo.gl/F6YiQk
+///
+/// **DEPRECATED**: this is the legacy Newtonsoft.Json converter. The default
+/// serializer for `Fable.Remoting.Server.Remoting.createApi()` is now
+/// `Fable.Remoting.Json.SystemTextJson.FableConverters.create()` — a
+/// byte-equivalent System.Text.Json converter set. New code should not
+/// reference `FableJsonConverter` directly; pipe through
+/// `Remoting.withSerializerOptions` (or accept the new default).
+///
+/// This class will be removed in a future major version when the
+/// `Newtonsoft.Json` package reference is dropped from `Fable.Remoting.Json`.
+/// See MIGRATION.md for the migration path.
+[<System.Obsolete "Use Fable.Remoting.Json.SystemTextJson.FableConverters.create() — produces byte-equal wire output via System.Text.Json with no Newtonsoft.Json transitive dep. See MIGRATION.md.">]
 type FableJsonConverter() =
     inherit Newtonsoft.Json.JsonConverter()
 
