@@ -67,6 +67,7 @@ Now you are almost ready to expose the API to your client and have these functio
 - [Setup Saturn](/server-setup/saturn)
 - [Setup Asp.Net Core](/server-setup/aspnet-core)
 - [Setup Suave](/server-setup/suave)
+- [Setup Falco](/server-setup/falco)
 
 Afterwards you can either:
 - [Setup Fable client](/client-setup/fable)

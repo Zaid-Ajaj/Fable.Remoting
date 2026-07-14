@@ -70,6 +70,7 @@ Use the [SAFE Simplified template](https://github.com/Zaid-Ajaj/SAFE.Simplified)
 | Fable.Remoting.Server       | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Server.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Server)             |
 | Fable.Remoting.Suave        | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Suave.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Suave)               |
 | Fable.Remoting.Giraffe      | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Giraffe.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Giraffe)           |
+| Fable.Remoting.Falco        | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.Falco.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.Falco)           |
 | Fable.Remoting.AspNetCore   | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AspNetCore.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AspNetCore)     |
 | Fable.Remoting.DotnetClient | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.DotnetClient.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.DotnetClient) |
 | Fable.Remoting.AzureFunctions.Worker | [![Nuget](https://img.shields.io/nuget/v/Fable.Remoting.AzureFunctions.Worker.svg?colorB=green)](https://www.nuget.org/packages/Fable.Remoting.AzureFunctions.Worker) |
@@ -256,6 +257,34 @@ let app = application {
 }
 
 run app
+```
+### Falco
+
+You can follow the Suave part up to the library installation, where it will become:
+```
+paket add Fable.Remoting.Falco --project /path/to/Project.fsproj
+```
+
+Opening the `Fable.Remoting.Falco` namespace, you will get a [HttpHandler seq](https://www.falcoframework.com/docs/response.html) from the value `studentApi`. This can be combined with additional applications and api endpoints by combining endpoint sequences:
+```fs
+open Falco
+open Falco.Routing
+open Fable.Remoting.Server
+open Fable.Remoting.Falco
+open Microsoft.AspNetCore.Builder
+
+let webApp : HttpHandler =
+    Remoting.createApi()
+    |> Remoting.fromValue studentApi
+    |> Remoting.buildHttpEndpoints
+
+let endpoints = [ get "/" (Response.ofPlainText "Hello, World") ]
+
+let wapp = WebApplication.Create()
+
+wapp.UseRouting()
+  .UseFalco(Seq.append endpoints webApp)
+  .Run(Response.ofPlainText "Not found")
 ```
 
 ### Azure Functions (isolated)
