@@ -519,17 +519,8 @@ let serializeObj (x: obj) (out: Stream) =
 
 #endif
 
-module Fable =
-    let private serializerCache = System.Collections.Generic.Dictionary<string, Action<obj, ResizeArray<byte>>> ()
-
-    let private cacheGetOrAdd (typ: Type, f) =
-        match serializerCache.TryGetValue typ.FullName with
-        | true, f -> f
-        | _ ->
-            serializerCache.Add (typ.FullName, f)
-            f
-
-    let inline private write32bitNumber b1 b2 b3 b4 (out: ResizeArray<byte>) writeFormat =
+module FableInternal =
+    let inline write32bitNumber b1 b2 b3 b4 (out: ResizeArray<byte>) writeFormat =
         if b2 > 0uy || b1 > 0uy then
             if writeFormat then out.Add Format.Uint32
             out.Add b1
@@ -544,7 +535,7 @@ module Fable =
             if writeFormat then out.Add Format.Uint8
             out.Add b4
 
-    let private write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (out: ResizeArray<byte>) =
+    let write64bitNumber b1 b2 b3 b4 b5 b6 b7 b8 (out: ResizeArray<byte>) =
         if b4 > 0uy || b3 > 0uy || b2 > 0uy || b1 > 0uy then
             out.Add Format.Uint64
             out.Add b1
@@ -558,28 +549,28 @@ module Fable =
         else
             write32bitNumber b5 b6 b7 b8 out true
 
-    let inline private writeUnsigned32bitNumber (n: UInt32) (out: ResizeArray<byte>) =
+    let inline writeUnsigned32bitNumber (n: UInt32) (out: ResizeArray<byte>) =
         write32bitNumber (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
 
-    let inline private writeUnsigned64bitNumber (n: UInt64) (out: ResizeArray<byte>) =
+    let inline writeUnsigned64bitNumber (n: UInt64) (out: ResizeArray<byte>) =
         write64bitNumber (n >>> 56 |> byte) (n >>> 48 |> byte) (n >>> 40 |> byte) (n >>> 32 |> byte) (n >>> 24 |> byte) (n >>> 16 |> byte) (n >>> 8 |> byte) (byte n) out
 
-    let inline private writeNil (out: ResizeArray<byte>) = out.Add Format.Nil
-    let inline private writeBool x (out: ResizeArray<byte>) = out.Add (if x then Format.True else Format.False)
+    let inline writeNil (out: ResizeArray<byte>) = out.Add Format.Nil
+    let inline writeBool x (out: ResizeArray<byte>) = out.Add (if x then Format.True else Format.False)
 
-    let private writeSignedNumber bytes (out: ResizeArray<byte>) =
+    let writeSignedNumber bytes (out: ResizeArray<byte>) =
         if BitConverter.IsLittleEndian then
             Array.rev bytes |> out.AddRange
         else
             out.AddRange bytes
 
-    let private writeUInt64 (n: UInt64) (out: ResizeArray<byte>) =
+    let writeUInt64 (n: UInt64) (out: ResizeArray<byte>) =
         if n < 128UL then
             out.Add (Format.fixposnum n)
         else
             writeUnsigned64bitNumber n out
 
-    let private writeInt64 (n: int64) (out: ResizeArray<byte>) =
+    let writeInt64 (n: int64) (out: ResizeArray<byte>) =
         if n >= 0L then
             writeUInt64 (uint64 n) out
         else
@@ -590,14 +581,14 @@ module Fable =
                 out.Add Format.Int64
                 writeSignedNumber (BitConverter.GetBytes n) out
 
-    let private writeByte b (out: ResizeArray<byte>) =
+    let writeByte b (out: ResizeArray<byte>) =
         if b < 128uy then
             out.Add (Format.fixposnum b)
         else
             out.Add Format.Uint8
             out.Add b
 
-    let inline private writeString (str: string) (out: ResizeArray<byte>) =
+    let inline writeString (str: string) (out: ResizeArray<byte>) =
         let str = Encoding.UTF8.GetBytes str
 
         if str.Length < 32 then
@@ -614,15 +605,15 @@ module Fable =
 
         out.AddRange str
 
-    let private writeSingle (n: float32) (out: ResizeArray<byte>) =
+    let writeSingle (n: float32) (out: ResizeArray<byte>) =
         out.Add Format.Float32
         writeSignedNumber (BitConverter.GetBytes n) out
 
-    let private writeDouble (n: float) (out: ResizeArray<byte>) =
+    let writeDouble (n: float) (out: ResizeArray<byte>) =
         out.Add Format.Float64
         writeSignedNumber (BitConverter.GetBytes n) out
 
-    let private writeBin (data: byte[]) (out: ResizeArray<byte>) =
+    let writeBin (data: byte[]) (out: ResizeArray<byte>) =
         if data.Length < 256 then
             out.Add Format.Bin8
         elif data.Length < 65536 then
@@ -634,25 +625,25 @@ module Fable =
 
         out.AddRange data
 
-    let inline private writeDateTime (out: ResizeArray<byte>) (dto: DateTime) =
+    let inline writeDateTime (out: ResizeArray<byte>) (dto: DateTime) =
         out.Add (Format.fixarr 2uy)
         writeInt64 dto.Ticks out
         writeInt64 (int64 dto.Kind) out
 
-    let inline private writeDateTimeOffset (out: ResizeArray<byte>) (dto: DateTimeOffset) =
+    let inline writeDateTimeOffset (out: ResizeArray<byte>) (dto: DateTimeOffset) =
         out.Add (Format.fixarr 2uy)
         writeInt64 dto.Ticks out
         writeInt64 (int64 dto.Offset.TotalMinutes) out
 
 #if NET6_0_OR_GREATER
-    let inline private writeDateOnly (out: ResizeArray<byte>) (date: DateOnly) =
+    let inline writeDateOnly (out: ResizeArray<byte>) (date: DateOnly) =
         writeUnsigned32bitNumber (uint32 date.DayNumber) out true
 
-    let inline private writeTimeOnly (out: ResizeArray<byte>) (time: TimeOnly) =
+    let inline writeTimeOnly (out: ResizeArray<byte>) (time: TimeOnly) =
         writeUInt64 (uint64 time.Ticks) out
 #endif
 
-    let private writeArrayHeader len (out: ResizeArray<byte>) =
+    let writeArrayHeader len (out: ResizeArray<byte>) =
         if len < 16 then
             out.Add (Format.fixarr len)
         elif len < 65536 then
@@ -663,15 +654,25 @@ module Fable =
             out.Add Format.Array32
             writeUnsigned32bitNumber (uint32 len) out false
 
-    let private writeDecimal (n: decimal) (out: ResizeArray<byte>) =
+    let writeDecimal (n: decimal) (out: ResizeArray<byte>) =
         let bits = Decimal.GetBits n
         
         out.Add (Format.fixarr 4)
         for b in bits do
             writeUnsigned32bitNumber (uint32 b) out true
 
+module Fable =
+    let private serializerCache = System.Collections.Generic.Dictionary<string, Action<obj, ResizeArray<byte>>> ()
+
+    let private cacheGetOrAdd (typ: Type, f) =
+        match serializerCache.TryGetValue typ.FullName with
+        | true, f -> f
+        | _ ->
+            serializerCache.Add (typ.FullName, f)
+            f
+
     let rec private writeArray (out: ResizeArray<byte>) t (arr: System.Collections.ICollection) =
-        writeArrayHeader arr.Count out
+        FableInternal.writeArrayHeader arr.Count out
 
         for x in arr do
             writeObject x t out
@@ -687,20 +688,20 @@ module Fable =
             out.Add (FSharp.Core.Operators.byte length)
         else
             out.Add Format.Map32
-            writeUnsigned32bitNumber (uint32 length) out false
+            FableInternal.writeUnsigned32bitNumber (uint32 length) out false
 
         for kvp in dict do
             writeObject kvp.Key keyType out
             writeObject kvp.Value valueType out
 
     and private writeSet (out: ResizeArray<byte>) t (set: System.Collections.ICollection) =
-        writeArrayHeader set.Count out
+        FableInternal.writeArrayHeader set.Count out
 
         for x in set do
             writeObject x t out
 
     and inline private writeRecord (out: ResizeArray<byte>) (types: Type[]) (vals: obj[]) =
-        writeArrayHeader vals.Length out
+        FableInternal.writeArrayHeader vals.Length out
 
         for i in 0 .. vals.Length - 1 do
             writeObject vals.[i] types.[i] out
@@ -721,7 +722,7 @@ module Fable =
             if vals.Length = 1 then
                 writeObject vals.[0] types.[0] out
             else
-                writeArrayHeader vals.Length out
+                FableInternal.writeArrayHeader vals.Length out
 
                 for i in 0 .. vals.Length - 1 do
                     writeObject vals.[i] types.[i] out
@@ -730,7 +731,7 @@ module Fable =
         #if !FABLE_COMPILER
         raise (NotSupportedException "This function is meant to be used in Fable, please use serializeObj or makeSerializer.")
         #else
-        if isNull x then writeNil out else
+        if isNull x then FableInternal.writeNil out else
 
         match serializerCache.TryGetValue (t.FullName) with
         | true, writer ->
@@ -751,7 +752,7 @@ module Fable =
                 let fieldTypes = FSharpType.GetTupleElements t
                 cacheGetOrAdd(t, Action<_, _>(fun x out -> writeTuple out fieldTypes (FSharpValue.GetTupleFields x))).Invoke (x, out)
             elif t.IsEnum then
-                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeInt64 (box x :?> int |> int64) out)).Invoke (x, out)
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> FableInternal.writeInt64 (box x :?> int |> int64) out)).Invoke (x, out)
             elif t.IsGenericType then
                 let tDef = t.GetGenericTypeDefinition()
                 let genArgs = t.GetGenericArguments ()
@@ -774,13 +775,13 @@ module Fable =
                 else
                     failwithf "Cannot serialize %s." t.Name
             elif t.FullName = "Microsoft.FSharp.Core.int16`1" || t.FullName = "Microsoft.FSharp.Core.int32`1" || t.FullName = "Microsoft.FSharp.Core.int64`1" then
-                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeInt64 (x :?> int64) out)).Invoke (x, out)
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> FableInternal.writeInt64 (x :?> int64) out)).Invoke (x, out)
             elif t.FullName = "Microsoft.FSharp.Core.decimal`1" then
-                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeDecimal (x :?> decimal) out)).Invoke (x, out)
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> FableInternal.writeDecimal (x :?> decimal) out)).Invoke (x, out)
             elif t.FullName = "Microsoft.FSharp.Core.float`1" then
-                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeDouble (x :?> float) out)).Invoke (x, out)
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> FableInternal.writeDouble (x :?> float) out)).Invoke (x, out)
             elif t.FullName = "Microsoft.FSharp.Core.float32`1" then
-                cacheGetOrAdd(t, Action<_, _>(fun x out -> writeSingle (x :?> float32) out)).Invoke (x, out)
+                cacheGetOrAdd(t, Action<_, _>(fun x out -> FableInternal.writeSingle (x :?> float32) out)).Invoke (x, out)
             else
                 failwithf "Cannot serialize %s." t.Name
         #endif
@@ -793,29 +794,29 @@ module Fable =
         #endif
 
 #if FABLE_COMPILER
-    serializerCache.Add (typeof<byte>.FullName, fun x out -> writeByte (x :?> byte) out)
-    serializerCache.Add (typeof<sbyte>.FullName, fun x out -> writeByte (x :?> sbyte |> byte) out)
-    serializerCache.Add (typeof<unit>.FullName, fun _ out -> writeNil out)
-    serializerCache.Add (typeof<bool>.FullName, fun x out -> writeBool (x :?> bool) out)
-    serializerCache.Add (typeof<char>.FullName, fun x out -> writeString (x :?> string) out) // There are only strings in JS
-    serializerCache.Add (typeof<string>.FullName, fun x out -> writeString (x :?> string) out)
-    serializerCache.Add (typeof<int>.FullName, fun x out -> writeInt64 (x :?> int |> int64) out)
-    serializerCache.Add (typeof<int16>.FullName, fun x out -> writeInt64 (x :?> int16 |> int64) out)
-    serializerCache.Add (typeof<int64>.FullName, fun x out -> writeInt64 (x :?> int64) out)
-    serializerCache.Add (typeof<UInt32>.FullName, fun x out -> writeUInt64 (x :?> UInt32 |> uint64) out)
-    serializerCache.Add (typeof<UInt16>.FullName, fun x out -> writeUInt64 (x :?> UInt16 |> uint64) out)
-    serializerCache.Add (typeof<UInt64>.FullName, fun x out -> writeUInt64 (x :?> UInt64) out)
-    serializerCache.Add (typeof<float32>.FullName, fun x out -> writeSingle (x :?> float32) out)
-    serializerCache.Add (typeof<float>.FullName, fun x out -> writeDouble (x :?> float) out)
-    serializerCache.Add (typeof<decimal>.FullName, fun x out -> writeDecimal (x :?> decimal) out)
-    serializerCache.Add (typeof<byte[]>.FullName, fun x out -> writeBin (x :?> byte[]) out)
-    serializerCache.Add (typeof<bigint>.FullName, fun x out -> writeBin ((x :?> bigint).ToByteArray ()) out)
-    serializerCache.Add (typeof<Guid>.FullName, fun x out -> writeBin ((x :?> Guid).ToByteArray ()) out)
-    serializerCache.Add (typeof<DateTime>.FullName, fun x out -> writeDateTime out (x :?> DateTime))
-    serializerCache.Add (typeof<DateTimeOffset>.FullName, fun x out -> writeDateTimeOffset out (x :?> DateTimeOffset))
+    serializerCache.Add (typeof<byte>.FullName, fun x out -> FableInternal.writeByte (x :?> byte) out)
+    serializerCache.Add (typeof<sbyte>.FullName, fun x out -> FableInternal.writeByte (x :?> sbyte |> byte) out)
+    serializerCache.Add (typeof<unit>.FullName, fun _ out -> FableInternal.writeNil out)
+    serializerCache.Add (typeof<bool>.FullName, fun x out -> FableInternal.writeBool (x :?> bool) out)
+    serializerCache.Add (typeof<char>.FullName, fun x out -> FableInternal.writeString (x :?> string) out) // There are only strings in JS
+    serializerCache.Add (typeof<string>.FullName, fun x out -> FableInternal.writeString (x :?> string) out)
+    serializerCache.Add (typeof<int>.FullName, fun x out -> FableInternal.writeInt64 (x :?> int |> int64) out)
+    serializerCache.Add (typeof<int16>.FullName, fun x out -> FableInternal.writeInt64 (x :?> int16 |> int64) out)
+    serializerCache.Add (typeof<int64>.FullName, fun x out -> FableInternal.writeInt64 (x :?> int64) out)
+    serializerCache.Add (typeof<UInt32>.FullName, fun x out -> FableInternal.writeUInt64 (x :?> UInt32 |> uint64) out)
+    serializerCache.Add (typeof<UInt16>.FullName, fun x out -> FableInternal.writeUInt64 (x :?> UInt16 |> uint64) out)
+    serializerCache.Add (typeof<UInt64>.FullName, fun x out -> FableInternal.writeUInt64 (x :?> UInt64) out)
+    serializerCache.Add (typeof<float32>.FullName, fun x out -> FableInternal.writeSingle (x :?> float32) out)
+    serializerCache.Add (typeof<float>.FullName, fun x out -> FableInternal.writeDouble (x :?> float) out)
+    serializerCache.Add (typeof<decimal>.FullName, fun x out -> FableInternal.writeDecimal (x :?> decimal) out)
+    serializerCache.Add (typeof<byte[]>.FullName, fun x out -> FableInternal.writeBin (x :?> byte[]) out)
+    serializerCache.Add (typeof<bigint>.FullName, fun x out -> FableInternal.writeBin ((x :?> bigint).ToByteArray ()) out)
+    serializerCache.Add (typeof<Guid>.FullName, fun x out -> FableInternal.writeBin ((x :?> Guid).ToByteArray ()) out)
+    serializerCache.Add (typeof<DateTime>.FullName, fun x out -> FableInternal.writeDateTime out (x :?> DateTime))
+    serializerCache.Add (typeof<DateTimeOffset>.FullName, fun x out -> FableInternal.writeDateTimeOffset out (x :?> DateTimeOffset))
 #if NET6_0_OR_GREATER
-    serializerCache.Add (typeof<DateOnly>.FullName, fun x out -> writeDateOnly out (x :?> DateOnly))
-    serializerCache.Add (typeof<TimeOnly>.FullName, fun x out -> writeTimeOnly out (x :?> TimeOnly))
+    serializerCache.Add (typeof<DateOnly>.FullName, fun x out -> FableInternal.writeDateOnly out (x :?> DateOnly))
+    serializerCache.Add (typeof<TimeOnly>.FullName, fun x out -> FableInternal.writeTimeOnly out (x :?> TimeOnly))
 #endif
-    serializerCache.Add (typeof<TimeSpan>.FullName, fun x out -> writeInt64 (x :?> TimeSpan).Ticks out)
+    serializerCache.Add (typeof<TimeSpan>.FullName, fun x out -> FableInternal.writeInt64 (x :?> TimeSpan).Ticks out)
 #endif

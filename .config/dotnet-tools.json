@@ -6,19 +6,22 @@
       "version": "10.3.1",
       "commands": [
         "paket"
-      ]
+      ],
+      "rollForward": false
     },
     "fake-cli": {
       "version": "5.23.0",
       "commands": [
         "fake"
-      ]
+      ],
+      "rollForward": false
     },
     "fable": {
-      "version": "5.0.0-rc.7",
+      "version": "5.5.0",
       "commands": [
         "fable"
-      ]
+      ],
+      "rollForward": false
     }
   }
 }
